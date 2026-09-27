@@ -1,6 +1,6 @@
 from functools import lru_cache
 
-from pydantic import AnyHttpUrl, Field, SecretStr, field_validator
+from pydantic import AnyHttpUrl, EmailStr, Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -21,7 +21,7 @@ class Settings(BaseSettings):
     redis_url: str = "redis://localhost:6379/0"
     documents_dir: str = "data/documents"
 
-    bootstrap_admin_email: str = "admin@example.com"
+    bootstrap_admin_email: EmailStr = Field(default="admin@example.com")
     bootstrap_admin_password: SecretStr | None = None
 
     mercadolivre_client_id: str = ""

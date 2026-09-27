@@ -1,0 +1,42 @@
+import { Routes } from '@angular/router';
+import { authGuard } from './core/auth.guard';
+import { AppLayout } from './layout/app-layout';
+
+export const routes: Routes = [
+  { path: 'login', loadComponent: () => import('./pages/login/login').then((m) => m.LoginPage) },
+  {
+    path: '',
+    component: AppLayout,
+    canActivate: [authGuard],
+    children: [
+      { path: '', pathMatch: 'full', redirectTo: 'dashboard' },
+      {
+        path: 'dashboard',
+        loadComponent: () => import('./pages/dashboard/dashboard').then((m) => m.DashboardPage),
+      },
+      {
+        path: 'products',
+        loadComponent: () => import('./pages/products/products').then((m) => m.ProductsPage),
+      },
+      {
+        path: 'invoices',
+        loadComponent: () => import('./pages/invoices/invoices').then((m) => m.InvoicesPage),
+      },
+      {
+        path: 'customers',
+        loadComponent: () => import('./pages/customers/customers').then((m) => m.CustomersPage),
+      },
+      {
+        path: 'marketplace',
+        loadComponent: () =>
+          import('./pages/marketplace/marketplace').then((m) => m.MarketplacePage),
+      },
+      {
+        path: 'integrations',
+        loadComponent: () =>
+          import('./pages/integrations/integrations').then((m) => m.IntegrationsPage),
+      },
+    ],
+  },
+  { path: '**', redirectTo: '' },
+];

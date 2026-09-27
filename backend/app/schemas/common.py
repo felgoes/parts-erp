@@ -1,0 +1,153 @@
+from datetime import datetime
+from decimal import Decimal
+
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
+
+
+class ORMModel(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+
+class UserOut(ORMModel):
+    id: str
+    email: EmailStr
+    full_name: str
+    role: str
+
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str = "bearer"  # noqa: S105
+    user: UserOut
+
+
+class ProductCreate(BaseModel):
+    sku: str = Field(min_length=1, max_length=80)
+    name: str = Field(min_length=2, max_length=200)
+    description: str | None = None
+    sale_price: Decimal = Field(default=Decimal("0"), ge=0)
+    cost_price: Decimal = Field(default=Decimal("0"), ge=0)
+    current_stock: Decimal = Field(default=Decimal("0"))
+    minimum_stock: Decimal = Field(default=Decimal("0"), ge=0)
+    active: bool = True
+
+
+class ProductUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=2, max_length=200)
+    description: str | None = None
+    sale_price: Decimal | None = Field(default=None, ge=0)
+    cost_price: Decimal | None = Field(default=None, ge=0)
+    minimum_stock: Decimal | None = Field(default=None, ge=0)
+    active: bool | None = None
+
+
+class ProductOut(ORMModel):
+    id: str
+    sku: str
+    name: str
+    description: str | None
+    sale_price: Decimal
+    cost_price: Decimal
+    current_stock: Decimal
+    minimum_stock: Decimal
+    active: bool
+    created_at: datetime
+    updated_at: datetime
+
+
+class StockAdjustment(BaseModel):
+    quantity: Decimal
+    reason: str = Field(min_length=3, max_length=255)
+
+
+class CustomerCreate(BaseModel):
+    name: str = Field(min_length=2, max_length=200)
+    document: str | None = Field(default=None, max_length=20)
+    email: EmailStr | None = None
+    phone: str | None = Field(default=None, max_length=30)
+
+
+class CustomerOut(ORMModel):
+    id: str
+    name: str
+    document: str | None
+    email: str | None
+    phone: str | None
+    created_at: datetime
+
+
+class InvoiceItemCreate(BaseModel):
+    product_id: str
+    quantity: Decimal = Field(gt=0)
+    unit_price: Decimal | None = Field(default=None, ge=0)
+
+
+class InvoiceCreate(BaseModel):
+    customer_id: str | None = None
+    items: list[InvoiceItemCreate] = Field(min_length=1)
+    discount: Decimal = Field(default=Decimal("0"), ge=0)
+    shipping: Decimal = Field(default=Decimal("0"), ge=0)
+    notes: str | None = None
+
+
+class InvoiceItemOut(ORMModel):
+    id: str
+    product_id: str
+    sku: str
+    description: str
+    quantity: Decimal
+    unit_price: Decimal
+    total: Decimal
+
+
+class DocumentOut(ORMModel):
+    id: str
+    document_type: str
+    filename: str
+    created_at: datetime
+
+
+class InvoiceOut(ORMModel):
+    id: str
+    number: str
+    customer_id: str | None
+    status: str
+    source: str
+    marketplace_order_id: str | None
+    subtotal: Decimal
+    discount: Decimal
+    shipping: Decimal
+    total: Decimal
+    issued_at: datetime | None
+    notes: str | None
+    created_at: datetime
+    items: list[InvoiceItemOut]
+    documents: list[DocumentOut]
+
+
+class DashboardSummary(BaseModel):
+    revenue_month: Decimal
+    confirmed_sales: int
+    products_count: int
+    low_stock_count: int
+    recent_invoices: list[InvoiceOut]
+
+
+class MarketplaceOrderOut(ORMModel):
+    id: str
+    external_order_id: str
+    seller_id: str
+    status: str
+    sync_status: str
+    sync_error: str | None
+    invoice_id: str | None
+    synchronized_at: datetime | None
+    created_at: datetime
+
+
+class MarketplaceStatus(BaseModel):
+    configured: bool
+    connected: bool
+    seller_id: str | None = None
+    nickname: str | None = None
+    token_expires_at: datetime | None = None

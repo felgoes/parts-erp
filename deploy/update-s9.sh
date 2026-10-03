@@ -44,20 +44,24 @@ mkdir -p "$APP_DIR/data"
 
 deps_hash="$(sha256sum "$APP_DIR/backend/pyproject.toml" | awk '{print $1}')"
 old_hash="$(cat "$HASH_FILE" 2>/dev/null || true)"
-if [[ ! -x "$VENV/bin/python" || "$deps_hash" != "$old_hash" ]]; then
+if [[ ! -x "$VENV/bin/python" ]]; then
+  echo "Venv ausente; instalando dependências Python..."
+  python -m venv --system-site-packages "$VENV"
+  "$VENV/bin/python" -m pip install --extra-index-url https://termux-user-repository.github.io/pypi/ ./backend
+elif [[ -n "$old_hash" && "$deps_hash" != "$old_hash" ]]; then
   echo "Dependências Python alteradas; instalando no venv..."
   "$VENV/bin/python" -m pip install --extra-index-url https://termux-user-repository.github.io/pypi/ ./backend
-  printf '%s\n' "$deps_hash" > "$HASH_FILE"
 else
-  echo "Dependências Python inalteradas; instalação ignorada."
+  echo "Venv já funcional; instalação Python ignorada."
 fi
+printf '%s\n' "$deps_hash" > "$HASH_FILE"
 
 cd "$APP_DIR/backend"
 "$VENV/bin/alembic" upgrade head
 cd "$APP_DIR"
 bash deploy/termux/start.sh
 curl --fail --silent http://127.0.0.1:8080/ >/dev/null
-echo "Parts ERP atualizado em http://$APP_DIR:8080"
+echo "Parts ERP atualizado na porta 8080"
 REMOTE_SCRIPT
 
 echo "Atualização concluída."

@@ -44,14 +44,19 @@ import { AuthService } from '../core/auth.service';
 export class AppLayout {
   readonly auth = inject(AuthService);
   readonly menuOpen = signal(false);
-  readonly nav = [
-    { path: '/dashboard', label: 'Visão geral', icon: '◫' },
-    { path: '/products', label: 'Produtos e estoque', icon: '◇' },
-    { path: '/invoices', label: 'Faturas de venda', icon: '▤' },
-    { path: '/customers', label: 'Clientes', icon: '○' },
-    { path: '/marketplace', label: 'Pedidos do ML', icon: 'M' },
-    { path: '/integrations', label: 'Integrações', icon: '⌁' },
-  ];
+  get nav() {
+    const items = [
+      { path: '/dashboard', label: 'Visão geral', icon: '◫' },
+      { path: '/products', label: 'Produtos e estoque', icon: '◇' },
+      { path: '/invoices', label: 'Faturas de venda', icon: '▤' },
+      { path: '/customers', label: 'Clientes', icon: '○' },
+      { path: '/marketplace', label: 'Pedidos do ML', icon: 'M' },
+      { path: '/integrations', label: 'Integrações', icon: '⌁' },
+    ];
+    return this.auth.user()?.role === 'admin'
+      ? [...items, { path: '/users', label: 'Usuários', icon: '♙' }]
+      : items;
+  }
   get initials(): string {
     return (this.auth.user()?.full_name ?? 'U')
       .split(' ')

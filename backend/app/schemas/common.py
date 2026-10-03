@@ -3,6 +3,8 @@ from decimal import Decimal
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
+from app.models import UserRole
+
 
 class ORMModel(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -13,6 +15,13 @@ class UserOut(ORMModel):
     email: EmailStr
     full_name: str
     role: str
+
+
+class UserCreate(BaseModel):
+    email: EmailStr
+    full_name: str = Field(min_length=2, max_length=160)
+    password: str = Field(min_length=12, max_length=128)
+    role: UserRole = UserRole.operator
 
 
 class Token(BaseModel):
@@ -151,3 +160,23 @@ class MarketplaceStatus(BaseModel):
     seller_id: str | None = None
     nickname: str | None = None
     token_expires_at: datetime | None = None
+
+
+class MarketplaceConfigOut(BaseModel):
+    client_id: str
+    client_secret_configured: bool
+    redirect_uri: str
+    site_id: str
+    import_orders: bool
+    automatic_stock: bool
+    sync_documents: bool
+
+
+class MarketplaceConfigUpdate(BaseModel):
+    client_id: str
+    client_secret: str | None = None
+    redirect_uri: str
+    site_id: str = "MLB"
+    import_orders: bool = True
+    automatic_stock: bool = True
+    sync_documents: bool = True

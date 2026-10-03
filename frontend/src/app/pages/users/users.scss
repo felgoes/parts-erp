@@ -1,0 +1,16 @@
+.table-card {
+  padding: 0;
+}
+
+.table-card .table-wrap {
+  padding: 0 8px;
+}
+
+.table-card table {
+  min-width: 560px;
+}
+
+.form-message.error {
+  color: var(--danger);
+  margin: 16px 0 0;
+}

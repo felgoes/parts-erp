@@ -3,11 +3,12 @@ from typing import Any, cast
 from urllib.parse import urljoin
 
 import httpx
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.core.security import decrypt_secret, encrypt_secret
-from app.models import MarketplaceAccount
+from app.models import MarketplaceAccount, MarketplaceConfig
 
 
 class MercadoLivreError(RuntimeError):
@@ -20,21 +21,45 @@ class MercadoLivreClient:
         self.account = account
         self.settings = get_settings()
 
+    def _config(self) -> MarketplaceConfig | None:
+        return self.db.scalar(select(MarketplaceConfig).limit(1))
+
+    @property
+    def client_id(self) -> str:
+        config = self._config()
+        return config.client_id if config else self.settings.mercadolivre_client_id
+
+    @property
+    def client_secret(self) -> str | None:
+        config = self._config()
+        if config and config.encrypted_client_secret:
+            return decrypt_secret(config.encrypted_client_secret)
+        return self.settings.mercadolivre_client_secret.get_secret_value() if self.settings.mercadolivre_client_secret else None
+
+    @property
+    def api_url(self) -> str:
+        return self.settings.mercadolivre_api_url
+
+    @property
+    def redirect_uri(self) -> str:
+        config = self._config()
+        return (config.redirect_uri if config else None) or str(self.settings.mercadolivre_redirect_uri)
+
     def _client(self) -> httpx.Client:
-        return httpx.Client(base_url=self.settings.mercadolivre_api_url, timeout=30.0)
+        return httpx.Client(base_url=self.api_url, timeout=30.0)
 
     def exchange_code(self, code: str) -> dict[str, Any]:
-        secret = self.settings.mercadolivre_client_secret
-        if not self.settings.mercadolivre_client_id or not secret:
+        secret = self.client_secret
+        if not self.client_id or not secret:
             raise MercadoLivreError("Credenciais do Mercado Livre não configuradas")
         response = httpx.post(
-            f"{self.settings.mercadolivre_api_url}/oauth/token",
+            f"{self.api_url}/oauth/token",
             data={
                 "grant_type": "authorization_code",
-                "client_id": self.settings.mercadolivre_client_id,
-                "client_secret": secret.get_secret_value(),
+                "client_id": self.client_id,
+                "client_secret": secret,
                 "code": code,
-                "redirect_uri": str(self.settings.mercadolivre_redirect_uri),
+                "redirect_uri": self.redirect_uri,
             },
             timeout=30.0,
         )
@@ -44,15 +69,15 @@ class MercadoLivreClient:
     def refresh_access_token(self) -> str:
         if not self.account or not self.account.encrypted_refresh_token:
             raise MercadoLivreError("Conta sem refresh token")
-        secret = self.settings.mercadolivre_client_secret
+        secret = self.client_secret
         if not secret:
             raise MercadoLivreError("Client secret não configurado")
         response = httpx.post(
-            f"{self.settings.mercadolivre_api_url}/oauth/token",
+            f"{self.api_url}/oauth/token",
             data={
                 "grant_type": "refresh_token",
-                "client_id": self.settings.mercadolivre_client_id,
-                "client_secret": secret.get_secret_value(),
+                "client_id": self.client_id,
+                "client_secret": secret,
                 "refresh_token": decrypt_secret(self.account.encrypted_refresh_token),
             },
             timeout=30.0,
@@ -86,7 +111,7 @@ class MercadoLivreClient:
 
     def download(self, path: str) -> bytes:
         absolute = (
-            path if path.startswith("http") else urljoin(self.settings.mercadolivre_api_url, path)
+            path if path.startswith("http") else urljoin(self.api_url, path)
         )
         response = httpx.get(
             absolute,

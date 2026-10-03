@@ -155,6 +155,19 @@ class MarketplaceAccount(TimestampMixin, Base):
     active: Mapped[bool] = mapped_column(Boolean, default=True)
 
 
+class MarketplaceConfig(TimestampMixin, Base):
+    __tablename__ = "marketplace_config"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    client_id: Mapped[str] = mapped_column(String(120), default="")
+    encrypted_client_secret: Mapped[str | None] = mapped_column(Text)
+    redirect_uri: Mapped[str | None] = mapped_column(String(500))
+    site_id: Mapped[str] = mapped_column(String(20), default="MLB")
+    import_orders: Mapped[bool] = mapped_column(Boolean, default=True)
+    automatic_stock: Mapped[bool] = mapped_column(Boolean, default=True)
+    sync_documents: Mapped[bool] = mapped_column(Boolean, default=True)
+
+
 class MarketplaceOrder(TimestampMixin, Base):
     __tablename__ = "marketplace_orders"
 

@@ -76,6 +76,15 @@ export interface MarketplaceStatus {
   nickname: string | null;
   token_expires_at: string | null;
 }
+export interface MarketplaceConfig {
+  client_id: string;
+  client_secret_configured: boolean;
+  redirect_uri: string;
+  site_id: string;
+  import_orders: boolean;
+  automatic_stock: boolean;
+  sync_documents: boolean;
+}
 export interface MarketplaceOrder {
   id: string;
   external_order_id: string;

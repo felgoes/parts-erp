@@ -7,7 +7,9 @@ import {
   Invoice,
   MarketplaceOrder,
   MarketplaceStatus,
+  MarketplaceConfig,
   Product,
+  User,
 } from './models';
 
 @Injectable({ providedIn: 'root' })
@@ -38,6 +40,12 @@ export class ApiService {
   createCustomer(payload: Partial<Customer>): Observable<Customer> {
     return this.http.post<Customer>(`${this.base}/customers`, payload);
   }
+  users(): Observable<User[]> {
+    return this.http.get<User[]>(`${this.base}/users`);
+  }
+  createUser(payload: { email: string; full_name: string; password: string; role: User['role'] }): Observable<User> {
+    return this.http.post<User>(`${this.base}/users`, payload);
+  }
   invoices(): Observable<Invoice[]> {
     return this.http.get<Invoice[]>(`${this.base}/invoices`);
   }
@@ -57,6 +65,12 @@ export class ApiService {
   }
   marketplaceStatus(): Observable<MarketplaceStatus> {
     return this.http.get<MarketplaceStatus>(`${this.base}/integrations/mercadolivre/status`);
+  }
+  marketplaceConfig(): Observable<MarketplaceConfig> {
+    return this.http.get<MarketplaceConfig>(`${this.base}/integrations/mercadolivre/config`);
+  }
+  saveMarketplaceConfig(payload: Record<string, unknown>): Observable<MarketplaceConfig> {
+    return this.http.put<MarketplaceConfig>(`${this.base}/integrations/mercadolivre/config`, payload);
   }
   marketplaceOrders(): Observable<MarketplaceOrder[]> {
     return this.http.get<MarketplaceOrder[]>(`${this.base}/integrations/mercadolivre/orders`);

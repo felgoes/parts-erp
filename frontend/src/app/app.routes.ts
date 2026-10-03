@@ -36,6 +36,10 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./pages/integrations/integrations').then((m) => m.IntegrationsPage),
       },
+      {
+        path: 'users',
+        loadComponent: () => import('./pages/users/users').then((m) => m.UsersPage),
+      },
     ],
   },
   { path: '**', redirectTo: '' },

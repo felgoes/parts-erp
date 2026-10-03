@@ -2,8 +2,8 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-S9_HOST="${S9_HOST:-[private-host]}"
-S9_USER="${S9_USER:-[deploy-user]}"
+S9_HOST="${S9_HOST:-remote-host}"
+S9_USER="${S9_USER:-deploy-user}"
 S9_PORT="${S9_PORT:-8022}"
 S9_APP_DIR="${S9_APP_DIR:-/srv/parts-erp}"
 SSH_OPTS=(-p "$S9_PORT" -o BatchMode=yes)

@@ -117,7 +117,7 @@ def connect(db: Session = Depends(get_db), user: User = Depends(require_roles(Us
 
 
 @router.get("/callback")
-def callback(code: str, state: str, db: Session = Depends(get_db)) -> RedirectResponse:
+async def callback(code: str, state: str, db: Session = Depends(get_db)) -> RedirectResponse:
     settings = get_settings()
     try:
         payload = decode_token(state)
@@ -152,6 +152,13 @@ def callback(code: str, state: str, db: Session = Depends(get_db)) -> RedirectRe
         account.active = True
         db.add(account)
         db.commit()
+        try:
+            redis = await create_pool(RedisSettings.from_dsn(settings.redis_url))
+            await redis.enqueue_job("sync_mercadolivre_account", account.seller_id)
+            await redis.close()
+        except Exception:
+            # A conexao nao deve impedir a conclusao do OAuth; o worker pode ser reexecutado.
+            pass
     except (jwt.PyJWTError, KeyError, MercadoLivreError):
         return RedirectResponse(f"{settings.frontend_url}/integrations?error=oauth")
     return RedirectResponse(f"{settings.frontend_url}/integrations?connected=true")

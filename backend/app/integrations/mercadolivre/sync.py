@@ -23,6 +23,20 @@ from app.services.sales import confirm_invoice, create_invoice
 
 ORDER_RESOURCE = re.compile(r"^/orders/(?P<id>\d+)$")
 
+def _resource_ids(result: dict[str, Any] | list[Any]) -> list[str]:
+    if isinstance(result, dict):
+        values = result.get("results") or result.get("orders") or []
+        if not values and result.get("id"):
+            values = [result]
+    else:
+        values = result
+    ids: list[str] = []
+    for value in values:
+        raw = value.get("id") if isinstance(value, dict) else value
+        if raw is not None and str(raw).isdigit():
+            ids.append(str(raw))
+    return ids
+
 
 def extract_sku(item: dict[str, Any]) -> str | None:
     order_item = item.get("item", {})
@@ -153,14 +167,18 @@ def sync_order(db: Session, seller_id: str, resource: str) -> MarketplaceOrder:
     db.refresh(record)
     if record.invoice_id:
         try:
-            sync_invoice_documents(db, account, order_id, record.invoice_id)
+            sync_invoice_documents(db, account, order_id, record.invoice_id, order=order)
         except MercadoLivreError:
             pass
     return record
 
 
 def sync_invoice_documents(
-    db: Session, account: MarketplaceAccount, order_id: str, invoice_id: str
+    db: Session,
+    account: MarketplaceAccount,
+    order_id: str,
+    invoice_id: str,
+    order: dict[str, Any] | None = None,
 ) -> int:
     client = MercadoLivreClient(db, account)
     result = client.get(f"/users/{account.seller_id}/invoices/orders/{order_id}")
@@ -205,8 +223,96 @@ def sync_invoice_documents(
                 )
             )
             saved += 1
+
+    shipment_id = str((order or {}).get("shipping", {}).get("id") or "")
+    if shipment_id:
+        label_external_id = f"shipment:{shipment_id}:label"
+        existing = db.scalar(
+            select(InvoiceDocument).where(
+                InvoiceDocument.invoice_id == invoice_id,
+                InvoiceDocument.external_id == label_external_id,
+            )
+        )
+        if not existing:
+            try:
+                content = client.download(
+                    f"/shipment_labels?shipment_ids={shipment_id}&response_type=pdf"
+                )
+            except MercadoLivreError:
+                content = b""
+            if content:
+                digest = hashlib.sha256(content).hexdigest()
+                filename = f"etiqueta-{shipment_id}.pdf"
+                path = (base_dir / filename).resolve()
+                if base_dir not in path.parents:
+                    raise MercadoLivreError("Invalid document path")
+                path.write_bytes(content)
+                db.add(
+                    InvoiceDocument(
+                        invoice_id=invoice_id,
+                        external_id=label_external_id,
+                        document_type="label",
+                        filename=filename,
+                        storage_path=str(path),
+                        sha256=digest,
+                    )
+                )
+                saved += 1
     db.commit()
     return saved
+
+
+def sync_products(db: Session, account: MarketplaceAccount) -> int:
+    client = MercadoLivreClient(db, account)
+    imported = 0
+    offset = 0
+    while True:
+        result = client.get(
+            f"/users/{account.seller_id}/items/search?offset={offset}&limit=50"
+        )
+        ids = _resource_ids(result)
+        if not ids:
+            break
+        for external_id in ids:
+            detail = client.get(f"/items/{external_id}")
+            if not isinstance(detail, dict):
+                continue
+            sku = str(detail.get("seller_custom_field") or f"ML-{external_id}")[:80]
+            product = db.scalar(select(Product).where(Product.sku == sku))
+            if not product:
+                product = Product(sku=sku, name=str(detail.get("title") or sku))
+                db.add(product)
+            product.name = str(detail.get("title") or product.name)[:200]
+            product.description = detail.get("description") or product.description
+            product.sale_price = Decimal(str(detail.get("price") or product.sale_price or 0))
+            product.current_stock = Decimal(str(detail.get("available_quantity") or 0))
+            product.active = str(detail.get("status", "active")) == "active"
+            imported += 1
+        db.commit()
+        offset += len(ids)
+        if len(ids) < 50:
+            break
+    return imported
+
+
+def sync_all(db: Session, account: MarketplaceAccount) -> dict[str, int]:
+    products = sync_products(db, account)
+    orders = 0
+    offset = 0
+    while True:
+        result = MercadoLivreClient(db, account).get(
+            f"/orders/search?seller={account.seller_id}&offset={offset}&limit=50"
+        )
+        ids = _resource_ids(result)
+        if not ids:
+            break
+        for order_id in ids:
+            sync_order(db, account.seller_id, f"/orders/{order_id}")
+            orders += 1
+        offset += len(ids)
+        if len(ids) < 50:
+            break
+    return {"products": products, "orders": orders}
 
 
 def retry_due_orders(db: Session) -> int:

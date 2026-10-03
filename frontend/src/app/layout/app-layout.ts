@@ -47,6 +47,7 @@ export class AppLayout {
   get nav() {
     const items = [
       { path: '/dashboard', label: 'Visão geral', icon: '◫' },
+      { path: '/monitoring', label: 'Monitoramento', icon: 'O' },
       { path: '/products', label: 'Produtos e estoque', icon: '◇' },
       { path: '/invoices', label: 'Faturas de venda', icon: '▤' },
       { path: '/customers', label: 'Clientes', icon: '○' },

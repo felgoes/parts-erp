@@ -159,6 +159,14 @@ class MarketplaceOrderOut(ORMModel):
     sync_status: str
     sync_error: str | None
     invoice_id: str | None
+    shipment_id: str | None
+    shipping_status: str | None
+    fiscal_status: str
+    fiscal_error: str | None
+    external_invoice_id: str | None
+    label_status: str
+    label_error: str | None
+    automation_updated_at: datetime | None
     synchronized_at: datetime | None
     created_at: datetime
 
@@ -169,6 +177,8 @@ class MarketplaceStatus(BaseModel):
     seller_id: str | None = None
     nickname: str | None = None
     token_expires_at: datetime | None = None
+    auto_issue_invoice: bool = False
+    auto_download_label: bool = False
 
 
 class MarketplaceConfigOut(BaseModel):
@@ -179,6 +189,8 @@ class MarketplaceConfigOut(BaseModel):
     import_orders: bool
     automatic_stock: bool
     sync_documents: bool
+    auto_issue_invoice: bool
+    auto_download_label: bool
 
 
 class MarketplaceConfigUpdate(BaseModel):
@@ -189,6 +201,8 @@ class MarketplaceConfigUpdate(BaseModel):
     import_orders: bool = True
     automatic_stock: bool = True
     sync_documents: bool = True
+    auto_issue_invoice: bool = True
+    auto_download_label: bool = True
 
 
 class ShopeeStatus(BaseModel):
@@ -196,6 +210,7 @@ class ShopeeStatus(BaseModel):
     connected: bool
     shop_id: str | None = None
     token_expires_at: datetime | None = None
+
 
 class ShopeeConfigOut(BaseModel):
     partner_id: str
@@ -207,6 +222,7 @@ class ShopeeConfigOut(BaseModel):
     automatic_stock: bool
     sync_documents: bool
 
+
 class ShopeeConfigUpdate(BaseModel):
     partner_id: str
     partner_key: str | None = None
@@ -216,6 +232,7 @@ class ShopeeConfigUpdate(BaseModel):
     import_orders: bool = True
     automatic_stock: bool = True
     sync_documents: bool
+
 
 class TelemetryEventCreate(BaseModel):
     name: str = Field(min_length=1, max_length=60)

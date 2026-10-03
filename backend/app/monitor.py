@@ -11,7 +11,12 @@ def check_api() -> tuple[str, bool, float, str]:
     started = perf_counter()
     try:
         response = httpx.get("http://127.0.0.1:8000/health", timeout=5)
-        return "api", response.is_success, (perf_counter() - started) * 1000, str(response.status_code)
+        return (
+            "api",
+            response.is_success,
+            (perf_counter() - started) * 1000,
+            str(response.status_code),
+        )
     except httpx.HTTPError as exc:
         return "api", False, (perf_counter() - started) * 1000, type(exc).__name__
 

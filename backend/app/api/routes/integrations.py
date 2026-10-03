@@ -1,3 +1,4 @@
+import logging
 import re
 from datetime import UTC, datetime, timedelta
 from urllib.parse import urlencode
@@ -12,9 +13,11 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, require_roles
 from app.core.config import get_settings
-from app.core.security import decode_token, encrypt_secret
+from app.core.request_security import read_json_object, verify_webhook_secret
+from app.core.security import decode_token, decrypt_secret, encrypt_secret
 from app.db.session import get_db
 from app.integrations.mercadolivre.client import MercadoLivreClient, MercadoLivreError
+from app.integrations.mercadolivre.sync import automate_order_documents
 from app.integrations.shopee.client import ShopeeClient, ShopeeError
 from app.models import (
     MarketplaceAccount,
@@ -36,6 +39,7 @@ from app.schemas.common import (
 
 router = APIRouter(prefix="/integrations/mercadolivre", tags=["Mercado Livre"])
 shopee_router = APIRouter(prefix="/integrations/shopee", tags=["Shopee"])
+logger = logging.getLogger(__name__)
 
 
 @router.get("/status", response_model=MarketplaceStatus)
@@ -43,7 +47,12 @@ def status(db: Session = Depends(get_db), _: User = Depends(get_current_user)) -
     settings = get_settings()
     config = db.scalar(select(MarketplaceConfig).limit(1))
     account = db.scalar(
-        select(MarketplaceAccount).where(MarketplaceAccount.active.is_(True)).limit(1)
+        select(MarketplaceAccount)
+        .where(
+            MarketplaceAccount.provider == "mercadolivre",
+            MarketplaceAccount.active.is_(True),
+        )
+        .limit(1)
     )
     return MarketplaceStatus(
         configured=bool(
@@ -54,49 +63,78 @@ def status(db: Session = Depends(get_db), _: User = Depends(get_current_user)) -
         seller_id=account.seller_id if account else None,
         nickname=account.nickname if account else None,
         token_expires_at=account.token_expires_at if account else None,
+        auto_issue_invoice=(
+            config.auto_issue_invoice if config else settings.mercadolivre_auto_issue_invoice
+        ),
+        auto_download_label=(
+            config.auto_download_label if config else settings.mercadolivre_auto_download_label
+        ),
     )
 
 
 @router.get("/config", response_model=MarketplaceConfigOut)
-def get_config(db: Session = Depends(get_db), _: User = Depends(require_roles(UserRole.admin))) -> MarketplaceConfigOut:
+def get_config(
+    db: Session = Depends(get_db), _: User = Depends(require_roles(UserRole.admin))
+) -> MarketplaceConfigOut:
     settings = get_settings()
     config = db.scalar(select(MarketplaceConfig).limit(1))
     return MarketplaceConfigOut(
         client_id=config.client_id if config else settings.mercadolivre_client_id,
-        client_secret_configured=bool(config.encrypted_client_secret) if config else bool(settings.mercadolivre_client_secret),
-        redirect_uri=(config.redirect_uri if config else None) or str(settings.mercadolivre_redirect_uri),
+        client_secret_configured=bool(config.encrypted_client_secret)
+        if config
+        else bool(settings.mercadolivre_client_secret),
+        redirect_uri=(config.redirect_uri if config else None)
+        or str(settings.mercadolivre_redirect_uri),
         site_id=config.site_id if config else settings.mercadolivre_site_id,
         import_orders=config.import_orders if config else True,
         automatic_stock=config.automatic_stock if config else True,
         sync_documents=config.sync_documents if config else True,
+        auto_issue_invoice=(
+            config.auto_issue_invoice if config else settings.mercadolivre_auto_issue_invoice
+        ),
+        auto_download_label=(
+            config.auto_download_label if config else settings.mercadolivre_auto_download_label
+        ),
     )
 
 
 @router.put("/config", response_model=MarketplaceConfigOut)
-def update_config(payload: MarketplaceConfigUpdate, db: Session = Depends(get_db), _: User = Depends(require_roles(UserRole.admin))) -> MarketplaceConfigOut:
+def update_config(
+    payload: MarketplaceConfigUpdate,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_roles(UserRole.admin)),
+) -> MarketplaceConfigOut:
     settings = get_settings()
     config = db.scalar(select(MarketplaceConfig).limit(1)) or MarketplaceConfig()
     config.client_id = payload.client_id.strip()
     if payload.client_secret:
         config.encrypted_client_secret = encrypt_secret(payload.client_secret)
     elif not config.encrypted_client_secret and settings.mercadolivre_client_secret:
-        config.encrypted_client_secret = encrypt_secret(settings.mercadolivre_client_secret.get_secret_value())
+        config.encrypted_client_secret = encrypt_secret(
+            settings.mercadolivre_client_secret.get_secret_value()
+        )
     config.redirect_uri = payload.redirect_uri.strip()
     config.site_id = payload.site_id.strip()
     config.import_orders = payload.import_orders
     config.automatic_stock = payload.automatic_stock
     config.sync_documents = payload.sync_documents
+    config.auto_issue_invoice = payload.auto_issue_invoice
+    config.auto_download_label = payload.auto_download_label
     db.add(config)
     db.commit()
     return get_config(db, _)
 
 
 @router.get("/connect")
-def connect(db: Session = Depends(get_db), user: User = Depends(require_roles(UserRole.admin))) -> dict[str, str]:
+def connect(
+    db: Session = Depends(get_db), user: User = Depends(require_roles(UserRole.admin))
+) -> dict[str, str]:
     settings = get_settings()
     config = db.scalar(select(MarketplaceConfig).limit(1))
     client_id = config.client_id if config else settings.mercadolivre_client_id
-    configured_secret = config.encrypted_client_secret if config else settings.mercadolivre_client_secret
+    configured_secret = (
+        config.encrypted_client_secret if config else settings.mercadolivre_client_secret
+    )
     if not client_id or not configured_secret:
         raise HTTPException(status_code=503, detail="Credenciais do Mercado Livre não configuradas")
     now = datetime.now(UTC)
@@ -109,7 +147,8 @@ def connect(db: Session = Depends(get_db), user: User = Depends(require_roles(Us
         {
             "response_type": "code",
             "client_id": client_id,
-            "redirect_uri": (config.redirect_uri if config else None) or str(settings.mercadolivre_redirect_uri),
+            "redirect_uri": (config.redirect_uri if config else None)
+            or str(settings.mercadolivre_redirect_uri),
             "state": state,
         }
     )
@@ -157,8 +196,7 @@ async def callback(code: str, state: str, db: Session = Depends(get_db)) -> Redi
             await redis.enqueue_job("sync_mercadolivre_account", account.seller_id)
             await redis.close()
         except Exception:
-            # A conexao nao deve impedir a conclusao do OAuth; o worker pode ser reexecutado.
-            pass
+            logger.exception("Não foi possível enfileirar a sincronização inicial do Mercado Livre")
     except (jwt.PyJWTError, KeyError, MercadoLivreError):
         return RedirectResponse(f"{settings.frontend_url}/integrations?error=oauth")
     return RedirectResponse(f"{settings.frontend_url}/integrations?connected=true")
@@ -173,9 +211,32 @@ def orders(
     )
 
 
-@router.post("/webhook", status_code=202)
-async def webhook(request: Request) -> dict[str, bool]:
-    payload = await request.json()
+@router.post("/orders/{order_id}/automate", response_model=MarketplaceOrderOut)
+def automate_order(
+    order_id: str,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_roles(UserRole.admin, UserRole.operator)),
+) -> MarketplaceOrder:
+    order = db.scalar(
+        select(MarketplaceOrder).where(
+            MarketplaceOrder.id == order_id,
+            MarketplaceOrder.provider == "mercadolivre",
+        )
+    )
+    if not order:
+        raise HTTPException(status_code=404, detail="Pedido não encontrado")
+    if not order.invoice_id:
+        raise HTTPException(status_code=409, detail="Pedido ainda não possui uma fatura local")
+    return automate_order_documents(db, order)
+
+
+@router.post("/webhook", status_code=200)
+async def webhook(request: Request, db: Session = Depends(get_db)) -> dict[str, bool]:
+    settings = get_settings()
+    verify_webhook_secret(
+        request, settings.webhook_shared_secret, settings.app_env.lower() == "production"
+    )
+    payload = await read_json_object(request, settings.webhook_max_body_bytes)
     topic = str(payload.get("topic", ""))
     resource = str(payload.get("resource", ""))
     seller_id = str(payload.get("user_id", ""))
@@ -192,23 +253,45 @@ async def webhook(request: Request) -> dict[str, bool]:
     )
     if not valid_resource:
         raise HTTPException(status_code=400, detail="Recurso de notificação inválido")
-    redis = await create_pool(RedisSettings.from_dsn(get_settings().redis_url))
+    account = db.scalar(
+        select(MarketplaceAccount).where(
+            MarketplaceAccount.provider == "mercadolivre",
+            MarketplaceAccount.seller_id == seller_id,
+            MarketplaceAccount.active.is_(True),
+        )
+    )
+    if not account:
+        raise HTTPException(status_code=404, detail="Conta vendedora não conectada")
+    config = db.scalar(select(MarketplaceConfig).limit(1))
+    expected_application_id = config.client_id if config else settings.mercadolivre_client_id
+    application_id = str(payload.get("application_id") or "")
+    if application_id and expected_application_id and application_id != expected_application_id:
+        raise HTTPException(status_code=403, detail="Aplicação de origem não reconhecida")
+    redis = await create_pool(RedisSettings.from_dsn(settings.redis_url))
     await redis.enqueue_job("process_mercadolivre_notification", topic, resource, seller_id)
     await redis.close()
     return {"accepted": True}
 
 
 @shopee_router.get("/status", response_model=ShopeeStatus)
-def shopee_status(db: Session = Depends(get_db), _: User = Depends(get_current_user)) -> ShopeeStatus:
+def shopee_status(
+    db: Session = Depends(get_db), _: User = Depends(get_current_user)
+) -> ShopeeStatus:
     settings = get_settings()
     config = db.scalar(select(ShopeeConfig).limit(1))
-    account = db.scalar(select(MarketplaceAccount).where(
-        MarketplaceAccount.provider == "shopee",
-        MarketplaceAccount.active.is_(True),
-    ).limit(1))
+    account = db.scalar(
+        select(MarketplaceAccount)
+        .where(
+            MarketplaceAccount.provider == "shopee",
+            MarketplaceAccount.active.is_(True),
+        )
+        .limit(1)
+    )
     return ShopeeStatus(
-        configured=bool((config.partner_id if config else settings.shopee_partner_id)
-                        and (config.encrypted_partner_key if config else settings.shopee_partner_key)),
+        configured=bool(
+            (config.partner_id if config else settings.shopee_partner_id)
+            and (config.encrypted_partner_key if config else settings.shopee_partner_key)
+        ),
         connected=account is not None,
         shop_id=account.seller_id if account else (config.shop_id if config else None),
         token_expires_at=account.token_expires_at if account else None,
@@ -216,12 +299,16 @@ def shopee_status(db: Session = Depends(get_db), _: User = Depends(get_current_u
 
 
 @shopee_router.get("/config", response_model=ShopeeConfigOut)
-def shopee_config(db: Session = Depends(get_db), _: User = Depends(require_roles(UserRole.admin))) -> ShopeeConfigOut:
+def shopee_config(
+    db: Session = Depends(get_db), _: User = Depends(require_roles(UserRole.admin))
+) -> ShopeeConfigOut:
     settings = get_settings()
     config = db.scalar(select(ShopeeConfig).limit(1))
     return ShopeeConfigOut(
         partner_id=config.partner_id if config else settings.shopee_partner_id,
-        partner_key_configured=bool(config.encrypted_partner_key) if config else bool(settings.shopee_partner_key),
+        partner_key_configured=bool(config.encrypted_partner_key)
+        if config
+        else bool(settings.shopee_partner_key),
         shop_id=config.shop_id if config else None,
         redirect_uri=(config.redirect_uri if config else None) or str(settings.shopee_redirect_uri),
         region=config.region if config else "BR",
@@ -232,14 +319,20 @@ def shopee_config(db: Session = Depends(get_db), _: User = Depends(require_roles
 
 
 @shopee_router.put("/config", response_model=ShopeeConfigOut)
-def update_shopee_config(payload: ShopeeConfigUpdate, db: Session = Depends(get_db), _: User = Depends(require_roles(UserRole.admin))) -> ShopeeConfigOut:
+def update_shopee_config(
+    payload: ShopeeConfigUpdate,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_roles(UserRole.admin)),
+) -> ShopeeConfigOut:
     settings = get_settings()
     config = db.scalar(select(ShopeeConfig).limit(1)) or ShopeeConfig()
     config.partner_id = payload.partner_id.strip()
     if payload.partner_key:
         config.encrypted_partner_key = encrypt_secret(payload.partner_key)
     elif not config.encrypted_partner_key and settings.shopee_partner_key:
-        config.encrypted_partner_key = encrypt_secret(settings.shopee_partner_key.get_secret_value())
+        config.encrypted_partner_key = encrypt_secret(
+            settings.shopee_partner_key.get_secret_value()
+        )
     config.shop_id = payload.shop_id.strip() if payload.shop_id else None
     config.redirect_uri = payload.redirect_uri.strip()
     config.region = payload.region.strip().upper()
@@ -270,9 +363,7 @@ def connect_shopee(
     )
     redirect_uri = (config.redirect_uri if config else None) or str(settings.shopee_redirect_uri)
     key = (
-        partner_key.get_secret_value()
-        if hasattr(partner_key, "get_secret_value")
-        else partner_key
+        partner_key.get_secret_value() if hasattr(partner_key, "get_secret_value") else partner_key
     )
     response = JSONResponse(
         {"authorization_url": ShopeeClient(partner_id, key).authorization_url(redirect_uri)}
@@ -305,19 +396,24 @@ async def shopee_callback(
             raise jwt.InvalidTokenError
         config = db.scalar(select(ShopeeConfig).limit(1))
         partner_id = config.partner_id if config else settings.shopee_partner_id
-        encrypted_key = config.encrypted_partner_key if config else settings.shopee_partner_key
-        key = (
-            encrypted_key.get_secret_value()
-            if hasattr(encrypted_key, "get_secret_value")
-            else encrypted_key
-        )
+        key: str | None
+        if config and config.encrypted_partner_key:
+            key = decrypt_secret(config.encrypted_partner_key)
+        else:
+            key = (
+                settings.shopee_partner_key.get_secret_value()
+                if settings.shopee_partner_key
+                else None
+            )
         if not partner_id or not key:
             raise ShopeeError("Shopee não configurada")
         tokens = ShopeeClient(partner_id, key).exchange_code(code, shop_id)
-        account = db.scalar(select(MarketplaceAccount).where(
-            MarketplaceAccount.provider == "shopee",
-            MarketplaceAccount.seller_id == str(shop_id),
-        )) or MarketplaceAccount(provider="shopee", seller_id=str(shop_id))
+        account = db.scalar(
+            select(MarketplaceAccount).where(
+                MarketplaceAccount.provider == "shopee",
+                MarketplaceAccount.seller_id == str(shop_id),
+            )
+        ) or MarketplaceAccount(provider="shopee", seller_id=str(shop_id))
         account.encrypted_access_token = encrypt_secret(tokens["access_token"])
         account.encrypted_refresh_token = (
             encrypt_secret(tokens["refresh_token"]) if tokens.get("refresh_token") else None
@@ -335,7 +431,7 @@ async def shopee_callback(
             await redis.enqueue_job("sync_shopee_account", str(shop_id))
             await redis.close()
         except Exception:
-            pass
+            logger.exception("Não foi possível enfileirar a sincronização inicial da Shopee")
     except (jwt.PyJWTError, KeyError, ShopeeError, ValueError):
         response = RedirectResponse(f"{settings.frontend_url}/integrations?error=shopee_oauth")
         response.delete_cookie("shopee_oauth_state")
@@ -345,15 +441,26 @@ async def shopee_callback(
     return response
 
 
-@shopee_router.post("/webhook", status_code=202)
-async def shopee_webhook(request: Request) -> dict[str, bool]:
-    payload = await request.json()
-    if not isinstance(payload, dict):
-        raise HTTPException(status_code=400, detail="Notificacao Shopee invalida")
+@shopee_router.post("/webhook", status_code=200)
+async def shopee_webhook(request: Request, db: Session = Depends(get_db)) -> dict[str, bool]:
+    settings = get_settings()
+    verify_webhook_secret(
+        request, settings.webhook_shared_secret, settings.app_env.lower() == "production"
+    )
+    payload = await read_json_object(request, settings.webhook_max_body_bytes)
     shop_id = str(payload.get("shop_id") or payload.get("shopid") or "")
     if not shop_id:
         raise HTTPException(status_code=400, detail="Loja Shopee ausente")
-    redis = await create_pool(RedisSettings.from_dsn(get_settings().redis_url))
+    account = db.scalar(
+        select(MarketplaceAccount).where(
+            MarketplaceAccount.provider == "shopee",
+            MarketplaceAccount.seller_id == shop_id,
+            MarketplaceAccount.active.is_(True),
+        )
+    )
+    if not account:
+        raise HTTPException(status_code=404, detail="Loja Shopee não conectada")
+    redis = await create_pool(RedisSettings.from_dsn(settings.redis_url))
     await redis.enqueue_job("process_shopee_notification", payload)
     await redis.close()
     return {"accepted": True}

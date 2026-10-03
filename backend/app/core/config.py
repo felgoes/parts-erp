@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     app_name: str = "Parts ERP"
     api_v1_prefix: str = "/api/v1"
     frontend_url: str = "http://localhost:4200"
+    public_site_url: str = "http://localhost:4300"
     secret_key: SecretStr = Field(min_length=32)
     token_encryption_key: SecretStr
     access_token_minutes: int = 30
@@ -32,11 +33,19 @@ class Settings(BaseSettings):
     mercadolivre_site_id: str = "MLB"
     mercadolivre_api_url: str = "https://api.mercadolibre.com"
     mercadolivre_auth_url: str = "https://auth.mercadolivre.com.br/authorization"
+    mercadolivre_auto_issue_invoice: bool = True
+    mercadolivre_auto_download_label: bool = True
+    mercadolivre_label_format: str = "pdf"
     shopee_partner_id: str = ""
     shopee_partner_key: SecretStr | None = None
     shopee_redirect_uri: AnyHttpUrl = AnyHttpUrl(
         "http://localhost:8000/api/v1/integrations/shopee/callback"
     )
+    webhook_shared_secret: SecretStr | None = None
+    webhook_max_body_bytes: int = 131_072
+    telemetry_rate_limit_per_minute: int = 60
+    login_rate_limit_attempts: int = 5
+    login_rate_limit_window_seconds: int = 300
 
     @field_validator("token_encryption_key")
     @classmethod

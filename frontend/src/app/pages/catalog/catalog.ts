@@ -26,7 +26,9 @@ import { CatalogProduct } from '../../core/models';
           <p class="kicker">GOES AUTO PARTS / VEICULOS CHINESES</p>
           <h1>A peca certa para o seu carro chines.</h1>
           <p class="hero-text">
-            Especialistas em pecas para BYD, GWM, Chery, JAC e outros veiculos chineses. Consulte por marca, modelo e ano, confirme a disponibilidade e fale com a nossa equipe pelo WhatsApp.
+            Especialistas em pecas para BYD, GWM, Chery, JAC e outros veiculos chineses. Consulte
+            por marca, modelo e ano, confirme a disponibilidade e fale com a nossa equipe pelo
+            WhatsApp.
           </p>
           <div class="hero-actions">
             <a class="button button-red" href="#catalogo">Ver catalogo</a>
@@ -45,12 +47,19 @@ import { CatalogProduct } from '../../core/models';
             <p class="kicker">CATALOGO ONLINE</p>
             <h2>Pecas para veiculos chineses, sem misterio.</h2>
           </div>
-          <p class="section-note">A disponibilidade muda em tempo real. Confirme marca, modelo, ano e aplicacao com a equipe.</p>
+          <p class="section-note">
+            A disponibilidade muda em tempo real. Confirme marca, modelo, ano e aplicacao com a
+            equipe.
+          </p>
         </div>
         <div class="search-row">
           <label class="search-box">
             <span>Buscar por nome ou SKU</span>
-            <input [(ngModel)]="search" (keyup.enter)="load()" placeholder="Ex.: pastilha, filtro, PAST-001" />
+            <input
+              [(ngModel)]="search"
+              (keyup.enter)="load()"
+              placeholder="Ex.: pastilha, filtro, PAST-001"
+            />
           </label>
           <button class="button button-dark" (click)="load()">Buscar</button>
         </div>
@@ -68,14 +77,23 @@ import { CatalogProduct } from '../../core/models';
                 <div class="product-glyph">{{ glyph(product.name) }}</div>
                 <div class="product-body">
                   <h3>{{ product.name }}</h3>
-                  @if (product.description) { <p>{{ product.description }}</p> }
+                  @if (product.description) {
+                    <p>{{ product.description }}</p>
+                  }
                   <div class="product-foot">
                     <strong>{{ product.sale_price | currency: 'BRL' }}</strong>
                     <span [class.out]="!product.in_stock">
                       {{ product.in_stock ? 'Em estoque' : 'Sob consulta' }}
                     </span>
                   </div>
-                  <a class="product-link" [href]="whatsappUrl(product)" (click)="track('whatsapp_click', { sku: product.sku, placement: 'product_card' })">Pedir esta peca</a>
+                  <a
+                    class="product-link"
+                    [href]="whatsappUrl(product)"
+                    (click)="
+                      track('whatsapp_click', { sku: product.sku, placement: 'product_card' })
+                    "
+                    >Pedir esta peca</a
+                  >
                 </div>
               </article>
             }

@@ -1,7 +1,6 @@
 from app.models.entities import (
-    HealthSnapshot,
-    TelemetryEvent,
     Customer,
+    HealthSnapshot,
     InvoiceDocument,
     InvoiceItem,
     InvoiceSource,
@@ -14,6 +13,7 @@ from app.models.entities import (
     SalesInvoice,
     ShopeeConfig,
     StockMovement,
+    TelemetryEvent,
     User,
     UserRole,
 )

@@ -15,12 +15,7 @@ def catalog_products(
     limit: int = Query(default=48, ge=1, le=100),
     db: Session = Depends(get_db),
 ) -> list[CatalogProductOut]:
-    query = (
-        select(Product)
-        .where(Product.active.is_(True))
-        .order_by(Product.name)
-        .limit(limit)
-    )
+    query = select(Product).where(Product.active.is_(True)).order_by(Product.name).limit(limit)
     if search:
         query = query.where(
             or_(Product.name.ilike(f"%{search}%"), Product.sku.ilike(f"%{search}%"))

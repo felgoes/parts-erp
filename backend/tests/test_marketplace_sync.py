@@ -1,11 +1,12 @@
 from decimal import Decimal
 from types import SimpleNamespace
 
+from sqlalchemy import select
+
 from app.core.security import encrypt_secret
 from app.integrations.mercadolivre import sync as sync_module
-from app.integrations.mercadolivre.client import MercadoLivreClient
-from app.models import InvoiceDocument, MarketplaceAccount, Product
-from sqlalchemy import select
+from app.integrations.mercadolivre.client import MercadoLivreClient, MercadoLivreError
+from app.models import InvoiceDocument, MarketplaceAccount, MarketplaceOrder, Product
 
 
 def marketplace_account(db):
@@ -21,7 +22,7 @@ def marketplace_account(db):
 
 
 def test_order_webhook_creates_invoice_and_documents(db, monkeypatch, tmp_path):
-    account = marketplace_account(db)
+    marketplace_account(db)
     db.add(
         Product(
             sku="ABC-123",
@@ -36,13 +37,11 @@ def test_order_webhook_creates_invoice_and_documents(db, monkeypatch, tmp_path):
         "seller": {"id": 77},
         "status": "paid",
         "buyer": {"id": 9, "first_name": "Ana", "last_name": "Silva"},
-        "order_items": [
-            {"item": {"seller_sku": "ABC-123"}, "quantity": 1, "unit_price": 20}
-        ],
+        "order_items": [{"item": {"seller_sku": "ABC-123"}, "quantity": 1, "unit_price": 20}],
         "shipping": {"id": 555},
     }
 
-    def fake_get(self, path):
+    def fake_get(self, path, *, extra_headers=None):
         if path == "/orders/123":
             return order
         if path.startswith("/users/77/invoices/orders/123"):
@@ -54,6 +53,15 @@ def test_order_webhook_creates_invoice_and_documents(db, monkeypatch, tmp_path):
                     "danfe_location": "/nf.pdf",
                 }
             ]
+        if path == "/shipments/555":
+            assert extra_headers == {"x-format-new": "true"}
+            return {
+                "id": 555,
+                "mode": "me2",
+                "logistic_type": "drop_off",
+                "status": "ready_to_ship",
+                "substatus": "ready_to_print",
+            }
         raise AssertionError(path)
 
     downloads = []
@@ -67,14 +75,19 @@ def test_order_webhook_creates_invoice_and_documents(db, monkeypatch, tmp_path):
     monkeypatch.setattr(
         sync_module,
         "get_settings",
-        lambda: SimpleNamespace(documents_dir=str(tmp_path)),
+        lambda: SimpleNamespace(
+            documents_dir=str(tmp_path),
+            mercadolivre_auto_issue_invoice=True,
+            mercadolivre_auto_download_label=True,
+            mercadolivre_label_format="pdf",
+        ),
     )
 
     record = sync_module.sync_order(db, "77", "/orders/123")
 
     assert record.invoice_id is not None
     docs = list(db.scalars(select(InvoiceDocument)))
-    assert {doc.document_type for doc in docs} == {"xml", "pdf", "label"}
+    assert {doc.document_type for doc in docs} == {"xml", "pdf", "label_pdf"}
     assert "/shipment_labels?shipment_ids=555&response_type=pdf" in downloads
     assert len(downloads) == 3
 
@@ -88,7 +101,8 @@ def test_invoice_documents_are_idempotent(db, monkeypatch, tmp_path):
     )
     calls = []
 
-    def fake_get(self, path):
+    def fake_get(self, path, *, extra_headers=None):
+        assert extra_headers is None
         return [
             {
                 "id": "nf-1",
@@ -105,19 +119,24 @@ def test_invoice_documents_are_idempotent(db, monkeypatch, tmp_path):
     monkeypatch.setattr(MercadoLivreClient, "get", fake_get)
     monkeypatch.setattr(MercadoLivreClient, "download", fake_download)
 
-    first = sync_module.sync_invoice_documents(db, account, "123", "invoice-1", {"shipping": {"id": 555}})
-    second = sync_module.sync_invoice_documents(db, account, "123", "invoice-1", {"shipping": {"id": 555}})
+    first = sync_module.sync_invoice_documents(
+        db, account, "123", "invoice-1", {"shipping": {"id": 555}}
+    )
+    second = sync_module.sync_invoice_documents(
+        db, account, "123", "invoice-1", {"shipping": {"id": 555}}
+    )
 
-    assert first == 3
+    assert first == 2
     assert second == 0
-    assert len(calls) == 3
+    assert len(calls) == 2
 
 
 def test_initial_sync_imports_products_and_orders(db, monkeypatch):
     account = marketplace_account(db)
     calls = []
 
-    def fake_get(self, path):
+    def fake_get(self, path, *, extra_headers=None):
+        assert extra_headers is None
         if "items/search" in path:
             return {"results": ["item-1"]}
         if path == "/items/item-1":
@@ -146,3 +165,42 @@ def test_initial_sync_imports_products_and_orders(db, monkeypatch):
     assert product is not None
     assert product.current_stock == Decimal("8")
     assert calls == [("77", "/orders/123")]
+
+
+def test_invoice_is_requested_when_not_yet_created(db, monkeypatch, tmp_path):
+    account = marketplace_account(db)
+    record = MarketplaceOrder(
+        external_order_id="123",
+        seller_id="77",
+        status="paid",
+        sync_status="synced",
+        payload={},
+        invoice_id="invoice-1",
+    )
+    db.add(record)
+    db.commit()
+    posts = []
+
+    def fake_get(self, path, *, extra_headers=None):
+        raise MercadoLivreError("não encontrada", status_code=404)
+
+    def fake_post(self, path, payload):
+        posts.append((path, payload))
+        return {"id": "nf-2", "status": "processing"}
+
+    monkeypatch.setattr(MercadoLivreClient, "get", fake_get)
+    monkeypatch.setattr(MercadoLivreClient, "post", fake_post)
+    monkeypatch.setattr(
+        sync_module,
+        "get_settings",
+        lambda: SimpleNamespace(
+            documents_dir=str(tmp_path),
+            mercadolivre_auto_issue_invoice=True,
+        ),
+    )
+
+    sync_module.issue_and_sync_invoice(db, record, account)
+
+    assert posts == [("/users/77/invoices/orders", {"orders": [123]})]
+    assert record.external_invoice_id == "nf-2"
+    assert record.fiscal_status == "processing"

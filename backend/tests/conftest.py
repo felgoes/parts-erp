@@ -1,5 +1,6 @@
 import os
 from collections.abc import Generator
+
 from cryptography.fernet import Fernet
 
 os.environ.setdefault("SECRET_KEY", "test-secret-key-that-is-longer-than-32-characters")

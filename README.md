@@ -18,7 +18,8 @@ ERP web para uma loja de autopeças, com estoque, clientes, faturas de venda e s
 - baixa e estorno de estoque transacionais e idempotentes;
 - OAuth do Mercado Livre com tokens criptografados no banco;
 - webhook assíncrono para importar pedidos sem duplicidade;
-- vínculo de XML/DANFE emitidos pelo Faturador do Mercado Livre à venda.
+- solicitação de emissão pelo Faturador do Mercado Livre e vínculo de XML/DANFE à venda;
+- download da etiqueta de envio em PDF e anexo automático à fatura.
 
 ## Executar localmente
 
@@ -35,7 +36,7 @@ O ERP estará em `http://localhost:4200` e a documentação da API em `http://lo
 
 ## Mercado Livre
 
-Crie uma aplicação no painel de desenvolvedores, configure a URL de redirecionamento e preencha as variáveis `MERCADOLIVRE_*`. No ERP, abra **Integrações**, conecte a conta vendedora e cadastre a URL pública `/api/v1/integrations/mercadolivre/webhook` nas notificações de `orders_v2` e `invoices`.
+Crie uma aplicação no painel de desenvolvedores, configure a URL de redirecionamento e preencha as variáveis `MERCADOLIVRE_*`. No ERP, abra **Integrações**, conecte a conta vendedora e cadastre a URL pública `/api/v1/integrations/mercadolivre/webhook?token=SEU_WEBHOOK_SHARED_SECRET` nas notificações de `orders_v2` e `invoices`.
 
 O SKU do anúncio/variação precisa ser igual ao SKU do produto no ERP. Pedidos pagos geram uma fatura confirmada e baixam o estoque uma única vez. Notificações repetidas são seguras.
 
@@ -44,7 +45,7 @@ O SKU do anúncio/variação precisa ser igual ao SKU do produto no ERP. Pedidos
 - Nenhum segredo é versionado; `.env` é ignorado.
 - Tokens OAuth são criptografados com Fernet antes de persistir.
 - Senhas usam Argon2 e os tokens de sessão têm expiração curta.
-- O webhook não recebe nem aceita tokens e só enfileira recursos permitidos.
+- Em produção, os webhooks exigem `WEBHOOK_SHARED_SECRET`, limitam o corpo e validam vendedor, aplicação e recurso antes de enfileirar.
 - Em produção, use HTTPS, senhas fortes, backup do PostgreSQL e um gerenciador de segredos.
 
 Veja [docs/mercado-livre.md](docs/mercado-livre.md) para o fluxo e limitações da integração.

@@ -14,6 +14,7 @@ from app.models import (
     MarketplaceAccount,
     MarketplaceOrder,
     Product,
+    ShopeeConfig,
 )
 from app.schemas.common import InvoiceCreate, InvoiceItemCreate
 from app.services.sales import confirm_invoice, create_invoice
@@ -77,9 +78,7 @@ def sync_products(db: Session, account: MarketplaceAccount) -> int:
 
 def _sku(line: dict[str, Any]) -> str:
     return str(
-        line.get("model_sku")
-        or line.get("item_sku")
-        or f"SH-{line.get('item_id', 'unknown')}"
+        line.get("model_sku") or line.get("item_sku") or f"SH-{line.get('item_id', 'unknown')}"
     )[:80]
 
 
@@ -87,7 +86,10 @@ def sync_order(db: Session, account: MarketplaceAccount, order_sn: str) -> Marke
     client = client_for(account)
     data = client.get(
         "/api/v2/order/get_order_detail",
-        {"order_sn_list": [order_sn], "response_optional_fields": "buyer_user_id,item_list,pay_time"},
+        {
+            "order_sn_list": [order_sn],
+            "response_optional_fields": "buyer_user_id,item_list,pay_time",
+        },
     )
     order = (data.get("order_list") or [None])[0]
     if not isinstance(order, dict):
@@ -113,7 +115,15 @@ def sync_order(db: Session, account: MarketplaceAccount, order_sn: str) -> Marke
         record.status = status
         record.payload = order
 
-    if status not in {"UNPAID", "CANCELLED", "IN_CANCEL", "TO_RETURN", "RECLINED"} and not record.invoice_id:
+    config = db.scalar(select(ShopeeConfig).limit(1))
+    import_orders = config.import_orders if config else True
+    automatic_stock = config.automatic_stock if config else True
+
+    if (
+        import_orders
+        and status not in {"UNPAID", "CANCELLED", "IN_CANCEL", "TO_RETURN", "RECLINED"}
+        and not record.invoice_id
+    ):
         inputs: list[InvoiceItemCreate] = []
         for line in order.get("item_list", []):
             sku = _sku(line)
@@ -122,23 +132,37 @@ def sync_order(db: Session, account: MarketplaceAccount, order_sn: str) -> Marke
                 product = Product(sku=sku, name=str(line.get("item_name") or sku)[:200])
                 db.add(product)
                 db.flush()
-            quantity = Decimal(str(line.get("model_quantity_purchased") or line.get("quantity_purchased") or 1))
+            quantity = Decimal(
+                str(line.get("model_quantity_purchased") or line.get("quantity_purchased") or 1)
+            )
             price = Decimal(str(line.get("model_discounted_price") or line.get("item_price") or 0))
-            inputs.append(InvoiceItemCreate(product_id=product.id, quantity=quantity, unit_price=price))
-        buyer_id = str(order.get("buyer_user_id") or "") or None
-        customer = db.scalar(select(Customer).where(Customer.marketplace_buyer_id == buyer_id)) if buyer_id else None
+            inputs.append(
+                InvoiceItemCreate(product_id=product.id, quantity=quantity, unit_price=price)
+            )
+        raw_buyer_id = str(order.get("buyer_user_id") or "") or None
+        buyer_id = f"shopee:{raw_buyer_id}" if raw_buyer_id else None
+        customer = (
+            db.scalar(select(Customer).where(Customer.marketplace_buyer_id == buyer_id))
+            if buyer_id
+            else None
+        )
         if not customer:
-            customer = Customer(name=f"Cliente Shopee {buyer_id or order_sn}", marketplace_buyer_id=buyer_id)
+            customer = Customer(
+                name=f"Cliente Shopee {raw_buyer_id or order_sn}", marketplace_buyer_id=buyer_id
+            )
             db.add(customer)
             db.flush()
         if inputs:
             invoice = create_invoice(
                 db,
-                InvoiceCreate(customer_id=customer.id, items=inputs, notes=f"Pedido Shopee #{order_sn}"),
+                InvoiceCreate(
+                    customer_id=customer.id, items=inputs, notes=f"Pedido Shopee #{order_sn}"
+                ),
                 source=InvoiceSource.shopee,
                 marketplace_order_id=f"shopee:{order_sn}",
             )
-            confirm_invoice(db, invoice)
+            if automatic_stock:
+                confirm_invoice(db, invoice)
             record.invoice_id = invoice.id
     record.sync_status = "synced"
     record.sync_error = None

@@ -1,4 +1,4 @@
-import { CurrencyPipe, DatePipe, UpperCasePipe } from '@angular/common';
+import { CurrencyPipe, DatePipe } from '@angular/common';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { forkJoin } from 'rxjs';
@@ -8,7 +8,7 @@ import { PageHeader } from '../../shared/page-header';
 
 @Component({
   selector: 'app-invoices',
-  imports: [CurrencyPipe, DatePipe, UpperCasePipe, FormsModule, PageHeader],
+  imports: [CurrencyPipe, DatePipe, FormsModule, PageHeader],
   template: `
     <app-page-header
       eyebrow="Comercial"
@@ -39,7 +39,7 @@ import { PageHeader } from '../../shared/page-header';
                     <small class="block">Pedido #{{ i.marketplace_order_id }}</small>
                   }
                 </td>
-                <td>{{ i.source === 'mercadolivre' ? 'Mercado Livre' : 'Manual' }}</td>
+                <td>{{ sourceLabel(i.source) }}</td>
                 <td>{{ i.issued_at || i.created_at | date: 'dd/MM/yyyy HH:mm' }}</td>
                 <td>
                   <span class="badge" [class]="i.status">{{ label(i.status) }}</span>
@@ -48,7 +48,7 @@ import { PageHeader } from '../../shared/page-header';
                   @if (i.documents.length) {
                     @for (doc of i.documents; track doc.id) {
                       <button class="doc" (click)="download(i.id, doc.id, doc.filename)">
-                        {{ doc.document_type | uppercase }}
+                        {{ documentLabel(doc.document_type) }}
                       </button>
                     }
                   } @else {
@@ -204,6 +204,22 @@ export class InvoicesPage implements OnInit {
           string
         >
       )[s] ?? s
+    );
+  }
+  documentLabel(type: string) {
+    return (
+      ({ xml: 'XML', pdf: 'DANFE', label_pdf: 'Etiqueta' } as Record<string, string>)[type] ??
+      type.toUpperCase()
+    );
+  }
+  sourceLabel(source: Invoice['source']) {
+    return (
+      (
+        { manual: 'Manual', mercadolivre: 'Mercado Livre', shopee: 'Shopee' } as Record<
+          Invoice['source'],
+          string
+        >
+      )[source] ?? source
     );
   }
 }

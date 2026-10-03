@@ -9,22 +9,37 @@ import { PageHeader } from '../../shared/page-header';
   selector: 'app-users',
   imports: [ReactiveFormsModule, PageHeader],
   template: `
-    <app-page-header eyebrow="Acesso" title="Usuários" subtitle="Gerencie quem pode acessar o Parts ERP."
+    <app-page-header
+      eyebrow="Acesso"
+      title="Usuários"
+      subtitle="Gerencie quem pode acessar o Parts ERP."
       ><button class="primary" (click)="openNew()">+ Novo usuário</button></app-page-header
     >
     <section class="card table-card">
       <div class="table-wrap">
         <table>
-          <thead><tr><th>Nome</th><th>E-mail</th><th>Perfil</th></tr></thead>
+          <thead>
+            <tr>
+              <th>Nome</th>
+              <th>E-mail</th>
+              <th>Perfil</th>
+            </tr>
+          </thead>
           <tbody>
             @for (user of users(); track user.id) {
               <tr>
-                <td><strong>{{ user.full_name }}</strong></td>
+                <td>
+                  <strong>{{ user.full_name }}</strong>
+                </td>
                 <td>{{ user.email }}</td>
-                <td><span class="badge">{{ roleLabel(user.role) }}</span></td>
+                <td>
+                  <span class="badge">{{ roleLabel(user.role) }}</span>
+                </td>
               </tr>
             } @empty {
-              <tr><td colspan="3"><div class="empty">Nenhum usuário encontrado.</div></td></tr>
+              <tr>
+                <td colspan="3"><div class="empty">Nenhum usuário encontrado.</div></td>
+              </tr>
             }
           </tbody>
         </table>
@@ -34,17 +49,36 @@ import { PageHeader } from '../../shared/page-header';
       <div class="modal-backdrop" (click)="close()">
         <section class="modal" (click)="$event.stopPropagation()">
           <div class="modal-head">
-            <div><p class="eyebrow">Acesso</p><h2>Novo usuário</h2></div>
+            <div>
+              <p class="eyebrow">Acesso</p>
+              <h2>Novo usuário</h2>
+            </div>
             <button class="close" type="button" (click)="close()">×</button>
           </div>
           <form [formGroup]="userForm" (ngSubmit)="save()">
             <div class="form-grid">
               <label>Nome completo<input formControlName="full_name" autocomplete="name" /></label>
-              <label>E-mail<input type="email" formControlName="email" autocomplete="email" /></label>
-              <label>Senha<input type="password" formControlName="password" autocomplete="new-password" /><small>Mínimo de 12 caracteres.</small></label>
-              <label>Perfil<select formControlName="role"><option value="operator">Operador</option><option value="manager">Gerente</option><option value="admin">Administrador</option></select></label>
+              <label
+                >E-mail<input type="email" formControlName="email" autocomplete="email"
+              /></label>
+              <label
+                >Senha<input
+                  type="password"
+                  formControlName="password"
+                  autocomplete="new-password"
+                /><small>Mínimo de 12 caracteres.</small></label
+              >
+              <label
+                >Perfil<select formControlName="role">
+                  <option value="operator">Operador</option>
+                  <option value="manager">Gerente</option>
+                  <option value="admin">Administrador</option>
+                </select></label
+              >
             </div>
-            @if (message()) { <p class="form-message error">{{ message() }}</p> }
+            @if (message()) {
+              <p class="form-message error">{{ message() }}</p>
+            }
             <button class="primary full" [disabled]="userForm.invalid || saving()">
               {{ saving() ? 'Cadastrando…' : 'Cadastrar usuário' }}
             </button>
@@ -95,14 +129,21 @@ export class UsersPage implements OnInit {
     if (this.userForm.invalid) return;
     this.saving.set(true);
     this.message.set('');
-    this.api.createUser(this.userForm.getRawValue()).pipe(finalize(() => this.saving.set(false))).subscribe({
-      next: () => {
-        this.close();
-        this.load();
-      },
-      error: (error) => {
-        this.message.set(error.status === 409 ? 'Já existe um usuário com este e-mail.' : 'Não foi possível cadastrar o usuário.');
-      },
-    });
+    this.api
+      .createUser(this.userForm.getRawValue())
+      .pipe(finalize(() => this.saving.set(false)))
+      .subscribe({
+        next: () => {
+          this.close();
+          this.load();
+        },
+        error: (error) => {
+          this.message.set(
+            error.status === 409
+              ? 'Já existe um usuário com este e-mail.'
+              : 'Não foi possível cadastrar o usuário.',
+          );
+        },
+      });
   }
 }

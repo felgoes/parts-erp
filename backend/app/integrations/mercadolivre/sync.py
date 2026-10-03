@@ -5,7 +5,7 @@ from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
@@ -15,6 +15,7 @@ from app.models import (
     InvoiceDocument,
     InvoiceSource,
     MarketplaceAccount,
+    MarketplaceConfig,
     MarketplaceOrder,
     Product,
 )
@@ -22,6 +23,10 @@ from app.schemas.common import InvoiceCreate, InvoiceItemCreate
 from app.services.sales import confirm_invoice, create_invoice
 
 ORDER_RESOURCE = re.compile(r"^/orders/(?P<id>\d+)$")
+PRINTABLE_LOGISTICS = {"drop_off", "xd_drop_off", "cross_docking", "self_service"}
+FINISHED_FISCAL_STATUSES = {"authorized", "not_applicable"}
+FINISHED_LABEL_STATUSES = {"downloaded", "not_applicable"}
+
 
 def _resource_ids(result: dict[str, Any] | list[Any]) -> list[str]:
     if isinstance(result, dict):
@@ -36,6 +41,21 @@ def _resource_ids(result: dict[str, Any] | list[Any]) -> list[str]:
         if raw is not None and str(raw).strip():
             ids.append(str(raw).strip())
     return ids
+
+
+def extract_invoice_order_ids(invoice: dict[str, Any]) -> set[str]:
+    order_ids: set[str] = set()
+    candidates = invoice.get("orders") or []
+    if invoice.get("order_id"):
+        candidates = [*candidates, invoice["order_id"]]
+    for candidate in candidates:
+        value = candidate.get("id") if isinstance(candidate, dict) else candidate
+        if value:
+            order_ids.add(str(value))
+    for item in invoice.get("items") or []:
+        if isinstance(item, dict) and item.get("external_order_id"):
+            order_ids.add(str(item["external_order_id"]))
+    return order_ids
 
 
 def extract_sku(item: dict[str, Any]) -> str | None:
@@ -59,6 +79,7 @@ def is_paid(order: dict[str, Any]) -> bool:
 def _account(db: Session, seller_id: str) -> MarketplaceAccount:
     account = db.scalar(
         select(MarketplaceAccount).where(
+            MarketplaceAccount.provider == "mercadolivre",
             MarketplaceAccount.seller_id == seller_id,
             MarketplaceAccount.active.is_(True),
         )
@@ -66,6 +87,10 @@ def _account(db: Session, seller_id: str) -> MarketplaceAccount:
     if not account:
         raise MercadoLivreError(f"Conta vendedora {seller_id} não conectada")
     return account
+
+
+def _automation_config(db: Session) -> MarketplaceConfig | None:
+    return db.scalar(select(MarketplaceConfig).limit(1))
 
 
 def sync_order(db: Session, seller_id: str, resource: str) -> MarketplaceOrder:
@@ -80,10 +105,14 @@ def sync_order(db: Session, seller_id: str, resource: str) -> MarketplaceOrder:
         raise MercadoLivreError("Pedido não pertence à conta conectada")
 
     record = db.scalar(
-        select(MarketplaceOrder).where(MarketplaceOrder.external_order_id == order_id)
+        select(MarketplaceOrder).where(
+            MarketplaceOrder.provider == "mercadolivre",
+            MarketplaceOrder.external_order_id == order_id,
+        )
     )
     if not record:
         record = MarketplaceOrder(
+            provider="mercadolivre",
             external_order_id=order_id,
             seller_id=seller_id,
             status=str(order.get("status", "unknown")),
@@ -94,13 +123,19 @@ def sync_order(db: Session, seller_id: str, resource: str) -> MarketplaceOrder:
     else:
         record.status = str(order.get("status", "unknown"))
         record.payload = order
+    shipping = order.get("shipping") or {}
+    shipment_id = shipping.get("id") if isinstance(shipping, dict) else None
+    record.shipment_id = str(shipment_id) if shipment_id else record.shipment_id
     record.sync_status = "pending"
     record.sync_error = None
     db.commit()
     db.refresh(record)
 
+    config = _automation_config(db)
+    import_orders = config.import_orders if config else True
+    automatic_stock = config.automatic_stock if config else True
     try:
-        if is_paid(order) and not record.invoice_id:
+        if import_orders and is_paid(order) and not record.invoice_id:
             item_inputs: list[InvoiceItemCreate] = []
             missing: list[str] = []
             for line in order.get("order_items", []):
@@ -144,7 +179,8 @@ def sync_order(db: Session, seller_id: str, resource: str) -> MarketplaceOrder:
                 source=InvoiceSource.mercadolivre,
                 marketplace_order_id=order_id,
             )
-            confirm_invoice(db, invoice)
+            if automatic_stock:
+                confirm_invoice(db, invoice)
             record.invoice_id = invoice.id
 
         record.sync_status = "synced"
@@ -154,7 +190,10 @@ def sync_order(db: Session, seller_id: str, resource: str) -> MarketplaceOrder:
     except Exception as exc:
         db.rollback()
         persisted = db.scalar(
-            select(MarketplaceOrder).where(MarketplaceOrder.external_order_id == order_id)
+            select(MarketplaceOrder).where(
+                MarketplaceOrder.provider == "mercadolivre",
+                MarketplaceOrder.external_order_id == order_id,
+            )
         )
         if persisted:
             persisted.sync_status = "error"
@@ -165,12 +204,50 @@ def sync_order(db: Session, seller_id: str, resource: str) -> MarketplaceOrder:
         raise
 
     db.refresh(record)
-    if record.invoice_id:
-        try:
-            sync_invoice_documents(db, account, order_id, record.invoice_id, order=order)
-        except MercadoLivreError:
-            pass
+    sync_documents = config.sync_documents if config else True
+    if record.invoice_id and sync_documents:
+        return automate_order_documents(db, record, account)
     return record
+
+
+def _store_document(
+    db: Session,
+    invoice_id: str,
+    external_id: str,
+    document_type: str,
+    filename: str,
+    content: bytes,
+) -> bool:
+    existing = db.scalar(
+        select(InvoiceDocument).where(
+            InvoiceDocument.invoice_id == invoice_id,
+            InvoiceDocument.external_id == external_id,
+        )
+    )
+    if existing:
+        return False
+    base_dir = Path(get_settings().documents_dir).resolve() / invoice_id
+    base_dir.mkdir(parents=True, exist_ok=True)
+    path = (base_dir / filename).resolve()
+    if base_dir not in path.parents:
+        raise MercadoLivreError("Caminho de documento inválido")
+    path.write_bytes(content)
+    db.add(
+        InvoiceDocument(
+            invoice_id=invoice_id,
+            external_id=external_id,
+            document_type=document_type,
+            filename=filename,
+            storage_path=str(path),
+            sha256=hashlib.sha256(content).hexdigest(),
+        )
+    )
+    return True
+
+
+def _fiscal_entries(result: Any) -> list[dict[str, Any]]:
+    values = result if isinstance(result, list) else [result]
+    return [value for value in values if isinstance(value, dict) and value.get("id")]
 
 
 def sync_invoice_documents(
@@ -180,86 +257,177 @@ def sync_invoice_documents(
     invoice_id: str,
     order: dict[str, Any] | None = None,
 ) -> int:
+    del order  # Mantido para compatibilidade com chamadas antigas.
     client = MercadoLivreClient(db, account)
     result = client.get(f"/users/{account.seller_id}/invoices/orders/{order_id}")
-    invoices = result if isinstance(result, list) else [result]
     saved = 0
-    base_dir = Path(get_settings().documents_dir).resolve() / invoice_id
-    base_dir.mkdir(parents=True, exist_ok=True)
-    for fiscal in invoices:
-        if not isinstance(fiscal, dict) or str(fiscal.get("status", "")).lower() != "authorized":
+    for fiscal in _fiscal_entries(result):
+        if str(fiscal.get("status", "")).lower() != "authorized":
             continue
         external_id = str(fiscal.get("id", order_id))
-        locations = {
-            "xml": fiscal.get("xml_location"),
-            "pdf": fiscal.get("danfe_location"),
-        }
+        locations = {"xml": fiscal.get("xml_location"), "pdf": fiscal.get("danfe_location")}
         for document_type, location in locations.items():
-            if not location:
-                continue
+            document_external_id = f"{external_id}:{document_type}"
             existing = db.scalar(
                 select(InvoiceDocument).where(
                     InvoiceDocument.invoice_id == invoice_id,
-                    InvoiceDocument.external_id == f"{external_id}:{document_type}",
+                    InvoiceDocument.external_id == document_external_id,
                 )
             )
-            if existing:
+            if existing or not location:
                 continue
-            content = client.download(str(location))
-            digest = hashlib.sha256(content).hexdigest()
-            filename = f"nfe-{external_id}.{document_type}"
-            path = (base_dir / filename).resolve()
-            if base_dir not in path.parents:
-                raise MercadoLivreError("Caminho de documento inválido")
-            path.write_bytes(content)
-            db.add(
-                InvoiceDocument(
-                    invoice_id=invoice_id,
-                    external_id=f"{external_id}:{document_type}",
-                    document_type=document_type,
-                    filename=filename,
-                    storage_path=str(path),
-                    sha256=digest,
+            saved += int(
+                _store_document(
+                    db,
+                    invoice_id,
+                    document_external_id,
+                    document_type,
+                    f"nfe-{external_id}.{document_type}",
+                    client.download(str(location)),
                 )
             )
-            saved += 1
-
-    shipment_id = str((order or {}).get("shipping", {}).get("id") or "")
-    if shipment_id:
-        label_external_id = f"shipment:{shipment_id}:label"
-        existing = db.scalar(
-            select(InvoiceDocument).where(
-                InvoiceDocument.invoice_id == invoice_id,
-                InvoiceDocument.external_id == label_external_id,
-            )
-        )
-        if not existing:
-            try:
-                content = client.download(
-                    f"/shipment_labels?shipment_ids={shipment_id}&response_type=pdf"
-                )
-            except MercadoLivreError:
-                content = b""
-            if content:
-                digest = hashlib.sha256(content).hexdigest()
-                filename = f"etiqueta-{shipment_id}.pdf"
-                path = (base_dir / filename).resolve()
-                if base_dir not in path.parents:
-                    raise MercadoLivreError("Invalid document path")
-                path.write_bytes(content)
-                db.add(
-                    InvoiceDocument(
-                        invoice_id=invoice_id,
-                        external_id=label_external_id,
-                        document_type="label",
-                        filename=filename,
-                        storage_path=str(path),
-                        sha256=digest,
-                    )
-                )
-                saved += 1
     db.commit()
     return saved
+
+
+def issue_and_sync_invoice(
+    db: Session, record: MarketplaceOrder, account: MarketplaceAccount
+) -> None:
+    if not record.invoice_id:
+        return
+    client = MercadoLivreClient(db, account)
+    fiscal_entries: list[dict[str, Any]] = []
+    config = _automation_config(db)
+    auto_issue = (
+        config.auto_issue_invoice if config else get_settings().mercadolivre_auto_issue_invoice
+    )
+    try:
+        try:
+            result = client.get(
+                f"/users/{account.seller_id}/invoices/orders/{record.external_order_id}"
+            )
+            fiscal_entries = _fiscal_entries(result)
+        except MercadoLivreError as exc:
+            if exc.status_code != 404:
+                raise
+
+        if not fiscal_entries and auto_issue:
+            record.fiscal_status = "requesting"
+            db.commit()
+            result = client.post(
+                f"/users/{account.seller_id}/invoices/orders",
+                {"orders": [int(record.external_order_id)]},
+            )
+            fiscal_entries = _fiscal_entries(result)
+
+        statuses = {str(item.get("status", "pending")).lower() for item in fiscal_entries}
+        first_id = next((item.get("id") for item in fiscal_entries if item.get("id")), None)
+        if first_id:
+            record.external_invoice_id = str(first_id)
+        if "authorized" in statuses:
+            sync_invoice_documents(db, account, record.external_order_id, str(record.invoice_id))
+            record.fiscal_status = "authorized"
+        elif statuses:
+            record.fiscal_status = sorted(statuses)[0]
+        else:
+            record.fiscal_status = "pending"
+        record.fiscal_error = None
+    except MercadoLivreError as exc:
+        record.fiscal_status = "error"
+        record.fiscal_error = str(exc)[:1000]
+
+
+def sync_shipping_label(db: Session, record: MarketplaceOrder, account: MarketplaceAccount) -> None:
+    if not record.invoice_id:
+        return
+    if not record.shipment_id:
+        record.label_status = "waiting_shipment"
+        record.label_error = None
+        return
+    client = MercadoLivreClient(db, account)
+    try:
+        shipment = client.get(
+            f"/shipments/{record.shipment_id}", extra_headers={"x-format-new": "true"}
+        )
+        if not isinstance(shipment, dict):
+            raise MercadoLivreError("Resposta de envio inválida")
+        record.shipping_status = str(shipment.get("status") or "unknown")
+        logistic_value = shipment.get("logistic")
+        logistic: dict[str, Any] = logistic_value if isinstance(logistic_value, dict) else {}
+        logistic_type = str(shipment.get("logistic_type") or logistic.get("type") or "")
+        mode = str(shipment.get("mode") or logistic.get("mode") or "")
+        if mode != "me2" or logistic_type not in PRINTABLE_LOGISTICS:
+            record.label_status = "not_applicable"
+            record.label_error = None
+            return
+        if record.shipping_status != "ready_to_ship" or str(shipment.get("substatus")) not in {
+            "ready_to_print",
+            "printed",
+        }:
+            record.label_status = "waiting"
+            record.label_error = None
+            return
+        if get_settings().mercadolivre_label_format.lower() != "pdf":
+            raise MercadoLivreError("Apenas etiquetas PDF são suportadas nesta versão")
+        _store_document(
+            db,
+            str(record.invoice_id),
+            f"shipment:{record.shipment_id}:label_pdf",
+            "label_pdf",
+            f"etiqueta-{record.shipment_id}.pdf",
+            client.download(
+                f"/shipment_labels?shipment_ids={record.shipment_id}&response_type=pdf"
+            ),
+        )
+        record.label_status = "downloaded"
+        record.label_error = None
+    except MercadoLivreError as exc:
+        record.label_status = "error"
+        record.label_error = str(exc)[:1000]
+
+
+def automate_order_documents(
+    db: Session, record: MarketplaceOrder, account: MarketplaceAccount | None = None
+) -> MarketplaceOrder:
+    if not record.invoice_id:
+        return record
+    connected_account = account or _account(db, record.seller_id)
+    issue_and_sync_invoice(db, record, connected_account)
+    config = _automation_config(db)
+    download_label = (
+        config.auto_download_label if config else get_settings().mercadolivre_auto_download_label
+    )
+    if download_label:
+        sync_shipping_label(db, record, connected_account)
+    record.automation_updated_at = datetime.now(UTC)
+    db.commit()
+    db.refresh(record)
+    return record
+
+
+def retry_pending_automations(db: Session) -> int:
+    cutoff = datetime.now(UTC) - timedelta(minutes=2)
+    orders = list(
+        db.scalars(
+            select(MarketplaceOrder)
+            .where(
+                MarketplaceOrder.provider == "mercadolivre",
+                MarketplaceOrder.invoice_id.is_not(None),
+                or_(
+                    MarketplaceOrder.automation_updated_at.is_(None),
+                    MarketplaceOrder.automation_updated_at <= cutoff,
+                ),
+                (
+                    MarketplaceOrder.fiscal_status.not_in(FINISHED_FISCAL_STATUSES)
+                    | MarketplaceOrder.label_status.not_in(FINISHED_LABEL_STATUSES)
+                ),
+            )
+            .limit(20)
+        )
+    )
+    for order in orders:
+        automate_order_documents(db, order)
+    return len(orders)
 
 
 def sync_products(db: Session, account: MarketplaceAccount) -> int:
@@ -267,9 +435,7 @@ def sync_products(db: Session, account: MarketplaceAccount) -> int:
     imported = 0
     offset = 0
     while True:
-        result = client.get(
-            f"/users/{account.seller_id}/items/search?offset={offset}&limit=50"
-        )
+        result = client.get(f"/users/{account.seller_id}/items/search?offset={offset}&limit=50")
         ids = _resource_ids(result)
         if not ids:
             break
@@ -321,14 +487,13 @@ def retry_due_orders(db: Session) -> int:
         db.scalars(
             select(MarketplaceOrder)
             .where(
+                MarketplaceOrder.provider == "mercadolivre",
                 MarketplaceOrder.sync_status == "error",
                 MarketplaceOrder.updated_at <= cutoff,
             )
             .limit(50)
         )
     )
-    count = 0
     for order in orders:
         sync_order(db, order.seller_id, f"/orders/{order.external_order_id}")
-        count += 1
-    return count
+    return len(orders)

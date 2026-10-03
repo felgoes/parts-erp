@@ -52,7 +52,12 @@ export class ApiService {
   users(): Observable<User[]> {
     return this.http.get<User[]>(`${this.base}/users`);
   }
-  createUser(payload: { email: string; full_name: string; password: string; role: User['role'] }): Observable<User> {
+  createUser(payload: {
+    email: string;
+    full_name: string;
+    password: string;
+    role: User['role'];
+  }): Observable<User> {
     return this.http.post<User>(`${this.base}/users`, payload);
   }
   invoices(): Observable<Invoice[]> {
@@ -79,10 +84,19 @@ export class ApiService {
     return this.http.get<MarketplaceConfig>(`${this.base}/integrations/mercadolivre/config`);
   }
   saveMarketplaceConfig(payload: Record<string, unknown>): Observable<MarketplaceConfig> {
-    return this.http.put<MarketplaceConfig>(`${this.base}/integrations/mercadolivre/config`, payload);
+    return this.http.put<MarketplaceConfig>(
+      `${this.base}/integrations/mercadolivre/config`,
+      payload,
+    );
   }
   marketplaceOrders(): Observable<MarketplaceOrder[]> {
     return this.http.get<MarketplaceOrder[]>(`${this.base}/integrations/mercadolivre/orders`);
+  }
+  automateMarketplaceOrder(id: string): Observable<MarketplaceOrder> {
+    return this.http.post<MarketplaceOrder>(
+      `${this.base}/integrations/mercadolivre/orders/${id}/automate`,
+      {},
+    );
   }
   connectMarketplace(): Observable<{ authorization_url: string }> {
     return this.http.get<{ authorization_url: string }>(
@@ -90,7 +104,7 @@ export class ApiService {
     );
   }
 
-shopeeStatus(): Observable<ShopeeStatus> {
+  shopeeStatus(): Observable<ShopeeStatus> {
     return this.http.get<ShopeeStatus>(this.base + '/integrations/shopee/status');
   }
   shopeeConfig(): Observable<ShopeeConfig> {
@@ -103,6 +117,6 @@ shopeeStatus(): Observable<ShopeeStatus> {
     return this.http.get<{ authorization_url: string }>(this.base + '/integrations/shopee/connect');
   }
   telemetrySummary(days = 30): Observable<TelemetrySummary> {
-    return this.http.get<TelemetrySummary>(this.base + "/telemetry/summary", { params: { days } });
+    return this.http.get<TelemetrySummary>(this.base + '/telemetry/summary', { params: { days } });
   }
 }

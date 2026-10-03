@@ -1,8 +1,10 @@
 from decimal import Decimal
 
-from app.integrations.shopee import sync as sync_module
-from app.models import InvoiceSource, MarketplaceAccount, SalesInvoice, Product
 from sqlalchemy import select
+
+from app.core.security import encrypt_secret
+from app.integrations.shopee import sync as sync_module
+from app.models import InvoiceSource, MarketplaceAccount, Product, SalesInvoice
 
 
 class FakeShopeeClient:
@@ -22,7 +24,7 @@ def shopee_account(db):
     account = MarketplaceAccount(
         provider="shopee",
         seller_id="9001",
-        encrypted_access_token="ignored",
+        encrypted_access_token=encrypt_secret("test-access-token"),
         token_expires_at=None,
         active=True,
     )
@@ -77,7 +79,12 @@ def test_shopee_product_import_is_idempotent(db, monkeypatch):
             },
             "get_item_base_info": {
                 "item_list": [
-                    {"item_id": 1, "item_sku": "SH-1", "item_name": "Filtro", "item_status": "NORMAL"}
+                    {
+                        "item_id": 1,
+                        "item_sku": "SH-1",
+                        "item_name": "Filtro",
+                        "item_status": "NORMAL",
+                    }
                 ]
             },
         }

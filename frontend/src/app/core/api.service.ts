@@ -17,7 +17,13 @@ import {
 @Injectable({ providedIn: 'root' })
 export class ApiService {
   private readonly http = inject(HttpClient);
-  private readonly base = '/api/v1';
+  private readonly base = this.apiBase();
+
+  private apiBase(): string {
+    return typeof window !== 'undefined' && window.location.protocol === 'capacitor:'
+      ? 'https://erp.goesautoparts.com.br/api/v1'
+      : '/api/v1';
+  }
   dashboard(): Observable<DashboardSummary> {
     return this.http.get<DashboardSummary>(`${this.base}/dashboard/summary`);
   }

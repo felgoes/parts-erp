@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Goes Auto Parts ERP</string>
+    <string name="title_activity_main">Goes Auto Parts ERP</string>
+    <string name="package_name">br.com.goesautoparts.erp</string>
+    <string name="custom_url_scheme">br.com.goesautoparts.erp</string>
+</resources>

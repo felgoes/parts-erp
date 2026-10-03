@@ -6,7 +6,11 @@
     "start": "ng serve --proxy-config proxy.conf.json",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
-    "test": "ng test"
+    "test": "ng test",
+    "cap:sync": "npm run build && npx cap sync",
+    "cap:android": "npm run cap:sync && npx cap open android",
+    "cap:ios": "npm run cap:sync && npx cap open ios",
+    "android:build": "npm run cap:sync && cd android && ./gradlew assembleDebug"
   },
   "private": true,
   "packageManager": "npm@9.2.0",
@@ -17,6 +21,9 @@
     "@angular/forms": "^21.2.0",
     "@angular/platform-browser": "^21.2.0",
     "@angular/router": "^21.2.0",
+    "@capacitor/android": "^7.6.9",
+    "@capacitor/core": "^7.6.9",
+    "@capacitor/ios": "^7.6.9",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0"
   },
@@ -24,6 +31,7 @@
     "@angular/build": "^21.2.24",
     "@angular/cli": "^21.2.24",
     "@angular/compiler-cli": "^21.2.0",
+    "@capacitor/cli": "^7.6.9",
     "jsdom": "^28.0.0",
     "prettier": "^3.8.1",
     "typescript": "~5.9.2",

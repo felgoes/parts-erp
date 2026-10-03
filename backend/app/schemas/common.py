@@ -216,3 +216,28 @@ class ShopeeConfigUpdate(BaseModel):
     import_orders: bool = True
     automatic_stock: bool = True
     sync_documents: bool
+
+class TelemetryEventCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=60)
+    source: str = Field(default="site", min_length=1, max_length=30)
+    anonymous_id: str | None = Field(default=None, max_length=100)
+    properties: dict[str, str | int | float | bool] = Field(default_factory=dict, max_length=20)
+
+
+class EventCount(BaseModel):
+    name: str
+    count: int
+
+
+class TelemetryHealthOut(ORMModel):
+    check_name: str
+    ok: bool
+    latency_ms: Decimal
+    detail: str | None
+    checked_at: datetime
+
+
+class TelemetrySummary(BaseModel):
+    days: int
+    events: list[EventCount]
+    health: list[TelemetryHealthOut]

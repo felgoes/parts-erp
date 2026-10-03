@@ -75,7 +75,7 @@ import { CatalogProduct } from '../../core/models';
                       {{ product.in_stock ? 'Em estoque' : 'Sob consulta' }}
                     </span>
                   </div>
-                  <a class="product-link" [href]="whatsappUrl(product)">Pedir esta peca</a>
+                  <a class="product-link" [href]="whatsappUrl(product)" (click)="track('whatsapp_click', { sku: product.sku, placement: 'product_card' })">Pedir esta peca</a>
                 </div>
               </article>
             }
@@ -115,10 +115,12 @@ export class CatalogPage implements OnInit {
   search = '';
 
   ngOnInit() {
+    this.track('landing_view');
     this.load();
   }
 
   load() {
+    if (this.search.trim()) this.track('catalog_search', { source: 'site' });
     this.loading.set(true);
     this.error.set(false);
     let params = new HttpParams();
@@ -132,6 +134,17 @@ export class CatalogPage implements OnInit {
         this.error.set(true);
         this.loading.set(false);
       },
+    });
+  }
+
+  track(name: string, properties: Record<string, string> = {}) {
+    const key = 'goes_visitor';
+    const anonymousId = localStorage.getItem(key) ?? crypto.randomUUID();
+    localStorage.setItem(key, anonymousId);
+    void fetch('/api/v1/telemetry/events', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, anonymous_id: anonymousId, properties }),
     });
   }
 

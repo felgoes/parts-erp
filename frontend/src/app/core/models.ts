@@ -122,3 +122,20 @@ export interface CatalogProduct {
   sale_price: number;
   in_stock: boolean;
 }
+
+export interface TelemetryEventCount {
+  name: string;
+  count: number;
+}
+export interface TelemetryHealth {
+  check_name: string;
+  ok: boolean;
+  latency_ms: number;
+  detail: string | null;
+  checked_at: string;
+}
+export interface TelemetrySummary {
+  days: number;
+  events: TelemetryEventCount[];
+  health: TelemetryHealth[];
+}

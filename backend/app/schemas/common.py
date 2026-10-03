@@ -64,6 +64,15 @@ class ProductOut(ORMModel):
     updated_at: datetime
 
 
+class CatalogProductOut(BaseModel):
+    id: str
+    sku: str
+    name: str
+    description: str | None
+    sale_price: Decimal
+    in_stock: bool
+
+
 class StockAdjustment(BaseModel):
     quantity: Decimal
     reason: str = Field(min_length=3, max_length=255)

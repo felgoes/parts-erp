@@ -3,6 +3,7 @@ import { authGuard } from './core/auth.guard';
 import { AppLayout } from './layout/app-layout';
 
 export const routes: Routes = [
+  { path: '', pathMatch: 'full', loadComponent: () => import('./pages/catalog/catalog').then((m) => m.CatalogPage) },
   { path: 'login', loadComponent: () => import('./pages/login/login').then((m) => m.LoginPage) },
   {
     path: '',

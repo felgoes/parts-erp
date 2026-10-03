@@ -37,7 +37,7 @@ path = Path(os.environ["BUILD_INDEX"])
 version = os.environ["BUILD_VERSION"]
 html = path.read_text()
 html = re.sub(r'(\b(?:src|href)="[^"]+\.(?:js|css))(?:\?v=[^"]*)?"', rf'\1?v={version}"', html)
-html = html.replace(' media="print" onload="this.media='all'"', '')
+html = re.sub(r' media="print" onload="this.media=.*?"', "", html)
 path.write_text(html)
 PY
 

@@ -23,11 +23,10 @@ import { CatalogProduct } from '../../core/models';
 
       <section class="hero">
         <div class="hero-copy">
-          <p class="kicker">GOES AUTO PARTS / PECAS CERTAS</p>
-          <h1>Encontre a peca certa para o seu carro.</h1>
+          <p class="kicker">GOES AUTO PARTS / VEICULOS CHINESES</p>
+          <h1>A peca certa para o seu carro chines.</h1>
           <p class="hero-text">
-            Consulte o catalogo atualizado, confirme a disponibilidade e fale com a nossa equipe
-            pelo WhatsApp.
+            Especialistas em pecas para BYD, GWM, Chery, JAC e outros veiculos chineses. Consulte por marca, modelo e ano, confirme a disponibilidade e fale com a nossa equipe pelo WhatsApp.
           </p>
           <div class="hero-actions">
             <a class="button button-red" href="#catalogo">Ver catalogo</a>
@@ -44,9 +43,9 @@ import { CatalogProduct } from '../../core/models';
         <div class="section-head">
           <div>
             <p class="kicker">CATALOGO ONLINE</p>
-            <h2>Estoque disponivel, sem misterio.</h2>
+            <h2>Pecas para veiculos chineses, sem misterio.</h2>
           </div>
-          <p class="section-note">A disponibilidade muda em tempo real. Confirme a aplicacao com a equipe.</p>
+          <p class="section-note">A disponibilidade muda em tempo real. Confirme marca, modelo, ano e aplicacao com a equipe.</p>
         </div>
         <div class="search-row">
           <label class="search-box">

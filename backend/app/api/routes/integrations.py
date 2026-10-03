@@ -289,7 +289,7 @@ def connect_shopee(
 
 
 @shopee_router.get("/callback")
-def shopee_callback(
+async def shopee_callback(
     request: Request,
     code: str,
     shop_id: str,
@@ -330,6 +330,12 @@ def shopee_callback(
         if config:
             config.shop_id = str(shop_id)
         db.commit()
+        try:
+            redis = await create_pool(RedisSettings.from_dsn(settings.redis_url))
+            await redis.enqueue_job("sync_shopee_account", str(shop_id))
+            await redis.close()
+        except Exception:
+            pass
     except (jwt.PyJWTError, KeyError, ShopeeError, ValueError):
         response = RedirectResponse(f"{settings.frontend_url}/integrations?error=shopee_oauth")
         response.delete_cookie("shopee_oauth_state")
@@ -337,3 +343,17 @@ def shopee_callback(
     response = RedirectResponse(f"{settings.frontend_url}/integrations?shopee_connected=true")
     response.delete_cookie("shopee_oauth_state")
     return response
+
+
+@shopee_router.post("/webhook", status_code=202)
+async def shopee_webhook(request: Request) -> dict[str, bool]:
+    payload = await request.json()
+    if not isinstance(payload, dict):
+        raise HTTPException(status_code=400, detail="Notificacao Shopee invalida")
+    shop_id = str(payload.get("shop_id") or payload.get("shopid") or "")
+    if not shop_id:
+        raise HTTPException(status_code=400, detail="Loja Shopee ausente")
+    redis = await create_pool(RedisSettings.from_dsn(get_settings().redis_url))
+    await redis.enqueue_job("process_shopee_notification", payload)
+    await redis.close()
+    return {"accepted": True}

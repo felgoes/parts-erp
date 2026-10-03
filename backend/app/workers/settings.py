@@ -7,6 +7,7 @@ from app.core.config import get_settings
 from app.db.session import SessionLocal
 from app.integrations.mercadolivre.client import MercadoLivreClient
 from app.integrations.mercadolivre.sync import sync_all, sync_invoice_documents, sync_order
+from app.integrations.shopee.sync import sync_all as sync_shopee_all, sync_order as sync_shopee_order
 from app.models import MarketplaceAccount, MarketplaceOrder
 
 
@@ -43,7 +44,7 @@ async def process_mercadolivre_notification(
 
 
 class WorkerSettings:
-    functions = [process_mercadolivre_notification, sync_mercadolivre_account]
+    functions = [process_mercadolivre_notification, sync_mercadolivre_account, sync_shopee_account, process_shopee_notification]
     redis_settings = RedisSettings.from_dsn(get_settings().redis_url)
     max_jobs = 10
     job_timeout = 120
@@ -61,3 +62,37 @@ async def sync_mercadolivre_account(ctx: dict[str, Any], seller_id: str) -> None
         )
         if account:
             sync_all(db, account)
+
+
+async def sync_shopee_account(ctx: dict[str, Any], shop_id: str) -> None:
+    del ctx
+    with SessionLocal() as db:
+        account = db.scalar(
+            select(MarketplaceAccount).where(
+                MarketplaceAccount.provider == "shopee",
+                MarketplaceAccount.seller_id == str(shop_id),
+                MarketplaceAccount.active.is_(True),
+            )
+        )
+        if account:
+            sync_shopee_all(db, account)
+
+
+async def process_shopee_notification(ctx: dict[str, Any], payload: dict[str, Any]) -> None:
+    del ctx
+    shop_id = str(payload.get("shop_id") or payload.get("shopid") or "")
+    order_sn = str((payload.get("data") or {}).get("ordersn") or payload.get("ordersn") or "")
+    with SessionLocal() as db:
+        account = db.scalar(
+            select(MarketplaceAccount).where(
+                MarketplaceAccount.provider == "shopee",
+                MarketplaceAccount.seller_id == shop_id,
+                MarketplaceAccount.active.is_(True),
+            )
+        )
+        if not account:
+            return
+        if order_sn:
+            sync_shopee_order(db, account, order_sn)
+        else:
+            sync_shopee_all(db, account)

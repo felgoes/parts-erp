@@ -12,7 +12,7 @@ class ORMModel(BaseModel):
 
 class UserOut(ORMModel):
     id: str
-    email: EmailStr
+    email: str
     full_name: str
     role: str
 

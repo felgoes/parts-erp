@@ -73,7 +73,7 @@ fi
 printf '%s\n' "$deps_hash" > "$HASH_FILE"
 
 cd "$APP_DIR/backend"
-"$VENV/bin/alembic" upgrade head
+"$VENV/bin/alembic" upgrade heads
 cd "$APP_DIR"
 bash deploy/termux/start.sh
 curl --fail --silent http://127.0.0.1:8080/ >/dev/null

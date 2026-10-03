@@ -33,6 +33,7 @@ class InvoiceStatus(enum.StrEnum):
 class InvoiceSource(enum.StrEnum):
     manual = "manual"
     mercadolivre = "mercadolivre"
+    shopee = "shopee"
 
 
 class MovementType(enum.StrEnum):
@@ -163,6 +164,19 @@ class MarketplaceConfig(TimestampMixin, Base):
     encrypted_client_secret: Mapped[str | None] = mapped_column(Text)
     redirect_uri: Mapped[str | None] = mapped_column(String(500))
     site_id: Mapped[str] = mapped_column(String(20), default="MLB")
+    import_orders: Mapped[bool] = mapped_column(Boolean, default=True)
+    automatic_stock: Mapped[bool] = mapped_column(Boolean, default=True)
+    sync_documents: Mapped[bool] = mapped_column(Boolean, default=True)
+
+
+class ShopeeConfig(TimestampMixin, Base):
+    __tablename__ = "shopee_config"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    partner_id: Mapped[str] = mapped_column(String(120), default="")
+    encrypted_partner_key: Mapped[str | None] = mapped_column(Text)
+    shop_id: Mapped[str | None] = mapped_column(String(80))
+    redirect_uri: Mapped[str | None] = mapped_column(String(500))
+    region: Mapped[str] = mapped_column(String(10), default="BR")
     import_orders: Mapped[bool] = mapped_column(Boolean, default=True)
     automatic_stock: Mapped[bool] = mapped_column(Boolean, default=True)
     sync_documents: Mapped[bool] = mapped_column(Boolean, default=True)

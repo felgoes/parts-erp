@@ -50,7 +50,7 @@ export interface Invoice {
   number: string;
   customer_id: string | null;
   status: 'draft' | 'confirmed' | 'cancelled';
-  source: 'manual' | 'mercadolivre';
+  source: 'manual' | 'mercadolivre' | 'shopee';
   marketplace_order_id: string | null;
   subtotal: number;
   discount: number;
@@ -95,4 +95,21 @@ export interface MarketplaceOrder {
   invoice_id: string | null;
   synchronized_at: string | null;
   created_at: string;
+}
+
+export interface ShopeeStatus {
+  configured: boolean;
+  connected: boolean;
+  shop_id: string | null;
+  token_expires_at: string | null;
+}
+export interface ShopeeConfig {
+  partner_id: string;
+  partner_key_configured: boolean;
+  shop_id: string | null;
+  redirect_uri: string;
+  region: string;
+  import_orders: boolean;
+  automatic_stock: boolean;
+  sync_documents: boolean;
 }

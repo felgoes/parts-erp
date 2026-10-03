@@ -180,3 +180,30 @@ class MarketplaceConfigUpdate(BaseModel):
     import_orders: bool = True
     automatic_stock: bool = True
     sync_documents: bool = True
+
+
+class ShopeeStatus(BaseModel):
+    configured: bool
+    connected: bool
+    shop_id: str | None = None
+    token_expires_at: datetime | None = None
+
+class ShopeeConfigOut(BaseModel):
+    partner_id: str
+    partner_key_configured: bool
+    shop_id: str | None
+    redirect_uri: str
+    region: str
+    import_orders: bool
+    automatic_stock: bool
+    sync_documents: bool
+
+class ShopeeConfigUpdate(BaseModel):
+    partner_id: str
+    partner_key: str | None = None
+    shop_id: str | None = None
+    redirect_uri: str
+    region: str = "BR"
+    import_orders: bool = True
+    automatic_stock: bool = True
+    sync_documents: bool

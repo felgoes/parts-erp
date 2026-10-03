@@ -32,6 +32,11 @@ class Settings(BaseSettings):
     mercadolivre_site_id: str = "MLB"
     mercadolivre_api_url: str = "https://api.mercadolibre.com"
     mercadolivre_auth_url: str = "https://auth.mercadolivre.com.br/authorization"
+    shopee_partner_id: str = ""
+    shopee_partner_key: SecretStr | None = None
+    shopee_redirect_uri: AnyHttpUrl = AnyHttpUrl(
+        "http://localhost:8000/api/v1/integrations/shopee/callback"
+    )
 
     @field_validator("token_encryption_key")
     @classmethod

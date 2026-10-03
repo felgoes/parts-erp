@@ -8,6 +8,8 @@ import {
   MarketplaceOrder,
   MarketplaceStatus,
   MarketplaceConfig,
+  ShopeeConfig,
+  ShopeeStatus,
   Product,
   User,
 } from './models';
@@ -79,5 +81,18 @@ export class ApiService {
     return this.http.get<{ authorization_url: string }>(
       `${this.base}/integrations/mercadolivre/connect`,
     );
+  }
+
+shopeeStatus(): Observable<ShopeeStatus> {
+    return this.http.get<ShopeeStatus>(this.base + '/integrations/shopee/status');
+  }
+  shopeeConfig(): Observable<ShopeeConfig> {
+    return this.http.get<ShopeeConfig>(this.base + '/integrations/shopee/config');
+  }
+  saveShopeeConfig(payload: Record<string, unknown>): Observable<ShopeeConfig> {
+    return this.http.put<ShopeeConfig>(this.base + '/integrations/shopee/config', payload);
+  }
+  connectShopee(): Observable<{ authorization_url: string }> {
+    return this.http.get<{ authorization_url: string }>(this.base + '/integrations/shopee/connect');
   }
 }

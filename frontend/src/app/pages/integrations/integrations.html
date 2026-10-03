@@ -1,0 +1,49 @@
+<app-page-header eyebrow="Configuração" title="Integrações" subtitle="Canais de venda, credenciais e regras de sincronização."></app-page-header>
+<div class="integration-groups">
+  <div class="group-label">CANAIS DE VENDA</div>
+  <section class="settings-layout">
+    <form class="settings-panel" (ngSubmit)="saveMercadoLivre()">
+      <div class="section-title"><div><h2>Mercado Livre</h2><p>Pedidos, estoque e documentos fiscais.</p></div><span class="status" [class.ok]="mlStatus()?.connected">{{ mlStatus()?.connected ? 'Conectado' : (mlStatus()?.configured ? 'Configurado' : 'Pendente') }}</span></div>
+      <div class="form-grid">
+        <label>Client ID<input name="ml_client_id" [(ngModel)]="mlForm.client_id" required /></label>
+        <label>Client secret<input name="ml_client_secret" type="password" [(ngModel)]="mlForm.client_secret" [placeholder]="mlConfig()?.client_secret_configured ? 'Mantido — informe para trocar' : 'Informe o segredo'" /></label>
+        <label class="span-2">URL de callback<input name="ml_redirect_uri" [(ngModel)]="mlForm.redirect_uri" required /></label>
+        <label>País<select name="ml_site_id" [(ngModel)]="mlForm.site_id"><option value="MLB">MLB — Brasil</option></select></label>
+      </div>
+      <div class="section-title rules"><div><h2>Regras do canal</h2><p>O que deve acontecer automaticamente.</p></div></div>
+      <label class="check"><input type="checkbox" name="ml_import_orders" [(ngModel)]="mlForm.import_orders" /><span><strong>Importar pedidos</strong><small>Receber pedidos pagos por webhook.</small></span></label>
+      <label class="check"><input type="checkbox" name="ml_automatic_stock" [(ngModel)]="mlForm.automatic_stock" /><span><strong>Baixar estoque automaticamente</strong><small>Conferir SKU e registrar a saída uma única vez.</small></span></label>
+      <label class="check"><input type="checkbox" name="ml_sync_documents" [(ngModel)]="mlForm.sync_documents" /><span><strong>Sincronizar documentos fiscais</strong><small>Buscar XML e DANFE quando disponíveis.</small></span></label>
+      <div class="form-actions"><button class="primary" [disabled]="mlSaving()">{{ mlSaving() ? 'Salvando…' : 'Salvar Mercado Livre' }}</button><button type="button" class="text-button" (click)="connectMercadoLivre()" [disabled]="!mlStatus()?.configured || mlConnecting()">{{ mlConnecting() ? 'Abrindo…' : 'Conectar conta' }}</button></div>
+      @if (mlMessage()) { <p class="form-message">{{ mlMessage() }}</p> }
+    </form>
+    <aside class="help-panel channel-help ml-help"><div class="channel-icon">M</div><h2>Conta do canal</h2><p>{{ mlStatus()?.connected ? 'Conta autorizada e pronta para sincronizar.' : 'Salve a configuração e autorize a conta principal do vendedor.' }}</p><dl><dt>Conta</dt><dd>{{ mlStatus()?.connected ? 'Conectada' : 'Ainda não conectada' }}</dd><dt>Seller</dt><dd>{{ mlStatus()?.nickname || '—' }}</dd></dl></aside>
+  </section>
+
+  <section class="settings-layout">
+    <form class="settings-panel" (ngSubmit)="saveShopee()">
+      <div class="section-title"><div><h2>Shopee</h2><p>Pedidos, catálogo e estoque da loja.</p></div><span class="status" [class.ok]="shopeeStatus()?.connected">{{ shopeeStatus()?.connected ? 'Conectado' : (shopeeStatus()?.configured ? 'Configurado' : 'Pendente') }}</span></div>
+      <div class="form-grid">
+        <label>Partner ID<input name="shopee_partner_id" [(ngModel)]="shopeeForm.partner_id" required /></label>
+        <label>Partner key<input name="shopee_partner_key" type="password" [(ngModel)]="shopeeForm.partner_key" [placeholder]="shopeeConfig()?.partner_key_configured ? 'Mantida — informe para trocar' : 'Informe a chave'" /></label>
+        <label>Shop ID <span class="optional">(opcional antes da autorização)</span><input name="shopee_shop_id" [(ngModel)]="shopeeForm.shop_id" /></label>
+        <label>Região<select name="shopee_region" [(ngModel)]="shopeeForm.region"><option value="BR">Brasil (BR)</option></select></label>
+        <label class="span-2">URL de callback<input name="shopee_redirect_uri" [(ngModel)]="shopeeForm.redirect_uri" required /></label>
+      </div>
+      <div class="section-title rules"><div><h2>Regras do canal</h2><p>Independentes do Mercado Livre.</p></div></div>
+      <label class="check"><input type="checkbox" name="shopee_import_orders" [(ngModel)]="shopeeForm.import_orders" /><span><strong>Importar pedidos</strong><small>Trazer pedidos pagos para a fila de conciliação.</small></span></label>
+      <label class="check"><input type="checkbox" name="shopee_automatic_stock" [(ngModel)]="shopeeForm.automatic_stock" /><span><strong>Baixar estoque automaticamente</strong><small>Usar o SKU interno como chave de produto.</small></span></label>
+      <label class="check"><input type="checkbox" name="shopee_sync_documents" [(ngModel)]="shopeeForm.sync_documents" /><span><strong>Sincronizar documentos fiscais</strong><small>Manter documentos vinculados à venda.</small></span></label>
+      <div class="form-actions"><button class="primary" [disabled]="shopeeSaving()">{{ shopeeSaving() ? 'Salvando…' : 'Salvar Shopee' }}</button><button type="button" class="text-button" (click)="connectShopee()" [disabled]="!shopeeStatus()?.configured || shopeeConnecting()">{{ shopeeConnecting() ? 'Abrindo…' : 'Autorizar loja' }}</button></div>
+      @if (shopeeMessage()) { <p class="form-message">{{ shopeeMessage() }}</p> }
+    </form>
+    <aside class="help-panel channel-help shopee-help"><div class="channel-icon">S</div><h2>Como categorizar</h2><p>A Shopee fica separada do Mercado Livre, mas usa o mesmo produto interno, SKU e estoque.</p><dl><dt>Conta</dt><dd>{{ shopeeStatus()?.connected ? 'Conectada' : 'Ainda não conectada' }}</dd><dt>Próximo passo</dt><dd>Mapear categorias e SKUs</dd></dl></aside>
+  </section>
+
+  <div class="group-label secondary-label">PADRÃO OPERACIONAL</div>
+  <section class="taxonomy-card">
+    <div><span class="taxonomy-icon">↔</span><div><h2>Um produto interno, vários canais</h2><p>O SKU do Parts ERP será a chave comum. Cada marketplace terá suas credenciais, pedidos e regras, sem duplicar o cadastro.</p></div></div>
+    <div><span class="taxonomy-icon">≡</span><div><h2>Categorias por canal</h2><p>Relacionaremos a categoria interna às categorias do Mercado Livre e da Shopee para publicar o catálogo corretamente.</p></div></div>
+    <div><span class="taxonomy-icon">✓</span><div><h2>Conciliação antes do estoque</h2><p>Pedidos entram pendentes e só baixam estoque depois de validar SKU, pagamento e quantidade.</p></div></div>
+  </section>
+</div>

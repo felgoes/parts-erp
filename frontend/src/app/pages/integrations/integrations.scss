@@ -36,3 +36,18 @@
 .help-panel dt { color:var(--muted); }
 .help-panel dd { margin:0 0 9px; font-weight:700; }
 @media (max-width:850px) { .settings-layout { grid-template-columns:1fr; } }
+
+.integration-groups { display:grid; gap:20px; }
+.group-label { color:var(--muted); font-size:11px; font-weight:850; letter-spacing:.14em; }
+.secondary-label { margin-top:10px; }
+.channel-help { min-height:220px; }
+.channel-icon { width:42px; height:42px; display:grid; place-items:center; border-radius:10px; font-weight:900; margin-bottom:18px; }
+.ml-help .channel-icon { background:#ffe600; color:#1e3565; }
+.shopee-help .channel-icon { background:#ee4d2d; color:#fff; }
+.optional { color:var(--muted); font-size:11px; font-weight:400; }
+.taxonomy-card { background:#fff; border:1px solid var(--line); border-radius:2px; padding:22px 26px; display:grid; grid-template-columns:repeat(3,1fr); gap:24px; }
+.taxonomy-card > div { display:flex; gap:12px; align-items:flex-start; }
+.taxonomy-card h2 { margin:0 0 6px; font-size:15px; }
+.taxonomy-card p { margin:0; color:var(--muted); font-size:12px; line-height:1.55; }
+.taxonomy-icon { width:30px; height:30px; flex:0 0 30px; display:grid; place-items:center; background:#eef3e7; color:var(--forest); font-weight:900; }
+@media (max-width:850px) { .taxonomy-card { grid-template-columns:1fr; } }

@@ -6,7 +6,7 @@ import jwt
 from arq import create_pool
 from arq.connections import RedisSettings
 from fastapi import APIRouter, Depends, HTTPException, Request
-from fastapi.responses import RedirectResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -15,10 +15,27 @@ from app.core.config import get_settings
 from app.core.security import decode_token, encrypt_secret
 from app.db.session import get_db
 from app.integrations.mercadolivre.client import MercadoLivreClient, MercadoLivreError
-from app.models import MarketplaceAccount, MarketplaceConfig, MarketplaceOrder, User, UserRole
-from app.schemas.common import MarketplaceConfigOut, MarketplaceConfigUpdate, MarketplaceOrderOut, MarketplaceStatus
+from app.integrations.shopee.client import ShopeeClient, ShopeeError
+from app.models import (
+    MarketplaceAccount,
+    MarketplaceConfig,
+    MarketplaceOrder,
+    ShopeeConfig,
+    User,
+    UserRole,
+)
+from app.schemas.common import (
+    MarketplaceConfigOut,
+    MarketplaceConfigUpdate,
+    MarketplaceOrderOut,
+    MarketplaceStatus,
+    ShopeeConfigOut,
+    ShopeeConfigUpdate,
+    ShopeeStatus,
+)
 
 router = APIRouter(prefix="/integrations/mercadolivre", tags=["Mercado Livre"])
+shopee_router = APIRouter(prefix="/integrations/shopee", tags=["Shopee"])
 
 
 @router.get("/status", response_model=MarketplaceStatus)
@@ -172,3 +189,144 @@ async def webhook(request: Request) -> dict[str, bool]:
     await redis.enqueue_job("process_mercadolivre_notification", topic, resource, seller_id)
     await redis.close()
     return {"accepted": True}
+
+
+@shopee_router.get("/status", response_model=ShopeeStatus)
+def shopee_status(db: Session = Depends(get_db), _: User = Depends(get_current_user)) -> ShopeeStatus:
+    settings = get_settings()
+    config = db.scalar(select(ShopeeConfig).limit(1))
+    account = db.scalar(select(MarketplaceAccount).where(
+        MarketplaceAccount.provider == "shopee",
+        MarketplaceAccount.active.is_(True),
+    ).limit(1))
+    return ShopeeStatus(
+        configured=bool((config.partner_id if config else settings.shopee_partner_id)
+                        and (config.encrypted_partner_key if config else settings.shopee_partner_key)),
+        connected=account is not None,
+        shop_id=account.seller_id if account else (config.shop_id if config else None),
+        token_expires_at=account.token_expires_at if account else None,
+    )
+
+
+@shopee_router.get("/config", response_model=ShopeeConfigOut)
+def shopee_config(db: Session = Depends(get_db), _: User = Depends(require_roles(UserRole.admin))) -> ShopeeConfigOut:
+    settings = get_settings()
+    config = db.scalar(select(ShopeeConfig).limit(1))
+    return ShopeeConfigOut(
+        partner_id=config.partner_id if config else settings.shopee_partner_id,
+        partner_key_configured=bool(config.encrypted_partner_key) if config else bool(settings.shopee_partner_key),
+        shop_id=config.shop_id if config else None,
+        redirect_uri=(config.redirect_uri if config else None) or str(settings.shopee_redirect_uri),
+        region=config.region if config else "BR",
+        import_orders=config.import_orders if config else True,
+        automatic_stock=config.automatic_stock if config else True,
+        sync_documents=config.sync_documents if config else True,
+    )
+
+
+@shopee_router.put("/config", response_model=ShopeeConfigOut)
+def update_shopee_config(payload: ShopeeConfigUpdate, db: Session = Depends(get_db), _: User = Depends(require_roles(UserRole.admin))) -> ShopeeConfigOut:
+    settings = get_settings()
+    config = db.scalar(select(ShopeeConfig).limit(1)) or ShopeeConfig()
+    config.partner_id = payload.partner_id.strip()
+    if payload.partner_key:
+        config.encrypted_partner_key = encrypt_secret(payload.partner_key)
+    elif not config.encrypted_partner_key and settings.shopee_partner_key:
+        config.encrypted_partner_key = encrypt_secret(settings.shopee_partner_key.get_secret_value())
+    config.shop_id = payload.shop_id.strip() if payload.shop_id else None
+    config.redirect_uri = payload.redirect_uri.strip()
+    config.region = payload.region.strip().upper()
+    config.import_orders = payload.import_orders
+    config.automatic_stock = payload.automatic_stock
+    config.sync_documents = payload.sync_documents
+    db.add(config)
+    db.commit()
+    return shopee_config(db, _)
+
+
+@shopee_router.get("/connect")
+def connect_shopee(
+    db: Session = Depends(get_db),
+    user: User = Depends(require_roles(UserRole.admin)),
+) -> JSONResponse:
+    settings = get_settings()
+    config = db.scalar(select(ShopeeConfig).limit(1))
+    partner_id = config.partner_id if config else settings.shopee_partner_id
+    partner_key = config.encrypted_partner_key if config else settings.shopee_partner_key
+    if not partner_id or not partner_key:
+        raise HTTPException(status_code=503, detail="Credenciais da Shopee não configuradas")
+    now = datetime.now(UTC)
+    state = jwt.encode(
+        {"sub": user.id, "type": "shopee_oauth", "iat": now, "exp": now + timedelta(minutes=10)},
+        settings.secret_key.get_secret_value(),
+        algorithm="HS256",
+    )
+    redirect_uri = (config.redirect_uri if config else None) or str(settings.shopee_redirect_uri)
+    key = (
+        partner_key.get_secret_value()
+        if hasattr(partner_key, "get_secret_value")
+        else partner_key
+    )
+    response = JSONResponse(
+        {"authorization_url": ShopeeClient(partner_id, key).authorization_url(redirect_uri)}
+    )
+    response.set_cookie(
+        "shopee_oauth_state",
+        state,
+        max_age=600,
+        httponly=True,
+        secure=redirect_uri.startswith("https://"),
+        samesite="lax",
+    )
+    return response
+
+
+@shopee_router.get("/callback")
+def shopee_callback(
+    request: Request,
+    code: str,
+    shop_id: str,
+    db: Session = Depends(get_db),
+) -> RedirectResponse:
+    settings = get_settings()
+    try:
+        state = request.cookies.get("shopee_oauth_state")
+        if not state:
+            raise jwt.InvalidTokenError
+        payload = decode_token(state)
+        if payload.get("type") != "shopee_oauth":
+            raise jwt.InvalidTokenError
+        config = db.scalar(select(ShopeeConfig).limit(1))
+        partner_id = config.partner_id if config else settings.shopee_partner_id
+        encrypted_key = config.encrypted_partner_key if config else settings.shopee_partner_key
+        key = (
+            encrypted_key.get_secret_value()
+            if hasattr(encrypted_key, "get_secret_value")
+            else encrypted_key
+        )
+        if not partner_id or not key:
+            raise ShopeeError("Shopee não configurada")
+        tokens = ShopeeClient(partner_id, key).exchange_code(code, shop_id)
+        account = db.scalar(select(MarketplaceAccount).where(
+            MarketplaceAccount.provider == "shopee",
+            MarketplaceAccount.seller_id == str(shop_id),
+        )) or MarketplaceAccount(provider="shopee", seller_id=str(shop_id))
+        account.encrypted_access_token = encrypt_secret(tokens["access_token"])
+        account.encrypted_refresh_token = (
+            encrypt_secret(tokens["refresh_token"]) if tokens.get("refresh_token") else None
+        )
+        account.token_expires_at = datetime.now(UTC) + timedelta(
+            seconds=int(tokens.get("expire_in", 14400)) - 120
+        )
+        account.active = True
+        db.add(account)
+        if config:
+            config.shop_id = str(shop_id)
+        db.commit()
+    except (jwt.PyJWTError, KeyError, ShopeeError, ValueError):
+        response = RedirectResponse(f"{settings.frontend_url}/integrations?error=shopee_oauth")
+        response.delete_cookie("shopee_oauth_state")
+        return response
+    response = RedirectResponse(f"{settings.frontend_url}/integrations?shopee_connected=true")
+    response.delete_cookie("shopee_oauth_state")
+    return response

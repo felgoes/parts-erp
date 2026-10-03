@@ -25,6 +25,21 @@ fi
 echo "Compilando frontend localmente..."
 (cd "$ROOT_DIR/frontend" && npm run build)
 
+# Versiona os assets no HTML para impedir que o navegador reutilize um index antigo.
+BUILD_VERSION="$(git -C "$ROOT_DIR" rev-parse --short HEAD)"
+BUILD_INDEX="$ROOT_DIR/frontend/dist/frontend/browser/index.html"
+BUILD_VERSION="$BUILD_VERSION" BUILD_INDEX="$BUILD_INDEX"   /home/fgoes/workspace/parts-erp/venv/bin/python - <<'PY'
+import os
+import re
+from pathlib import Path
+
+path = Path(os.environ["BUILD_INDEX"])
+version = os.environ["BUILD_VERSION"]
+html = path.read_text()
+html = re.sub(r'(\b(?:src|href)="[^"]+\.(?:js|css))(?:\?v=[^"]*)?"', rf'\1?v={version}"', html)
+path.write_text(html)
+PY
+
 echo "Atualizando código no S9..."
 ssh "${SSH_OPTS[@]}" "$REMOTE" "cd '$S9_APP_DIR' && git pull --ff-only origin main"
 

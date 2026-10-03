@@ -33,8 +33,8 @@ def _resource_ids(result: dict[str, Any] | list[Any]) -> list[str]:
     ids: list[str] = []
     for value in values:
         raw = value.get("id") if isinstance(value, dict) else value
-        if raw is not None and str(raw).isdigit():
-            ids.append(str(raw))
+        if raw is not None and str(raw).strip():
+            ids.append(str(raw).strip())
     return ids
 
 

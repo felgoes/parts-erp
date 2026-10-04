@@ -43,6 +43,7 @@ export class MonitoringPage implements OnInit {
       { name: 'landing_view', label: 'Entradas na landing', count: this.eventCount(summary, 'landing_view') },
       { name: 'catalog_search', label: 'Buscas no catálogo', count: this.eventCount(summary, 'catalog_search') },
       { name: 'product_view', label: 'Visualizações de peças', count: this.eventCount(summary, 'product_view') },
+      { name: 'catalog_empty_result', label: 'Buscas sem resultado', count: this.eventCount(summary, 'catalog_empty_result') },
       { name: 'mercado_livre_click', label: 'Cliques no Mercado Livre', count: this.eventCount(summary, 'mercado_livre_click') },
       { name: 'whatsapp_click', label: 'Cliques no WhatsApp', count: this.eventCount(summary, 'whatsapp_click') },
     ];

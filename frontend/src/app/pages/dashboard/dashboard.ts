@@ -104,10 +104,12 @@ import { PageHeader } from '../../shared/page-header';
       @if (detail(); as invoice) {
         <div class="modal-backdrop" (click)="detail.set(null)">
           <section class="modal wide" (click)="$event.stopPropagation()">
-            <div class="modal-head"><div><p class="eyebrow">Venda recente</p><h2>{{ invoice.number }}</h2></div><button class="close" (click)="detail.set(null)">×</button></div>
-            <div class="detail-grid"><div><small>Status</small><strong>{{ status(invoice.status) }}</strong></div><div><small>Origem</small><strong>{{ invoice.source === 'mercadolivre' ? 'Mercado Livre' : 'Manual' }}</strong></div><div><small>Total</small><strong>{{ invoice.total | currency:'BRL' }}</strong></div></div>
-            <h3>Itens vendidos</h3><div class="invoice-detail-lines">@for (item of invoice.items; track item.id) { <div><span><strong>{{ item.description }}</strong><small>{{ item.sku }} · {{ item.quantity }} un.</small></span><strong>{{ item.total | currency:'BRL' }}</strong></div> }</div>
-            <h3>Documentos</h3>@for (doc of invoice.documents; track doc.id) { <button class="doc" (click)="openDocument(invoice.id, doc.id)">{{ doc.document_type }} · {{ doc.filename }}</button> } @empty { <p class="muted">Nenhum documento anexado.</p> }
+            <div class="modal-head detail-hero"><div><p class="eyebrow">Venda {{ invoice.source === 'mercadolivre' ? 'Mercado Livre' : 'manual' }}</p><h2>{{ invoice.number }}</h2><p class="detail-subtitle">Criada em {{ invoice.created_at | date:'dd/MM/yyyy HH:mm' }}{{ invoice.issued_at ? ' · emitida em ' + (invoice.issued_at | date:'dd/MM/yyyy HH:mm') : '' }}</p></div><div class="hero-actions"><span class="badge" [class]="invoice.status">{{ status(invoice.status) }}</span><button class="close" aria-label="Fechar detalhe" (click)="detail.set(null)">×</button></div></div>
+            <div class="detail-summary"><div><span>Cliente</span><strong>{{ invoice.customer?.name || 'Consumidor não identificado' }}</strong><small>{{ invoice.customer?.document || invoice.customer?.email || 'Sem cadastro vinculado' }}</small></div><div><span>Pedido relacionado</span><strong>{{ invoice.marketplace_order_id ? '#' + invoice.marketplace_order_id : 'Venda local' }}</strong><small>{{ invoice.items.length }} item(ns) · {{ invoice.total | currency:'BRL' }}</small></div></div>
+            <nav class="detail-tabs" aria-label="Detalhes da venda"><button [class.active]="invoiceTab() === 'items'" (click)="invoiceTab.set('items')">Itens <small>{{ invoice.items.length }}</small></button><button [class.active]="invoiceTab() === 'tracking'" (click)="invoiceTab.set('tracking')">Rastreio</button><button [class.active]="invoiceTab() === 'documents'" (click)="invoiceTab.set('documents')">Documentos <small>{{ invoice.documents.length }}</small></button></nav>
+            @if (invoiceTab() === 'items') { <section class="detail-section"><div class="section-heading"><div><p class="eyebrow">Composição</p><h3>Itens vendidos</h3></div><strong>{{ invoice.total | currency:'BRL' }}</strong></div><div class="invoice-detail-lines">@for (item of invoice.items; track item.id) { <div><span class="item-main"><strong>{{ item.description }}</strong><small>SKU {{ item.sku }} · {{ item.quantity }} unidade(s) · {{ item.unit_price | currency:'BRL' }} cada</small></span><strong>{{ item.total | currency:'BRL' }}</strong></div> }</div></section> }
+            @if (invoiceTab() === 'tracking') { <section class="detail-section">@if (invoice.tracking; as tracking) { <div class="tracking-cards"><div><span>Status do pedido</span><strong>{{ tracking.status || '—' }}</strong></div><div><span>Envio</span><strong>{{ tracking.shipping_status || 'Aguardando atualização' }}</strong></div><div><span>Etiqueta</span><strong>{{ tracking.label_status || '—' }}</strong></div><div><span>Código</span><strong>{{ tracking.shipment_id || '—' }}</strong></div></div><div class="section-heading"><div><p class="eyebrow">Acompanhamento</p><h3>Linha do tempo</h3></div><small>{{ tracking.last_update ? ('Atualizado ' + (tracking.last_update | date:'dd/MM/yyyy HH:mm')) : '' }}</small></div><div class="timeline">@for (event of tracking.history; track event.created_at + event.status) { <div><strong>{{ event.status }}{{ event.detail ? ' · ' + event.detail : '' }}</strong><span>{{ event.created_at | date:'dd/MM/yyyy HH:mm' }}</span></div> } @empty { <p class="muted">Ainda não há eventos de rastreio registrados.</p> }</div> } @else { <div class="empty">Esta venda não está vinculada a um pedido de marketplace.</div> }</section> }
+            @if (invoiceTab() === 'documents') { <section class="detail-section"><div class="section-heading"><div><p class="eyebrow">Fiscal</p><h3>Documentos da venda</h3></div><span class="muted">Clique para abrir em nova guia</span></div>@if (invoice.documents.length) { <div class="document-list">@for (doc of invoice.documents; track doc.id) { <button class="document-card" (click)="openDocument(invoice.id, doc.id)"><span class="document-icon">{{ doc.document_type === 'pdf' ? 'PDF' : 'XML' }}</span><span><strong>{{ doc.filename }}</strong><small>{{ doc.document_type === 'pdf' ? 'DANFE para visualização' : 'Nota fiscal eletrônica' }}</small></span><b>↗</b></button> }</div> } @else { <div class="empty">Nenhum documento anexado ainda.</div> }</section> }
           </section>
         </div>
       }
@@ -121,6 +123,7 @@ export class DashboardPage implements OnInit {
   private readonly api = inject(ApiService);
   readonly data = signal<DashboardSummary | null>(null);
   readonly detail = signal<Invoice | null>(null);
+  readonly invoiceTab = signal<'items' | 'tracking' | 'documents'>('items');
   ngOnInit() {
     this.api.dashboard().subscribe((v) => this.data.set(v));
   }
@@ -135,6 +138,7 @@ export class DashboardPage implements OnInit {
     );
   }
   openRecent(invoice: Invoice) {
+    this.invoiceTab.set('items');
     this.api.invoice(invoice.id).subscribe((full) => this.detail.set(full));
   }
   openDocument(invoiceId: string, documentId: string) {

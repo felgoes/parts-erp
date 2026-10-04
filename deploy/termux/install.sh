@@ -84,7 +84,9 @@ chmod +x deploy/termux/*.sh
 
 cat >"$HOME/.termux/boot/parts-erp" <<EOF
 #!/data/data/com.termux/files/usr/bin/sh
-termux-wake-lock
+if command -v termux-wake-lock >/dev/null 2>&1; then
+  timeout 5 termux-wake-lock >/dev/null 2>&1 || true
+fi
 sleep 10
 PARTS_ERP_DIR="$APP_DIR" "$APP_DIR/deploy/termux/start.sh" >>"$APP_DIR/data/logs/boot.log" 2>&1
 EOF

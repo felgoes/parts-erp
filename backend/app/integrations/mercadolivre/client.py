@@ -103,9 +103,14 @@ class MercadoLivreClient:
             return self.refresh_access_token()
         return decrypt_secret(self.account.encrypted_access_token)
 
-    def get(self, path: str) -> dict[str, Any] | list[Any]:
+    def get(
+        self, path: str, extra_headers: dict[str, str] | None = None
+    ) -> dict[str, Any] | list[Any]:
+        headers = {"Authorization": f"Bearer {self.access_token()}"}
+        if extra_headers:
+            headers.update(extra_headers)
         with self._client() as client:
-            response = client.get(path, headers={"Authorization": f"Bearer {self.access_token()}"})
+            response = client.get(path, headers=headers)
         self._raise(response)
         return cast(dict[str, Any] | list[Any], response.json())
 

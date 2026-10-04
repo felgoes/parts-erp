@@ -130,7 +130,7 @@ grep -q '^PUBLIC_SITE_URL=' backend/.env || \
   printf 'PUBLIC_SITE_URL=https://goesautoparts.com.br\n' >>backend/.env
 chmod 600 backend/.env
 
-sed -e "s|__APP_DIR__|$APP_DIR|g" -e "s|__PREFIX__|$PREFIX|g" \
+sed -e "s|__APP_DIR__|$APP_DIR|g" -e "s|__PREFIX__|$PREFIX|g" -e "s|__HOME__|$HOME|g" \
   deploy/termux/nginx.conf.in >deploy/termux/nginx.conf
 sed -e "s|__APP_DIR__|$APP_DIR|g" \
   deploy/termux/redis.conf.in >deploy/termux/redis.conf

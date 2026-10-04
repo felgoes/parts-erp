@@ -15,6 +15,7 @@ from app.models import (
     Customer,
     InvoiceDocument,
     InvoiceSource,
+    InvoiceStatus,
     MarketplaceAccount,
     MarketplaceConfig,
     MarketplaceOrder,
@@ -24,7 +25,7 @@ from app.models import (
     SalesInvoice,
 )
 from app.schemas.common import InvoiceCreate, InvoiceItemCreate
-from app.services.sales import confirm_invoice, create_invoice
+from app.services.sales import cancel_invoice, confirm_invoice, create_invoice
 
 ORDER_RESOURCE = re.compile(r"^/orders/(?P<id>\d+)$")
 PRINTABLE_LOGISTICS = {"drop_off", "xd_drop_off", "cross_docking", "self_service"}
@@ -81,6 +82,10 @@ def is_paid(order: dict[str, Any]) -> bool:
     )
 
 
+def is_cancelled(order: dict[str, Any]) -> bool:
+    return str(order.get("status", "")).strip().lower() in {"cancelled", "canceled"}
+
+
 def _account(db: Session, seller_id: str) -> MarketplaceAccount:
     account = db.scalar(
         select(MarketplaceAccount).where(
@@ -127,8 +132,20 @@ def sync_order(db: Session, seller_id: str, resource: str) -> MarketplaceOrder:
         db.add(record)
         db.flush()
     else:
+        previous_after_sale_events = (
+            record.payload.get("_erp_after_sale_events", [])
+            if isinstance(record.payload, dict)
+            else []
+        )
         record.status = str(order.get("status", "unknown"))
-        record.payload = order
+        record.payload = {
+            **order,
+            **(
+                {"_erp_after_sale_events": previous_after_sale_events}
+                if previous_after_sale_events
+                else {}
+            ),
+        }
     has_event = db.scalar(
         select(MarketplaceOrderEvent.id).where(MarketplaceOrderEvent.order_id == record.id).limit(1)
     )
@@ -147,6 +164,43 @@ def sync_order(db: Session, seller_id: str, resource: str) -> MarketplaceOrder:
                 },
             )
         )
+    has_after_sale_event = db.scalar(
+        select(MarketplaceOrderEvent.id)
+        .where(
+            MarketplaceOrderEvent.order_id == record.id,
+            MarketplaceOrderEvent.event_type == "after_sale",
+        )
+        .limit(1)
+    )
+    if is_cancelled(order) and (previous_status != record.status or not has_after_sale_event):
+        cancel_detail = order.get("cancel_detail")
+        cancel_detail = cancel_detail if isinstance(cancel_detail, dict) else {}
+        reason = str(
+            cancel_detail.get("description")
+            or cancel_detail.get("reason")
+            or order.get("status_detail")
+            or "Pedido cancelado no Mercado Livre"
+        )[:500]
+        db.add(
+            MarketplaceOrderEvent(
+                order_id=record.id,
+                event_type="after_sale",
+                status="cancelled",
+                detail=reason,
+                payload={
+                    "kind": "cancellation",
+                    "status": "cancelled",
+                    "reason": reason,
+                    "requested_by": cancel_detail.get("requested_by"),
+                },
+                created_at=(
+                    _parse_event_datetime(
+                        str(order.get("date_closed") or order.get("last_updated") or "")
+                    )
+                    or datetime.now(UTC)
+                ),
+            )
+        )
     shipping = order.get("shipping") or {}
     shipment_id = shipping.get("id") if isinstance(shipping, dict) else None
     record.shipment_id = str(shipment_id) if shipment_id else record.shipment_id
@@ -159,15 +213,42 @@ def sync_order(db: Session, seller_id: str, resource: str) -> MarketplaceOrder:
     import_orders = config.import_orders if config else True
     automatic_stock = config.automatic_stock if config else True
     try:
-        if import_orders and is_paid(order) and not record.invoice_id:
+        cancelled = is_cancelled(order)
+        if import_orders and not record.invoice_id and (is_paid(order) or cancelled):
             item_inputs: list[InvoiceItemCreate] = []
             missing: list[str] = []
-            for line in order.get("order_items", []):
+            unlinked_products: list[Product] = []
+            temporarily_enabled_products: list[Product] = []
+            for index, line in enumerate(order.get("order_items", []), start=1):
                 sku = extract_sku(line)
                 product = db.scalar(select(Product).where(Product.sku == sku)) if sku else None
+                if product and cancelled and not product.active:
+                    product.active = True
+                    temporarily_enabled_products.append(product)
                 if not product:
-                    missing.append(sku or str(line.get("item", {}).get("id", "sem SKU")))
-                    continue
+                    if not cancelled:
+                        missing.append(sku or str(line.get("item", {}).get("id", "sem SKU")))
+                        continue
+                    item = line.get("item") if isinstance(line.get("item"), dict) else {}
+                    item_id = str(item.get("id") or f"{order_id}-{index}")
+                    placeholder_sku = f"ML-NAO-CONCILIADO-{item_id}"[:80]
+                    product = db.scalar(select(Product).where(Product.sku == placeholder_sku))
+                    if not product:
+                        product = Product(
+                            sku=placeholder_sku,
+                            name=str(item.get("title") or "Item cancelado sem SKU conciliado")[
+                                :200
+                            ],
+                            description=(
+                                f"Item do pedido Mercado Livre #{order_id}; conciliação pendente."
+                            ),
+                            sale_price=Decimal(str(line.get("unit_price", 0))),
+                            current_stock=Decimal("0"),
+                            minimum_stock=Decimal("0"),
+                        )
+                        db.add(product)
+                        db.flush()
+                        unlinked_products.append(product)
                 item_inputs.append(
                     InvoiceItemCreate(
                         product_id=product.id,
@@ -205,9 +286,20 @@ def sync_order(db: Session, seller_id: str, resource: str) -> MarketplaceOrder:
                 source=InvoiceSource.mercadolivre,
                 marketplace_order_id=order_id,
             )
-            if automatic_stock:
+            for product in unlinked_products:
+                product.active = False
+            for product in temporarily_enabled_products:
+                product.active = False
+            if cancelled:
+                cancel_invoice(db, invoice)
+            elif automatic_stock:
                 confirm_invoice(db, invoice)
             record.invoice_id = invoice.id
+
+        elif record.invoice_id and cancelled:
+            invoice = db.get(SalesInvoice, record.invoice_id)
+            if invoice and invoice.status != InvoiceStatus.cancelled:
+                cancel_invoice(db, invoice)
 
         order_created_at = _parse_event_datetime(str(order.get("date_created") or ""))
         if record.invoice_id and order_created_at:
@@ -342,7 +434,7 @@ def issue_and_sync_invoice(
     config = _automation_config(db)
     auto_issue = (
         config.auto_issue_invoice if config else get_settings().mercadolivre_auto_issue_invoice
-    )
+    ) and record.status.lower() not in {"cancelled", "canceled"}
     try:
         try:
             result = client.get(
@@ -694,6 +786,7 @@ def sync_all(db: Session, account: MarketplaceAccount) -> dict[str, int]:
     products = sync_products(db, account)
     orders = 0
     offset = 0
+    synchronized_ids: set[str] = set()
     while True:
         result = MercadoLivreClient(db, account).get(
             f"/orders/search?seller={account.seller_id}&offset={offset}&limit=50"
@@ -703,10 +796,27 @@ def sync_all(db: Session, account: MarketplaceAccount) -> dict[str, int]:
             break
         for order_id in ids:
             sync_order(db, account.seller_id, f"/orders/{order_id}")
+            synchronized_ids.add(order_id)
             orders += 1
         offset += len(ids)
         if len(ids) < 50:
             break
+    # Retry known orders without an invoice as well. This backfills cancelled
+    # orders already received by webhook before invoice generation was supported.
+    missing_invoice_ids = list(
+        db.scalars(
+            select(MarketplaceOrder.external_order_id).where(
+                MarketplaceOrder.provider == "mercadolivre",
+                MarketplaceOrder.seller_id == account.seller_id,
+                MarketplaceOrder.invoice_id.is_(None),
+            )
+        )
+    )
+    for order_id in missing_invoice_ids:
+        if order_id in synchronized_ids:
+            continue
+        sync_order(db, account.seller_id, f"/orders/{order_id}")
+        orders += 1
     return {"products": products, "orders": orders}
 
 

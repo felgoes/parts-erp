@@ -111,7 +111,19 @@ export interface Invoice {
   items: InvoiceItem[];
   documents: InvoiceDocument[];
   tracking?: InvoiceTracking | null;
+  after_sale?: InvoiceAfterSale | null;
   customer?: InvoiceCustomer | null;
+}
+export interface InvoiceAfterSale {
+  kind: 'return' | 'claim' | 'cancellation' | string;
+  status: string;
+  reason: string | null;
+  requested_by: string | null;
+  return_id: string | null;
+  payment_status: string | null;
+  refund_amount: number | null;
+  requested_at: string | null;
+  history: InvoiceTrackingEvent[];
 }
 export interface InvoiceCustomer {
   name: string;
@@ -135,6 +147,8 @@ export interface InvoiceTracking {
 export interface DashboardSummary {
   revenue_month: number;
   confirmed_sales: number;
+  cancelled_sales: number;
+  cancelled_amount: number;
   products_count: number;
   low_stock_count: number;
   recent_invoices: Invoice[];
@@ -158,6 +172,7 @@ export interface DashboardFinancialMetrics {
   previous_revenue: number;
   revenue_change_percent: number;
   cancelled_count: number;
+  cancelled_amount: number;
   documents_count: number;
   by_source: DashboardBreakdown[];
   daily: DashboardDailyMetric[];

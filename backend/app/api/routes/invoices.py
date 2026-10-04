@@ -24,6 +24,7 @@ from app.schemas.common import (
     InvoiceTrackingEventOut,
     InvoiceTrackingOut,
 )
+from app.services.after_sale import after_sales_for_invoices, invoice_after_sale
 from app.services.sales import cancel_invoice, confirm_invoice, create_invoice
 
 router = APIRouter(prefix="/invoices", tags=["Faturas de venda"])
@@ -50,7 +51,7 @@ def list_invoices(
     end_date: date | None = Query(default=None),
     db: Session = Depends(get_db),
     _: User = Depends(get_current_user),
-) -> list[SalesInvoice]:
+) -> list[InvoiceOut]:
     today = datetime.now(BRAZIL_TZ).date()
     start = start_date or today.replace(day=1)
     end = end_date or today
@@ -72,7 +73,14 @@ def list_invoices(
         .order_by(SalesInvoice.created_at.desc())
         .limit(200)
     )
-    return list(db.scalars(query))
+    invoices = list(db.scalars(query))
+    after_sales = after_sales_for_invoices(db, invoices)
+    outputs = []
+    for invoice in invoices:
+        output = InvoiceOut.model_validate(invoice)
+        output.after_sale = after_sales.get(invoice.id)
+        outputs.append(output)
+    return outputs
 
 
 @router.post("", response_model=InvoiceOut, status_code=201)
@@ -120,6 +128,23 @@ def get_invoice(
             )
         )
         if order:
+            result.after_sale = invoice_after_sale(order, invoice.total)
+            if result.after_sale:
+                result.after_sale.history = [
+                    InvoiceTrackingEventOut(
+                        status=event.status,
+                        detail=event.detail,
+                        created_at=event.created_at,
+                    )
+                    for event in db.scalars(
+                        select(MarketplaceOrderEvent)
+                        .where(
+                            MarketplaceOrderEvent.order_id == order.id,
+                            MarketplaceOrderEvent.event_type == "after_sale",
+                        )
+                        .order_by(MarketplaceOrderEvent.created_at.asc())
+                    )
+                ] or result.after_sale.history
             if order.shipment_id:
                 account = db.scalar(
                     select(MarketplaceAccount).where(

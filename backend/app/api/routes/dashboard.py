@@ -13,7 +13,9 @@ from app.schemas.common import (
     DashboardDailyMetric,
     DashboardFinancialMetrics,
     DashboardSummary,
+    InvoiceOut,
 )
+from app.services.after_sale import after_sales_for_invoices
 
 router = APIRouter(prefix="/dashboard", tags=["Painel"])
 BRAZIL_TZ = timezone(timedelta(hours=-3))
@@ -50,6 +52,15 @@ def summary(
     )
     revenue = db.scalar(select(func.coalesce(func.sum(SalesInvoice.total), 0)).where(*month_filter))
     sales = db.scalar(select(func.count(SalesInvoice.id)).where(*month_filter)) or 0
+    cancelled_filter = (
+        SalesInvoice.status == InvoiceStatus.cancelled,
+        invoice_date >= since,
+        invoice_date < until,
+    )
+    cancelled_sales = db.scalar(select(func.count(SalesInvoice.id)).where(*cancelled_filter)) or 0
+    cancelled_amount = db.scalar(
+        select(func.coalesce(func.sum(SalesInvoice.total), 0)).where(*cancelled_filter)
+    )
     products = db.scalar(select(func.count(Product.id)).where(Product.active.is_(True))) or 0
     low_stock = (
         db.scalar(
@@ -72,12 +83,20 @@ def summary(
             .limit(5)
         )
     )
+    after_sales = after_sales_for_invoices(db, recent)
+    recent_outputs: list[InvoiceOut] = []
+    for invoice in recent:
+        output = InvoiceOut.model_validate(invoice)
+        output.after_sale = after_sales.get(invoice.id)
+        recent_outputs.append(output)
     return DashboardSummary(
         revenue_month=Decimal(str(revenue or 0)),
         confirmed_sales=sales,
+        cancelled_sales=cancelled_sales,
+        cancelled_amount=Decimal(str(cancelled_amount or 0)),
         products_count=products,
         low_stock_count=low_stock,
-        recent_invoices=recent,
+        recent_invoices=recent_outputs,
     )
 
 
@@ -148,6 +167,14 @@ def financial_metrics(
         for invoice in rows
         if since <= timestamp(invoice) < until and invoice.status == InvoiceStatus.cancelled
     )
+    cancelled_amount = sum(
+        (
+            invoice.total
+            for invoice in rows
+            if since <= timestamp(invoice) < until and invoice.status == InvoiceStatus.cancelled
+        ),
+        Decimal("0"),
+    )
     return DashboardFinancialMetrics(
         period_label=f"{start.strftime('%d/%m/%Y')} a {end.strftime('%d/%m/%Y')}",
         revenue=revenue,
@@ -156,6 +183,7 @@ def financial_metrics(
         previous_revenue=previous_revenue,
         revenue_change_percent=change.quantize(Decimal("0.01")),
         cancelled_count=cancelled_count,
+        cancelled_amount=cancelled_amount,
         documents_count=sum(len(invoice.documents) for invoice in current),
         by_source=[
             DashboardBreakdown(label=label, amount=amount, count=count)

@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Any
 
 from arq.connections import RedisSettings
@@ -7,14 +8,15 @@ from app.core.config import get_settings
 from app.db.session import SessionLocal
 from app.integrations.mercadolivre.client import MercadoLivreClient
 from app.integrations.mercadolivre.sync import (
-    automate_order_documents,
     extract_invoice_order_ids,
     sync_all,
     sync_invoice_documents,
     sync_order,
 )
-from app.integrations.shopee.sync import sync_all as sync_shopee_all, sync_order as sync_shopee_order
-from app.models import MarketplaceAccount, MarketplaceOrder
+from app.integrations.shopee.sync import sync_all as sync_shopee_all
+from app.integrations.shopee.sync import sync_order as sync_shopee_order
+from app.models import MarketplaceAccount, MarketplaceOrderEvent
+from app.services.after_sale import after_sale_notification
 
 
 async def process_mercadolivre_notification(
@@ -40,20 +42,61 @@ async def process_mercadolivre_notification(
                 raw = candidate.get("id") if isinstance(candidate, dict) else candidate
                 if raw:
                     order_ids.add(str(raw))
+        related_entities = data.get("related_entities")
+        if isinstance(related_entities, list):
+            for entity in related_entities:
+                if not isinstance(entity, dict):
+                    continue
+                if "order" not in str(entity.get("type", "")).lower():
+                    continue
+                raw = entity.get("id")
+                if raw:
+                    order_ids.add(str(raw).rsplit("/", 1)[-1])
         for raw_order_id in order_ids:
             order_id = str(raw_order_id or "")
             if not order_id:
                 continue
-            order = db.scalar(
-                select(MarketplaceOrder).where(MarketplaceOrder.external_order_id == order_id)
-            )
-            if not order or not order.invoice_id:
-                order = sync_order(db, seller_id, f"/orders/{order_id}")
-            if order.invoice_id:
-                if topic == "invoices":
-                    sync_invoice_documents(db, account, order_id, order.invoice_id)
-                else:
-                    automate_order_documents(db, order)
+            # Always refresh the order before processing its webhook. Existing
+            # invoices must also receive cancellations, refunds and returns.
+            order = sync_order(db, seller_id, f"/orders/{order_id}")
+            if topic in {"claims", "returns"} and order:
+                event_data = after_sale_notification(topic, data)
+                saved_events = (order.payload or {}).get("_erp_after_sale_events", [])
+                if not isinstance(saved_events, list):
+                    saved_events = []
+                fingerprint = (
+                    event_data.get("kind"),
+                    event_data.get("id"),
+                    event_data.get("status"),
+                )
+                exists = any(
+                    isinstance(item, dict)
+                    and (item.get("kind"), item.get("id"), item.get("status")) == fingerprint
+                    for item in saved_events
+                )
+                if not exists:
+                    order.payload = {
+                        **(order.payload if isinstance(order.payload, dict) else {}),
+                        "_erp_after_sale_events": [*saved_events, event_data][-50:],
+                    }
+                    event_date = datetime.fromisoformat(
+                        event_data["created_at"].replace("Z", "+00:00")
+                    )
+                    db.add(
+                        MarketplaceOrderEvent(
+                            order_id=order.id,
+                            event_type="after_sale",
+                            status=str(event_data["status"]),
+                            detail=event_data.get("reason"),
+                            payload={
+                                key: value for key, value in event_data.items() if value is not None
+                            },
+                            created_at=event_date,
+                        )
+                    )
+                    db.commit()
+            if order.invoice_id and topic == "invoices":
+                sync_invoice_documents(db, account, order_id, order.invoice_id)
 
 
 async def sync_mercadolivre_account(ctx: dict[str, Any], seller_id: str) -> None:

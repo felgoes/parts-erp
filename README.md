@@ -33,6 +33,17 @@ docker compose exec backend python -m app.cli bootstrap-admin
 
 O ERP estará em `http://localhost:4200` e a documentação da API em `http://localhost:8000/docs`.
 
+## Testes de interface (E2E)
+
+Os testes Playwright usam uma conta de QA local para obter uma sessão pela API; eles não automatizam a tela de login nem desativam autenticação. Inicie a API e o frontend localmente, crie uma conta de QA no banco de desenvolvimento e configure `frontend/.env.e2e.local` (arquivo ignorado pelo Git):
+
+```dotenv
+E2E_TEST_EMAIL=qa-admin@example.com
+E2E_TEST_PASSWORD=senha-local-de-teste
+```
+
+Execute `cd frontend && npm run e2e`. Por segurança, o runner recusa URLs fora de `localhost`/`127.0.0.1`/`::1`; não aponte essas variáveis para produção. A conta e os dados de teste devem existir somente no banco local.
+
 ## Mercado Livre
 
 Crie uma aplicação no painel de desenvolvedores, configure a URL de redirecionamento e preencha as variáveis `MERCADOLIVRE_*`. No ERP, abra **Integrações**, conecte a conta vendedora e cadastre a URL pública `/api/v1/integrations/mercadolivre/webhook` nas notificações de `orders_v2` e `invoices`.

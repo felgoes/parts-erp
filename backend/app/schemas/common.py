@@ -232,6 +232,18 @@ class InvoiceTrackingOut(BaseModel):
     history: list[InvoiceTrackingEventOut]
 
 
+class InvoiceAfterSaleOut(BaseModel):
+    kind: str
+    status: str
+    reason: str | None = None
+    requested_by: str | None = None
+    return_id: str | None = None
+    payment_status: str | None = None
+    refund_amount: Decimal | None = None
+    requested_at: datetime | None = None
+    history: list[InvoiceTrackingEventOut] = Field(default_factory=list)
+
+
 class InvoiceOut(ORMModel):
     id: str
     number: str
@@ -249,6 +261,7 @@ class InvoiceOut(ORMModel):
     items: list[InvoiceItemOut]
     documents: list[DocumentOut]
     tracking: "InvoiceTrackingOut | None" = None
+    after_sale: InvoiceAfterSaleOut | None = None
     customer: InvoiceCustomerOut | None = None
 
     @field_serializer("issued_at")
@@ -259,6 +272,8 @@ class InvoiceOut(ORMModel):
 class DashboardSummary(BaseModel):
     revenue_month: Decimal
     confirmed_sales: int
+    cancelled_sales: int
+    cancelled_amount: Decimal
     products_count: int
     low_stock_count: int
     recent_invoices: list[InvoiceOut]
@@ -285,6 +300,7 @@ class DashboardFinancialMetrics(BaseModel):
     previous_revenue: Decimal
     revenue_change_percent: Decimal
     cancelled_count: int
+    cancelled_amount: Decimal
     documents_count: int
     by_source: list[DashboardBreakdown]
     daily: list[DashboardDailyMetric]

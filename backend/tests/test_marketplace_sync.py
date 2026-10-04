@@ -1,11 +1,12 @@
 from decimal import Decimal
 from types import SimpleNamespace
 
+from sqlalchemy import select
+
 from app.core.security import encrypt_secret
 from app.integrations.mercadolivre import sync as sync_module
 from app.integrations.mercadolivre.client import MercadoLivreClient
 from app.models import InvoiceDocument, MarketplaceAccount, Product
-from sqlalchemy import select
 
 
 def marketplace_account(db):
@@ -21,7 +22,7 @@ def marketplace_account(db):
 
 
 def test_order_webhook_creates_invoice_and_documents(db, monkeypatch, tmp_path):
-    account = marketplace_account(db)
+    marketplace_account(db)
     db.add(
         Product(
             sku="ABC-123",
@@ -36,9 +37,7 @@ def test_order_webhook_creates_invoice_and_documents(db, monkeypatch, tmp_path):
         "seller": {"id": 77},
         "status": "paid",
         "buyer": {"id": 9, "first_name": "Ana", "last_name": "Silva"},
-        "order_items": [
-            {"item": {"seller_sku": "ABC-123"}, "quantity": 1, "unit_price": 20}
-        ],
+        "order_items": [{"item": {"seller_sku": "ABC-123"}, "quantity": 1, "unit_price": 20}],
         "shipping": {"id": 555},
     }
 
@@ -67,16 +66,19 @@ def test_order_webhook_creates_invoice_and_documents(db, monkeypatch, tmp_path):
     monkeypatch.setattr(
         sync_module,
         "get_settings",
-        lambda: SimpleNamespace(documents_dir=str(tmp_path)),
+        lambda: SimpleNamespace(
+            documents_dir=str(tmp_path),
+            mercadolivre_auto_issue_invoice=False,
+            mercadolivre_auto_download_label=False,
+        ),
     )
 
     record = sync_module.sync_order(db, "77", "/orders/123")
 
     assert record.invoice_id is not None
     docs = list(db.scalars(select(InvoiceDocument)))
-    assert {doc.document_type for doc in docs} == {"xml", "pdf", "label"}
-    assert "/shipment_labels?shipment_ids=555&response_type=pdf" in downloads
-    assert len(downloads) == 3
+    assert {doc.document_type for doc in docs} == {"xml", "pdf"}
+    assert len(downloads) == 2
 
 
 def test_invoice_documents_are_idempotent(db, monkeypatch, tmp_path):
@@ -105,12 +107,16 @@ def test_invoice_documents_are_idempotent(db, monkeypatch, tmp_path):
     monkeypatch.setattr(MercadoLivreClient, "get", fake_get)
     monkeypatch.setattr(MercadoLivreClient, "download", fake_download)
 
-    first = sync_module.sync_invoice_documents(db, account, "123", "invoice-1", {"shipping": {"id": 555}})
-    second = sync_module.sync_invoice_documents(db, account, "123", "invoice-1", {"shipping": {"id": 555}})
+    first = sync_module.sync_invoice_documents(
+        db, account, "123", "invoice-1", {"shipping": {"id": 555}}
+    )
+    second = sync_module.sync_invoice_documents(
+        db, account, "123", "invoice-1", {"shipping": {"id": 555}}
+    )
 
-    assert first == 3
+    assert first == 2
     assert second == 0
-    assert len(calls) == 3
+    assert len(calls) == 2
 
 
 def test_initial_sync_imports_products_and_orders(db, monkeypatch):
@@ -130,6 +136,8 @@ def test_initial_sync_imports_products_and_orders(db, monkeypatch):
             }
         if "orders/search" in path:
             return {"results": [{"id": "123"}]}
+        if path.startswith("/visits/items?"):
+            return {}
         raise AssertionError(path)
 
     def fake_order(db, seller_id, resource):
@@ -146,3 +154,63 @@ def test_initial_sync_imports_products_and_orders(db, monkeypatch):
     assert product is not None
     assert product.current_stock == Decimal("8")
     assert calls == [("77", "/orders/123")]
+
+
+def test_marketplace_cancellation_keeps_invoice_and_restores_stock_once(db, monkeypatch):
+    marketplace_account(db)
+    product = Product(
+        sku="CANCEL-001",
+        name="Peça cancelada",
+        sale_price=Decimal("80"),
+        current_stock=Decimal("3"),
+    )
+    db.add(product)
+    db.commit()
+    order = {
+        "id": 321,
+        "seller": {"id": 77},
+        "status": "paid",
+        "date_created": "2026-08-15T12:30:00.000-04:00",
+        "buyer": {"id": 19, "first_name": "João", "last_name": "Cliente"},
+        "order_items": [{"item": {"seller_sku": "CANCEL-001"}, "quantity": 1, "unit_price": 80}],
+    }
+    monkeypatch.setattr(MercadoLivreClient, "get", lambda self, path: order)
+    monkeypatch.setattr(
+        sync_module,
+        "_automation_config",
+        lambda db: SimpleNamespace(
+            import_orders=True,
+            automatic_stock=True,
+            sync_documents=False,
+            auto_issue_invoice=False,
+            auto_download_label=False,
+        ),
+    )
+
+    record = sync_module.sync_order(db, "77", "/orders/321")
+    invoice = db.get(sync_module.SalesInvoice, record.invoice_id)
+    assert invoice is not None
+    assert invoice.status.value == "confirmed"
+    assert product.current_stock == Decimal("2")
+    assert invoice.issued_at.isoformat().startswith("2026-08-15T16:30:00")
+
+    order["status"] = "cancelled"
+    order["cancel_detail"] = {"description": "Devolução solicitada pelo comprador"}
+    record = sync_module.sync_order(db, "77", "/orders/321")
+    assert record.invoice_id == invoice.id
+    assert invoice.status.value == "cancelled"
+    assert product.current_stock == Decimal("3")
+    history = list(
+        db.scalars(
+            select(sync_module.MarketplaceOrderEvent).where(
+                sync_module.MarketplaceOrderEvent.order_id == record.id,
+                sync_module.MarketplaceOrderEvent.event_type == "after_sale",
+            )
+        )
+    )
+    assert len(history) == 1
+    assert history[0].detail == "Devolução solicitada pelo comprador"
+
+    sync_module.sync_order(db, "77", "/orders/321")
+    assert product.current_stock == Decimal("3")
+    assert invoice.status.value == "cancelled"

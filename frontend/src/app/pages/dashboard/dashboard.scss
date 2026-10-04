@@ -142,7 +142,7 @@
 .document-card b { color: var(--forest); font-size: 20px; }
 .document-icon { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 9px; background: #e9f1df; color: #547522; font-size: 10px; font-weight: 900; }
 .financial-head { align-items: center; }
-.financial-kpis { display: grid; grid-template-columns: 1.4fr repeat(3, 1fr); gap: 10px; margin-bottom: 22px; }
+.financial-kpis { display: grid; grid-template-columns: 1.3fr repeat(4, 1fr); gap: 10px; margin-bottom: 22px; }
 .financial-kpi { display: grid; gap: 7px; padding: 16px; border: 1px solid #e1e9e1; border-radius: 11px; background: #f1f5f2; }
 .financial-kpi span { color: var(--muted); font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
 .financial-kpi strong { font-size: 21px; letter-spacing: -.03em; }
@@ -175,6 +175,7 @@
   .dashboard-grid {
     grid-template-columns: 1fr;
   }
+  .financial-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 @media (max-width: 560px) {
   .metric-grid {

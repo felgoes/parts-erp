@@ -15,22 +15,22 @@ import { CatalogProduct } from '../../core/models';
           <span>GOES <small>AUTO PARTS</small></span>
         </a>
         <nav>
-          <a href="#catalogo">Catalogo</a>
+          <a href="#catalogo">Catálogo</a>
           <a href="#como-comprar">Como comprar</a>
-          <a class="header-cta" [href]="whatsappUrl()">Pedir no WhatsApp</a>
+          <a class="header-cta" [href]="whatsappUrl()">Falar com especialista</a>
         </nav>
       </header>
 
       <section class="hero">
         <div class="hero-copy">
-          <p class="kicker">GOES AUTO PARTS / VEICULOS CHINESES</p>
-          <h1>A peca certa para o seu carro chines.</h1>
+          <p class="kicker">GOES AUTO PARTS / PEÇAS PARA VEÍCULOS CHINESES</p>
+          <h1>Encontre a peça certa. Com orientação de quem entende.</h1>
           <p class="hero-text">
-            Especialistas em pecas para BYD, GWM, Chery, JAC e outros veiculos chineses. Consulte por marca, modelo e ano, confirme a disponibilidade e fale com a nossa equipe pelo WhatsApp.
+            Peças para BYD, GWM, Chery, JAC e outros veículos chineses. Busque pelo nome ou SKU, informe marca, modelo e ano e confirme a aplicação com a nossa equipe.
           </p>
           <div class="hero-actions">
-            <a class="button button-red" href="#catalogo">Ver catalogo</a>
-            <a class="button button-quiet" [href]="whatsappUrl()">Falar com a equipe</a>
+            <a class="button button-red" href="#catalogo">Explorar catálogo</a>
+            <a class="button button-quiet" [href]="whatsappUrl()">Falar com especialista</a>
           </div>
         </div>
         <div class="hero-mark" aria-hidden="true">
@@ -42,24 +42,24 @@ import { CatalogProduct } from '../../core/models';
       <section class="catalog-section" id="catalogo">
         <div class="section-head">
           <div>
-            <p class="kicker">CATALOGO ONLINE</p>
-            <h2>Pecas para veiculos chineses, sem misterio.</h2>
+            <p class="kicker">CATÁLOGO DE PEÇAS</p>
+            <h2>Encontre pelo nome, SKU ou aplicação.</h2>
           </div>
-          <p class="section-note">A disponibilidade muda em tempo real. Confirme marca, modelo, ano e aplicacao com a equipe.</p>
+          <p class="section-note">Disponibilidade atualizada conforme os anúncios. Antes de comprar, confirme aplicação, marca, modelo e ano com a equipe.</p>
         </div>
         <div class="search-row">
           <label class="search-box">
-            <span>Buscar por nome ou SKU</span>
-            <input [ngModel]="search" (ngModelChange)="onSearch($event)" (keyup.enter)="load()" placeholder="Ex.: pastilha, filtro, PAST-001" />
+            <span>O que você procura?</span>
+            <input [ngModel]="search" (ngModelChange)="onSearch($event)" (keyup.enter)="load()" placeholder="Ex.: filtro de óleo, Tiggo 7, LR174890" />
           </label>
-          <button class="button button-dark" (click)="load()">Buscar</button>
+          <button class="button button-dark" (click)="load()">Buscar peças</button>
         </div>
         @if (loading()) {
-          <div class="catalog-state">Carregando catalogo...</div>
+          <div class="catalog-state">Atualizando o catálogo...</div>
         } @else if (error()) {
-          <div class="catalog-state error">Nao foi possivel carregar o catalogo agora.</div>
+          <div class="catalog-state error"><strong>Não conseguimos carregar o catálogo.</strong><span>Tente novamente em instantes ou fale com a equipe pelo WhatsApp.</span></div>
         } @else if (!products().length) {
-          <div class="catalog-state">Nenhuma peca encontrada. Tente outro nome ou SKU.</div>
+          <div class="catalog-state"><strong>Nenhuma peça encontrada.</strong><span>Tente outro nome, SKU, marca ou modelo. Se preferir, nossa equipe encontra a peça com você.</span><a class="button button-quiet" [href]="whatsappUrl()">Pedir ajuda no WhatsApp</a></div>
         } @else {
           <div class="product-grid">
             @for (product of products(); track product.id) {
@@ -72,10 +72,10 @@ import { CatalogProduct } from '../../core/models';
                   <div class="product-foot">
                     <strong>{{ product.sale_price | currency: 'BRL' }}</strong>
                     <span [class.out]="!product.in_stock">
-                      {{ product.in_stock ? 'Em estoque' : 'Sob consulta' }}
+                      {{ product.in_stock ? 'Disponível' : 'Consulte disponibilidade' }}
                     </span>
                   </div>
-                  <a class="product-link" [href]="whatsappUrl(product)" (click)="track('whatsapp_click', { sku: product.sku, placement: 'product_card' })">Pedir esta peca</a>
+                  <a class="product-link" [href]="whatsappUrl(product)" (click)="track('whatsapp_click', { sku: product.sku, placement: 'product_card' })">Tenho interesse nesta peça ↗</a>
                 </div>
               </article>
             }
@@ -87,24 +87,24 @@ import { CatalogProduct } from '../../core/models';
         <div class="catalog-modal-backdrop" (click)="selected.set(null)">
           <section class="catalog-modal" (click)="$event.stopPropagation()">
             <button class="catalog-modal-close" type="button" aria-label="Fechar detalhes" (click)="selected.set(null)">×</button>
-            <div class="catalog-modal-head"><div><p class="kicker">DETALHES DA PEÇA</p><h2>{{ product.name }}</h2><p class="modal-sku">SKU {{ product.sku }}</p></div><span [class.out]="!product.in_stock" class="modal-stock">{{ product.in_stock ? 'Em estoque' : 'Sob consulta' }}</span></div>
-            <p class="modal-description">{{ product.description || 'Consulte a equipe para confirmar aplicação, compatibilidade e disponibilidade.' }}</p>
+            <div class="catalog-modal-head"><div><p class="kicker">DETALHES DA PEÇA</p><h2>{{ product.name }}</h2><p class="modal-sku">SKU {{ product.sku }}</p></div><span [class.out]="!product.in_stock" class="modal-stock">{{ product.in_stock ? 'Disponível' : 'Consulte disponibilidade' }}</span></div>
+            <p class="modal-description">{{ product.description || 'Fale com a equipe para confirmar aplicação, compatibilidade e disponibilidade antes de fechar o pedido.' }}</p>
             @for (listing of product.listings; track listing.external_item_id) {
-              <article class="catalog-listing"><div class="listing-media">@if (listing.thumbnail) { <img [src]="listing.thumbnail" [alt]="listing.title || product.name" /> } @else { <span>{{ glyph(product.name) }}</span> }</div><div class="listing-info"><div class="listing-top"><div><small>Mercado Livre · {{ listing.external_item_id }}</small><h3>{{ listing.title || product.name }}</h3></div><strong>{{ (listing.marketplace_price ?? product.sale_price) | currency:'BRL' }}</strong></div><div class="listing-stats"><span>Estoque <b>{{ listing.available_quantity ?? '—' }}</b></span><span>Vendidos <b>{{ listing.sold_quantity ?? 0 }}</b></span><span>Visitas <b>{{ listing.visits ?? 0 }}</b></span></div>@if (listing.attributes.length) { <div class="attribute-list">@for (attribute of listing.attributes; track attribute.name) { <span><small>{{ attribute.name }}</small><b>{{ attribute.value }}</b></span> }</div> }<div class="listing-actions"><a class="button button-red" [href]="whatsappUrl(product)" (click)="track('whatsapp_click', { sku: product.sku, placement: 'product_detail' })">Pedir esta peça</a>@if (listing.permalink) { <a class="button button-quiet listing-external" [href]="listing.permalink" target="_blank" rel="noopener">Ver anúncio no Mercado Livre ↗</a> }</div></div></article>
-            } @empty { <div class="catalog-state">Este produto ainda não possui anúncio vinculado.</div> }
+              <article class="catalog-listing"><div class="listing-media">@if (listing.thumbnail) { <img [src]="listing.thumbnail" [alt]="listing.title || product.name" /> } @else { <span>{{ glyph(product.name) }}</span> }</div><div class="listing-info"><div class="listing-top"><div><small>Anúncio no Mercado Livre · {{ listing.external_item_id }}</small><h3>{{ listing.title || product.name }}</h3></div><strong>{{ (listing.marketplace_price ?? product.sale_price) | currency:'BRL' }}</strong></div><div class="listing-stats"><span>Disponibilidade <b>{{ listing.available_quantity ?? '—' }}</b></span><span>Vendas no anúncio <b>{{ listing.sold_quantity ?? 0 }}</b></span><span>Visualizações <b>{{ listing.visits ?? 0 }}</b></span></div>@if (listing.attributes.length) { <div class="attribute-list">@for (attribute of listing.attributes; track attribute.name) { <span><small>{{ attribute.name }}</small><b>{{ attribute.value }}</b></span> }</div> }<div class="listing-actions"><a class="button button-red" [href]="whatsappUrl(product)" (click)="track('whatsapp_click', { sku: product.sku, placement: 'product_detail' })">Tenho interesse nesta peça</a>@if (listing.permalink) { <a class="button button-quiet listing-external" [href]="listing.permalink" target="_blank" rel="noopener">Abrir anúncio no Mercado Livre ↗</a> }</div></div></article>
+            } @empty { <div class="catalog-state">Este produto ainda não possui um anúncio vinculado. Fale com a equipe para consultar alternativas.</div> }
           </section>
         </div>
       }
 
       <section class="how-section" id="como-comprar">
         <div>
-          <p class="kicker">COMO FUNCIONA</p>
-          <h2>Uma conversa objetiva. Uma peca que encaixa.</h2>
+          <p class="kicker">COMO COMPRAR</p>
+          <h2>Uma conversa objetiva. A peça certa para o seu carro.</h2>
         </div>
         <div class="steps">
-          <div><b>01</b><span>Busque pelo nome ou SKU.</span></div>
-          <div><b>02</b><span>Envie o modelo e o ano do seu carro.</span></div>
-          <div><b>03</b><span>Receba confirmacao de aplicacao e disponibilidade.</span></div>
+          <div><b>01</b><span>Encontre a peça pelo nome, SKU ou anúncio.</span></div>
+          <div><b>02</b><span>Envie marca, modelo e ano do veículo.</span></div>
+          <div><b>03</b><span>Receba confirmação de aplicação e disponibilidade.</span></div>
         </div>
       </section>
 
@@ -113,8 +113,8 @@ import { CatalogProduct } from '../../core/models';
           <img src="/brand/goes-mark.png" alt="" />
           <span>GOES <small>AUTO PARTS</small></span>
         </div>
-        <p>Auto pecas para quem prefere resolver certo.</p>
-        <a [href]="whatsappUrl()">Atendimento pelo WhatsApp</a>
+        <p>Peças para veículos chineses, com orientação de verdade.</p>
+        <a [href]="whatsappUrl()">Falar com a equipe</a>
       </footer>
     </main>
   `,
@@ -175,8 +175,8 @@ export class CatalogPage implements OnInit {
 
   whatsappUrl(product?: CatalogProduct) {
     const text = product
-      ? `Ola! Tenho interesse na peca ${product.name} (SKU ${product.sku}). Pode confirmar a aplicacao?`
-      : 'Ola! Preciso de ajuda para encontrar uma peca.';
+      ? `Olá! Tenho interesse na peça ${product.name} (SKU ${product.sku}). Pode confirmar a aplicação para o meu veículo?`
+      : 'Olá! Preciso de ajuda para encontrar uma peça para o meu veículo.';
     return `https://wa.me/?text=${encodeURIComponent(text)}`;
   }
 }

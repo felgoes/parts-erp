@@ -61,7 +61,10 @@ h2 { font-size:clamp(30px, 4vw, 55px); line-height:.98; letter-spacing:-.055em; 
 .product-foot span.out { color:#a5a8ad; }
 .product-link { color:#fff; text-decoration:none; font-size:13px; font-weight:800; margin-top:15px; }
 .product-link:hover { color:#e51b35; }
-.catalog-state { border:1px solid #2e3136; color:#a7abb2; padding:46px; text-align:center; }
+.catalog-state { display:flex; flex-direction:column; align-items:center; gap:10px; border:1px solid #2e3136; color:#a7abb2; padding:46px; text-align:center; line-height:1.5; }
+.catalog-state strong { color:#fff; font-size:17px; }
+.catalog-state span { max-width:520px; }
+.catalog-state .button { margin-top:8px; }
 .catalog-state.error { color:#f0838d; }
 .catalog-modal-backdrop { position:fixed; z-index:20; inset:0; display:grid; place-items:center; padding:24px; background:#000b; }
 .catalog-modal { position:relative; width:min(920px,100%); max-height:90vh; overflow:auto; padding:34px; background:#111316; border:1px solid #3a3d42; box-shadow:0 28px 80px #000b; }

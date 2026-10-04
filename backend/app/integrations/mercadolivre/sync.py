@@ -382,6 +382,7 @@ def sync_shipping_label(db: Session, record: MarketplaceOrder, account: Marketpl
         if not isinstance(shipment, dict):
             raise MercadoLivreError("Resposta de envio inválida")
         record.shipping_status = str(shipment.get("status") or "unknown")
+        sync_shipping_history(db, record, account)
         logistic_value = shipment.get("logistic")
         logistic: dict[str, Any] = logistic_value if isinstance(logistic_value, dict) else {}
         logistic_type = str(shipment.get("logistic_type") or logistic.get("type") or "")
@@ -414,6 +415,82 @@ def sync_shipping_label(db: Session, record: MarketplaceOrder, account: Marketpl
     except MercadoLivreError as exc:
         record.label_status = "error"
         record.label_error = str(exc)[:1000]
+
+
+def sync_shipping_history(
+    db: Session, record: MarketplaceOrder, account: MarketplaceAccount
+) -> None:
+    """Import the shipment timeline exposed by Mercado Livre's history endpoint."""
+    if not record.shipment_id:
+        return
+    client = MercadoLivreClient(db, account)
+    try:
+        result = client.get(
+            f"/shipments/{record.shipment_id}/history",
+            extra_headers={"x-format-new": "true"},
+        )
+    except MercadoLivreError:
+        return
+    entries: Any
+    if isinstance(result, list):
+        entries = result
+    elif isinstance(result, dict):
+        entries = result.get("history") or result.get("events") or result.get("results") or []
+    else:
+        entries = []
+    if not isinstance(entries, list):
+        return
+    existing = list(
+        db.scalars(
+            select(MarketplaceOrderEvent).where(
+                MarketplaceOrderEvent.order_id == record.id,
+                MarketplaceOrderEvent.event_type == "shipment_status",
+            )
+        )
+    )
+    known = {
+        (
+            event.status,
+            event.detail,
+            str((event.payload or {}).get("source_date") or ""),
+        )
+        for event in existing
+    }
+    for item in entries:
+        if not isinstance(item, dict):
+            continue
+        status = str(item.get("status") or item.get("shipment_status") or "").strip()
+        if not status:
+            continue
+        substatus = item.get("substatus") or item.get("sub_status")
+        detail = str(substatus or item.get("detail") or item.get("description") or "").strip() or None
+        source_date = str(item.get("date") or item.get("created_at") or item.get("updated_at") or "").strip()
+        key = (status, detail, source_date)
+        if key in known:
+            continue
+        payload = dict(item)
+        payload["source_date"] = source_date
+        db.add(
+            MarketplaceOrderEvent(
+                order_id=record.id,
+                event_type="shipment_status",
+                status=status,
+                detail=detail,
+                payload=payload,
+                created_at=_parse_event_datetime(source_date) or datetime.now(UTC),
+            )
+        )
+        known.add(key)
+    db.commit()
+
+
+def _parse_event_datetime(value: str) -> datetime | None:
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
 
 
 def automate_order_documents(

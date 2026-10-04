@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.api.deps import get_current_user, require_roles
 from app.db.session import get_db
-from app.models import InvoiceDocument, MarketplaceOrder, MarketplaceOrderEvent, Product, SalesInvoice, User, UserRole
+from app.models import InvoiceDocument, MarketplaceAccount, MarketplaceOrder, MarketplaceOrderEvent, Product, SalesInvoice, User, UserRole
 from app.schemas.common import InvoiceCreate, InvoiceCustomerOut, InvoiceOut, InvoiceTrackingEventOut, InvoiceTrackingOut
 from app.services.sales import cancel_invoice, confirm_invoice, create_invoice
 
@@ -79,6 +79,22 @@ def get_invoice(
             )
         )
         if order:
+            if order.shipment_id:
+                account = db.scalar(
+                    select(MarketplaceAccount).where(
+                        MarketplaceAccount.provider == "mercadolivre",
+                        MarketplaceAccount.seller_id == order.seller_id,
+                        MarketplaceAccount.active.is_(True),
+                    )
+                )
+                if account:
+                    try:
+                        from app.integrations.mercadolivre.sync import sync_shipping_history
+
+                        sync_shipping_history(db, order, account)
+                    except Exception:
+                        # A detail screen must remain available if ML is temporarily offline.
+                        db.rollback()
             events = db.scalars(
                 select(MarketplaceOrderEvent)
                 .where(MarketplaceOrderEvent.order_id == order.id)

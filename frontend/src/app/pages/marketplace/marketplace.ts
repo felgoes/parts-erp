@@ -74,18 +74,6 @@ import { PageHeader } from '../../shared/page-header';
                   @if (o.sync_error) {
                     <small class="error-text">{{ o.sync_error }}</small>
                   }
-    @if (detail(); as order) {
-      <div class="modal-backdrop" (click)="detail.set(null)">
-        <section class="modal wide" (click)="$event.stopPropagation()">
-          <div class="modal-head"><div><p class="eyebrow">Pedido Mercado Livre</p><h2>#{{ order.external_order_id }}</h2></div><button class="close" (click)="detail.set(null)">×</button></div>
-          <div class="detail-grid"><div><small>Status no ML</small><strong>{{ order.status }}</strong></div><div><small>Sincronização</small><strong>{{ syncLabel(order.sync_status) }}</strong></div><div><small>Envio</small><strong>{{ order.shipping_status || 'Não informado' }}</strong></div><div><small>NF-e</small><strong>{{ automationLabel(order.fiscal_status) }}</strong></div><div><small>Etiqueta</small><strong>{{ automationLabel(order.label_status) }}</strong></div><div><small>Fatura</small><strong>{{ order.invoice_id ? 'Vinculada' : 'Não gerada' }}</strong></div></div>
-          <h3>Rastreamento e etapas</h3><div class="timeline"><div><strong>Pedido recebido</strong><span>{{ order.created_at | date:'dd/MM/yyyy HH:mm' }}</span></div><div><strong>Status atual: {{ order.status }}</strong><span>{{ order.synchronized_at ? (order.synchronized_at | date:'dd/MM/yyyy HH:mm') : 'Ainda não sincronizado' }}</span></div>@if (order.payload?.['shipping']) { <div><strong>Envio {{ order.payload?.['shipping']?.['id'] || '' }}</strong><span>{{ order.payload?.['shipping']?.['status'] || order.shipping_status || 'Em processamento' }}</span></div> }</div>
-          <h3>Histórico de status</h3>@if (history().length) { <div class="timeline">@for (event of history(); track event.id) { <div><strong>{{ event.status }}{{ event.detail ? ' · ' + event.detail : '' }}</strong><span>{{ event.created_at | date:'dd/MM/yyyy HH:mm' }}</span></div> }</div> } @else { <p class="muted">Nenhum evento histórico registrado.</p> }
-          <h3>Devolução/cancelamento</h3>@if (order.status === 'cancelled' || order.payload?.['status'] === 'cancelled' || order.payload?.['returns']) { @if (order.payload?.['cancel_detail']) { <div class="detail-grid"><div><small>Motivo</small><strong>{{ order.payload?.['cancel_detail']?.['description'] || 'Não informado' }}</strong></div><div><small>Solicitado por</small><strong>{{ order.payload?.['cancel_detail']?.['requested_by'] || 'Não informado' }}</strong></div><div><small>Pagamento</small><strong>{{ order.payload?.['payments']?.[0]?.['status'] || 'Não informado' }}</strong></div></div> } <pre class="payload">{{ order.payload?.['returns'] || order.payload?.['cancellations'] || order.payload | json }}</pre> } @else { <p class="muted">Nenhuma devolução ou cancelamento registrado neste pedido.</p> }
-          @if (order.sync_error || order.fiscal_error || order.label_error) { <h3>Ocorrências</h3><p class="error-text">{{ order.sync_error || order.fiscal_error || order.label_error }}</p> }
-        </section>
-      </div>
-    }
                 </td>
                 <td>{{ o.invoice_id ? 'Gerada' : '—' }}</td>
                 <td>
@@ -129,6 +117,18 @@ import { PageHeader } from '../../shared/page-header';
         </table>
       </div>
     </section>
+    @if (detail(); as order) {
+      <div class="modal-backdrop" (click)="detail.set(null)">
+        <section class="modal wide" (click)="$event.stopPropagation()">
+          <div class="modal-head"><div><p class="eyebrow">Pedido Mercado Livre</p><h2>#{{ order.external_order_id }}</h2></div><button class="close" (click)="detail.set(null)">×</button></div>
+          <div class="detail-grid"><div><small>Status no ML</small><strong>{{ order.status }}</strong></div><div><small>Sincronização</small><strong>{{ syncLabel(order.sync_status) }}</strong></div><div><small>Envio</small><strong>{{ order.shipping_status || 'Não informado' }}</strong></div><div><small>NF-e</small><strong>{{ automationLabel(order.fiscal_status) }}</strong></div><div><small>Etiqueta</small><strong>{{ automationLabel(order.label_status) }}</strong></div><div><small>Fatura</small><strong>{{ order.invoice_id ? 'Vinculada' : 'Não gerada' }}</strong></div></div>
+          <h3>Rastreamento e etapas</h3><div class="timeline"><div><strong>Pedido recebido</strong><span>{{ order.created_at | date:'dd/MM/yyyy HH:mm' }}</span></div><div><strong>Status atual: {{ order.status }}</strong><span>{{ order.synchronized_at ? (order.synchronized_at | date:'dd/MM/yyyy HH:mm') : 'Ainda não sincronizado' }}</span></div>@if (order.payload?.['shipping']) { <div><strong>Envio {{ order.payload?.['shipping']?.['id'] || '' }}</strong><span>{{ order.payload?.['shipping']?.['status'] || order.shipping_status || 'Em processamento' }}</span></div> }</div>
+          <h3>Histórico de status</h3>@if (history().length) { <div class="timeline">@for (event of history(); track event.id) { <div><strong>{{ event.status }}{{ event.detail ? ' · ' + event.detail : '' }}</strong><span>{{ event.created_at | date:'dd/MM/yyyy HH:mm' }}</span></div> }</div> } @else { <p class="muted">Nenhum evento histórico registrado.</p> }
+          <h3>Devolução/cancelamento</h3>@if (order.status === 'cancelled' || order.payload?.['status'] === 'cancelled' || order.payload?.['returns']) { @if (order.payload?.['cancel_detail']) { <div class="detail-grid"><div><small>Motivo</small><strong>{{ order.payload?.['cancel_detail']?.['description'] || 'Não informado' }}</strong></div><div><small>Solicitado por</small><strong>{{ order.payload?.['cancel_detail']?.['requested_by'] || 'Não informado' }}</strong></div><div><small>Pagamento</small><strong>{{ order.payload?.['payments']?.[0]?.['status'] || 'Não informado' }}</strong></div></div> } <pre class="payload">{{ order.payload?.['returns'] || order.payload?.['cancellations'] || order.payload | json }}</pre> } @else { <p class="muted">Nenhuma devolução ou cancelamento registrado neste pedido.</p> }
+          @if (order.sync_error || order.fiscal_error || order.label_error) { <h3>Ocorrências</h3><p class="error-text">{{ order.sync_error || order.fiscal_error || order.label_error }}</p> }
+        </section>
+      </div>
+    }
   `,
   styleUrl: './marketplace.scss',
 })

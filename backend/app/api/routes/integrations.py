@@ -173,6 +173,27 @@ def orders(
     )
 
 
+@router.post("/sync", status_code=202)
+async def sync_now(
+    db: Session = Depends(get_db), _: User = Depends(require_roles(UserRole.admin))
+) -> dict[str, bool | str]:
+    """Queue a full Mercado Livre import for the connected seller account."""
+    account = db.scalar(
+        select(MarketplaceAccount)
+        .where(
+            MarketplaceAccount.provider == "mercadolivre",
+            MarketplaceAccount.active.is_(True),
+        )
+        .limit(1)
+    )
+    if not account:
+        raise HTTPException(status_code=409, detail="Conta do Mercado Livre não conectada")
+    redis = await create_pool(RedisSettings.from_dsn(get_settings().redis_url))
+    await redis.enqueue_job("sync_mercadolivre_account", account.seller_id)
+    await redis.close()
+    return {"accepted": True, "message": "Sincronização do Mercado Livre enfileirada"}
+
+
 @router.post("/webhook", status_code=202)
 async def webhook(request: Request) -> dict[str, bool]:
     payload = await request.json()

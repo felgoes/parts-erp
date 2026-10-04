@@ -20,6 +20,7 @@ export class IntegrationsPage implements OnInit {
   readonly mlConfig = signal<MarketplaceConfig | null>(null);
   readonly mlSaving = signal(false);
   readonly mlConnecting = signal(false);
+  readonly mlSyncing = signal(false);
   readonly mlMessage = signal('');
   readonly shopeeStatus = signal<ShopeeStatus | null>(null);
   readonly shopeeConfig = signal<ShopeeConfig | null>(null);
@@ -31,7 +32,16 @@ export class IntegrationsPage implements OnInit {
   shopeeForm: ShopeeForm = { partner_id: '', partner_key: '', shop_id: '', redirect_uri: '', region: 'BR', import_orders: true, automatic_stock: true, sync_documents: true };
 
   ngOnInit() {
-    this.api.marketplaceStatus().subscribe((v) => this.mlStatus.set(v));
+    const connectedReturn = new URLSearchParams(window.location.search).get('connected') === 'true';
+    this.api.marketplaceStatus().subscribe((v) => {
+      this.mlStatus.set(v);
+      if (connectedReturn && v.connected) {
+        window.history.replaceState({}, '', window.location.pathname);
+        if (window.confirm('Conta do Mercado Livre conectada. Deseja sincronizar produtos, pedidos e documentos agora?')) {
+          this.syncMercadoLivre();
+        }
+      }
+    });
     this.api.marketplaceConfig().subscribe((v) => { this.mlConfig.set(v); this.mlForm = { ...this.mlForm, ...v, client_secret: '' }; });
     this.api.shopeeStatus().subscribe((v) => this.shopeeStatus.set(v));
     this.api.shopeeConfig().subscribe((v) => { this.shopeeConfig.set(v); this.shopeeForm = { ...this.shopeeForm, ...v, partner_key: '', shop_id: v.shop_id || '' }; });
@@ -48,6 +58,14 @@ export class IntegrationsPage implements OnInit {
   connectMercadoLivre() {
     this.mlConnecting.set(true);
     this.api.connectMarketplace().subscribe({ next: (v) => location.assign(v.authorization_url), error: () => this.mlConnecting.set(false) });
+  }
+
+  syncMercadoLivre() {
+    this.mlSyncing.set(true); this.mlMessage.set('');
+    this.api.syncMarketplace().subscribe({
+      next: (v) => { this.mlMessage.set(v.message); this.mlSyncing.set(false); },
+      error: (err) => { this.mlMessage.set(err?.error?.detail || 'Não foi possível iniciar a sincronização.'); this.mlSyncing.set(false); },
+    });
   }
 
   saveShopee() {

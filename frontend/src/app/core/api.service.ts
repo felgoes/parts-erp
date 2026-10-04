@@ -93,6 +93,11 @@ export class ApiService {
   marketplaceOrders(): Observable<MarketplaceOrder[]> {
     return this.http.get<MarketplaceOrder[]>(`${this.base}/integrations/mercadolivre/orders`);
   }
+  syncMarketplace(): Observable<{ accepted: boolean; message: string }> {
+    return this.http.post<{ accepted: boolean; message: string }>(
+      `${this.base}/integrations/mercadolivre/sync`, {},
+    );
+  }
   connectMarketplace(): Observable<{ authorization_url: string }> {
     return this.http.get<{ authorization_url: string }>(
       `${this.base}/integrations/mercadolivre/connect`,

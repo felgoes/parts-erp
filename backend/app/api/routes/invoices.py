@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session, selectinload
 from app.api.deps import get_current_user, require_roles
 from app.db.session import get_db
 from app.models import InvoiceDocument, MarketplaceOrder, MarketplaceOrderEvent, Product, SalesInvoice, User, UserRole
-from app.schemas.common import InvoiceCreate, InvoiceOut, InvoiceTrackingEventOut, InvoiceTrackingOut
+from app.schemas.common import InvoiceCreate, InvoiceCustomerOut, InvoiceOut, InvoiceTrackingEventOut, InvoiceTrackingOut
 from app.services.sales import cancel_invoice, confirm_invoice, create_invoice
 
 router = APIRouter(prefix="/invoices", tags=["Faturas de venda"])
@@ -54,12 +54,23 @@ def get_invoice(
 ) -> InvoiceOut:
     invoice = db.scalar(
         select(SalesInvoice)
-        .options(selectinload(SalesInvoice.items), selectinload(SalesInvoice.documents))
+        .options(
+            selectinload(SalesInvoice.items),
+            selectinload(SalesInvoice.documents),
+            selectinload(SalesInvoice.customer),
+        )
         .where(SalesInvoice.id == invoice_id)
     )
     if not invoice:
         raise HTTPException(status_code=404, detail="Fatura não encontrada")
     result = InvoiceOut.model_validate(invoice)
+    if invoice.customer:
+        result.customer = InvoiceCustomerOut(
+            name=invoice.customer.name,
+            document=invoice.customer.document,
+            email=invoice.customer.email,
+            phone=invoice.customer.phone,
+        )
     if invoice.marketplace_order_id:
         order = db.scalar(
             select(MarketplaceOrder).where(

@@ -111,6 +111,13 @@ export interface Invoice {
   items: InvoiceItem[];
   documents: InvoiceDocument[];
   tracking?: InvoiceTracking | null;
+  customer?: InvoiceCustomer | null;
+}
+export interface InvoiceCustomer {
+  name: string;
+  document: string | null;
+  email: string | null;
+  phone: string | null;
 }
 export interface InvoiceTrackingEvent {
   status: string;

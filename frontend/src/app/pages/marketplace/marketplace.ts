@@ -193,11 +193,8 @@ export class MarketplacePage implements OnInit {
   download(invoiceId: string, documentId: string, filename: string) {
     this.api.downloadInvoiceDocument(invoiceId, documentId).subscribe((blob) => {
       const url = URL.createObjectURL(blob);
-      const anchor = document.createElement('a');
-      anchor.href = url;
-      anchor.download = filename;
-      anchor.click();
-      URL.revokeObjectURL(url);
+      window.open(url, '_blank', 'noopener,noreferrer');
+      window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
     });
   }
 }

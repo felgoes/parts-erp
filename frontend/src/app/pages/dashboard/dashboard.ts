@@ -107,7 +107,7 @@ import { PageHeader } from '../../shared/page-header';
             <div class="modal-head"><div><p class="eyebrow">Venda recente</p><h2>{{ invoice.number }}</h2></div><button class="close" (click)="detail.set(null)">×</button></div>
             <div class="detail-grid"><div><small>Status</small><strong>{{ status(invoice.status) }}</strong></div><div><small>Origem</small><strong>{{ invoice.source === 'mercadolivre' ? 'Mercado Livre' : 'Manual' }}</strong></div><div><small>Total</small><strong>{{ invoice.total | currency:'BRL' }}</strong></div></div>
             <h3>Itens vendidos</h3><div class="invoice-detail-lines">@for (item of invoice.items; track item.id) { <div><span><strong>{{ item.description }}</strong><small>{{ item.sku }} · {{ item.quantity }} un.</small></span><strong>{{ item.total | currency:'BRL' }}</strong></div> }</div>
-            <h3>Documentos</h3>@for (doc of invoice.documents; track doc.id) { <button class="doc" (click)="download(invoice.id, doc.id, doc.filename)">{{ doc.document_type }} · {{ doc.filename }}</button> } @empty { <p class="muted">Nenhum documento anexado.</p> }
+            <h3>Documentos</h3>@for (doc of invoice.documents; track doc.id) { <button class="doc" (click)="openDocument(invoice.id, doc.id)">{{ doc.document_type }} · {{ doc.filename }}</button> } @empty { <p class="muted">Nenhum documento anexado.</p> }
           </section>
         </div>
       }
@@ -137,14 +137,11 @@ export class DashboardPage implements OnInit {
   openRecent(invoice: Invoice) {
     this.api.invoice(invoice.id).subscribe((full) => this.detail.set(full));
   }
-  download(invoiceId: string, documentId: string, filename: string) {
+  openDocument(invoiceId: string, documentId: string) {
     this.api.downloadInvoiceDocument(invoiceId, documentId).subscribe((blob) => {
       const url = URL.createObjectURL(blob);
-      const anchor = document.createElement('a');
-      anchor.href = url;
-      anchor.download = filename;
-      anchor.click();
-      URL.revokeObjectURL(url);
+      window.open(url, '_blank', 'noopener,noreferrer');
+      window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
     });
   }
 }

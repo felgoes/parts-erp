@@ -47,7 +47,7 @@ import { PageHeader } from '../../shared/page-header';
                 <td>
                   @if (i.documents.length) {
                     @for (doc of i.documents; track doc.id) {
-                      <button class="doc" (click)="$event.stopPropagation(); download(i.id, doc.id, doc.filename)">
+                      <button class="doc" (click)="$event.stopPropagation(); openDocument(i.id, doc.id)">
                         {{ doc.document_type | uppercase }}
                       </button>
                     }
@@ -132,12 +132,12 @@ import { PageHeader } from '../../shared/page-header';
     @if (detail(); as invoice) {
       <div class="modal-backdrop" (click)="detail.set(null)">
         <section class="modal wide" (click)="$event.stopPropagation()">
-          <div class="modal-head"><div><p class="eyebrow">Fatura {{ invoice.number }}</p><h2>Detalhamento da venda</h2></div><button class="close" (click)="detail.set(null)">×</button></div>
-          <nav class="detail-tabs" aria-label="Detalhes da venda"><button [class.active]="invoiceTab() === 'items'" (click)="invoiceTab.set('items')">Itens</button><button [class.active]="invoiceTab() === 'tracking'" (click)="invoiceTab.set('tracking')">Rastreio</button><button [class.active]="invoiceTab() === 'documents'" (click)="invoiceTab.set('documents')">Documentos</button></nav>
-          <div class="detail-grid"><div><small>Status atual</small><strong>{{ label(invoice.status) }}</strong></div><div><small>Origem</small><strong>{{ invoice.source === 'mercadolivre' ? 'Mercado Livre' : 'Manual' }}</strong></div><div><small>Pedido</small><strong>{{ invoice.marketplace_order_id || '—' }}</strong></div></div>
-          @if (invoiceTab() === 'items') { <h3>Itens vendidos</h3><div class="invoice-detail-lines">@for (item of invoice.items; track item.id) { <div><span><strong>{{ item.description }}</strong><small>{{ item.sku }} · {{ item.quantity }} un.</small></span><strong>{{ item.total | currency:'BRL' }}</strong></div> }</div><div class="invoice-total"><span>Total</span><strong>{{ invoice.total | currency:'BRL' }}</strong></div> }
-          @if (invoiceTab() === 'tracking') { @if (invoice.tracking; as tracking) { <div class="detail-grid tracking-grid"><div><small>Status do pedido</small><strong>{{ tracking.status || '—' }}</strong></div><div><small>Status do envio</small><strong>{{ tracking.shipping_status || 'Aguardando atualização' }}</strong></div><div><small>Etiqueta</small><strong>{{ tracking.label_status || '—' }}</strong></div><div><small>ID do envio</small><strong>{{ tracking.shipment_id || '—' }}</strong></div></div><h3>Linha do tempo</h3><div class="timeline">@for (event of tracking.history; track event.created_at + event.status) { <div><strong>{{ event.status }}{{ event.detail ? ' · ' + event.detail : '' }}</strong><span>{{ event.created_at | date:'dd/MM/yyyy HH:mm' }}</span></div> } @empty { <p class="muted">Ainda não há eventos de rastreio registrados.</p> }</div> } @else { <div class="empty">Esta venda não está vinculada a um pedido de marketplace.</div> } }
-          @if (invoiceTab() === 'documents') { <h3>Documentos e histórico</h3><p class="muted">Criada em {{ invoice.created_at | date:'dd/MM/yyyy HH:mm' }}{{ invoice.issued_at ? ' · Emitida em ' + (invoice.issued_at | date:'dd/MM/yyyy HH:mm') : '' }}</p>@if (invoice.documents.length) { @for (doc of invoice.documents; track doc.id) { <button class="doc" (click)="download(invoice.id, doc.id, doc.filename)">{{ doc.document_type | uppercase }} · {{ doc.filename }}</button> } } @else { <p class="muted">Nenhum documento anexado ainda.</p> } }
+          <div class="modal-head detail-hero"><div><p class="eyebrow">Venda {{ invoice.source === 'mercadolivre' ? 'Mercado Livre' : 'manual' }}</p><h2>{{ invoice.number }}</h2><p class="detail-subtitle">Criada em {{ invoice.created_at | date:'dd/MM/yyyy HH:mm' }}{{ invoice.issued_at ? ' · emitida em ' + (invoice.issued_at | date:'dd/MM/yyyy HH:mm') : '' }}</p></div><div class="hero-actions"><span class="badge" [class]="invoice.status">{{ label(invoice.status) }}</span><button class="close" aria-label="Fechar detalhe" (click)="detail.set(null)">×</button></div></div>
+          <div class="detail-summary"><div><span>Cliente</span><strong>{{ invoice.customer?.name || 'Consumidor não identificado' }}</strong><small>{{ invoice.customer?.document || invoice.customer?.email || 'Sem cadastro vinculado' }}</small></div><div><span>Pedido relacionado</span><strong>{{ invoice.marketplace_order_id ? '#' + invoice.marketplace_order_id : 'Venda local' }}</strong><small>{{ invoice.items.length }} item(ns) · {{ invoice.total | currency:'BRL' }}</small></div></div>
+          <nav class="detail-tabs" aria-label="Detalhes da venda"><button [class.active]="invoiceTab() === 'items'" (click)="invoiceTab.set('items')">Itens <small>{{ invoice.items.length }}</small></button><button [class.active]="invoiceTab() === 'tracking'" (click)="invoiceTab.set('tracking')">Rastreio</button><button [class.active]="invoiceTab() === 'documents'" (click)="invoiceTab.set('documents')">Documentos <small>{{ invoice.documents.length }}</small></button></nav>
+          @if (invoiceTab() === 'items') { <section class="detail-section"><div class="section-heading"><div><p class="eyebrow">Composição</p><h3>Itens vendidos</h3></div><strong>{{ invoice.total | currency:'BRL' }}</strong></div><div class="invoice-detail-lines">@for (item of invoice.items; track item.id) { <div><span class="item-main"><strong>{{ item.description }}</strong><small>SKU {{ item.sku }} · {{ item.quantity }} unidade(s) · {{ item.unit_price | currency:'BRL' }} cada</small></span><strong>{{ item.total | currency:'BRL' }}</strong></div> }</div></section> }
+          @if (invoiceTab() === 'tracking') { <section class="detail-section">@if (invoice.tracking; as tracking) { <div class="tracking-cards"><div><span>Status do pedido</span><strong>{{ tracking.status || '—' }}</strong></div><div><span>Envio</span><strong>{{ tracking.shipping_status || 'Aguardando atualização' }}</strong></div><div><span>Etiqueta</span><strong>{{ tracking.label_status || '—' }}</strong></div><div><span>Código</span><strong>{{ tracking.shipment_id || '—' }}</strong></div></div><div class="section-heading"><div><p class="eyebrow">Acompanhamento</p><h3>Linha do tempo</h3></div><small>{{ tracking.last_update ? ('Atualizado ' + (tracking.last_update | date:'dd/MM/yyyy HH:mm')) : '' }}</small></div><div class="timeline">@for (event of tracking.history; track event.created_at + event.status) { <div><strong>{{ event.status }}{{ event.detail ? ' · ' + event.detail : '' }}</strong><span>{{ event.created_at | date:'dd/MM/yyyy HH:mm' }}</span></div> } @empty { <p class="muted">Ainda não há eventos de rastreio registrados.</p> }</div> } @else { <div class="empty">Esta venda não está vinculada a um pedido de marketplace.</div> }</section> }
+          @if (invoiceTab() === 'documents') { <section class="detail-section"><div class="section-heading"><div><p class="eyebrow">Fiscal</p><h3>Documentos da venda</h3></div><span class="muted">Clique para abrir em nova guia</span></div>@if (invoice.documents.length) { <div class="document-list">@for (doc of invoice.documents; track doc.id) { <button class="document-card" (click)="openDocument(invoice.id, doc.id)"><span class="document-icon">{{ doc.document_type === 'pdf' ? 'PDF' : 'XML' }}</span><span><strong>{{ doc.filename }}</strong><small>{{ doc.document_type === 'pdf' ? 'DANFE para visualização' : 'Nota fiscal eletrônica' }}</small></span><b>↗</b></button> }</div> } @else { <div class="empty">Nenhum documento anexado ainda.</div> }</section> }
         </section>
       </div>
     }
@@ -204,14 +204,11 @@ export class InvoicesPage implements OnInit {
     this.invoiceTab.set('items');
     this.api.invoice(i.id).subscribe((full) => this.detail.set(full));
   }
-  download(invoiceId: string, documentId: string, filename: string) {
+  openDocument(invoiceId: string, documentId: string) {
     this.api.downloadInvoiceDocument(invoiceId, documentId).subscribe((blob) => {
       const url = URL.createObjectURL(blob);
-      const anchor = document.createElement('a');
-      anchor.href = url;
-      anchor.download = filename;
-      anchor.click();
-      URL.revokeObjectURL(url);
+      window.open(url, '_blank', 'noopener,noreferrer');
+      window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
     });
   }
   label(s: string) {

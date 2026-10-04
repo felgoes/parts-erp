@@ -189,6 +189,13 @@ class DocumentOut(ORMModel):
     created_at: datetime
 
 
+class InvoiceCustomerOut(BaseModel):
+    name: str
+    document: str | None = None
+    email: str | None = None
+    phone: str | None = None
+
+
 class InvoiceTrackingEventOut(BaseModel):
     status: str
     detail: str | None
@@ -221,6 +228,7 @@ class InvoiceOut(ORMModel):
     items: list[InvoiceItemOut]
     documents: list[DocumentOut]
     tracking: "InvoiceTrackingOut | None" = None
+    customer: InvoiceCustomerOut | None = None
 
 
 class DashboardSummary(BaseModel):

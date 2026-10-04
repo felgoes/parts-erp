@@ -1,10 +1,9 @@
 from collections import defaultdict, deque
-from datetime import UTC, date, datetime, time, timedelta
+from datetime import UTC, date, datetime, time, timedelta, timezone
 from hashlib import sha256
 from threading import Lock
 from time import monotonic
 from typing import Any
-from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy import func, select
@@ -106,7 +105,9 @@ def summary(
         raise HTTPException(status_code=422, detail="A data inicial deve ser anterior à data final")
     if (end - start).days > 364:
         raise HTTPException(status_code=422, detail="O período máximo é de 365 dias")
-    local_zone = ZoneInfo("America/Sao_Paulo")
+    # Brazil currently observes UTC-03 year-round; using a fixed offset keeps
+    # the monitor working on minimal Termux installs without the tzdata package.
+    local_zone = timezone(timedelta(hours=-3))
     since = datetime.combine(start, time.min, local_zone).astimezone(UTC)
     until = datetime.combine(end + timedelta(days=1), time.min, local_zone).astimezone(UTC)
     rows = db.execute(

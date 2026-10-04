@@ -1,7 +1,7 @@
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 from decimal import Decimal
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_serializer
 
 from app.models import UserRole
 
@@ -163,6 +163,10 @@ class CustomerPurchaseOut(BaseModel):
     created_at: datetime
     item_count: int
 
+    @field_serializer("issued_at")
+    def serialize_issued_at(self, value: datetime | None) -> datetime | None:
+        return value.replace(tzinfo=UTC) if value and value.tzinfo is None else value
+
 
 class CustomerDetailOut(CustomerOut):
     purchase_count: int
@@ -246,6 +250,10 @@ class InvoiceOut(ORMModel):
     documents: list[DocumentOut]
     tracking: "InvoiceTrackingOut | None" = None
     customer: InvoiceCustomerOut | None = None
+
+    @field_serializer("issued_at")
+    def serialize_issued_at(self, value: datetime | None) -> datetime | None:
+        return value.replace(tzinfo=UTC) if value and value.tzinfo is None else value
 
 
 class DashboardSummary(BaseModel):

@@ -21,6 +21,7 @@ from app.models import (
     MarketplaceOrderEvent,
     Product,
     ProductMarketplaceListing,
+    SalesInvoice,
 )
 from app.schemas.common import InvoiceCreate, InvoiceItemCreate
 from app.services.sales import confirm_invoice, create_invoice
@@ -129,9 +130,7 @@ def sync_order(db: Session, seller_id: str, resource: str) -> MarketplaceOrder:
         record.status = str(order.get("status", "unknown"))
         record.payload = order
     has_event = db.scalar(
-        select(MarketplaceOrderEvent.id)
-        .where(MarketplaceOrderEvent.order_id == record.id)
-        .limit(1)
+        select(MarketplaceOrderEvent.id).where(MarketplaceOrderEvent.order_id == record.id).limit(1)
     )
     if previous_status != record.status or not has_event:
         db.add(
@@ -209,6 +208,18 @@ def sync_order(db: Session, seller_id: str, resource: str) -> MarketplaceOrder:
             if automatic_stock:
                 confirm_invoice(db, invoice)
             record.invoice_id = invoice.id
+
+        order_created_at = _parse_event_datetime(str(order.get("date_created") or ""))
+        if record.invoice_id and order_created_at:
+            invoice = db.get(SalesInvoice, record.invoice_id)
+            if invoice:
+                # Keep the invoice's business date aligned with the original
+                # Mercado Livre order, not the later webhook/sync arrival time.
+                invoice.issued_at = (
+                    order_created_at.replace(tzinfo=UTC)
+                    if order_created_at.tzinfo is None
+                    else order_created_at.astimezone(UTC)
+                )
 
         record.sync_status = "synced"
         record.sync_error = None
@@ -481,8 +492,12 @@ def sync_shipping_history(
         if not status:
             continue
         substatus = item.get("substatus") or item.get("sub_status")
-        detail = str(substatus or item.get("detail") or item.get("description") or "").strip() or None
-        source_date = str(item.get("date") or item.get("created_at") or item.get("updated_at") or "").strip()
+        detail = (
+            str(substatus or item.get("detail") or item.get("description") or "").strip() or None
+        )
+        source_date = str(
+            item.get("date") or item.get("created_at") or item.get("updated_at") or ""
+        ).strip()
         key = (status, detail, source_date)
         if key in known:
             continue
@@ -625,7 +640,9 @@ def sync_products(db: Session, account: MarketplaceAccount) -> int:
             listing.available_quantity = Decimal(str(detail.get("available_quantity") or 0))
             listing.sold_quantity = int(detail.get("sold_quantity") or 0)
             try:
-                visits_result = MercadoLivreClient(db, account).get(f"/visits/items?ids={external_id}")
+                visits_result = MercadoLivreClient(db, account).get(
+                    f"/visits/items?ids={external_id}"
+                )
                 if isinstance(visits_result, dict):
                     listing.visits = int(visits_result.get(external_id) or 0)
             except MercadoLivreError:
@@ -644,10 +661,12 @@ def sync_products(db: Session, account: MarketplaceAccount) -> int:
 
 def sync_product_stock(db: Session, product: Product) -> int:
     account = db.scalar(
-        select(MarketplaceAccount).where(
+        select(MarketplaceAccount)
+        .where(
             MarketplaceAccount.provider == "mercadolivre",
             MarketplaceAccount.active.is_(True),
-        ).limit(1)
+        )
+        .limit(1)
     )
     if not account:
         return 0

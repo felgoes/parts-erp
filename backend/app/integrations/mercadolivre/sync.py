@@ -28,7 +28,8 @@ from app.services.sales import confirm_invoice, create_invoice
 ORDER_RESOURCE = re.compile(r"^/orders/(?P<id>\d+)$")
 PRINTABLE_LOGISTICS = {"drop_off", "xd_drop_off", "cross_docking", "self_service"}
 FINISHED_FISCAL_STATUSES = {"authorized", "not_applicable"}
-FINISHED_LABEL_STATUSES = {"downloaded", "not_applicable"}
+FINISHED_LABEL_STATUSES = {"downloaded", "completed", "not_applicable"}
+TERMINAL_SHIPPING_STATUSES = {"delivered", "returned", "not_delivered", "cancelled", "canceled"}
 
 
 def _resource_ids(result: dict[str, Any] | list[Any]) -> list[str]:
@@ -383,6 +384,23 @@ def sync_shipping_label(db: Session, record: MarketplaceOrder, account: Marketpl
             raise MercadoLivreError("Resposta de envio inválida")
         record.shipping_status = str(shipment.get("status") or "unknown")
         sync_shipping_history(db, record, account)
+
+        # Depois que o pedido já foi entregue/devolvido, a janela operacional
+        # da etiqueta foi encerrada. Não devemos mostrar "Aguardando envio"
+        # indefinidamente só porque a etiqueta não foi arquivada pelo ERP.
+        # Se ela já estiver anexada, preservamos o status "Baixada".
+        if record.shipping_status.lower() in TERMINAL_SHIPPING_STATUSES:
+            has_label = db.scalar(
+                select(InvoiceDocument.id).where(
+                    InvoiceDocument.invoice_id == record.invoice_id,
+                    InvoiceDocument.document_type == "label_pdf",
+                )
+            )
+            if not has_label:
+                record.label_status = "completed"
+                record.label_error = None
+            return
+
         logistic_value = shipment.get("logistic")
         logistic: dict[str, Any] = logistic_value if isinstance(logistic_value, dict) else {}
         logistic_type = str(shipment.get("logistic_type") or logistic.get("type") or "")

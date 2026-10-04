@@ -72,7 +72,9 @@ def _listing_out(listing) -> CatalogListingOut:
             continue
         name = str(attribute.get("name") or attribute.get("id") or "").strip()
         value = str(attribute.get("value_name") or attribute.get("value_id") or "").strip()
-        if name and value:
+        # O Mercado Livre usa -1 para atributos sem preenchimento. Esse
+        # marcador técnico não é informação útil para quem visita o catálogo.
+        if name and value and value not in {"-1", "-", "—", "N/A", "n/a"}:
             attributes.append({"name": name, "value": value})
     return CatalogListingOut(
         provider=listing.provider,

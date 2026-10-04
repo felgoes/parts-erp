@@ -2,6 +2,7 @@ bind 127.0.0.1 -::1
 protected-mode yes
 port 6379
 daemonize yes
+ignore-warnings ARM64-COW-BUG
 supervised no
 pidfile __APP_DIR__/data/run/redis.pid
 logfile __APP_DIR__/data/logs/redis.log

@@ -15,6 +15,9 @@ stop_pid() {
       kill -0 "$pid" 2>/dev/null || break
       sleep 0.2
     done
+    if kill -0 "$pid" 2>/dev/null; then
+      kill -KILL "$pid" 2>/dev/null || true
+    fi
     rm -f "$pid_file"
   fi
 }

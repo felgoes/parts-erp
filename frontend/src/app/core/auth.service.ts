@@ -23,20 +23,26 @@ export class AuthService {
       })
       .pipe(
         tap((session) => {
+          // Document previews open in a new tab. localStorage keeps the ERP
+          // session available to that same-origin tab, unlike sessionStorage.
+          localStorage.setItem(this.storageKey, JSON.stringify(session));
           sessionStorage.setItem(this.storageKey, JSON.stringify(session));
           this.session.set(session);
         }),
       );
   }
   logout(): void {
+    localStorage.removeItem(this.storageKey);
     sessionStorage.removeItem(this.storageKey);
     this.session.set(null);
     this.router.navigateByUrl('/login');
   }
   private restore(): AuthToken | null {
     try {
-      return JSON.parse(sessionStorage.getItem(this.storageKey) ?? 'null');
+      const stored = localStorage.getItem(this.storageKey) ?? sessionStorage.getItem(this.storageKey);
+      return JSON.parse(stored ?? 'null');
     } catch {
+      localStorage.removeItem(this.storageKey);
       sessionStorage.removeItem(this.storageKey);
       return null;
     }

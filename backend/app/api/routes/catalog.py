@@ -79,8 +79,8 @@ def _listing_out(listing) -> CatalogListingOut:
         external_item_id=listing.external_item_id,
         title=listing.title,
         permalink=listing.permalink,
-        thumbnail=listing.thumbnail,
-        images=[str(image) for image in (listing.images or []) if image],
+        thumbnail=_secure_url(listing.thumbnail),
+        images=[_secure_url(str(image)) for image in (listing.images or []) if image],
         marketplace_price=listing.marketplace_price,
         available_quantity=listing.available_quantity,
         sold_quantity=listing.sold_quantity,
@@ -89,3 +89,9 @@ def _listing_out(listing) -> CatalogListingOut:
         attributes=attributes,
         synchronized_at=listing.synchronized_at,
     )
+
+
+def _secure_url(value: str | None) -> str | None:
+    if not value:
+        return None
+    return value.replace("http://", "https://", 1) if value.startswith("http://") else value

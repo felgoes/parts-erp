@@ -5,6 +5,7 @@ import { forkJoin } from 'rxjs';
 import { ApiService } from '../../core/api.service';
 import { Customer, Invoice, Product } from '../../core/models';
 import { statusLabel, trackingEventLabel } from '../../core/status-labels';
+import { QUICK_DATE_PRESETS, QuickDatePreset, quickDateRange } from '../../core/quick-date-ranges';
 import { PageHeader } from '../../shared/page-header';
 
 @Component({
@@ -18,10 +19,17 @@ import { PageHeader } from '../../shared/page-header';
       ><button class="primary" (click)="openNew()">+ Nova venda</button></app-page-header
     >
     <section class="date-filter card" aria-label="Filtrar faturas por período">
-      <div><strong>Período das faturas</strong><small>{{ invoices().length }} resultado(s)</small></div>
-      <label>De <input type="date" [(ngModel)]="startDate" /></label>
-      <label>Até <input type="date" [(ngModel)]="endDate" /></label>
-      <button class="secondary" (click)="load()" [disabled]="!validRange()">Aplicar</button>
+      <div class="date-filter-heading"><strong>Período das faturas</strong><small>{{ invoices().length }} resultado(s)</small></div>
+      <div class="date-quick-filters" role="group" aria-label="Atalhos de período">
+        @for (preset of datePresets; track preset.id) {
+          <button type="button" class="date-preset" [class.active]="activeDatePreset === preset.id" [attr.aria-pressed]="activeDatePreset === preset.id" (click)="selectDatePreset(preset.id)">{{ preset.label }}</button>
+        }
+      </div>
+      <div class="date-range-fields">
+        <label>De <input type="date" [(ngModel)]="startDate" (ngModelChange)="markCustom()" /></label>
+        <label>Até <input type="date" [(ngModel)]="endDate" (ngModelChange)="markCustom()" /></label>
+        <button class="secondary" (click)="load()" [disabled]="!validRange()">Aplicar período</button>
+      </div>
     </section>
     <section class="card table-card">
       <div class="table-wrap">
@@ -167,6 +175,8 @@ export class InvoicesPage implements OnInit {
   readonly statusLabel = statusLabel;
   readonly trackingEventLabel = trackingEventLabel;
   readonly lines = signal<{ product: Product; quantity: number }[]>([]);
+  readonly datePresets = QUICK_DATE_PRESETS;
+  activeDatePreset: QuickDatePreset = 'thisMonth';
   customerId = '';
   selectedProduct = '';
   quantity = 1;
@@ -178,6 +188,15 @@ export class InvoicesPage implements OnInit {
   load() {
     if (!this.validRange()) return;
     this.api.invoices(this.startDate, this.endDate).subscribe((v) => this.invoices.set(v));
+  }
+  selectDatePreset(preset: QuickDatePreset) {
+    this.activeDatePreset = preset;
+    if (preset === 'custom') return;
+    Object.assign(this, quickDateRange(preset));
+    this.load();
+  }
+  markCustom() {
+    this.activeDatePreset = 'custom';
   }
   validRange() { return !!this.startDate && !!this.endDate && this.startDate <= this.endDate; }
   private today() { return new Date().toLocaleDateString('sv-SE'); }

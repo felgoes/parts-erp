@@ -396,3 +396,31 @@ textarea:focus {
   .empty { padding: 30px 14px; }
   .loading { padding: 54px 16px; }
 }
+.date-filter { display: grid; align-items: stretch; gap: 12px; }
+.date-filter > div { margin-right: 0; }
+.date-filter-heading { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.date-filter-heading strong { font-size: 13px; }
+.date-quick-filters { display: flex; flex-wrap: wrap; gap: 7px; }
+.date-preset { min-height: 38px; padding: 7px 12px; border: 1px solid var(--line); border-radius: 8px; background: #fff; color: var(--text); font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; transition: background 120ms ease, border-color 120ms ease, color 120ms ease; }
+.date-preset:hover { border-color: #9db8a4; background: #f3f7f3; }
+.date-preset.active { border-color: var(--forest); background: var(--forest); color: #fff; }
+.date-preset:focus-visible { outline: 2px solid var(--forest); outline-offset: 2px; }
+.date-range-fields { display: flex; align-items: end; flex-wrap: wrap; gap: 10px; }
+.date-range-fields label { display: grid; gap: 4px; min-width: 150px; color: var(--muted); font-size: 11px; font-weight: 700; }
+@media (max-width: 600px) {
+  .date-filter-heading { align-items: flex-start; flex-direction: column; gap: 3px; }
+  .date-quick-filters { flex-wrap: nowrap; overflow-x: auto; margin: 0 -4px; padding: 2px 4px 6px; scrollbar-width: thin; }
+  .date-preset { min-height: 42px; flex: 0 0 auto; white-space: nowrap; }
+  .date-range-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .date-range-fields label { min-width: 0; }
+  .date-range-fields button { grid-column: 1 / -1; min-height: 44px; }
+}
+.date-filter > .date-quick-filters { display: flex; }
+.date-filter > .date-range-fields { display: flex; }
+@media (max-width: 600px) {
+  .date-filter > .date-range-fields { display: grid; }
+}
+@media (max-width: 600px) {
+  .date-filter > .date-quick-filters { flex-wrap: wrap; overflow: visible; margin: 0; padding: 0; }
+  .date-filter > .date-quick-filters .date-preset { flex: 0 0 auto; }
+}

@@ -5,6 +5,7 @@ import { Router, RouterLink } from '@angular/router';
 import { ApiService } from '../../core/api.service';
 import { DashboardFinancialMetrics, DashboardSummary, Invoice } from '../../core/models';
 import { statusLabel, trackingEventLabel } from '../../core/status-labels';
+import { QUICK_DATE_PRESETS, QuickDatePreset, quickDateRange } from '../../core/quick-date-ranges';
 import { PageHeader } from '../../shared/page-header';
 
 @Component({
@@ -40,10 +41,17 @@ import { PageHeader } from '../../shared/page-header';
         </article>
       </section>
       <section class="date-filter card" aria-label="Filtrar visão geral por período">
-        <div><strong>Período da visão geral</strong><small>Faturamento, vendas e vendas recentes</small></div>
-        <label>De <input type="date" [(ngModel)]="startDate" /></label>
-        <label>Até <input type="date" [(ngModel)]="endDate" /></label>
-        <button class="secondary" (click)="applyDateFilter()" [disabled]="!validRange()">Aplicar</button>
+        <div class="date-filter-heading"><strong>Período da visão geral</strong><small>Faturamento, vendas e vendas recentes</small></div>
+        <div class="date-quick-filters" role="group" aria-label="Atalhos de período">
+          @for (preset of datePresets; track preset.id) {
+            <button type="button" class="date-preset" [class.active]="activeDatePreset === preset.id" [attr.aria-pressed]="activeDatePreset === preset.id" (click)="selectDatePreset(preset.id)">{{ preset.label }}</button>
+        }
+        </div>
+        <div class="date-range-fields">
+          <label>De <input type="date" [(ngModel)]="startDate" (ngModelChange)="markCustom()" /></label>
+          <label>Até <input type="date" [(ngModel)]="endDate" (ngModelChange)="markCustom()" /></label>
+          <button class="secondary" (click)="applyDateFilter()" [disabled]="!validRange()">Aplicar período</button>
+        </div>
       </section>
       <section class="dashboard-grid">
         <article class="card table-card">
@@ -131,6 +139,8 @@ export class DashboardPage implements OnInit {
   readonly financial = signal<DashboardFinancialMetrics | null>(null);
   readonly detail = signal<Invoice | null>(null);
   readonly invoiceTab = signal<'items' | 'tracking' | 'documents'>('items');
+  readonly datePresets = QUICK_DATE_PRESETS;
+  activeDatePreset: QuickDatePreset = 'thisMonth';
   startDate = this.monthStart();
   endDate = this.today();
   readonly statusLabel = statusLabel;
@@ -140,6 +150,15 @@ export class DashboardPage implements OnInit {
   }
   load() { if (this.validRange()) this.api.dashboard(this.startDate, this.endDate).subscribe((v) => this.data.set(v)); }
   applyDateFilter() { this.load(); }
+  selectDatePreset(preset: QuickDatePreset) {
+    this.activeDatePreset = preset;
+    if (preset === 'custom') return;
+    Object.assign(this, quickDateRange(preset));
+    this.applyDateFilter();
+  }
+  markCustom() {
+    this.activeDatePreset = 'custom';
+  }
   validRange() { return !!this.startDate && !!this.endDate && this.startDate <= this.endDate; }
   private today() { return new Date().toLocaleDateString('sv-SE'); }
   private monthStart() { return `${this.today().slice(0, 7)}-01`; }

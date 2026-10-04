@@ -11,6 +11,10 @@ from app.models import InvoiceStatus, Product, SalesInvoice, User
 from app.schemas.common import DashboardBreakdown, DashboardDailyMetric, DashboardFinancialMetrics, DashboardSummary
 
 router = APIRouter(prefix="/dashboard", tags=["Painel"])
+MONTHS_PT = (
+    "janeiro", "fevereiro", "março", "abril", "maio", "junho",
+    "julho", "agosto", "setembro", "outubro", "novembro", "dezembro",
+)
 
 
 @router.get("/summary", response_model=DashboardSummary)
@@ -82,7 +86,8 @@ def financial_metrics(
     )
     source_totals: dict[str, tuple[Decimal, int]] = {}
     for invoice in current:
-        label = "Mercado Livre" if invoice.source.value == "mercadolivre" else "Venda manual"
+        source = invoice.source.value if hasattr(invoice.source, "value") else str(invoice.source)
+        label = "Mercado Livre" if source == "mercadolivre" else "Venda manual"
         amount, count = source_totals.get(label, (Decimal("0"), 0))
         source_totals[label] = (amount + invoice.total, count + 1)
     daily: list[DashboardDailyMetric] = []
@@ -104,7 +109,7 @@ def financial_metrics(
         if month_start <= timestamp(invoice) <= now and invoice.status == InvoiceStatus.cancelled
     )
     return DashboardFinancialMetrics(
-        period_label=now.strftime("%B de %Y"),
+        period_label=f"{MONTHS_PT[now.month - 1]} de {now.year}",
         revenue=revenue,
         sales_count=len(current),
         average_ticket=(revenue / len(current) if current else Decimal("0")),

@@ -105,6 +105,22 @@ class StockMovementOut(ORMModel):
     created_at: datetime
 
 
+class CatalogListingOut(BaseModel):
+    provider: str
+    external_item_id: str
+    title: str | None
+    permalink: str | None
+    thumbnail: str | None
+    images: list[str]
+    marketplace_price: Decimal | None
+    available_quantity: Decimal | None
+    sold_quantity: int | None
+    visits: int | None
+    status: str | None
+    attributes: list[dict[str, str]]
+    synchronized_at: datetime | None
+
+
 class CatalogProductOut(BaseModel):
     id: str
     sku: str
@@ -112,6 +128,7 @@ class CatalogProductOut(BaseModel):
     description: str | None
     sale_price: Decimal
     in_stock: bool
+    listings: list[CatalogListingOut] = Field(default_factory=list)
 
 
 class StockAdjustment(BaseModel):

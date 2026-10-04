@@ -50,7 +50,7 @@ import { CatalogProduct } from '../../core/models';
         <div class="search-row">
           <label class="search-box">
             <span>Buscar por nome ou SKU</span>
-            <input [(ngModel)]="search" (keyup.enter)="load()" placeholder="Ex.: pastilha, filtro, PAST-001" />
+            <input [ngModel]="search" (ngModelChange)="onSearch($event)" (keyup.enter)="load()" placeholder="Ex.: pastilha, filtro, PAST-001" />
           </label>
           <button class="button button-dark" (click)="load()">Buscar</button>
         </div>
@@ -63,9 +63,9 @@ import { CatalogProduct } from '../../core/models';
         } @else {
           <div class="product-grid">
             @for (product of products(); track product.id) {
-              <article class="product-card">
+              <article class="product-card" tabindex="0" (click)="selected.set(product)" (keydown.enter)="selected.set(product)">
                 <div class="product-code">{{ product.sku }}</div>
-                <div class="product-glyph">{{ glyph(product.name) }}</div>
+                @if (product.listings[0]?.thumbnail) { <img class="product-image" [src]="product.listings[0].thumbnail" [alt]="product.name" /> } @else { <div class="product-glyph">{{ glyph(product.name) }}</div> }
                 <div class="product-body">
                   <h3>{{ product.name }}</h3>
                   @if (product.description) { <p>{{ product.description }}</p> }
@@ -82,6 +82,19 @@ import { CatalogProduct } from '../../core/models';
           </div>
         }
       </section>
+
+      @if (selected(); as product) {
+        <div class="catalog-modal-backdrop" (click)="selected.set(null)">
+          <section class="catalog-modal" (click)="$event.stopPropagation()">
+            <button class="catalog-modal-close" type="button" aria-label="Fechar detalhes" (click)="selected.set(null)">×</button>
+            <div class="catalog-modal-head"><div><p class="kicker">DETALHES DA PEÇA</p><h2>{{ product.name }}</h2><p class="modal-sku">SKU {{ product.sku }}</p></div><span [class.out]="!product.in_stock" class="modal-stock">{{ product.in_stock ? 'Em estoque' : 'Sob consulta' }}</span></div>
+            <p class="modal-description">{{ product.description || 'Consulte a equipe para confirmar aplicação, compatibilidade e disponibilidade.' }}</p>
+            @for (listing of product.listings; track listing.external_item_id) {
+              <article class="catalog-listing"><div class="listing-media">@if (listing.thumbnail) { <img [src]="listing.thumbnail" [alt]="listing.title || product.name" /> } @else { <span>{{ glyph(product.name) }}</span> }</div><div class="listing-info"><div class="listing-top"><div><small>Mercado Livre · {{ listing.external_item_id }}</small><h3>{{ listing.title || product.name }}</h3></div><strong>{{ (listing.marketplace_price ?? product.sale_price) | currency:'BRL' }}</strong></div><div class="listing-stats"><span>Estoque <b>{{ listing.available_quantity ?? '—' }}</b></span><span>Vendidos <b>{{ listing.sold_quantity ?? 0 }}</b></span><span>Visitas <b>{{ listing.visits ?? 0 }}</b></span></div>@if (listing.attributes.length) { <div class="attribute-list">@for (attribute of listing.attributes; track attribute.name) { <span><small>{{ attribute.name }}</small><b>{{ attribute.value }}</b></span> }</div> }<div class="listing-actions"><a class="button button-red" [href]="whatsappUrl(product)" (click)="track('whatsapp_click', { sku: product.sku, placement: 'product_detail' })">Pedir esta peça</a>@if (listing.permalink) { <a class="button button-quiet listing-external" [href]="listing.permalink" target="_blank" rel="noopener">Ver anúncio no Mercado Livre ↗</a> }</div></div></article>
+            } @empty { <div class="catalog-state">Este produto ainda não possui anúncio vinculado.</div> }
+          </section>
+        </div>
+      }
 
       <section class="how-section" id="como-comprar">
         <div>
@@ -112,7 +125,9 @@ export class CatalogPage implements OnInit {
   readonly products = signal<CatalogProduct[]>([]);
   readonly loading = signal(true);
   readonly error = signal(false);
+  readonly selected = signal<CatalogProduct | null>(null);
   search = '';
+  private searchTimer?: ReturnType<typeof setTimeout>;
 
   ngOnInit() {
     this.track('landing_view');
@@ -135,6 +150,12 @@ export class CatalogPage implements OnInit {
         this.loading.set(false);
       },
     });
+  }
+
+  onSearch(value: string) {
+    this.search = value;
+    clearTimeout(this.searchTimer);
+    this.searchTimer = setTimeout(() => this.load(), 280);
   }
 
   track(name: string, properties: Record<string, string> = {}) {

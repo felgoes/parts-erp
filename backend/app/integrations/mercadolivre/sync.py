@@ -9,6 +9,7 @@ from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
+from app.core.text import normalize_customer_name
 from app.integrations.mercadolivre.client import MercadoLivreClient, MercadoLivreError
 from app.models import (
     Customer,
@@ -187,7 +188,9 @@ def sync_order(db: Session, seller_id: str, resource: str) -> MarketplaceOrder:
                     )
                     or f"Cliente Mercado Livre {buyer_id}"
                 )
-                customer = Customer(name=name, marketplace_buyer_id=buyer_id or None)
+                customer = Customer(
+                    name=normalize_customer_name(name), marketplace_buyer_id=buyer_id or None
+                )
                 db.add(customer)
                 db.flush()
 

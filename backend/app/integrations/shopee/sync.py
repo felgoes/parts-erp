@@ -7,6 +7,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core.text import normalize_customer_name
 from app.integrations.shopee.client import ShopeeClient, ShopeeError
 from app.models import (
     Customer,
@@ -128,7 +129,10 @@ def sync_order(db: Session, account: MarketplaceAccount, order_sn: str) -> Marke
         buyer_id = str(order.get("buyer_user_id") or "") or None
         customer = db.scalar(select(Customer).where(Customer.marketplace_buyer_id == buyer_id)) if buyer_id else None
         if not customer:
-            customer = Customer(name=f"Cliente Shopee {buyer_id or order_sn}", marketplace_buyer_id=buyer_id)
+            customer = Customer(
+                name=normalize_customer_name(f"Cliente Shopee {buyer_id or order_sn}"),
+                marketplace_buyer_id=buyer_id,
+            )
             db.add(customer)
             db.flush()
         if inputs:

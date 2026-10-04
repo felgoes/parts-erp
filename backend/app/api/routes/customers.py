@@ -5,6 +5,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
+from app.core.text import normalize_customer_name
 from app.db.session import get_db
 from app.models import Customer, MarketplaceOrder, SalesInvoice, User
 from app.schemas.common import CustomerCreate, CustomerDetailOut, CustomerOut, CustomerPurchaseOut
@@ -25,7 +26,9 @@ def create_customer(
     db: Session = Depends(get_db),
     _: User = Depends(get_current_user),
 ) -> Customer:
-    customer = Customer(**payload.model_dump())
+    values = payload.model_dump()
+    values["name"] = normalize_customer_name(values["name"])
+    customer = Customer(**values)
     db.add(customer)
     db.commit()
     db.refresh(customer)

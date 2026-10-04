@@ -151,13 +151,13 @@
     grid-template-columns: 1fr;
     min-height: 100svh;
     align-content: start;
-    background: #f5f6f1;
+    background: var(--ink);
   }
   .login-story {
     display: block;
     min-height: 230px;
     padding: 25px 22px 30px;
-    border-radius: 0 0 28px 28px;
+    border-radius: 0;
   }
   .login-story .brand { margin-bottom: 30px; }
   .login-story > div:nth-child(2) { position: relative; z-index: 2; }
@@ -168,27 +168,36 @@
   .login-story:after { width: 270px; height: 270px; border-width: 38px; right: -190px; bottom: -170px; }
   .login-story:before { width: 350px; height: 350px; right: -220px; top: -200px; }
   .login-panel {
-    padding: 22px 18px 36px;
+    display: block;
+    padding: 0 22px 32px;
+    background: var(--ink);
     align-items: start;
   }
   .login-panel form {
     width: 100%;
-    padding: 26px 20px 22px;
-    border-radius: 18px;
-    box-shadow: 0 14px 35px #22362b12;
+    padding: 0 0 8px;
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
   }
-  .login-panel h2 { font-size: 26px; }
-  .hint { margin-bottom: 24px; line-height: 1.45; }
-  .login-panel label { margin-top: 15px; }
-  .login-panel input, .login-panel .primary { min-height: 48px; border-radius: 10px; }
+  .login-panel h2 { color: #fff; font-size: 26px; }
+  .hint { color: #aebfb5; margin-bottom: 24px; line-height: 1.45; }
+  .login-panel label { margin-top: 15px; color: #dbe7df; }
+  .login-panel input { min-height: 48px; border-radius: 10px; background: #23382e; border-color: #3c5b4b; color: #fff; }
+  .login-panel input::placeholder { color: #84998d; }
+  .login-panel input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px #b9dc5230; }
+  .login-panel .primary { min-height: 48px; border-radius: 10px; background: var(--accent); color: var(--ink); }
+  .security-note { color: #8ea49a; }
+  .error { background: #4b2824; color: #ffb4a5; }
 }
 @media (max-width: 380px) {
   .login-story { min-height: 200px; padding: 18px 18px 20px; }
   .login-story .brand { margin-bottom: 18px; }
   .login-story h1 { font-size: 30px; line-height: .98; margin-bottom: 9px; }
   .login-story p:not(.kicker) { font-size: 13px; line-height: 1.35; }
-  .login-panel { padding: 14px 14px 20px; }
-  .login-panel form { padding: 20px 18px 18px; }
+  .login-panel { padding: 0 18px 20px; }
+  .login-panel form { padding-bottom: 6px; }
   .hint { margin-bottom: 16px; }
   .login-panel input, .login-panel .primary { min-height: 44px; }
   .security-note { margin-top: 14px; }

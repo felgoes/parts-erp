@@ -189,6 +189,21 @@ class DocumentOut(ORMModel):
     created_at: datetime
 
 
+class InvoiceTrackingEventOut(BaseModel):
+    status: str
+    detail: str | None
+    created_at: datetime
+
+
+class InvoiceTrackingOut(BaseModel):
+    shipment_id: str | None
+    status: str | None
+    shipping_status: str | None
+    label_status: str | None
+    last_update: datetime | None
+    history: list[InvoiceTrackingEventOut]
+
+
 class InvoiceOut(ORMModel):
     id: str
     number: str
@@ -205,6 +220,7 @@ class InvoiceOut(ORMModel):
     created_at: datetime
     items: list[InvoiceItemOut]
     documents: list[DocumentOut]
+    tracking: "InvoiceTrackingOut | None" = None
 
 
 class DashboardSummary(BaseModel):

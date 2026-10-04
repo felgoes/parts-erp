@@ -81,6 +81,10 @@
 .detail-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 18px 0; }
 .detail-grid div { display: grid; gap: 4px; padding: 12px; background: #f1f5f2; border-radius: 8px; }
 .detail-grid small { color: var(--muted); }
+.detail-tabs { display: flex; gap: 6px; border-bottom: 1px solid var(--line); margin: 8px 0 18px; }
+.detail-tabs button { border: 0; background: transparent; color: var(--muted); padding: 10px 13px; font-size: 12px; font-weight: 800; cursor: pointer; border-bottom: 2px solid transparent; }
+.detail-tabs button.active { color: var(--forest); border-bottom-color: var(--accent); }
+.tracking-grid strong { text-transform: capitalize; }
 .invoice-detail-lines { display: grid; gap: 8px; }
 .invoice-detail-lines > div { display: flex; justify-content: space-between; gap: 16px; border-bottom: 1px solid var(--line); padding: 10px 0; }
 .invoice-detail-lines span { display: grid; gap: 3px; }

@@ -1,12 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import FileResponse
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.api.deps import get_current_user, require_roles
 from app.db.session import get_db
-from app.models import InvoiceDocument, Product, SalesInvoice, User, UserRole
-from app.schemas.common import InvoiceCreate, InvoiceOut
+from app.models import InvoiceDocument, MarketplaceOrder, MarketplaceOrderEvent, Product, SalesInvoice, User, UserRole
+from app.schemas.common import InvoiceCreate, InvoiceOut, InvoiceTrackingEventOut, InvoiceTrackingOut
 from app.services.sales import cancel_invoice, confirm_invoice, create_invoice
 
 router = APIRouter(prefix="/invoices", tags=["Faturas de venda"])
@@ -51,11 +51,44 @@ def get_invoice(
     invoice_id: str,
     db: Session = Depends(get_db),
     _: User = Depends(get_current_user),
-) -> SalesInvoice:
-    invoice = db.get(SalesInvoice, invoice_id)
+) -> InvoiceOut:
+    invoice = db.scalar(
+        select(SalesInvoice)
+        .options(selectinload(SalesInvoice.items), selectinload(SalesInvoice.documents))
+        .where(SalesInvoice.id == invoice_id)
+    )
     if not invoice:
         raise HTTPException(status_code=404, detail="Fatura não encontrada")
-    return invoice
+    result = InvoiceOut.model_validate(invoice)
+    if invoice.marketplace_order_id:
+        order = db.scalar(
+            select(MarketplaceOrder).where(
+                MarketplaceOrder.provider == "mercadolivre",
+                MarketplaceOrder.external_order_id == invoice.marketplace_order_id,
+            )
+        )
+        if order:
+            events = db.scalars(
+                select(MarketplaceOrderEvent)
+                .where(MarketplaceOrderEvent.order_id == order.id)
+                .order_by(MarketplaceOrderEvent.created_at.asc())
+            )
+            result.tracking = InvoiceTrackingOut(
+                shipment_id=order.shipment_id,
+                status=order.status,
+                shipping_status=order.shipping_status,
+                label_status=order.label_status,
+                last_update=order.synchronized_at or order.updated_at,
+                history=[
+                    InvoiceTrackingEventOut(
+                        status=event.status,
+                        detail=event.detail,
+                        created_at=event.created_at,
+                    )
+                    for event in events
+                ],
+            )
+    return result
 
 
 @router.post("/{invoice_id}/confirm", response_model=InvoiceOut)

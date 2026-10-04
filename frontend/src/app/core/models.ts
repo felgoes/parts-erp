@@ -110,6 +110,20 @@ export interface Invoice {
   created_at: string;
   items: InvoiceItem[];
   documents: InvoiceDocument[];
+  tracking?: InvoiceTracking | null;
+}
+export interface InvoiceTrackingEvent {
+  status: string;
+  detail: string | null;
+  created_at: string;
+}
+export interface InvoiceTracking {
+  shipment_id: string | null;
+  status: string | null;
+  shipping_status: string | null;
+  label_status: string | null;
+  last_update: string | null;
+  history: InvoiceTrackingEvent[];
 }
 export interface DashboardSummary {
   revenue_month: number;

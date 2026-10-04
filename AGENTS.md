@@ -25,3 +25,9 @@ Never use production as the first place to build or discover UI problems. Do not
 - Optional backend regression checks: `cd backend && pytest`
 - Backend syntax check: `cd backend && python -m compileall -q app`
 - Read deployment and server constraints in `deploy/termux/` before changing production deployment behavior.
+
+## Shared period filters
+
+- Use `frontend/src/app/shared/period-filter.ts` for date-range filtering in dashboard, invoices, monitoring, and future pages. Do not create page-specific copies of quick presets, custom date inputs, or range validation.
+- The shared component owns the preset list and date-input behavior; pages provide labels/default ranges and handle the emitted range. Pass status options only when that page needs an additional status filter (as invoices do).
+- Keep the shared component responsive and validate it in browser at desktop and mobile widths whenever its markup or styles change.

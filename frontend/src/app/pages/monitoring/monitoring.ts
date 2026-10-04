@@ -1,21 +1,26 @@
 import { DatePipe, DecimalPipe } from '@angular/common';
 import { Component, OnInit, inject, signal } from '@angular/core';
-import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../core/api.service';
 import { TelemetryHealth, TelemetrySummary } from '../../core/models';
+import { DateRange, quickDateRange } from '../../core/quick-date-ranges';
 import { PageHeader } from '../../shared/page-header';
+import { PeriodFilter } from '../../shared/period-filter';
 
 @Component({
   selector: 'app-monitoring',
-  imports: [DatePipe, DecimalPipe, FormsModule, PageHeader],
+  imports: [DatePipe, DecimalPipe, PageHeader, PeriodFilter],
   template: `
     <app-page-header eyebrow="Operação" title="Monitoramento" subtitle="Saúde técnica e comportamento no catálogo." />
-    <section class="period-filter card" aria-label="Filtro de período">
-      <div><strong>Período analisado</strong><small>As datas consideram o horário de Brasília.</small></div>
-      <label>De <input type="date" [ngModel]="startDate()" (ngModelChange)="startDate.set($event)" /></label>
-      <label>Até <input type="date" [ngModel]="endDate()" (ngModelChange)="endDate.set($event)" /></label>
-      <button class="apply-filter" [disabled]="loading()" (click)="load()">{{ loading() ? 'Atualizando…' : 'Aplicar período' }}</button>
-    </section>
+    <app-period-filter
+      heading="Período analisado"
+      description="As datas consideram o horário de Brasília."
+      ariaLabel="Filtrar monitoramento por período"
+      initialPreset="last30"
+      [initialStartDate]="startDate()"
+      [initialEndDate]="endDate()"
+      [busy]="loading()"
+      (rangeChange)="applyPeriod($event)"
+    />
     @if (error()) { <div class="monitor-error" role="alert">Não foi possível atualizar o monitoramento. Confira o período e tente novamente.</div> }
     @if (data(); as summary) {
       <section class="monitor-grid">
@@ -69,9 +74,15 @@ export class MonitoringPage implements OnInit {
   readonly loading = signal(false);
   readonly error = signal(false);
   readonly hiddenSeries = signal(new Set<string>());
-  readonly startDate = signal(this.dateString(new Date(Date.now() - 29 * 24 * 60 * 60 * 1000)));
-  readonly endDate = signal(this.dateString(new Date()));
+  private readonly initialRange = quickDateRange('last30');
+  readonly startDate = signal(this.initialRange.startDate);
+  readonly endDate = signal(this.initialRange.endDate);
   ngOnInit() { this.load(); }
+  applyPeriod(range: DateRange) {
+    this.startDate.set(range.startDate);
+    this.endDate.set(range.endDate);
+    this.load();
+  }
   load() {
     if (!this.startDate() || !this.endDate() || this.startDate() > this.endDate()) {
       this.error.set(true);
@@ -83,10 +94,6 @@ export class MonitoringPage implements OnInit {
       next: (value) => { this.data.set(value); this.loading.set(false); },
       error: () => { this.error.set(true); this.loading.set(false); },
     });
-  }
-  private dateString(date: Date) {
-    const local = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
-    return local.toISOString().slice(0, 10);
   }
   totalEvents(summary: TelemetrySummary) { return summary.events.reduce((total, item) => total + item.count, 0); }
   eventCount(summary: TelemetrySummary, name: string) { return summary.events.find((item) => item.name === name)?.count ?? 0; }

@@ -2,12 +2,6 @@
   padding: 0;
   overflow: hidden;
 }
-.invoice-status-filter { display: flex; align-items: center; gap: 3px; margin: 0; padding: 0; white-space: nowrap; }
-.invoice-status-filter > span { margin-right: 5px; color: var(--muted); font-size: 11px; font-weight: 800; white-space: nowrap; }
-.invoice-status-filter button { min-height: 34px; display: inline-flex; align-items: center; gap: 5px; padding: 6px 8px; border: 1px solid transparent; border-radius: 7px; background: transparent; color: var(--muted); font: inherit; font-size: 10px; font-weight: 750; white-space: nowrap; cursor: pointer; }
-.invoice-status-filter button:hover { background: #f2f5f1; }
-.invoice-status-filter button.active { border-color: #dce6dc; background: #eef3ef; color: var(--forest); }
-.invoice-status-filter small { min-width: 18px; height: 18px; display: inline-grid; place-items: center; border-radius: 99px; background: #fff; font-size: 10px; }
 .block {
   display: block;
   color: var(--muted);
@@ -88,8 +82,6 @@
   font-size: 24px;
 }
 @media (max-width: 600px) {
-  .invoice-status-filter > span { display: none; }
-  .invoice-status-filter button { min-height: 34px; }
   .table-card .table-wrap { scrollbar-width: thin; }
   .table-card table { min-width: 0; }
   .table-card table thead { display: none; }

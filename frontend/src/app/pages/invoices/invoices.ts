@@ -1,16 +1,16 @@
 import { CurrencyPipe, DatePipe, UpperCasePipe } from '@angular/common';
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { forkJoin } from 'rxjs';
 import { ApiService } from '../../core/api.service';
 import { Customer, Invoice, Product } from '../../core/models';
 import { statusLabel, trackingEventLabel } from '../../core/status-labels';
-import { QUICK_DATE_PRESETS, QuickDatePreset, quickDateRange } from '../../core/quick-date-ranges';
 import { PageHeader } from '../../shared/page-header';
+import { PeriodFilter, PeriodFilterStatusOption } from '../../shared/period-filter';
 
 @Component({
   selector: 'app-invoices',
-  imports: [CurrencyPipe, DatePipe, UpperCasePipe, FormsModule, PageHeader],
+  imports: [CurrencyPipe, DatePipe, UpperCasePipe, FormsModule, PageHeader, PeriodFilter],
   template: `
     <app-page-header
       eyebrow="Comercial"
@@ -18,29 +18,17 @@ import { PageHeader } from '../../shared/page-header';
       subtitle="Do orçamento à baixa de estoque, sem retrabalho."
       ><button class="primary" (click)="openNew()">+ Nova venda</button></app-page-header
     >
-    <section class="date-filter card invoice-filter-toolbar" [class.has-custom-range]="activeDatePreset === 'custom'" aria-label="Filtrar faturas por período e situação">
-      <div class="date-filter-heading"><strong>Período</strong><small>{{ invoices().length }} fatura(s)</small></div>
-      <div class="date-filter-options">
-        <div class="date-quick-filters" role="group" aria-label="Atalhos de período">
-          @for (preset of datePresets; track preset.id) {
-            <button type="button" class="date-preset" [class.active]="activeDatePreset === preset.id" [attr.aria-pressed]="activeDatePreset === preset.id" (click)="selectDatePreset(preset.id)">{{ preset.label }}</button>
-          }
-        </div>
-        <div class="invoice-status-filter" role="group" aria-label="Filtrar faturas por situação">
-          <span>Situação</span>
-          <button type="button" [class.active]="statusFilter === 'all'" (click)="statusFilter = 'all'">Todas <small>{{ invoices().length }}</small></button>
-          <button type="button" [class.active]="statusFilter === 'open'" (click)="statusFilter = 'open'">Em andamento <small>{{ countByStatus('open') }}</small></button>
-          <button type="button" [class.active]="statusFilter === 'post_sale'" (click)="statusFilter = 'post_sale'">Canceladas / devoluções <small>{{ countByStatus('post_sale') }}</small></button>
-        </div>
-      </div>
-      @if (activeDatePreset === 'custom') {
-        <div class="date-range-fields">
-          <label>De <input type="date" [(ngModel)]="startDate" (ngModelChange)="markCustom()" /></label>
-          <label>Até <input type="date" [(ngModel)]="endDate" (ngModelChange)="markCustom()" /></label>
-          <button class="secondary" (click)="load()" [disabled]="!validRange()">Aplicar período</button>
-        </div>
-      }
-    </section>
+    <app-period-filter
+      heading="Período"
+      [description]="invoices().length + ' fatura(s)'"
+      ariaLabel="Filtrar faturas por período e situação"
+      [initialStartDate]="startDate"
+      [initialEndDate]="endDate"
+      [statusOptions]="filterStatusOptions()"
+      [selectedStatus]="statusFilter"
+      (rangeChange)="applyDateFilter($event)"
+      (statusChange)="setStatusFilter($event)"
+    />
     <section class="card table-card">
       <div class="table-wrap">
         <table>
@@ -185,6 +173,11 @@ export class InvoicesPage implements OnInit {
   readonly detail = signal<Invoice | null>(null);
   readonly invoiceTab = signal<'items' | 'tracking' | 'documents' | 'aftersale'>('items');
   statusFilter: 'all' | 'open' | 'post_sale' = 'all';
+  readonly filterStatusOptions = computed<PeriodFilterStatusOption[]>(() => [
+    { value: 'all', label: 'Todas', count: this.invoices().length },
+    { value: 'open', label: 'Em andamento', count: this.countByStatus('open') },
+    { value: 'post_sale', label: 'Canceladas / devoluções', count: this.countByStatus('post_sale') },
+  ]);
   readonly statusLabel = statusLabel;
   readonly trackingEventLabel = trackingEventLabel;
   visibleInvoices() {
@@ -217,8 +210,6 @@ export class InvoicesPage implements OnInit {
     return ({ meli: 'Mercado Livre', buyer: 'Comprador', seller: 'Vendedor' } as Record<string, string>)[value.toLowerCase()] ?? value;
   }
   readonly lines = signal<{ product: Product; quantity: number }[]>([]);
-  readonly datePresets = QUICK_DATE_PRESETS;
-  activeDatePreset: QuickDatePreset = 'thisMonth';
   customerId = '';
   selectedProduct = '';
   quantity = 1;
@@ -231,14 +222,13 @@ export class InvoicesPage implements OnInit {
     if (!this.validRange()) return;
     this.api.invoices(this.startDate, this.endDate).subscribe((v) => this.invoices.set(v));
   }
-  selectDatePreset(preset: QuickDatePreset) {
-    this.activeDatePreset = preset;
-    if (preset === 'custom') return;
-    Object.assign(this, quickDateRange(preset));
+  applyDateFilter(range: { startDate: string; endDate: string }) {
+    this.startDate = range.startDate;
+    this.endDate = range.endDate;
     this.load();
   }
-  markCustom() {
-    this.activeDatePreset = 'custom';
+  setStatusFilter(value: string) {
+    if (value === 'all' || value === 'open' || value === 'post_sale') this.statusFilter = value;
   }
   validRange() { return !!this.startDate && !!this.endDate && this.startDate <= this.endDate; }
   private today() { return new Date().toLocaleDateString('sv-SE'); }

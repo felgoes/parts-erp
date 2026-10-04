@@ -1,16 +1,15 @@
 import { CurrencyPipe, DatePipe, DecimalPipe, UpperCasePipe } from '@angular/common';
 import { Component, OnInit, inject, signal } from '@angular/core';
-import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { ApiService } from '../../core/api.service';
 import { DashboardFinancialMetrics, DashboardSummary, Invoice } from '../../core/models';
 import { statusLabel, trackingEventLabel } from '../../core/status-labels';
-import { QUICK_DATE_PRESETS, QuickDatePreset, quickDateRange } from '../../core/quick-date-ranges';
 import { PageHeader } from '../../shared/page-header';
+import { PeriodFilter } from '../../shared/period-filter';
 
 @Component({
   selector: 'app-dashboard',
-  imports: [CurrencyPipe, DatePipe, DecimalPipe, UpperCasePipe, RouterLink, PageHeader, FormsModule],
+  imports: [CurrencyPipe, DatePipe, DecimalPipe, UpperCasePipe, RouterLink, PageHeader, PeriodFilter],
   template: `
     <app-page-header
       eyebrow="Centro de controle"
@@ -40,21 +39,14 @@ import { PageHeader } from '../../shared/page-header';
           ><small>itens pedem atenção</small>
         </article>
       </section>
-      <section class="date-filter card" [class.has-custom-range]="activeDatePreset === 'custom'" aria-label="Filtrar visão geral por período">
-        <div class="date-filter-heading"><strong>Período da visão geral</strong><small>Faturamento, vendas e vendas recentes</small></div>
-        <div class="date-quick-filters" role="group" aria-label="Atalhos de período">
-          @for (preset of datePresets; track preset.id) {
-            <button type="button" class="date-preset" [class.active]="activeDatePreset === preset.id" [attr.aria-pressed]="activeDatePreset === preset.id" (click)="selectDatePreset(preset.id)">{{ preset.label }}</button>
-        }
-        </div>
-        @if (activeDatePreset === 'custom') {
-          <div class="date-range-fields">
-            <label>De <input type="date" [(ngModel)]="startDate" (ngModelChange)="markCustom()" /></label>
-            <label>Até <input type="date" [(ngModel)]="endDate" (ngModelChange)="markCustom()" /></label>
-            <button class="secondary" (click)="applyDateFilter()" [disabled]="!validRange()">Aplicar período</button>
-          </div>
-        }
-      </section>
+      <app-period-filter
+        heading="Período da visão geral"
+        description="Faturamento, vendas e vendas recentes"
+        ariaLabel="Filtrar visão geral por período"
+        [initialStartDate]="startDate"
+        [initialEndDate]="endDate"
+        (rangeChange)="applyDateFilter($event)"
+      />
       <section class="dashboard-grid">
         <article class="card table-card">
           <div class="card-head">
@@ -142,8 +134,6 @@ export class DashboardPage implements OnInit {
   readonly financial = signal<DashboardFinancialMetrics | null>(null);
   readonly detail = signal<Invoice | null>(null);
   readonly invoiceTab = signal<'items' | 'tracking' | 'documents' | 'aftersale'>('items');
-  readonly datePresets = QUICK_DATE_PRESETS;
-  activeDatePreset: QuickDatePreset = 'thisMonth';
   startDate = this.monthStart();
   endDate = this.today();
   readonly statusLabel = statusLabel;
@@ -164,15 +154,10 @@ export class DashboardPage implements OnInit {
     this.load();
   }
   load() { if (this.validRange()) this.api.dashboard(this.startDate, this.endDate).subscribe((v) => this.data.set(v)); }
-  applyDateFilter() { this.load(); }
-  selectDatePreset(preset: QuickDatePreset) {
-    this.activeDatePreset = preset;
-    if (preset === 'custom') return;
-    Object.assign(this, quickDateRange(preset));
-    this.applyDateFilter();
-  }
-  markCustom() {
-    this.activeDatePreset = 'custom';
+  applyDateFilter(range: { startDate: string; endDate: string }) {
+    this.startDate = range.startDate;
+    this.endDate = range.endDate;
+    this.load();
   }
   validRange() { return !!this.startDate && !!this.endDate && this.startDate <= this.endDate; }
   private today() { return new Date().toLocaleDateString('sv-SE'); }

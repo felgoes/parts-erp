@@ -187,6 +187,17 @@ tbody tr:last-child td {
 .muted {
   color: var(--muted);
 }
+.link-button {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--forest);
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+  text-align: left;
+  text-transform: none;
+}
 .detail-documents {
   display: flex;
   flex-wrap: wrap;

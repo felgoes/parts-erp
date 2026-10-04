@@ -40,14 +40,9 @@ import { PageHeader } from '../../shared/page-header';
           <tbody>
             @for (c of filtered(); track c.id) {
               <tr class="clickable-row" (click)="openDetails(c)">
-                <td>
-                  <button class="link-button" (click)="$event.stopPropagation(); openDetails(c)"><strong>{{ c.name }}</strong></button>
-                </td>
+                <td><button class="customer-link" type="button" [attr.aria-label]="'Abrir cliente ' + c.name" (click)="$event.stopPropagation(); openDetails(c)"><span class="customer-avatar">{{ c.name.charAt(0) }}</span><span class="customer-main"><strong>{{ c.name }}</strong><small>{{ c.email || 'Cliente cadastrado' }}</small></span><span class="customer-chevron" aria-hidden="true">›</span></button></td>
                 <td>{{ c.document || '—' }}</td>
-                <td>
-                  <div>{{ c.email || '—' }}</div>
-                  <small>{{ c.phone }}</small>
-                </td>
+                <td><span class="contact-main">{{ c.phone || 'Sem telefone' }}</span><small>{{ c.email || 'Sem e-mail' }}</small></td>
                 <td>{{ c.created_at | date: 'dd/MM/yyyy' }}</td>
               </tr>
             } @empty {
@@ -91,7 +86,7 @@ import { PageHeader } from '../../shared/page-header';
       </div>
     }
   `,
-  styleUrl: '../products/products.scss',
+  styleUrl: './customers.scss',
 })
 export class CustomersPage implements OnInit {
   private readonly api = inject(ApiService);

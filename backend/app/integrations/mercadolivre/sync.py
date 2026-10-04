@@ -522,7 +522,13 @@ def sync_products(db: Session, account: MarketplaceAccount) -> int:
             listing.marketplace_price = Decimal(str(detail.get("price") or 0))
             listing.available_quantity = Decimal(str(detail.get("available_quantity") or 0))
             listing.sold_quantity = int(detail.get("sold_quantity") or 0)
-            listing.visits = int(detail.get("visits") or 0)
+            try:
+                visits_result = MercadoLivreClient(db, account).get(f"/visits/items?ids={external_id}")
+                if isinstance(visits_result, dict):
+                    listing.visits = int(visits_result.get(external_id) or 0)
+            except MercadoLivreError:
+                # Métricas podem não estar habilitadas para todos os tipos de anúncio.
+                pass
             listing.status = str(detail.get("status") or "unknown")
             listing.payload = detail
             listing.synchronized_at = datetime.now(UTC)

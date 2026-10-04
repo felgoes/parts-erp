@@ -8,7 +8,7 @@ import { AuthService } from '../core/auth.service';
   template: ` <div class="app-shell" [class.menu-open]="menuOpen()">
     <aside class="sidebar">
       <div class="brand">
-        <span class="brand-mark">P</span>
+        <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 48 48" focusable="false"><path d="M12 36V12h13c7 0 11 3 11 9s-4 9-11 9H18" /><path d="M25 30l9-9" /></svg></span>
         <div><strong>Parts</strong><small>ERP</small></div>
       </div>
       <nav aria-label="Menu principal">
@@ -34,7 +34,7 @@ import { AuthService } from '../core/auth.service';
       <button class="icon-button" aria-label="Abrir menu" (click)="menuOpen.set(!menuOpen())">
         ☰
       </button>
-      <div class="brand"><span class="brand-mark">P</span><strong>Parts ERP</strong></div>
+      <div class="brand"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 48 48" focusable="false"><path d="M12 36V12h13c7 0 11 3 11 9s-4 9-11 9H18" /><path d="M25 30l9-9" /></svg></span><strong>Parts ERP</strong></div>
     </div>
     <button class="scrim" aria-label="Fechar menu" (click)="menuOpen.set(false)"></button>
     <main><router-outlet /></main>

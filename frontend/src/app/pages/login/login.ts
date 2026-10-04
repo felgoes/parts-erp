@@ -10,7 +10,7 @@ import { AuthService } from '../../core/auth.service';
   imports: [ReactiveFormsModule],
   template: ` <main class="login-page">
     <section class="login-story">
-      <div class="brand"><span>P</span><strong>Parts ERP</strong></div>
+      <div class="brand"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 48 48" focusable="false"><path d="M12 36V12h13c7 0 11 3 11 9s-4 9-11 9H18" /><path d="M25 30l9-9" /></svg></span><strong>Parts ERP</strong></div>
       <div>
         <p class="kicker">Controle sem improviso</p>
         <h1>Peças certas.<br /><em>Estoque em dia.</em></h1>

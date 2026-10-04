@@ -103,6 +103,10 @@
 .quick > a b {
   color: var(--muted);
 }
+.block { display: block; color: var(--muted); }
+.dashboard-customer { display: grid; gap: 4px; min-width: 170px; }
+.dashboard-customer small { color: var(--muted); font-size: 11px; }
+.doc { display: inline-block; padding: 4px 7px; margin-right: 4px; border: 0; border-radius: 5px; background: #edf4ef; color: var(--forest); font-size: 10px; font-weight: 800; cursor: pointer; }
 .detail-hero { align-items: center; margin-bottom: 16px; }
 .detail-hero h2 { font-size: 30px; letter-spacing: -0.04em; }
 .detail-subtitle { color: var(--muted); font-size: 12px; margin: 7px 0 0; }

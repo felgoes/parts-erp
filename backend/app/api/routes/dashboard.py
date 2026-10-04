@@ -37,7 +37,16 @@ def summary(db: Session = Depends(get_db), _: User = Depends(get_current_user)) 
         or 0
     )
     recent = list(
-        db.scalars(select(SalesInvoice).order_by(SalesInvoice.created_at.desc()).limit(5))
+        db.scalars(
+            select(SalesInvoice)
+            .options(
+                selectinload(SalesInvoice.customer),
+                selectinload(SalesInvoice.documents),
+                selectinload(SalesInvoice.items),
+            )
+            .order_by(SalesInvoice.created_at.desc())
+            .limit(5)
+        )
     )
     return DashboardSummary(
         revenue_month=Decimal(str(revenue or 0)),

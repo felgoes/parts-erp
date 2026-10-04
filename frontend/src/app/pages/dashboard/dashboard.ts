@@ -1,4 +1,4 @@
-import { CurrencyPipe, DatePipe, DecimalPipe } from '@angular/common';
+import { CurrencyPipe, DatePipe, DecimalPipe, UpperCasePipe } from '@angular/common';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { ApiService } from '../../core/api.service';
@@ -8,7 +8,7 @@ import { PageHeader } from '../../shared/page-header';
 
 @Component({
   selector: 'app-dashboard',
-  imports: [CurrencyPipe, DatePipe, DecimalPipe, RouterLink, PageHeader],
+  imports: [CurrencyPipe, DatePipe, DecimalPipe, UpperCasePipe, RouterLink, PageHeader],
   template: `
     <app-page-header
       eyebrow="Centro de controle"
@@ -51,30 +51,18 @@ import { PageHeader } from '../../shared/page-header';
             <div class="table-wrap">
               <table>
                 <thead>
-                  <tr>
-                    <th>Fatura</th>
-                    <th>Origem</th>
-                    <th>Data</th>
-                    <th>Status</th>
-                    <th class="right">Total</th>
-                  </tr>
+                  <tr><th>Fatura</th><th>Cliente</th><th>Origem</th><th>Emissão</th><th>Status</th><th>Documentos</th><th class="right">Total</th></tr>
                 </thead>
                 <tbody>
                   @for (invoice of summary.recent_invoices; track invoice.id) {
                     <tr class="clickable-row" (click)="openRecent(invoice)">
-                      <td>
-                        <strong>{{ invoice.number }}</strong>
-                      </td>
+                      <td><strong>{{ invoice.number }}</strong><small class="block">{{ invoice.marketplace_order_id ? 'Pedido #' + invoice.marketplace_order_id : 'Venda local' }}</small></td>
+                      <td class="dashboard-customer"><strong>{{ invoice.customer?.name || 'Consumidor não identificado' }}</strong><small>{{ invoice.customer?.document || invoice.customer?.email || 'Sem cadastro vinculado' }}</small></td>
                       <td>{{ invoice.source === 'mercadolivre' ? 'Mercado Livre' : 'Balcão' }}</td>
-                      <td>{{ invoice.created_at | date: 'dd/MM, HH:mm' }}</td>
-                      <td>
-                        <span class="badge" [class]="invoice.status">{{
-                          status(invoice.status)
-                        }}</span>
-                      </td>
-                      <td class="right">
-                        <strong>{{ invoice.total | currency: 'BRL' }}</strong>
-                      </td>
+                      <td>{{ invoice.issued_at || invoice.created_at | date: 'dd/MM/yyyy HH:mm' }}</td>
+                      <td><span class="badge" [class]="invoice.status">{{ status(invoice.status) }}</span></td>
+                      <td>@if (invoice.documents.length) { @for (doc of invoice.documents; track doc.id) { <button class="doc" (click)="$event.stopPropagation(); openDocument(invoice.id, doc.id)">{{ doc.document_type | uppercase }}</button> } } @else { <span class="muted">—</span> }</td>
+                      <td class="right"><strong>{{ invoice.total | currency: 'BRL' }}</strong></td>
                     </tr>
                   }
                 </tbody>

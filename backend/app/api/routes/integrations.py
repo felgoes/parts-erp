@@ -8,7 +8,7 @@ from arq.connections import RedisSettings
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse, RedirectResponse
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.api.deps import get_current_user, require_roles
 from app.core.config import get_settings
@@ -171,7 +171,12 @@ def orders(
     db: Session = Depends(get_db), _: User = Depends(get_current_user)
 ) -> list[MarketplaceOrder]:
     return list(
-        db.scalars(select(MarketplaceOrder).order_by(MarketplaceOrder.created_at.desc()).limit(200))
+        db.scalars(
+            select(MarketplaceOrder)
+            .options(selectinload(MarketplaceOrder.invoice))
+            .order_by(MarketplaceOrder.created_at.desc())
+            .limit(200)
+        )
     )
 
 
@@ -181,7 +186,11 @@ def order_detail(
     db: Session = Depends(get_db),
     _: User = Depends(get_current_user),
 ) -> MarketplaceOrder:
-    order = db.get(MarketplaceOrder, order_id)
+    order = db.scalar(
+        select(MarketplaceOrder)
+        .options(selectinload(MarketplaceOrder.invoice))
+        .where(MarketplaceOrder.id == order_id)
+    )
     if not order:
         raise HTTPException(status_code=404, detail="Pedido não encontrado")
     return order

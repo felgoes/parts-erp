@@ -167,7 +167,8 @@ form label small {
     order: 3;
   }
   .table-card {
-    margin: 0 -18px;
-    border-radius: 0;
+    margin: 0;
+    border-radius: 14px;
   }
+  .table-card .table-wrap { margin-inline: 0; padding-inline: 16px; }
 }

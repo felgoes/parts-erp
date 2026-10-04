@@ -12,6 +12,8 @@ import {
   ShopeeConfig,
   ShopeeStatus,
   Product,
+  ProductDetail,
+  CustomerDetail,
   User,
   TelemetrySummary,
 } from './models';
@@ -38,6 +40,12 @@ export class ApiService {
   productMovements(id: string): Observable<import('./models').StockMovement[]> {
     return this.http.get<import('./models').StockMovement[]>(`${this.base}/products/${id}/movements`);
   }
+  productDetail(id: string): Observable<ProductDetail> {
+    return this.http.get<ProductDetail>(`${this.base}/products/${id}/detail`);
+  }
+  syncMarketplaceStock(id: string): Observable<Product> {
+    return this.http.post<Product>(`${this.base}/products/${id}/sync-marketplace`, {});
+  }
   createProduct(payload: Partial<Product>): Observable<Product> {
     return this.http.post<Product>(`${this.base}/products`, payload);
   }
@@ -49,6 +57,9 @@ export class ApiService {
   }
   customers(): Observable<Customer[]> {
     return this.http.get<Customer[]>(`${this.base}/customers`);
+  }
+  customerDetail(id: string): Observable<CustomerDetail> {
+    return this.http.get<CustomerDetail>(`${this.base}/customers/${id}`);
   }
   createCustomer(payload: Partial<Customer>): Observable<Customer> {
     return this.http.post<Customer>(`${this.base}/customers`, payload);

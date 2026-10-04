@@ -22,6 +22,24 @@ export interface Product {
   created_at: string;
   updated_at: string;
 }
+export interface ProductListing {
+  id: string;
+  provider: string;
+  external_item_id: string;
+  title: string | null;
+  permalink: string | null;
+  thumbnail: string | null;
+  images: string[];
+  marketplace_price: number | null;
+  available_quantity: number | null;
+  sold_quantity: number | null;
+  visits: number | null;
+  status: string | null;
+  synchronized_at: string | null;
+}
+export interface ProductDetail extends Product {
+  listings: ProductListing[];
+}
 export interface StockMovement {
   id: string;
   product_id: string;
@@ -39,6 +57,27 @@ export interface Customer {
   email: string | null;
   phone: string | null;
   created_at: string;
+}
+export interface CustomerPurchase {
+  id: string;
+  number: string;
+  status: string;
+  source: string;
+  marketplace_order_id: string | null;
+  total: number;
+  issued_at: string | null;
+  created_at: string;
+  item_count: number;
+}
+export interface CustomerDetail extends Customer {
+  purchase_count: number;
+  confirmed_purchase_count: number;
+  total_purchased: number;
+  average_purchase: number;
+  last_purchase_at: string | null;
+  marketplace_order_count: number;
+  cancelled_order_count: number;
+  purchases: CustomerPurchase[];
 }
 export interface InvoiceItem {
   id: string;

@@ -7,8 +7,8 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, require_roles
 from app.db.session import get_db
-from app.models import MovementType, Product, StockMovement, User, UserRole
-from app.schemas.common import ProductCreate, ProductOut, ProductUpdate, StockAdjustment, StockMovementOut
+from app.models import MovementType, Product, ProductMarketplaceListing, StockMovement, User, UserRole
+from app.schemas.common import ProductCreate, ProductDetailOut, ProductOut, ProductUpdate, StockAdjustment, StockMovementOut
 from app.services.stock import move_stock
 
 router = APIRouter(prefix="/products", tags=["Produtos"])
@@ -77,6 +77,18 @@ def update_product(
     return product
 
 
+@router.get("/{product_id}/detail", response_model=ProductDetailOut)
+def product_detail(
+    product_id: str,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+) -> Product:
+    product = db.get(Product, product_id)
+    if not product:
+        raise HTTPException(status_code=404, detail="Produto não encontrado")
+    return product
+
+
 @router.post("/{product_id}/adjust-stock", response_model=ProductOut)
 def adjust_stock(
     product_id: str,
@@ -97,6 +109,32 @@ def adjust_stock(
     product = db.get(Product, product_id)
     if not product:
         raise HTTPException(status_code=404, detail="Produto não encontrado")
+    try:
+        from app.integrations.mercadolivre.sync import sync_product_stock
+
+        sync_product_stock(db, product)
+    except Exception:
+        # O saldo local permanece registrado; a sincronização será tentada no próximo ciclo.
+        db.rollback()
+    return product
+
+
+@router.post("/{product_id}/sync-marketplace", response_model=ProductOut)
+def sync_marketplace_stock(
+    product_id: str,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_roles(UserRole.admin, UserRole.manager)),
+) -> Product:
+    product = db.get(Product, product_id)
+    if not product:
+        raise HTTPException(status_code=404, detail="Produto não encontrado")
+    try:
+        from app.integrations.mercadolivre.sync import sync_product_stock
+
+        sync_product_stock(db, product)
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Falha ao atualizar estoque no marketplace: {exc}") from exc
+    db.refresh(product)
     return product
 
 

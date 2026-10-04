@@ -19,6 +19,7 @@ from app.models import (
     MarketplaceOrder,
     MarketplaceOrderEvent,
     Product,
+    ProductMarketplaceListing,
 )
 from app.schemas.common import InvoiceCreate, InvoiceItemCreate
 from app.services.sales import confirm_invoice, create_invoice
@@ -487,17 +488,79 @@ def sync_products(db: Session, account: MarketplaceAccount) -> int:
             if not product:
                 product = Product(sku=sku, name=str(detail.get("title") or sku))
                 db.add(product)
+                db.flush()
             product.name = str(detail.get("title") or product.name)[:200]
             product.description = detail.get("description") or product.description
             product.sale_price = Decimal(str(detail.get("price") or product.sale_price or 0))
             product.current_stock = Decimal(str(detail.get("available_quantity") or 0))
             product.active = str(detail.get("status", "active")) == "active"
+            pictures = [
+                picture.get("secure_url") or picture.get("url")
+                for picture in detail.get("pictures", [])
+                if isinstance(picture, dict) and (picture.get("secure_url") or picture.get("url"))
+            ]
+            listing = db.scalar(
+                select(ProductMarketplaceListing).where(
+                    ProductMarketplaceListing.provider == "mercadolivre",
+                    ProductMarketplaceListing.external_item_id == external_id,
+                )
+            )
+            if not listing:
+                listing = ProductMarketplaceListing(
+                    product_id=product.id,
+                    provider="mercadolivre",
+                    external_item_id=external_id,
+                    images=pictures,
+                    payload=detail,
+                )
+                db.add(listing)
+            listing.product_id = product.id
+            listing.title = str(detail.get("title") or product.name)[:200]
+            listing.permalink = detail.get("permalink")
+            listing.thumbnail = detail.get("thumbnail")
+            listing.images = pictures
+            listing.marketplace_price = Decimal(str(detail.get("price") or 0))
+            listing.available_quantity = Decimal(str(detail.get("available_quantity") or 0))
+            listing.sold_quantity = int(detail.get("sold_quantity") or 0)
+            listing.visits = int(detail.get("visits") or 0)
+            listing.status = str(detail.get("status") or "unknown")
+            listing.payload = detail
+            listing.synchronized_at = datetime.now(UTC)
             imported += 1
         db.commit()
         offset += len(ids)
         if len(ids) < 50:
             break
     return imported
+
+
+def sync_product_stock(db: Session, product: Product) -> int:
+    account = db.scalar(
+        select(MarketplaceAccount).where(
+            MarketplaceAccount.provider == "mercadolivre",
+            MarketplaceAccount.active.is_(True),
+        ).limit(1)
+    )
+    if not account:
+        return 0
+    client = MercadoLivreClient(db, account)
+    updated = 0
+    for listing in db.scalars(
+        select(ProductMarketplaceListing).where(
+            ProductMarketplaceListing.product_id == product.id,
+            ProductMarketplaceListing.provider == "mercadolivre",
+        )
+    ):
+        result = client.put(
+            f"/items/{listing.external_item_id}",
+            {"available_quantity": max(0, int(product.current_stock))},
+        )
+        listing.available_quantity = product.current_stock
+        listing.payload = result if isinstance(result, dict) else listing.payload
+        listing.synchronized_at = datetime.now(UTC)
+        updated += 1
+    db.commit()
+    return updated
 
 
 def sync_all(db: Session, account: MarketplaceAccount) -> dict[str, int]:

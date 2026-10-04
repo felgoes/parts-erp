@@ -1,13 +1,13 @@
-import { DatePipe } from '@angular/common';
+import { CurrencyPipe, DatePipe } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ApiService } from '../../core/api.service';
-import { Customer } from '../../core/models';
+import { Customer, CustomerDetail } from '../../core/models';
 import { PageHeader } from '../../shared/page-header';
 
 @Component({
   selector: 'app-customers',
-  imports: [DatePipe, ReactiveFormsModule, PageHeader],
+  imports: [CurrencyPipe, DatePipe, ReactiveFormsModule, PageHeader],
   template: `
     <app-page-header
       eyebrow="Relacionamento"
@@ -41,7 +41,7 @@ import { PageHeader } from '../../shared/page-header';
             @for (c of filtered(); track c.id) {
               <tr>
                 <td>
-                  <strong>{{ c.name }}</strong>
+                  <button class="link-button" (click)="openDetails(c)"><strong>{{ c.name }}</strong></button>
                 </td>
                 <td>{{ c.document || '—' }}</td>
                 <td>
@@ -81,6 +81,15 @@ import { PageHeader } from '../../shared/page-header';
         </section>
       </div>
     }
+    @if (detail(); as customer) {
+      <div class="modal-backdrop" (click)="detail.set(null)">
+        <section class="modal wide" (click)="$event.stopPropagation()">
+          <div class="modal-head"><div><p class="eyebrow">Relacionamento</p><h2>{{ customer.name }}</h2></div><button class="close" (click)="detail.set(null)">×</button></div>
+          <div class="detail-grid"><div><small>Total comprado</small><strong>{{ customer.total_purchased | currency:'BRL' }}</strong></div><div><small>Compras</small><strong>{{ customer.purchase_count }}</strong></div><div><small>Ticket médio</small><strong>{{ customer.average_purchase | currency:'BRL' }}</strong></div><div><small>Pedidos ML</small><strong>{{ customer.marketplace_order_count }}</strong></div><div><small>Cancelados</small><strong>{{ customer.cancelled_order_count }}</strong></div><div><small>Última compra</small><strong>{{ customer.last_purchase_at ? (customer.last_purchase_at | date:'dd/MM/yyyy HH:mm') : '—' }}</strong></div></div>
+          <h3>Histórico de compras</h3><div class="movement-list">@for (purchase of customer.purchases; track purchase.id) { <div><span>{{ purchase.created_at | date:'dd/MM/yyyy HH:mm' }}</span><strong>{{ purchase.number }}</strong><span>{{ purchase.source }} · {{ purchase.status }}</span><small>{{ purchase.item_count }} item(ns) · {{ purchase.total | currency:'BRL' }}</small></div> } @empty { <p class="muted">Nenhuma compra registrada.</p> }</div>
+        </section>
+      </div>
+    }
   `,
   styleUrl: '../products/products.scss',
 })
@@ -90,6 +99,7 @@ export class CustomersPage implements OnInit {
   readonly customers = signal<Customer[]>([]);
   readonly search = signal('');
   readonly modal = signal(false);
+  readonly detail = signal<CustomerDetail | null>(null);
   readonly filtered = computed(() => {
     const q = this.search().toLowerCase();
     return this.customers().filter(
@@ -107,6 +117,10 @@ export class CustomersPage implements OnInit {
   }
   load() {
     this.api.customers().subscribe((v) => this.customers.set(v));
+  }
+  openDetails(customer: Customer) {
+    this.detail.set(null);
+    this.api.customerDetail(customer.id).subscribe((v) => this.detail.set(v));
   }
   save() {
     if (this.form.invalid) return;

@@ -74,6 +74,26 @@ class ProductOut(ORMModel):
     updated_at: datetime
 
 
+class ProductListingOut(ORMModel):
+    id: str
+    provider: str
+    external_item_id: str
+    title: str | None
+    permalink: str | None
+    thumbnail: str | None
+    images: list
+    marketplace_price: Decimal | None
+    available_quantity: Decimal | None
+    sold_quantity: int | None
+    visits: int | None
+    status: str | None
+    synchronized_at: datetime | None
+
+
+class ProductDetailOut(ProductOut):
+    listings: list[ProductListingOut]
+
+
 class StockMovementOut(ORMModel):
     id: str
     product_id: str
@@ -113,6 +133,29 @@ class CustomerOut(ORMModel):
     email: str | None
     phone: str | None
     created_at: datetime
+
+
+class CustomerPurchaseOut(BaseModel):
+    id: str
+    number: str
+    status: str
+    source: str
+    marketplace_order_id: str | None
+    total: Decimal
+    issued_at: datetime | None
+    created_at: datetime
+    item_count: int
+
+
+class CustomerDetailOut(CustomerOut):
+    purchase_count: int
+    confirmed_purchase_count: int
+    total_purchased: Decimal
+    average_purchase: Decimal
+    last_purchase_at: datetime | None
+    marketplace_order_count: int
+    cancelled_order_count: int
+    purchases: list[CustomerPurchaseOut]
 
 
 class InvoiceItemCreate(BaseModel):

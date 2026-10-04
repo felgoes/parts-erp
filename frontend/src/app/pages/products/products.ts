@@ -3,7 +3,7 @@ import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { finalize } from 'rxjs';
 import { ApiService } from '../../core/api.service';
-import { Product, StockMovement } from '../../core/models';
+import { Product, ProductDetail, StockMovement } from '../../core/models';
 import { PageHeader } from '../../shared/page-header';
 
 @Component({
@@ -156,6 +156,11 @@ import { PageHeader } from '../../shared/page-header';
           <div class="modal-head"><div><p class="eyebrow">Catálogo</p><h2>{{ product.name }}</h2></div><button class="close" (click)="detail.set(null)">×</button></div>
           <div class="detail-grid"><div><small>SKU</small><strong>{{ product.sku }}</strong></div><div><small>Preço</small><strong>{{ product.sale_price | currency:'BRL' }}</strong></div><div><small>Estoque atual</small><strong>{{ product.current_stock | number:'1.0-3' }} un.</strong></div></div>
           <p>{{ product.description || 'Sem descrição cadastrada.' }}</p>
+          <h3>Anúncios vinculados</h3>
+          @for (listing of product.listings; track listing.id) {
+            <div class="listing-detail">@if (listing.thumbnail) { <img [src]="listing.thumbnail" alt="" /> }<div><strong>{{ listing.title || listing.external_item_id }}</strong><small>Item {{ listing.external_item_id }} · estoque ML {{ listing.available_quantity ?? '—' }} · vendidos {{ listing.sold_quantity ?? 0 }} · visitas {{ listing.visits ?? 0 }}</small><span>{{ listing.status || '—' }} · R$ {{ listing.marketplace_price ?? 0 }}</span>@if (listing.permalink) { <a [href]="listing.permalink" target="_blank" rel="noopener">Abrir anúncio</a> }</div></div>
+          } @empty { <p class="muted">Nenhum anúncio do Mercado Livre vinculado a este SKU.</p> }
+          @if (product.listings.length) { <button class="secondary full" (click)="syncMarketplace(product)">Atualizar estoque no Mercado Livre</button> }
           <h3>Histórico de estoque</h3>
           <div class="movement-list">@for (movement of movements(); track movement.id) { <div><span>{{ movement.created_at | date:'dd/MM/yyyy HH:mm' }}</span><strong [class.negative]="movement.quantity < 0">{{ movement.quantity > 0 ? '+' : '' }}{{ movement.quantity }}</strong><span>{{ movement.reason }}</span><small>Saldo: {{ movement.balance_after }}</small></div> } @empty { <p class="muted">Nenhuma movimentação registrada.</p> }</div>
         </section>
@@ -172,7 +177,7 @@ export class ProductsPage implements OnInit {
   readonly onlyLow = signal(false);
   readonly modal = signal(false);
   readonly adjusting = signal<Product | null>(null);
-  readonly detail = signal<Product | null>(null);
+  readonly detail = signal<ProductDetail | null>(null);
   readonly movements = signal<StockMovement[]>([]);
   readonly saving = signal(false);
   readonly filtered = computed(() => {
@@ -221,9 +226,16 @@ export class ProductsPage implements OnInit {
     this.modal.set(true);
   }
   openDetails(p: Product) {
-    this.detail.set(p);
+    this.detail.set(null);
     this.movements.set([]);
+    this.api.productDetail(p.id).subscribe((v) => this.detail.set(v));
     this.api.productMovements(p.id).subscribe((v) => this.movements.set(v));
+  }
+  syncMarketplace(p: ProductDetail) {
+    this.api.syncMarketplaceStock(p.id).subscribe((updated) => {
+      this.detail.update((current) => current ? { ...current, current_stock: updated.current_stock } : current);
+      this.load();
+    });
   }
   close() {
     this.modal.set(false);

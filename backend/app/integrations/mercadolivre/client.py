@@ -109,6 +109,16 @@ class MercadoLivreClient:
         self._raise(response)
         return cast(dict[str, Any] | list[Any], response.json())
 
+    def put(self, path: str, payload: dict[str, Any]) -> dict[str, Any] | list[Any]:
+        with self._client() as client:
+            response = client.put(
+                path,
+                json=payload,
+                headers={"Authorization": f"Bearer {self.access_token()}"},
+            )
+        self._raise(response)
+        return cast(dict[str, Any] | list[Any], response.json())
+
     def download(self, path: str) -> bytes:
         absolute = (
             path if path.startswith("http") else urljoin(self.api_url, path)

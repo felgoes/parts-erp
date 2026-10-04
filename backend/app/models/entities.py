@@ -72,6 +72,35 @@ class Product(TimestampMixin, Base):
     current_stock: Mapped[Decimal] = mapped_column(Numeric(14, 3), default=0)
     minimum_stock: Mapped[Decimal] = mapped_column(Numeric(14, 3), default=0)
     active: Mapped[bool] = mapped_column(Boolean, default=True)
+    listings: Mapped[list["ProductMarketplaceListing"]] = relationship(
+        cascade="all, delete-orphan", back_populates="product", lazy="selectin"
+    )
+
+
+class ProductMarketplaceListing(TimestampMixin, Base):
+    __tablename__ = "product_marketplace_listings"
+    __table_args__ = (
+        Index("uq_product_marketplace_listing", "provider", "external_item_id", unique=True),
+        Index("ix_product_marketplace_listing_product", "product_id"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    product_id: Mapped[str] = mapped_column(ForeignKey("products.id", ondelete="CASCADE"))
+    provider: Mapped[str] = mapped_column(String(30), default="mercadolivre")
+    external_item_id: Mapped[str] = mapped_column(String(80))
+    title: Mapped[str | None] = mapped_column(String(200))
+    permalink: Mapped[str | None] = mapped_column(String(1000))
+    thumbnail: Mapped[str | None] = mapped_column(String(1000))
+    images: Mapped[list[Any]] = mapped_column(JSON, default=list)
+    marketplace_price: Mapped[Decimal | None] = mapped_column(Numeric(14, 2))
+    available_quantity: Mapped[Decimal | None] = mapped_column(Numeric(14, 3))
+    sold_quantity: Mapped[int | None] = mapped_column()
+    visits: Mapped[int | None] = mapped_column()
+    status: Mapped[str | None] = mapped_column(String(40))
+    payload: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    synchronized_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    product: Mapped[Product] = relationship(back_populates="listings")
 
 
 class Customer(TimestampMixin, Base):

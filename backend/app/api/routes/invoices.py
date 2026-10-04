@@ -5,11 +5,25 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, require_roles
 from app.db.session import get_db
-from app.models import InvoiceDocument, SalesInvoice, User, UserRole
+from app.models import InvoiceDocument, Product, SalesInvoice, User, UserRole
 from app.schemas.common import InvoiceCreate, InvoiceOut
 from app.services.sales import cancel_invoice, confirm_invoice, create_invoice
 
 router = APIRouter(prefix="/invoices", tags=["Faturas de venda"])
+
+
+def _sync_marketplace_stock_for_invoice(db: Session, invoice: SalesInvoice) -> None:
+    from app.integrations.mercadolivre.sync import sync_product_stock
+
+    product_ids = {item.product_id for item in invoice.items}
+    for product_id in product_ids:
+        product = db.get(Product, product_id)
+        if product:
+            try:
+                sync_product_stock(db, product)
+            except Exception:
+                # A venda local não deve falhar porque o marketplace está temporariamente indisponível.
+                db.rollback()
 
 
 @router.get("", response_model=list[InvoiceOut])
@@ -56,6 +70,7 @@ def confirm(
     confirm_invoice(db, invoice)
     db.commit()
     db.refresh(invoice)
+    _sync_marketplace_stock_for_invoice(db, invoice)
     return invoice
 
 
@@ -71,6 +86,7 @@ def cancel(
     cancel_invoice(db, invoice)
     db.commit()
     db.refresh(invoice)
+    _sync_marketplace_stock_for_invoice(db, invoice)
     return invoice
 
 

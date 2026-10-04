@@ -23,32 +23,20 @@ export class AuthService {
       })
       .pipe(
         tap((session) => {
-          // Document previews open in a new tab. localStorage keeps the ERP
-          // session available to that same-origin tab, unlike sessionStorage.
-          localStorage.setItem(this.storageKey, JSON.stringify(session));
           sessionStorage.setItem(this.storageKey, JSON.stringify(session));
           this.session.set(session);
         }),
       );
   }
   logout(): void {
-    localStorage.removeItem(this.storageKey);
     sessionStorage.removeItem(this.storageKey);
     this.session.set(null);
     this.router.navigateByUrl('/login');
   }
   private restore(): AuthToken | null {
     try {
-      const shared = localStorage.getItem(this.storageKey);
-      if (shared) return JSON.parse(shared);
-      const tabOnly = sessionStorage.getItem(this.storageKey);
-      if (!tabOnly) return null;
-      // Migrate an existing tab session once so document previews can open
-      // in additional same-origin tabs without asking for a second login.
-      localStorage.setItem(this.storageKey, tabOnly);
-      return JSON.parse(tabOnly);
+      return JSON.parse(sessionStorage.getItem(this.storageKey) ?? 'null');
     } catch {
-      localStorage.removeItem(this.storageKey);
       sessionStorage.removeItem(this.storageKey);
       return null;
     }

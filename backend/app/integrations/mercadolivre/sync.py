@@ -288,7 +288,11 @@ def sync_invoice_documents(
         if str(fiscal.get("status", "")).lower() != "authorized":
             continue
         external_id = str(fiscal.get("id", order_id))
-        locations = {"xml": fiscal.get("xml_location"), "pdf": fiscal.get("danfe_location")}
+        attributes = fiscal.get("attributes") if isinstance(fiscal.get("attributes"), dict) else {}
+        locations = {
+            "xml": fiscal.get("xml_location") or attributes.get("xml_location"),
+            "pdf": fiscal.get("danfe_location") or attributes.get("danfe_location"),
+        }
         for document_type, location in locations.items():
             document_external_id = f"{external_id}:{document_type}"
             existing = db.scalar(

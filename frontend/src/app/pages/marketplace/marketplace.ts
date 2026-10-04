@@ -50,6 +50,9 @@ import { PageHeader } from '../../shared/page-header';
               <th>Status no ML</th>
               <th>Sincronização</th>
               <th>Fatura</th>
+              <th>NF-e</th>
+              <th>Etiqueta</th>
+              <th></th>
             </tr>
           </thead>
           <tbody>
@@ -73,10 +76,41 @@ import { PageHeader } from '../../shared/page-header';
                   }
                 </td>
                 <td>{{ o.invoice_id ? 'Gerada' : '—' }}</td>
+                <td>
+                  <span
+                    class="badge"
+                    [class.success]="o.fiscal_status === 'authorized'"
+                    [class.cancelled]="o.fiscal_status === 'error'"
+                    >{{ automationLabel(o.fiscal_status) }}</span
+                  >
+                  @if (o.fiscal_error) {
+                    <small class="error-text">{{ o.fiscal_error }}</small>
+                  }
+                </td>
+                <td>
+                  <span
+                    class="badge"
+                    [class.success]="o.label_status === 'downloaded'"
+                    [class.cancelled]="o.label_status === 'error'"
+                    >{{ automationLabel(o.label_status) }}</span
+                  >
+                  @if (o.label_error) {
+                    <small class="error-text">{{ o.label_error }}</small>
+                  }
+                </td>
+                <td>
+                  <button
+                    class="secondary small"
+                    [disabled]="!o.invoice_id || retrying() === o.id"
+                    (click)="retry(o)"
+                  >
+                    {{ retrying() === o.id ? 'Tentando…' : 'Tentar agora' }}
+                  </button>
+                </td>
               </tr>
             } @empty {
               <tr>
-                <td colspan="5"><div class="empty">Os novos pedidos aparecerão aqui.</div></td>
+                <td colspan="8"><div class="empty">Os novos pedidos aparecerão aqui.</div></td>
               </tr>
             }
           </tbody>
@@ -90,6 +124,7 @@ export class MarketplacePage implements OnInit {
   private readonly api = inject(ApiService);
   readonly status = signal<MarketplaceStatus | null>(null);
   readonly orders = signal<MarketplaceOrder[]>([]);
+  readonly retrying = signal<string | null>(null);
   ngOnInit() {
     this.load();
   }
@@ -106,5 +141,33 @@ export class MarketplacePage implements OnInit {
         >
       )[s] ?? s
     );
+  }
+  automationLabel(s: string) {
+    return (
+      (
+        {
+          authorized: 'Emitida',
+          downloaded: 'Anexada',
+          pending: 'Pendente',
+          requesting: 'Solicitando',
+          waiting: 'Aguardando envio',
+          waiting_shipment: 'Sem envio',
+          not_applicable: 'Não aplicável',
+          error: 'Requer atenção',
+        } as Record<string, string>
+      )[s] ?? s
+    );
+  }
+  retry(order: MarketplaceOrder) {
+    this.retrying.set(order.id);
+    this.api.automateMarketplaceOrder(order.id).subscribe({
+      next: (updated) => {
+        this.orders.update((orders) =>
+          orders.map((item) => (item.id === updated.id ? updated : item)),
+        );
+        this.retrying.set(null);
+      },
+      error: () => this.retrying.set(null),
+    });
   }
 }

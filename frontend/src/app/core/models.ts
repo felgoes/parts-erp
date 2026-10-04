@@ -75,6 +75,8 @@ export interface MarketplaceStatus {
   seller_id: string | null;
   nickname: string | null;
   token_expires_at: string | null;
+  auto_issue_invoice: boolean;
+  auto_download_label: boolean;
 }
 export interface MarketplaceConfig {
   client_id: string;
@@ -84,6 +86,8 @@ export interface MarketplaceConfig {
   import_orders: boolean;
   automatic_stock: boolean;
   sync_documents: boolean;
+  auto_issue_invoice: boolean;
+  auto_download_label: boolean;
 }
 export interface MarketplaceOrder {
   id: string;
@@ -93,6 +97,14 @@ export interface MarketplaceOrder {
   sync_status: string;
   sync_error: string | null;
   invoice_id: string | null;
+  shipment_id: string | null;
+  shipping_status: string | null;
+  fiscal_status: string;
+  fiscal_error: string | null;
+  external_invoice_id: string | null;
+  label_status: string;
+  label_error: string | null;
+  automation_updated_at: string | null;
   synchronized_at: string | null;
   created_at: string;
 }

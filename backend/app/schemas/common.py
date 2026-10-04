@@ -189,7 +189,7 @@ class DocumentOut(ORMModel):
     created_at: datetime
 
 
-class InvoiceCustomerOut(BaseModel):
+class InvoiceCustomerOut(ORMModel):
     name: str
     document: str | None = None
     email: str | None = None

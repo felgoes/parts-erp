@@ -16,6 +16,7 @@ from app.models import HealthSnapshot, Product, TelemetryEvent, User
 from app.schemas.common import (
     EventCount,
     ProductViewCount,
+    TelemetryDailyCount,
     TelemetryEventCreate,
     TelemetryHealthOut,
     TelemetrySummary,
@@ -43,7 +44,10 @@ def _enforce_rate_limit(key: str, limit: int) -> None:
         while window and window[0] <= now - 60:
             window.popleft()
         if len(window) >= limit:
-            raise HTTPException(status_code=429, detail="Muitos eventos; tente novamente em instantes")
+            raise HTTPException(
+                status_code=429,
+                detail="Muitos eventos; tente novamente em instantes",
+            )
         window.append(now)
 
 
@@ -118,6 +122,30 @@ def summary(
         .order_by(func.count(TelemetryEvent.id).desc())
     ).all()
     counts = [EventCount(name=name, count=count) for name, count in rows]
+    dialect = db.get_bind().dialect.name
+    if dialect == "sqlite":
+        local_event_date = func.date(TelemetryEvent.created_at, "-3 hours")
+    else:
+        local_event_date = func.date(
+            func.timezone("America/Sao_Paulo", TelemetryEvent.created_at)
+        )
+    daily_rows = db.execute(
+        select(local_event_date, TelemetryEvent.name, func.count(TelemetryEvent.id))
+        .where(TelemetryEvent.created_at >= since)
+        .where(TelemetryEvent.created_at < until)
+        .group_by(local_event_date, TelemetryEvent.name)
+        .order_by(local_event_date)
+    ).all()
+    daily_counts: dict[date, list[EventCount]] = defaultdict(list)
+    for event_date, name, count in daily_rows:
+        parsed_date = (
+            event_date if isinstance(event_date, date) else date.fromisoformat(str(event_date))
+        )
+        daily_counts[parsed_date].append(EventCount(name=name, count=count))
+    daily_events = [
+        TelemetryDailyCount(date=day, events=daily_counts.get(day, []))
+        for day in (start + timedelta(days=offset) for offset in range((end - start).days + 1))
+    ]
     sku_expression = TelemetryEvent.properties["sku"].as_string()
     view_rows = db.execute(
         select(sku_expression, Product.name, func.count(TelemetryEvent.id))
@@ -136,15 +164,12 @@ def summary(
         if sku
     ]
     health = list(
-        db.scalars(
-            select(HealthSnapshot)
-            .order_by(HealthSnapshot.checked_at.desc())
-            .limit(20)
-        )
+        db.scalars(select(HealthSnapshot).order_by(HealthSnapshot.checked_at.desc()).limit(20))
     )
     return TelemetrySummary(
         days=(end - start).days + 1,
         events=counts,
+        daily_events=daily_events,
         product_views=product_views,
         health=health,
     )

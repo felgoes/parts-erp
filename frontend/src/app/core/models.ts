@@ -261,6 +261,10 @@ export interface TelemetryEventCount {
   name: string;
   count: number;
 }
+export interface TelemetryDailyCount {
+  date: string;
+  events: TelemetryEventCount[];
+}
 export interface TelemetryProductViews {
   sku: string;
   product_name: string;
@@ -276,6 +280,7 @@ export interface TelemetryHealth {
 export interface TelemetrySummary {
   days: number;
   events: TelemetryEventCount[];
+  daily_events: TelemetryDailyCount[];
   product_views: TelemetryProductViews[];
   health: TelemetryHealth[];
 }

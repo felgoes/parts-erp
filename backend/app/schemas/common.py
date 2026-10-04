@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
@@ -355,6 +355,7 @@ class ShopeeStatus(BaseModel):
     shop_id: str | None = None
     token_expires_at: datetime | None = None
 
+
 class ShopeeConfigOut(BaseModel):
     partner_id: str
     partner_key_configured: bool
@@ -364,6 +365,7 @@ class ShopeeConfigOut(BaseModel):
     import_orders: bool
     automatic_stock: bool
     sync_documents: bool
+
 
 class ShopeeConfigUpdate(BaseModel):
     partner_id: str
@@ -375,6 +377,7 @@ class ShopeeConfigUpdate(BaseModel):
     automatic_stock: bool = True
     sync_documents: bool
 
+
 class TelemetryEventCreate(BaseModel):
     name: str = Field(min_length=1, max_length=60)
     source: str = Field(default="site", min_length=1, max_length=30)
@@ -385,6 +388,11 @@ class TelemetryEventCreate(BaseModel):
 class EventCount(BaseModel):
     name: str
     count: int
+
+
+class TelemetryDailyCount(BaseModel):
+    date: date
+    events: list[EventCount] = Field(default_factory=list)
 
 
 class ProductViewCount(BaseModel):
@@ -404,5 +412,6 @@ class TelemetryHealthOut(ORMModel):
 class TelemetrySummary(BaseModel):
     days: int
     events: list[EventCount]
+    daily_events: list[TelemetryDailyCount] = Field(default_factory=list)
     product_views: list[ProductViewCount] = Field(default_factory=list)
     health: list[TelemetryHealthOut]

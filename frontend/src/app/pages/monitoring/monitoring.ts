@@ -1,4 +1,4 @@
-import { DatePipe, NumberPipe } from '@angular/common';
+import { DatePipe, DecimalPipe } from '@angular/common';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { ApiService } from '../../core/api.service';
 import { TelemetryHealth, TelemetrySummary } from '../../core/models';
@@ -6,7 +6,7 @@ import { PageHeader } from '../../shared/page-header';
 
 @Component({
   selector: 'app-monitoring',
-  imports: [DatePipe, NumberPipe, PageHeader],
+  imports: [DatePipe, DecimalPipe, PageHeader],
   template: `
     <app-page-header eyebrow="Operação" title="Monitoramento" subtitle="Saúde técnica e conversão da loja." />
     @if (data(); as summary) {

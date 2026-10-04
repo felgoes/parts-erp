@@ -6,7 +6,13 @@ from sqlalchemy import select
 from app.core.config import get_settings
 from app.db.session import SessionLocal
 from app.integrations.mercadolivre.client import MercadoLivreClient
-from app.integrations.mercadolivre.sync import sync_all, sync_invoice_documents, sync_order
+from app.integrations.mercadolivre.sync import (
+    automate_order_documents,
+    extract_invoice_order_ids,
+    sync_all,
+    sync_invoice_documents,
+    sync_order,
+)
 from app.integrations.shopee.sync import sync_all as sync_shopee_all, sync_order as sync_shopee_order
 from app.models import MarketplaceAccount, MarketplaceOrder
 
@@ -16,22 +22,26 @@ async def process_mercadolivre_notification(
 ) -> None:
     del ctx
     with SessionLocal() as db:
-        if topic == "orders_v2":
-            sync_order(db, seller_id, resource)
-            return
-
         account = db.scalar(
             select(MarketplaceAccount).where(MarketplaceAccount.seller_id == seller_id)
         )
         if not account:
             return
-        invoice_data = MercadoLivreClient(db, account).get(resource)
-        if not isinstance(invoice_data, dict):
+        data = MercadoLivreClient(db, account).get(resource)
+        if not isinstance(data, dict):
             return
-        order_ids = invoice_data.get("orders") or [invoice_data.get("order_id")]
+        order_ids = extract_invoice_order_ids(data)
+        if topic == "orders_v2":
+            order_ids.add(resource.rsplit("/", 1)[-1])
+        for key in ("order_id", "order_ids", "related_order_id", "related_orders"):
+            value = data.get(key)
+            values = value if isinstance(value, list) else [value]
+            for candidate in values:
+                raw = candidate.get("id") if isinstance(candidate, dict) else candidate
+                if raw:
+                    order_ids.add(str(raw))
         for raw_order_id in order_ids:
-            raw_id = raw_order_id.get("id") if isinstance(raw_order_id, dict) else raw_order_id
-            order_id = str(raw_id or "")
+            order_id = str(raw_order_id or "")
             if not order_id:
                 continue
             order = db.scalar(
@@ -40,7 +50,10 @@ async def process_mercadolivre_notification(
             if not order or not order.invoice_id:
                 order = sync_order(db, seller_id, f"/orders/{order_id}")
             if order.invoice_id:
-                sync_invoice_documents(db, account, order_id, order.invoice_id)
+                if topic == "invoices":
+                    sync_invoice_documents(db, account, order_id, order.invoice_id)
+                else:
+                    automate_order_documents(db, order)
 
 
 class WorkerSettings:

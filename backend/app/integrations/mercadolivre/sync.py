@@ -17,6 +17,7 @@ from app.models import (
     MarketplaceAccount,
     MarketplaceConfig,
     MarketplaceOrder,
+    MarketplaceOrderEvent,
     Product,
 )
 from app.schemas.common import InvoiceCreate, InvoiceItemCreate
@@ -110,6 +111,7 @@ def sync_order(db: Session, seller_id: str, resource: str) -> MarketplaceOrder:
             MarketplaceOrder.external_order_id == order_id,
         )
     )
+    previous_status = record.status if record else None
     if not record:
         record = MarketplaceOrder(
             provider="mercadolivre",
@@ -123,6 +125,26 @@ def sync_order(db: Session, seller_id: str, resource: str) -> MarketplaceOrder:
     else:
         record.status = str(order.get("status", "unknown"))
         record.payload = order
+    has_event = db.scalar(
+        select(MarketplaceOrderEvent.id)
+        .where(MarketplaceOrderEvent.order_id == record.id)
+        .limit(1)
+    )
+    if previous_status != record.status or not has_event:
+        db.add(
+            MarketplaceOrderEvent(
+                order_id=record.id,
+                event_type="order_status",
+                status=record.status,
+                detail=str(order.get("status_detail") or "")[:255] or None,
+                payload={
+                    "status": record.status,
+                    "status_detail": order.get("status_detail"),
+                    "cancel_detail": order.get("cancel_detail"),
+                    "order_request": order.get("order_request"),
+                },
+            )
+        )
     shipping = order.get("shipping") or {}
     shipment_id = shipping.get("id") if isinstance(shipping, dict) else None
     record.shipment_id = str(shipment_id) if shipment_id else record.shipment_id

@@ -194,6 +194,16 @@ class MarketplaceOrderOut(ORMModel):
     payload: dict | None = None
 
 
+class MarketplaceOrderEventOut(ORMModel):
+    id: str
+    order_id: str
+    event_type: str
+    status: str
+    detail: str | None
+    payload: dict
+    created_at: datetime
+
+
 class MarketplaceStatus(BaseModel):
     configured: bool
     connected: bool

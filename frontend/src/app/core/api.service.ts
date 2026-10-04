@@ -6,6 +6,7 @@ import {
   DashboardSummary,
   Invoice,
   MarketplaceOrder,
+  MarketplaceOrderEvent,
   MarketplaceStatus,
   MarketplaceConfig,
   ShopeeConfig,
@@ -101,6 +102,9 @@ export class ApiService {
   }
   marketplaceOrder(id: string): Observable<MarketplaceOrder> {
     return this.http.get<MarketplaceOrder>(`${this.base}/integrations/mercadolivre/orders/${id}`);
+  }
+  marketplaceOrderHistory(id: string): Observable<MarketplaceOrderEvent[]> {
+    return this.http.get<MarketplaceOrderEvent[]>(`${this.base}/integrations/mercadolivre/orders/${id}/history`);
   }
   syncMarketplace(): Observable<{ accepted: boolean; message: string }> {
     return this.http.post<{ accepted: boolean; message: string }>(

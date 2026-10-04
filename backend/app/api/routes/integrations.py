@@ -20,6 +20,7 @@ from app.models import (
     MarketplaceAccount,
     MarketplaceConfig,
     MarketplaceOrder,
+    MarketplaceOrderEvent,
     ShopeeConfig,
     User,
     UserRole,
@@ -28,6 +29,7 @@ from app.schemas.common import (
     MarketplaceConfigOut,
     MarketplaceConfigUpdate,
     MarketplaceOrderOut,
+    MarketplaceOrderEventOut,
     MarketplaceStatus,
     ShopeeConfigOut,
     ShopeeConfigUpdate,
@@ -185,6 +187,23 @@ def order_detail(
     return order
 
 
+@router.get("/orders/{order_id}/history", response_model=list[MarketplaceOrderEventOut])
+def order_history(
+    order_id: str,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+) -> list[MarketplaceOrderEvent]:
+    if not db.get(MarketplaceOrder, order_id):
+        raise HTTPException(status_code=404, detail="Pedido não encontrado")
+    return list(
+        db.scalars(
+            select(MarketplaceOrderEvent)
+            .where(MarketplaceOrderEvent.order_id == order_id)
+            .order_by(MarketplaceOrderEvent.created_at.asc())
+        )
+    )
+
+
 @router.post("/orders/{order_id}/automate", response_model=MarketplaceOrderOut)
 def automate_order(
     order_id: str,
@@ -223,21 +242,22 @@ async def sync_now(
 
 
 @router.post("/webhook", status_code=202)
+@router.post("/notifications", status_code=202)
 async def webhook(request: Request) -> dict[str, bool]:
     payload = await request.json()
     topic = str(payload.get("topic", ""))
     resource = str(payload.get("resource", ""))
     seller_id = str(payload.get("user_id", ""))
     if (
-        topic not in {"orders_v2", "invoices"}
+        topic not in {"orders_v2", "shipments", "payments", "invoices", "claims", "returns"}
         or not resource.startswith("/")
         or not seller_id.isdigit()
     ):
         raise HTTPException(status_code=400, detail="Notificação inválida")
-    valid_resource = (
-        bool(re.fullmatch(r"/orders/\d+", resource))
-        if topic == "orders_v2"
-        else resource.startswith(f"/users/{seller_id}/invoices/")
+    valid_resource = bool(re.fullmatch(r"/orders/\d+", resource)) if topic == "orders_v2" else (
+        resource.startswith(f"/users/{seller_id}/invoices/")
+        if topic == "invoices"
+        else bool(re.fullmatch(r"/(shipments|collections|claims|returns)/\d+", resource))
     )
     if not valid_resource:
         raise HTTPException(status_code=400, detail="Recurso de notificação inválido")

@@ -120,6 +120,15 @@ export interface MarketplaceOrder {
   provider?: string;
   payload?: Record<string, any> | null;
 }
+export interface MarketplaceOrderEvent {
+  id: string;
+  order_id: string;
+  event_type: string;
+  status: string;
+  detail: string | null;
+  payload: Record<string, any>;
+  created_at: string;
+}
 
 export interface ShopeeStatus {
   configured: boolean;

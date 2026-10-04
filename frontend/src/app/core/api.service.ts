@@ -4,6 +4,7 @@ import { Observable } from 'rxjs';
 import {
   Customer,
   DashboardSummary,
+  DashboardFinancialMetrics,
   Invoice,
   MarketplaceOrder,
   MarketplaceOrderEvent,
@@ -30,6 +31,9 @@ export class ApiService {
   }
   dashboard(): Observable<DashboardSummary> {
     return this.http.get<DashboardSummary>(`${this.base}/dashboard/summary`);
+  }
+  dashboardFinancial(): Observable<DashboardFinancialMetrics> {
+    return this.http.get<DashboardFinancialMetrics>(`${this.base}/dashboard/financial`);
   }
   products(search = '', lowStock = false): Observable<Product[]> {
     let params = new HttpParams();

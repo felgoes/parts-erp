@@ -256,6 +256,32 @@ class DashboardSummary(BaseModel):
     recent_invoices: list[InvoiceOut]
 
 
+class DashboardBreakdown(BaseModel):
+    label: str
+    amount: Decimal
+    count: int
+
+
+class DashboardDailyMetric(BaseModel):
+    date: str
+    label: str
+    amount: Decimal
+    count: int
+
+
+class DashboardFinancialMetrics(BaseModel):
+    period_label: str
+    revenue: Decimal
+    sales_count: int
+    average_ticket: Decimal
+    previous_revenue: Decimal
+    revenue_change_percent: Decimal
+    cancelled_count: int
+    documents_count: int
+    by_source: list[DashboardBreakdown]
+    daily: list[DashboardDailyMetric]
+
+
 class MarketplaceOrderOut(ORMModel):
     id: str
     external_order_id: str

@@ -1,14 +1,14 @@
-import { CurrencyPipe, DatePipe } from '@angular/common';
+import { CurrencyPipe, DatePipe, DecimalPipe } from '@angular/common';
 import { Component, OnInit, inject, signal } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { ApiService } from '../../core/api.service';
-import { DashboardSummary, Invoice } from '../../core/models';
+import { DashboardFinancialMetrics, DashboardSummary, Invoice } from '../../core/models';
 import { statusLabel, trackingEventLabel } from '../../core/status-labels';
 import { PageHeader } from '../../shared/page-header';
 
 @Component({
   selector: 'app-dashboard',
-  imports: [CurrencyPipe, DatePipe, RouterLink, PageHeader],
+  imports: [CurrencyPipe, DatePipe, DecimalPipe, RouterLink, PageHeader],
   template: `
     <app-page-header
       eyebrow="Centro de controle"
@@ -18,22 +18,22 @@ import { PageHeader } from '../../shared/page-header';
     >
     @if (data(); as summary) {
       <section class="metric-grid">
-        <article class="metric featured">
+        <article class="metric featured metric-clickable" tabindex="0" role="button" (click)="openFinancial()" (keydown.enter)="openFinancial()" (keydown.space)="$event.preventDefault(); openFinancial()">
           <div>
             <span>Faturamento no mês</span
             ><strong>{{ summary.revenue_month | currency: 'BRL' }}</strong>
           </div>
           <i>↗</i><small>Vendas confirmadas</small>
         </article>
-        <article class="metric">
+        <article class="metric metric-clickable" tabindex="0" role="button" (click)="navigate('/invoices')" (keydown.enter)="navigate('/invoices')">
           <span>Vendas confirmadas</span><strong>{{ summary.confirmed_sales }}</strong
           ><small>neste mês</small>
         </article>
-        <article class="metric">
+        <article class="metric metric-clickable" tabindex="0" role="button" (click)="navigate('/products')" (keydown.enter)="navigate('/products')">
           <span>Produtos ativos</span><strong>{{ summary.products_count }}</strong
           ><small>no catálogo</small>
         </article>
-        <article class="metric" [class.warning]="summary.low_stock_count">
+        <article class="metric metric-clickable" [class.warning]="summary.low_stock_count" tabindex="0" role="button" (click)="navigate('/products')" (keydown.enter)="navigate('/products')">
           <span>Estoque baixo</span><strong>{{ summary.low_stock_count }}</strong
           ><small>itens pedem atenção</small>
         </article>
@@ -102,6 +102,15 @@ import { PageHeader } from '../../shared/page-header';
           >
         </aside>
       </section>
+      @if (financial(); as finance) {
+        <div class="modal-backdrop" (click)="financial.set(null)">
+          <section class="modal wide object-modal financial-modal" (click)="$event.stopPropagation()">
+            <div class="modal-head financial-head"><div><p class="eyebrow">Financeiro · {{ finance.period_label }}</p><h2>Faturamento do mês</h2><p class="detail-subtitle">Uma leitura rápida da receita, do ritmo de vendas e da composição do caixa.</p></div><button class="close" aria-label="Fechar métricas financeiras" (click)="financial.set(null)">×</button></div>
+            <div class="financial-kpis"><div class="financial-kpi primary-kpi"><span>Receita confirmada</span><strong>{{ finance.revenue | currency:'BRL' }}</strong><small [class.positive-text]="finance.revenue_change_percent >= 0" [class.negative-text]="finance.revenue_change_percent < 0">{{ finance.revenue_change_percent >= 0 ? '↑' : '↓' }} {{ abs(finance.revenue_change_percent) | number:'1.0-2' }}% vs. mês anterior</small></div><div class="financial-kpi"><span>Ticket médio</span><strong>{{ finance.average_ticket | currency:'BRL' }}</strong><small>{{ finance.sales_count }} vendas confirmadas</small></div><div class="financial-kpi"><span>Documentos emitidos</span><strong>{{ finance.documents_count }}</strong><small>Notas e arquivos da operação</small></div><div class="financial-kpi"><span>Cancelamentos</span><strong>{{ finance.cancelled_count }}</strong><small>neste mês</small></div></div>
+            <div class="financial-grid"><section class="financial-panel"><div class="section-heading"><div><p class="eyebrow">Ritmo de vendas</p><h3>Receita nos últimos dias</h3></div><span class="muted">{{ finance.period_label }}</span></div><div class="revenue-chart" aria-label="Receita diária">@for (day of finance.daily; track day.date) { <div class="chart-column"><span class="chart-value">{{ day.amount | currency:'BRL':'symbol':'1.0-0' }}</span><div class="chart-track"><i [style.height.%]="chartHeight(day.amount, finance.daily)"></i></div><small>{{ day.label }}</small></div> }</div></section><section class="financial-panel"><div class="section-heading"><div><p class="eyebrow">Composição</p><h3>Por canal de venda</h3></div></div><div class="source-breakdown">@for (source of finance.by_source; track source.label) { <div><div class="source-row"><strong>{{ source.label }}</strong><span>{{ source.amount | currency:'BRL' }}</span></div><div class="source-bar"><i [style.width.%]="sourceWidth(source.amount, finance.revenue)"></i></div><small>{{ source.count }} venda(s)</small></div> } @empty { <p class="muted">Nenhuma venda confirmada no período.</p> }</div></section></div>
+          </section>
+        </div>
+      }
       @if (detail(); as invoice) {
         <div class="modal-backdrop" (click)="detail.set(null)">
           <section class="modal wide object-modal" (click)="$event.stopPropagation()">
@@ -122,7 +131,9 @@ import { PageHeader } from '../../shared/page-header';
 })
 export class DashboardPage implements OnInit {
   private readonly api = inject(ApiService);
+  private readonly router = inject(Router);
   readonly data = signal<DashboardSummary | null>(null);
+  readonly financial = signal<DashboardFinancialMetrics | null>(null);
   readonly detail = signal<Invoice | null>(null);
   readonly invoiceTab = signal<'items' | 'tracking' | 'documents'>('items');
   readonly statusLabel = statusLabel;
@@ -143,6 +154,22 @@ export class DashboardPage implements OnInit {
   openRecent(invoice: Invoice) {
     this.invoiceTab.set('items');
     this.api.invoice(invoice.id).subscribe((full) => this.detail.set(full));
+  }
+  navigate(path: string) {
+    void this.router.navigate([path]);
+  }
+  openFinancial() {
+    this.api.dashboardFinancial().subscribe((metrics) => this.financial.set(metrics));
+  }
+  abs(value: number) {
+    return Math.abs(value);
+  }
+  chartHeight(value: number, values: { amount: number }[]) {
+    const max = Math.max(...values.map((item) => item.amount), 1);
+    return value ? Math.max(8, (value / max) * 100) : 3;
+  }
+  sourceWidth(value: number, total: number) {
+    return total ? Math.max(4, (value / total) * 100) : 0;
   }
   openDocument(invoiceId: string, documentId: string) {
     this.api.downloadInvoiceDocument(invoiceId, documentId).subscribe((blob) => {

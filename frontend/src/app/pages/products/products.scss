@@ -71,6 +71,13 @@
   border-radius: 10px;
   margin-bottom: 18px;
 }
+.detail-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 18px 0; }
+.detail-grid div { display: grid; gap: 4px; padding: 12px; background: #f1f5f2; border-radius: 8px; }
+.detail-grid small, .movement-list small { color: var(--muted); }
+.movement-list { display: grid; gap: 8px; max-height: 260px; overflow: auto; }
+.movement-list > div { display: grid; grid-template-columns: 130px 70px 1fr 80px; gap: 10px; align-items: center; padding: 10px; border-bottom: 1px solid var(--line); font-size: 13px; }
+.negative { color: #a33b2c; }
+@media (max-width: 600px) { .detail-grid { grid-template-columns: 1fr; } .movement-list > div { grid-template-columns: 1fr 60px; } }
 .selected-product span {
   color: var(--muted);
   font-size: 13px;

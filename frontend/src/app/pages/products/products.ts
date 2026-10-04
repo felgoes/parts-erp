@@ -1,14 +1,14 @@
-import { CurrencyPipe, DecimalPipe } from '@angular/common';
+import { CurrencyPipe, DatePipe, DecimalPipe } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { finalize } from 'rxjs';
 import { ApiService } from '../../core/api.service';
-import { Product } from '../../core/models';
+import { Product, StockMovement } from '../../core/models';
 import { PageHeader } from '../../shared/page-header';
 
 @Component({
   selector: 'app-products',
-  imports: [CurrencyPipe, DecimalPipe, ReactiveFormsModule, PageHeader],
+  imports: [CurrencyPipe, DatePipe, DecimalPipe, ReactiveFormsModule, PageHeader],
   template: `
     <app-page-header
       eyebrow="Catálogo"
@@ -77,6 +77,7 @@ import { PageHeader } from '../../shared/page-header';
                   >
                 </td>
                 <td class="right">
+                  <button class="secondary small" (click)="openDetails(product)">Detalhes</button>
                   <button class="secondary small" (click)="openAdjust(product)">Ajustar</button>
                 </td>
               </tr>
@@ -149,6 +150,17 @@ import { PageHeader } from '../../shared/page-header';
         </section>
       </div>
     }
+    @if (detail(); as product) {
+      <div class="modal-backdrop" (click)="detail.set(null)">
+        <section class="modal wide" (click)="$event.stopPropagation()">
+          <div class="modal-head"><div><p class="eyebrow">Catálogo</p><h2>{{ product.name }}</h2></div><button class="close" (click)="detail.set(null)">×</button></div>
+          <div class="detail-grid"><div><small>SKU</small><strong>{{ product.sku }}</strong></div><div><small>Preço</small><strong>{{ product.sale_price | currency:'BRL' }}</strong></div><div><small>Estoque atual</small><strong>{{ product.current_stock | number:'1.0-3' }} un.</strong></div></div>
+          <p>{{ product.description || 'Sem descrição cadastrada.' }}</p>
+          <h3>Histórico de estoque</h3>
+          <div class="movement-list">@for (movement of movements(); track movement.id) { <div><span>{{ movement.created_at | date:'dd/MM/yyyy HH:mm' }}</span><strong [class.negative]="movement.quantity < 0">{{ movement.quantity > 0 ? '+' : '' }}{{ movement.quantity }}</strong><span>{{ movement.reason }}</span><small>Saldo: {{ movement.balance_after }}</small></div> } @empty { <p class="muted">Nenhuma movimentação registrada.</p> }</div>
+        </section>
+      </div>
+    }
   `,
   styleUrl: './products.scss',
 })
@@ -160,6 +172,8 @@ export class ProductsPage implements OnInit {
   readonly onlyLow = signal(false);
   readonly modal = signal(false);
   readonly adjusting = signal<Product | null>(null);
+  readonly detail = signal<Product | null>(null);
+  readonly movements = signal<StockMovement[]>([]);
   readonly saving = signal(false);
   readonly filtered = computed(() => {
     const q = this.search().toLowerCase();
@@ -205,6 +219,11 @@ export class ProductsPage implements OnInit {
     this.adjusting.set(p);
     this.adjustForm.reset({ quantity: 0, reason: '' });
     this.modal.set(true);
+  }
+  openDetails(p: Product) {
+    this.detail.set(p);
+    this.movements.set([]);
+    this.api.productMovements(p.id).subscribe((v) => this.movements.set(v));
   }
   close() {
     this.modal.set(false);

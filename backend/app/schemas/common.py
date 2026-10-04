@@ -74,6 +74,17 @@ class ProductOut(ORMModel):
     updated_at: datetime
 
 
+class StockMovementOut(ORMModel):
+    id: str
+    product_id: str
+    movement_type: str
+    quantity: Decimal
+    balance_after: Decimal
+    reason: str
+    reference: str | None
+    created_at: datetime
+
+
 class CatalogProductOut(BaseModel):
     id: str
     sku: str
@@ -171,6 +182,16 @@ class MarketplaceOrderOut(ORMModel):
     invoice_id: str | None
     synchronized_at: datetime | None
     created_at: datetime
+    provider: str = "mercadolivre"
+    shipment_id: str | None = None
+    shipping_status: str | None = None
+    fiscal_status: str = "pending"
+    fiscal_error: str | None = None
+    external_invoice_id: str | None = None
+    label_status: str = "pending"
+    label_error: str | None = None
+    automation_updated_at: datetime | None = None
+    payload: dict | None = None
 
 
 class MarketplaceStatus(BaseModel):

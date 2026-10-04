@@ -173,6 +173,34 @@ def orders(
     )
 
 
+@router.get("/orders/{order_id}", response_model=MarketplaceOrderOut)
+def order_detail(
+    order_id: str,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+) -> MarketplaceOrder:
+    order = db.get(MarketplaceOrder, order_id)
+    if not order:
+        raise HTTPException(status_code=404, detail="Pedido não encontrado")
+    return order
+
+
+@router.post("/orders/{order_id}/automate", response_model=MarketplaceOrderOut)
+def automate_order(
+    order_id: str,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_roles(UserRole.admin, UserRole.manager)),
+) -> MarketplaceOrder:
+    from app.integrations.mercadolivre.sync import automate_order_documents
+
+    order = db.get(MarketplaceOrder, order_id)
+    if not order:
+        raise HTTPException(status_code=404, detail="Pedido não encontrado")
+    if not order.invoice_id:
+        return order
+    return automate_order_documents(db, order)
+
+
 @router.post("/sync", status_code=202)
 async def sync_now(
     db: Session = Depends(get_db), _: User = Depends(require_roles(UserRole.admin))

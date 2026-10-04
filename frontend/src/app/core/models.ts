@@ -22,6 +22,16 @@ export interface Product {
   created_at: string;
   updated_at: string;
 }
+export interface StockMovement {
+  id: string;
+  product_id: string;
+  movement_type: string;
+  quantity: number;
+  balance_after: number;
+  reason: string;
+  reference: string | null;
+  created_at: string;
+}
 export interface Customer {
   id: string;
   name: string;
@@ -107,6 +117,8 @@ export interface MarketplaceOrder {
   automation_updated_at: string | null;
   synchronized_at: string | null;
   created_at: string;
+  provider?: string;
+  payload?: Record<string, any> | null;
 }
 
 export interface ShopeeStatus {

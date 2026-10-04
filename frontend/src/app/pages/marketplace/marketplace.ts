@@ -1,4 +1,4 @@
-import { DatePipe } from '@angular/common';
+import { DatePipe, JsonPipe } from '@angular/common';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { ApiService } from '../../core/api.service';
 import { MarketplaceOrder, MarketplaceStatus } from '../../core/models';
@@ -6,7 +6,7 @@ import { PageHeader } from '../../shared/page-header';
 
 @Component({
   selector: 'app-marketplace',
-  imports: [DatePipe, PageHeader],
+  imports: [DatePipe, JsonPipe, PageHeader],
   template: `
     <app-page-header
       eyebrow="Marketplace"
@@ -59,7 +59,7 @@ import { PageHeader } from '../../shared/page-header';
             @for (o of orders(); track o.id) {
               <tr>
                 <td>
-                  <strong>#{{ o.external_order_id }}</strong>
+                  <button class="link-button" (click)="openDetails(o)">#{{ o.external_order_id }}</button>
                 </td>
                 <td>{{ o.created_at | date: 'dd/MM/yyyy HH:mm' }}</td>
                 <td>{{ o.status }}</td>
@@ -74,6 +74,17 @@ import { PageHeader } from '../../shared/page-header';
                   @if (o.sync_error) {
                     <small class="error-text">{{ o.sync_error }}</small>
                   }
+    @if (detail(); as order) {
+      <div class="modal-backdrop" (click)="detail.set(null)">
+        <section class="modal wide" (click)="$event.stopPropagation()">
+          <div class="modal-head"><div><p class="eyebrow">Pedido Mercado Livre</p><h2>#{{ order.external_order_id }}</h2></div><button class="close" (click)="detail.set(null)">×</button></div>
+          <div class="detail-grid"><div><small>Status no ML</small><strong>{{ order.status }}</strong></div><div><small>Sincronização</small><strong>{{ syncLabel(order.sync_status) }}</strong></div><div><small>Envio</small><strong>{{ order.shipping_status || 'Não informado' }}</strong></div><div><small>NF-e</small><strong>{{ automationLabel(order.fiscal_status) }}</strong></div><div><small>Etiqueta</small><strong>{{ automationLabel(order.label_status) }}</strong></div><div><small>Fatura</small><strong>{{ order.invoice_id ? 'Vinculada' : 'Não gerada' }}</strong></div></div>
+          <h3>Rastreamento e etapas</h3><div class="timeline"><div><strong>Pedido recebido</strong><span>{{ order.created_at | date:'dd/MM/yyyy HH:mm' }}</span></div><div><strong>Status atual: {{ order.status }}</strong><span>{{ order.synchronized_at ? (order.synchronized_at | date:'dd/MM/yyyy HH:mm') : 'Ainda não sincronizado' }}</span></div>@if (order.payload?.['shipping']) { <div><strong>Envio {{ order.payload?.['shipping']?.['id'] || '' }}</strong><span>{{ order.payload?.['shipping']?.['status'] || order.shipping_status || 'Em processamento' }}</span></div> }</div>
+          <h3>Devolução/cancelamento</h3>@if (order.status === 'cancelled' || order.payload?.['status'] === 'cancelled' || order.payload?.['returns']) { <pre class="payload">{{ order.payload?.['returns'] || order.payload?.['cancellations'] || order.payload | json }}</pre> } @else { <p class="muted">Nenhuma devolução ou cancelamento registrado neste pedido.</p> }
+          @if (order.sync_error || order.fiscal_error || order.label_error) { <h3>Ocorrências</h3><p class="error-text">{{ order.sync_error || order.fiscal_error || order.label_error }}</p> }
+        </section>
+      </div>
+    }
                 </td>
                 <td>{{ o.invoice_id ? 'Gerada' : '—' }}</td>
                 <td>
@@ -125,6 +136,7 @@ export class MarketplacePage implements OnInit {
   readonly status = signal<MarketplaceStatus | null>(null);
   readonly orders = signal<MarketplaceOrder[]>([]);
   readonly retrying = signal<string | null>(null);
+  readonly detail = signal<MarketplaceOrder | null>(null);
   ngOnInit() {
     this.load();
   }
@@ -169,5 +181,8 @@ export class MarketplacePage implements OnInit {
       },
       error: () => this.retrying.set(null),
     });
+  }
+  openDetails(order: MarketplaceOrder) {
+    this.api.marketplaceOrder(order.id).subscribe((full) => this.detail.set(full));
   }
 }

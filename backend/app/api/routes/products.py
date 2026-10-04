@@ -7,8 +7,8 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, require_roles
 from app.db.session import get_db
-from app.models import MovementType, Product, User, UserRole
-from app.schemas.common import ProductCreate, ProductOut, ProductUpdate, StockAdjustment
+from app.models import MovementType, Product, StockMovement, User, UserRole
+from app.schemas.common import ProductCreate, ProductOut, ProductUpdate, StockAdjustment, StockMovementOut
 from app.services.stock import move_stock
 
 router = APIRouter(prefix="/products", tags=["Produtos"])
@@ -98,3 +98,21 @@ def adjust_stock(
     if not product:
         raise HTTPException(status_code=404, detail="Produto não encontrado")
     return product
+
+
+@router.get("/{product_id}/movements", response_model=list[StockMovementOut])
+def product_movements(
+    product_id: str,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+) -> list[StockMovement]:
+    if not db.get(Product, product_id):
+        raise HTTPException(status_code=404, detail="Produto não encontrado")
+    return list(
+        db.scalars(
+            select(StockMovement)
+            .where(StockMovement.product_id == product_id)
+            .order_by(StockMovement.created_at.desc())
+            .limit(100)
+        )
+    )

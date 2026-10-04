@@ -34,7 +34,7 @@ import { PageHeader } from '../../shared/page-header';
             @for (i of invoices(); track i.id) {
               <tr>
                 <td>
-                  <strong>{{ i.number }}</strong>
+                    <button class="link-button" (click)="openDetails(i)">{{ i.number }}</button>
                   @if (i.marketplace_order_id) {
                     <small class="block">Pedido #{{ i.marketplace_order_id }}</small>
                   }
@@ -129,6 +129,18 @@ import { PageHeader } from '../../shared/page-header';
         </section>
       </div>
     }
+    @if (detail(); as invoice) {
+      <div class="modal-backdrop" (click)="detail.set(null)">
+        <section class="modal wide" (click)="$event.stopPropagation()">
+          <div class="modal-head"><div><p class="eyebrow">Fatura {{ invoice.number }}</p><h2>Detalhamento da venda</h2></div><button class="close" (click)="detail.set(null)">×</button></div>
+          <div class="detail-grid"><div><small>Status atual</small><strong>{{ label(invoice.status) }}</strong></div><div><small>Origem</small><strong>{{ invoice.source === 'mercadolivre' ? 'Mercado Livre' : 'Manual' }}</strong></div><div><small>Pedido</small><strong>{{ invoice.marketplace_order_id || '—' }}</strong></div></div>
+          <h3>Itens vendidos</h3><div class="invoice-detail-lines">@for (item of invoice.items; track item.id) { <div><span><strong>{{ item.description }}</strong><small>{{ item.sku }} · {{ item.quantity }} un.</small></span><strong>{{ item.total | currency:'BRL' }}</strong></div> }</div>
+          <div class="invoice-total"><span>Total</span><strong>{{ invoice.total | currency:'BRL' }}</strong></div>
+          <h3>Documentos e histórico</h3><p class="muted">Criada em {{ invoice.created_at | date:'dd/MM/yyyy HH:mm' }}{{ invoice.issued_at ? ' · Emitida em ' + (invoice.issued_at | date:'dd/MM/yyyy HH:mm') : '' }}</p>
+          @if (invoice.documents.length) { @for (doc of invoice.documents; track doc.id) { <button class="doc" (click)="download(invoice.id, doc.id, doc.filename)">{{ doc.document_type | uppercase }} · {{ doc.filename }}</button> } } @else { <p class="muted">Nenhum documento anexado ainda.</p> }
+        </section>
+      </div>
+    }
   `,
   styleUrl: './invoices.scss',
 })
@@ -138,6 +150,7 @@ export class InvoicesPage implements OnInit {
   readonly products = signal<Product[]>([]);
   readonly customers = signal<Customer[]>([]);
   readonly modal = signal(false);
+  readonly detail = signal<Invoice | null>(null);
   readonly lines = signal<{ product: Product; quantity: number }[]>([]);
   customerId = '';
   selectedProduct = '';
@@ -185,6 +198,9 @@ export class InvoicesPage implements OnInit {
   }
   confirm(i: Invoice) {
     this.api.confirmInvoice(i.id).subscribe(() => this.load());
+  }
+  openDetails(i: Invoice) {
+    this.api.invoice(i.id).subscribe((full) => this.detail.set(full));
   }
   download(invoiceId: string, documentId: string, filename: string) {
     this.api.downloadInvoiceDocument(invoiceId, documentId).subscribe((blob) => {

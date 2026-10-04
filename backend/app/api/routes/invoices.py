@@ -32,6 +32,18 @@ def add_invoice(
     return invoice
 
 
+@router.get("/{invoice_id}", response_model=InvoiceOut)
+def get_invoice(
+    invoice_id: str,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+) -> SalesInvoice:
+    invoice = db.get(SalesInvoice, invoice_id)
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Fatura não encontrada")
+    return invoice
+
+
 @router.post("/{invoice_id}/confirm", response_model=InvoiceOut)
 def confirm(
     invoice_id: str,

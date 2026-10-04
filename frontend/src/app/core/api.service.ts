@@ -34,6 +34,9 @@ export class ApiService {
     if (lowStock) params = params.set('low_stock', true);
     return this.http.get<Product[]>(`${this.base}/products`, { params });
   }
+  productMovements(id: string): Observable<import('./models').StockMovement[]> {
+    return this.http.get<import('./models').StockMovement[]>(`${this.base}/products/${id}/movements`);
+  }
   createProduct(payload: Partial<Product>): Observable<Product> {
     return this.http.post<Product>(`${this.base}/products`, payload);
   }
@@ -67,6 +70,9 @@ export class ApiService {
   invoices(): Observable<Invoice[]> {
     return this.http.get<Invoice[]>(`${this.base}/invoices`);
   }
+  invoice(id: string): Observable<Invoice> {
+    return this.http.get<Invoice>(`${this.base}/invoices/${id}`);
+  }
   createInvoice(payload: unknown): Observable<Invoice> {
     return this.http.post<Invoice>(`${this.base}/invoices`, payload);
   }
@@ -92,6 +98,9 @@ export class ApiService {
   }
   marketplaceOrders(): Observable<MarketplaceOrder[]> {
     return this.http.get<MarketplaceOrder[]>(`${this.base}/integrations/mercadolivre/orders`);
+  }
+  marketplaceOrder(id: string): Observable<MarketplaceOrder> {
+    return this.http.get<MarketplaceOrder>(`${this.base}/integrations/mercadolivre/orders/${id}`);
   }
   syncMarketplace(): Observable<{ accepted: boolean; message: string }> {
     return this.http.post<{ accepted: boolean; message: string }>(

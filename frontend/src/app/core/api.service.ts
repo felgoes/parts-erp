@@ -55,6 +55,15 @@ export class ApiService {
   createUser(payload: { email: string; full_name: string; password: string; role: User['role'] }): Observable<User> {
     return this.http.post<User>(`${this.base}/users`, payload);
   }
+  resetUserPassword(id: string, password: string): Observable<User> {
+    return this.http.patch<User>(`${this.base}/users/${id}/password`, { password });
+  }
+  updateUser(id: string, payload: { email?: string; full_name?: string; password?: string }): Observable<User> {
+    return this.http.patch<User>(`${this.base}/users/${id}`, payload);
+  }
+  automateMarketplaceOrder(id: string): Observable<MarketplaceOrder> {
+    return this.http.post<MarketplaceOrder>(`${this.base}/integrations/mercadolivre/orders/${id}/automate`, {});
+  }
   invoices(): Observable<Invoice[]> {
     return this.http.get<Invoice[]>(`${this.base}/invoices`);
   }

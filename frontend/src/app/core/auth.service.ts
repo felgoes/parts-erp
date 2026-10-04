@@ -39,8 +39,14 @@ export class AuthService {
   }
   private restore(): AuthToken | null {
     try {
-      const stored = localStorage.getItem(this.storageKey) ?? sessionStorage.getItem(this.storageKey);
-      return JSON.parse(stored ?? 'null');
+      const shared = localStorage.getItem(this.storageKey);
+      if (shared) return JSON.parse(shared);
+      const tabOnly = sessionStorage.getItem(this.storageKey);
+      if (!tabOnly) return null;
+      // Migrate an existing tab session once so document previews can open
+      // in additional same-origin tabs without asking for a second login.
+      localStorage.setItem(this.storageKey, tabOnly);
+      return JSON.parse(tabOnly);
     } catch {
       localStorage.removeItem(this.storageKey);
       sessionStorage.removeItem(this.storageKey);

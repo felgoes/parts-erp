@@ -144,7 +144,9 @@ shopeeStatus(): Observable<ShopeeStatus> {
   connectShopee(): Observable<{ authorization_url: string }> {
     return this.http.get<{ authorization_url: string }>(this.base + '/integrations/shopee/connect');
   }
-  telemetrySummary(days = 30): Observable<TelemetrySummary> {
-    return this.http.get<TelemetrySummary>(this.base + "/telemetry/summary", { params: { days } });
+  telemetrySummary(startDate: string, endDate: string): Observable<TelemetrySummary> {
+    return this.http.get<TelemetrySummary>(this.base + '/telemetry/summary', {
+      params: { start_date: startDate, end_date: endDate },
+    });
   }
 }

@@ -387,6 +387,12 @@ class EventCount(BaseModel):
     count: int
 
 
+class ProductViewCount(BaseModel):
+    sku: str
+    product_name: str
+    views: int
+
+
 class TelemetryHealthOut(ORMModel):
     check_name: str
     ok: bool
@@ -398,4 +404,5 @@ class TelemetryHealthOut(ORMModel):
 class TelemetrySummary(BaseModel):
     days: int
     events: list[EventCount]
+    product_views: list[ProductViewCount] = Field(default_factory=list)
     health: list[TelemetryHealthOut]

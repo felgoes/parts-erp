@@ -7,5 +7,5 @@ VENV="$APP_DIR/backend/.venv-termux"
 mkdir -p "$RUN_DIR" "$LOG_DIR"
 while true; do
   (cd "$APP_DIR/backend" && "$VENV/bin/python" -m app.monitor) >>"$LOG_DIR/monitor.log" 2>&1 || true
-  sleep 60
+  sleep 300
 done

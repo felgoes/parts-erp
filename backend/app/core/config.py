@@ -46,6 +46,7 @@ class Settings(BaseSettings):
     telemetry_rate_limit_per_minute: int = 60
     login_rate_limit_attempts: int = 5
     login_rate_limit_window_seconds: int = 300
+    health_retention_days: int = Field(default=30, ge=1, le=365)
 
     @field_validator("token_encryption_key")
     @classmethod

@@ -7,7 +7,7 @@ RESPONSE_FILE="$PREFIX/tmp/parts-erp-login-check.json"
 
 if [[ ! -f "$PASSWORD_FILE" ]]; then
   echo "Arquivo da senha inicial não existe; verificando apenas a saúde da API."
-  curl --fail --silent --show-error http://127.0.0.1:8080/health
+  curl --fail --silent --show-error http://127.0.0.1:8000/health
   exit 0
 fi
 

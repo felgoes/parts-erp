@@ -43,14 +43,49 @@ path.write_text(html, encoding="utf-8")
 PY
 
 echo "Transferindo a versão $BUILD_VERSION para o S9..."
-ssh "${SSH_OPTS[@]}" "$REMOTE" "mkdir -p '$S9_APP_DIR'"
+ssh "${SSH_OPTS[@]}" "$REMOTE" bash -s -- "$S9_APP_DIR" <<'PREPARE_REMOTE'
+set -euo pipefail
+APP_ARG="$1"
+if [[ "$APP_ARG" = /* ]]; then
+  APP_DIR="$APP_ARG"
+else
+  APP_DIR="$HOME/$APP_ARG"
+fi
+APP_DIR="$(realpath -m "$APP_DIR")"
+if [[ "$APP_DIR" != "$HOME"/* ]] || [[ "$APP_DIR" == "$HOME" ]]; then
+  echo "Diretório de aplicação recusado: $APP_DIR" >&2
+  exit 1
+fi
+
+mkdir -p "$APP_DIR/data/backups"
+if [[ -x "$APP_DIR/deploy/termux/stop.sh" ]]; then
+  PARTS_ERP_DIR="$APP_DIR" "$APP_DIR/deploy/termux/stop.sh" || true
+fi
+
+if [[ -f "$APP_DIR/data/parts-erp.db" ]]; then
+  backup="$APP_DIR/data/backups/parts-erp-$(date +%Y%m%d-%H%M%S).db"
+  if command -v sqlite3 >/dev/null 2>&1; then
+    sqlite3 "$APP_DIR/data/parts-erp.db" ".backup '$backup'"
+  else
+    cp "$APP_DIR/data/parts-erp.db" "$backup"
+  fi
+  echo "Backup do banco criado antes da atualização."
+fi
+
+# Código é recuperável pelo Git. Dados, documentos, .env e virtualenv são preservados.
+rm -rf \
+  "$APP_DIR/backend/app" \
+  "$APP_DIR/backend/alembic/versions" \
+  "$APP_DIR/deploy/termux"
+PREPARE_REMOTE
+
 git -C "$ROOT_DIR" archive --format=tar HEAD | \
   ssh "${SSH_OPTS[@]}" "$REMOTE" "tar -xf - -C '$S9_APP_DIR'"
 tar -C "$ROOT_DIR/frontend/dist/frontend" -cf - . | \
   ssh "${SSH_OPTS[@]}" "$REMOTE" \
     "rm -rf '$S9_APP_DIR/frontend/dist/frontend' && mkdir -p '$S9_APP_DIR/frontend/dist/frontend' && tar -xf - -C '$S9_APP_DIR/frontend/dist/frontend'"
 
-echo "Criando backup, aplicando migrações e reiniciando..."
+echo "Aplicando migrações e reiniciando..."
 ssh "${SSH_OPTS[@]}" "$REMOTE" bash -s -- "$S9_APP_DIR" <<'REMOTE_SCRIPT'
 set -euo pipefail
 APP_ARG="$1"
@@ -59,19 +94,12 @@ if [[ "$APP_ARG" = /* ]]; then
 else
   APP_DIR="$HOME/$APP_ARG"
 fi
-cd "$APP_DIR"
-
-mkdir -p "$APP_DIR/data/backups"
-if [[ -f "$APP_DIR/data/parts-erp.db" ]]; then
-  backup="$APP_DIR/data/backups/parts-erp-$(date +%Y%m%d-%H%M%S).db"
-  if command -v sqlite3 >/dev/null 2>&1; then
-    sqlite3 "$APP_DIR/data/parts-erp.db" ".backup '$backup'"
-  else
-    cp "$APP_DIR/data/parts-erp.db" "$backup"
-  fi
+APP_DIR="$(realpath -m "$APP_DIR")"
+if [[ "$APP_DIR" != "$HOME"/* ]] || [[ "$APP_DIR" == "$HOME" ]]; then
+  echo "Diretório de aplicação recusado: $APP_DIR" >&2
+  exit 1
 fi
-
-PARTS_ERP_DIR="$APP_DIR" bash deploy/termux/stop.sh || true
+cd "$APP_DIR"
 
 VENV="$APP_DIR/backend/.venv-termux"
 HASH_FILE="$APP_DIR/data/.backend-deps-hash"
@@ -86,6 +114,22 @@ if [[ "$deps_hash" != "$old_hash" ]] || ! "$VENV/bin/python" -c 'import app' 2>/
   printf '%s\n' "$deps_hash" >"$HASH_FILE"
 fi
 
+if ! grep -q '^WEBHOOK_SHARED_SECRET=' backend/.env; then
+  webhook_secret="$(python -c 'import secrets; print(secrets.token_hex(32))')"
+  printf '\nWEBHOOK_SHARED_SECRET=%s\n' "$webhook_secret" >>backend/.env
+fi
+grep -q '^WEBHOOK_MAX_BODY_BYTES=' backend/.env || \
+  printf 'WEBHOOK_MAX_BODY_BYTES=131072\n' >>backend/.env
+grep -q '^TELEMETRY_RATE_LIMIT_PER_MINUTE=' backend/.env || \
+  printf 'TELEMETRY_RATE_LIMIT_PER_MINUTE=60\n' >>backend/.env
+grep -q '^LOGIN_RATE_LIMIT_ATTEMPTS=' backend/.env || \
+  printf 'LOGIN_RATE_LIMIT_ATTEMPTS=5\n' >>backend/.env
+grep -q '^LOGIN_RATE_LIMIT_WINDOW_SECONDS=' backend/.env || \
+  printf 'LOGIN_RATE_LIMIT_WINDOW_SECONDS=300\n' >>backend/.env
+grep -q '^PUBLIC_SITE_URL=' backend/.env || \
+  printf 'PUBLIC_SITE_URL=https://goesautoparts.com.br\n' >>backend/.env
+chmod 600 backend/.env
+
 sed -e "s|__APP_DIR__|$APP_DIR|g" -e "s|__PREFIX__|$PREFIX|g" \
   deploy/termux/nginx.conf.in >deploy/termux/nginx.conf
 sed -e "s|__APP_DIR__|$APP_DIR|g" \
@@ -94,7 +138,8 @@ chmod +x deploy/termux/*.sh
 
 (cd backend && "$VENV/bin/alembic" upgrade head)
 PARTS_ERP_DIR="$APP_DIR" bash deploy/termux/start.sh
-curl --fail --silent http://127.0.0.1:8080/health >/dev/null
+health="$(curl --fail --silent http://127.0.0.1:8000/health)"
+[[ "$health" == '{"status":"ok"}' ]]
 echo "Parts ERP atualizado na porta 8080; backup preservado em data/backups."
 REMOTE_SCRIPT
 

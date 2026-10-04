@@ -128,6 +128,6 @@ class WorkerSettings:
         cron(retry_mercadolivre_orders, minute={0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55}),
     ]
     redis_settings = RedisSettings.from_dsn(get_settings().redis_url)
-    max_jobs = 10
-    job_timeout = 120
+    max_jobs = 4
+    job_timeout = 180
     max_tries = 5

@@ -22,7 +22,7 @@ if ! is_running "$RUN_DIR/api.pid"; then
   rm -f "$RUN_DIR/api.pid"
   (
     cd "$APP_DIR/backend"
-    exec "$VENV/bin/uvicorn" app.main:app --host 127.0.0.1 --port 8000 --workers 1
+    exec nohup "$VENV/bin/uvicorn" app.main:app --host 127.0.0.1 --port 8000 --workers 1
   ) >>"$LOG_DIR/api.log" 2>&1 &
   echo $! >"$RUN_DIR/api.pid"
 fi
@@ -31,14 +31,14 @@ if ! is_running "$RUN_DIR/worker.pid"; then
   rm -f "$RUN_DIR/worker.pid"
   (
     cd "$APP_DIR/backend"
-    exec "$VENV/bin/arq" app.workers.settings.WorkerSettings
+    exec nohup "$VENV/bin/arq" app.workers.settings.WorkerSettings
   ) >>"$LOG_DIR/worker.log" 2>&1 &
   echo $! >"$RUN_DIR/worker.pid"
 fi
 
 if ! is_running "$RUN_DIR/monitor.pid"; then
   rm -f "$RUN_DIR/monitor.pid"
-  "$APP_DIR/deploy/termux/monitor-loop.sh" >>"$LOG_DIR/monitor-loop.log" 2>&1 &
+  nohup "$APP_DIR/deploy/termux/monitor-loop.sh" >>"$LOG_DIR/monitor-loop.log" 2>&1 </dev/null &
   echo $! >"$RUN_DIR/monitor.pid"
 fi
 

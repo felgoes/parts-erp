@@ -1,8 +1,10 @@
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from time import perf_counter
 
 import httpx
+from sqlalchemy import delete
 
+from app.core.config import get_settings
 from app.db.session import SessionLocal
 from app.models import HealthSnapshot
 
@@ -24,7 +26,9 @@ def check_api() -> tuple[str, bool, float, str]:
 def run() -> None:
     checked_at = datetime.now(UTC)
     result = check_api()
+    retention_cutoff = checked_at - timedelta(days=get_settings().health_retention_days)
     with SessionLocal() as db:
+        db.execute(delete(HealthSnapshot).where(HealthSnapshot.checked_at < retention_cutoff))
         db.add(
             HealthSnapshot(
                 check_name=result[0],

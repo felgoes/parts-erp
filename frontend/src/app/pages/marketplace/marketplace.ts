@@ -166,7 +166,7 @@ export class MarketplacePage implements OnInit {
           string,
           string
         >
-      )[s] ?? s
+      )[s] ?? statusLabel(s)
     );
   }
   automationLabel(s: string) {
@@ -183,7 +183,7 @@ export class MarketplacePage implements OnInit {
           not_applicable: 'Não aplicável',
           error: 'Requer atenção',
         } as Record<string, string>
-      )[s] ?? s
+      )[s] ?? statusLabel(s)
     );
   }
   retry(order: MarketplaceOrder) {

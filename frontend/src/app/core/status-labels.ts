@@ -17,7 +17,20 @@ const labels: Record<string, string> = {
   shipped: 'Em trânsito',
   delivered: 'Entregue',
   not_delivered: 'Não entregue',
+  delivery_failed: 'Falha na entrega',
+  not_received: 'Não recebido',
   returned: 'Devolvido',
+  returning_to_sender: 'Em devolução ao remetente',
+  returned_to_sender: 'Devolvido ao remetente',
+  waiting_for_withdrawal: 'Aguardando retirada',
+  waiting_for_action: 'Aguardando ação',
+  at_the_branch: 'Na agência',
+  in_hub: 'No centro de distribuição',
+  on_route: 'Em rota de entrega',
+  in_packing_list: 'Em lista de despacho',
+  buffered: 'Aguardando processamento',
+  claimed: 'Com reclamação aberta',
+  estimated_delivery: 'Entrega estimada',
   not_verified: 'Aguardando validação',
   unknown: 'Não informado',
   // Substatus comuns do Mercado Envios
@@ -39,11 +52,27 @@ const labels: Record<string, string> = {
   requesting: 'Solicitando',
   not_applicable: 'Não aplicável',
   error: 'Requer atenção',
+  // Eventos de pagamento, nota e sincronização
+  approved: 'Aprovado',
+  rejected: 'Recusado',
+  pending_payment: 'Pagamento pendente',
+  payment_approved: 'Pagamento aprovado',
+  payment_rejected: 'Pagamento recusado',
+  invoice_pending: 'Nota pendente',
+  invoice_ready: 'Nota disponível',
+  label_pending: 'Etiqueta pendente',
+  label_ready: 'Etiqueta disponível',
+  sync_pending: 'Sincronização pendente',
+  sync_error: 'Falha na sincronização',
 };
 
 export function statusLabel(value: string | null | undefined): string {
   if (!value) return '—';
-  return labels[value.toLowerCase()] ?? value.replaceAll('_', ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
+  const normalized = value.trim().toLowerCase();
+  if (labels[normalized]) return labels[normalized];
+  return normalized
+    .replaceAll('_', ' ')
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
 export function trackingEventLabel(status: string, detail?: string | null): string {

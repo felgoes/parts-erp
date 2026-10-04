@@ -59,8 +59,13 @@ def customer_detail(
                 MarketplaceOrder.status == "cancelled",
             )
         ) or 0
-    total = sum((Decimal(invoice.total or 0) for invoice in invoices), Decimal("0"))
-    confirmed = [invoice for invoice in invoices if str(invoice.status) in {"confirmed", "InvoiceStatus.confirmed"}]
+    confirmed = [
+        invoice
+        for invoice in invoices
+        if (invoice.status.value if hasattr(invoice.status, "value") else str(invoice.status))
+        == "confirmed"
+    ]
+    total = sum((Decimal(invoice.total or 0) for invoice in confirmed), Decimal("0"))
     purchases = [
         CustomerPurchaseOut(
             id=invoice.id,

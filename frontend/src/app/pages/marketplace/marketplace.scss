@@ -88,6 +88,10 @@
 .timeline div::before { content: ''; position: absolute; left: -7px; top: 2px; width: 11px; height: 11px; border-radius: 50%; background: var(--accent); border: 3px solid #fff; box-shadow: 0 0 0 1px #b6caad; }
 .timeline span { color: var(--muted); font-size: 11px; }
 .payload { max-height: 220px; overflow: auto; background: #f7f7f5; padding: 12px; font-size: 12px; white-space: pre-wrap; }
+.technical-details { margin-top: 14px; border: 1px solid var(--line); border-radius: 9px; background: #fafbf9; }
+.technical-details summary { padding: 11px 13px; color: var(--muted); font-size: 12px; font-weight: 750; cursor: pointer; }
+.technical-details[open] summary { border-bottom: 1px solid var(--line); color: var(--forest); }
+.technical-details .payload { margin: 0; border-radius: 0 0 9px 9px; }
 @media (max-width: 600px) {
   .table-card table { min-width: 0; }
   .table-card table thead { display: none; }

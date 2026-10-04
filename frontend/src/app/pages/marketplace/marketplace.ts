@@ -135,7 +135,7 @@ import { PageHeader } from '../../shared/page-header';
             <div class="timeline"><div><strong>Pedido recebido</strong><span>{{ order.created_at | date:'dd/MM/yyyy HH:mm' }}</span></div><div><strong>Status atual: {{ statusLabel(order.status) }}</strong><span>{{ order.synchronized_at ? (order.synchronized_at | date:'dd/MM/yyyy HH:mm') : 'Ainda não sincronizado' }}</span></div>@if (order.payload?.['shipping']) { <div><strong>Envio {{ order.payload?.['shipping']?.['id'] || '' }}</strong><span>{{ statusLabel(order.payload?.['shipping']?.['status'] || order.shipping_status) }}</span></div> }</div>
           </section>
           <section class="order-section"><div class="section-heading"><div><p class="eyebrow">Histórico</p><h3>Histórico de status</h3></div></div>@if (history().length) { <div class="timeline">@for (event of history(); track event.id) { <div><strong>{{ trackingEventLabel(event.status, event.detail) }}</strong><span>{{ event.created_at | date:'dd/MM/yyyy HH:mm' }}</span></div> }</div> } @else { <p class="muted">Nenhum evento histórico registrado.</p> }</section>
-          <section class="order-section"><div class="section-heading"><div><p class="eyebrow">Pós-venda</p><h3>Devolução ou cancelamento</h3></div></div>@if (order.status === 'cancelled' || order.payload?.['status'] === 'cancelled' || order.payload?.['returns']) { @if (order.payload?.['cancel_detail']) { <div class="detail-grid"><div><small>Motivo</small><strong>{{ order.payload?.['cancel_detail']?.['description'] || 'Não informado' }}</strong></div><div><small>Solicitado por</small><strong>{{ order.payload?.['cancel_detail']?.['requested_by'] || 'Não informado' }}</strong></div><div><small>Pagamento</small><strong>{{ order.payload?.['payments']?.[0]?.['status'] || 'Não informado' }}</strong></div></div> } <pre class="payload">{{ order.payload?.['returns'] || order.payload?.['cancellations'] || order.payload | json }}</pre> } @else { <p class="muted">Nenhuma devolução ou cancelamento registrado neste pedido.</p> }</section>
+          <section class="order-section"><div class="section-heading"><div><p class="eyebrow">Pós-venda</p><h3>Devolução ou cancelamento</h3></div></div>@if (order.status === 'cancelled' || order.payload?.['status'] === 'cancelled' || order.payload?.['returns']) { @if (order.payload?.['cancel_detail']) { <div class="detail-grid"><div><small>Motivo</small><strong>{{ cancelReason(order.payload?.['cancel_detail']?.['description']) }}</strong></div><div><small>Solicitado por</small><strong>{{ cancelRequester(order.payload?.['cancel_detail']?.['requested_by']) }}</strong></div><div><small>Pagamento</small><strong>{{ statusLabel(order.payload?.['payments']?.[0]?.['status']) }}</strong></div></div> } <details class="technical-details"><summary>Ver dados técnicos do Mercado Livre</summary><pre class="payload">{{ order.payload?.['returns'] || order.payload?.['cancellations'] || order.payload | json }}</pre></details> } @else { <p class="muted">Nenhuma devolução ou cancelamento registrado neste pedido.</p> }</section>
           @if (order.sync_error || order.fiscal_error || order.label_error) { <section class="order-section"><div class="section-heading"><div><p class="eyebrow">Atenção</p><h3>Ocorrências</h3></div></div><p class="error-text">{{ order.sync_error || order.fiscal_error || order.label_error }}</p></section> }
         </section>
       </div>
@@ -185,6 +185,19 @@ export class MarketplacePage implements OnInit {
         } as Record<string, string>
       )[s] ?? statusLabel(s)
     );
+  }
+  cancelReason(value: unknown) {
+    const reason = String(value || '').trim();
+    if (!reason) return 'Não informado';
+    const normalized = reason.toLowerCase();
+    if (normalized === 'mediations cancel the order') return 'A mediação cancelou o pedido';
+    if (normalized.includes('buyer')) return reason.replace(/buyer/gi, 'comprador');
+    if (normalized.includes('seller')) return reason.replace(/seller/gi, 'vendedor');
+    return reason;
+  }
+  cancelRequester(value: unknown) {
+    const requester = String(value || '').trim().toLowerCase();
+    return ({ meli: 'Mercado Livre', buyer: 'Comprador', seller: 'Vendedor' } as Record<string, string>)[requester] ?? (requester ? this.cancelReason(requester) : 'Não informado');
   }
   retry(order: MarketplaceOrder) {
     this.retrying.set(order.id);

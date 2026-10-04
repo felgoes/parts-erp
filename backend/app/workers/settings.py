@@ -56,14 +56,6 @@ async def process_mercadolivre_notification(
                     automate_order_documents(db, order)
 
 
-class WorkerSettings:
-    functions = [process_mercadolivre_notification, sync_mercadolivre_account, sync_shopee_account, process_shopee_notification]
-    redis_settings = RedisSettings.from_dsn(get_settings().redis_url)
-    max_jobs = 10
-    job_timeout = 120
-    max_tries = 5
-
-
 async def sync_mercadolivre_account(ctx: dict[str, Any], seller_id: str) -> None:
     del ctx
     with SessionLocal() as db:
@@ -109,3 +101,16 @@ async def process_shopee_notification(ctx: dict[str, Any], payload: dict[str, An
             sync_shopee_order(db, account, order_sn)
         else:
             sync_shopee_all(db, account)
+
+
+class WorkerSettings:
+    functions = [
+        process_mercadolivre_notification,
+        sync_mercadolivre_account,
+        sync_shopee_account,
+        process_shopee_notification,
+    ]
+    redis_settings = RedisSettings.from_dsn(get_settings().redis_url)
+    max_jobs = 10
+    job_timeout = 120
+    max_tries = 5

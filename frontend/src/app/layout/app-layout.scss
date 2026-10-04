@@ -144,7 +144,8 @@ main {
     padding: 0 18px;
     align-items: center;
     justify-content: space-between;
-    background: var(--ink);
+    background: linear-gradient(135deg, #17271f, #244335);
+    box-shadow: 0 5px 18px #17271f20;
     color: #fff;
   }
   .mobile-bar .brand {
@@ -162,6 +163,14 @@ main {
   }
   main {
     margin-left: 0;
-    padding: 28px 18px 48px;
+    padding: 24px 18px calc(48px + env(safe-area-inset-bottom));
   }
+}
+
+@media (max-width: 420px) {
+  .mobile-bar { height: 58px; padding-inline: 14px; }
+  .mobile-bar .brand strong { font-size: 16px; }
+  .mobile-bar .brand-mark { width: 32px; height: 32px; font-size: 17px; }
+  main { padding-inline: 14px; }
+  .sidebar { width: min(290px, 86vw); padding-top: 22px; }
 }

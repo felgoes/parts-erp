@@ -345,27 +345,44 @@ textarea:focus {
   font-weight: 850;
 }
 @media (max-width: 600px) {
+  body { overflow-x: hidden; }
   .page-header {
     align-items: start;
     flex-direction: column;
+    gap: 16px;
+    margin-bottom: 20px;
   }
+  .page-header h1 { font-size: 30px; line-height: 1.05; }
+  .subtitle { line-height: 1.45; }
   .page-header .primary {
     width: 100%;
   }
+  .card { padding: 16px; border-radius: 14px; }
+  .card-head { align-items: flex-start; gap: 12px; }
+  .card-head a { white-space: nowrap; }
   .form-grid {
     grid-template-columns: 1fr;
   }
   .span-2 {
     grid-column: auto;
   }
-  .modal {
-    padding: 20px;
-  }
+  .modal-backdrop { align-items: end; padding: 0; }
+  .modal, .modal.wide { width: 100%; max-height: min(92svh, 760px); border-radius: 22px 22px 0 0; padding: 20px 18px calc(22px + env(safe-area-inset-bottom)); }
+  .modal-head { gap: 14px; }
+  .modal-head h2 { font-size: 23px; line-height: 1.1; }
   .object-modal {
-    padding: 22px 18px 24px;
-    border-radius: 14px;
+    padding: 20px 18px 24px;
+    border-radius: 22px 22px 0 0;
   }
   .object-modal .modal-head h2 {
-    font-size: 24px;
+    font-size: 23px;
+    max-width: 250px;
   }
+  .object-modal .close { flex: 0 0 34px; }
+  .table-wrap { margin-inline: -16px; padding-inline: 16px; }
+  table { font-size: 12px; }
+  th { padding: 10px 12px; }
+  td { padding: 12px; }
+  .empty { padding: 30px 14px; }
+  .loading { padding: 54px 16px; }
 }

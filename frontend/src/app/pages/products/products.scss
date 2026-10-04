@@ -109,6 +109,14 @@
 .negative { color: #a33b2c; }
 .positive { color: #2c7847; }
 @media (max-width: 600px) {
+  .toolbar { gap: 10px; }
+  .toolbar .search { max-width: none; flex-basis: 100%; }
+  .table-card table { min-width: 620px; }
+  .product-hero { align-items: flex-start; }
+  .product-detail-summary > div { padding: 13px; }
+  .listing-card { padding: 11px; }
+  .listing-title strong { font-size: 14px; }
+  .listing-link { display: inline-flex; padding: 8px 0; }
   .product-detail-summary { grid-template-columns: 1fr; }
   .product-hero h2 { font-size: 23px; }
   .listing-card { grid-template-columns: 76px 1fr; gap: 12px; }

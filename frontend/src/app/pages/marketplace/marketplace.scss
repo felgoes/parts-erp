@@ -72,7 +72,14 @@
 .timeline div { display: flex; justify-content: space-between; gap: 12px; border-left: 3px solid var(--forest); padding: 10px 12px; background: #f7faf8; }
 .timeline span { color: var(--muted); }
 .payload { max-height: 220px; overflow: auto; background: #f7f7f5; padding: 12px; font-size: 12px; white-space: pre-wrap; }
-@media (max-width: 600px) { .detail-grid { grid-template-columns: 1fr; } .timeline div { display: grid; } }
+@media (max-width: 600px) {
+  .table-card table { min-width: 680px; }
+  .object-hero { align-items: flex-start; }
+  .object-hero-actions { margin-left: auto; align-items: flex-start; }
+  .timeline div { display: grid; gap: 5px; }
+  .payload { font-size: 11px; }
+  .detail-grid { grid-template-columns: 1fr; }
+}
 @media (max-width: 600px) {
   .notice {
     grid-template-columns: 40px 1fr;

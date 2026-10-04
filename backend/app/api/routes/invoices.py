@@ -30,7 +30,16 @@ def _sync_marketplace_stock_for_invoice(db: Session, invoice: SalesInvoice) -> N
 def list_invoices(
     db: Session = Depends(get_db), _: User = Depends(get_current_user)
 ) -> list[SalesInvoice]:
-    query = select(SalesInvoice).order_by(SalesInvoice.created_at.desc()).limit(200)
+    query = (
+        select(SalesInvoice)
+        .options(
+            selectinload(SalesInvoice.items),
+            selectinload(SalesInvoice.documents),
+            selectinload(SalesInvoice.customer),
+        )
+        .order_by(SalesInvoice.created_at.desc())
+        .limit(200)
+    )
     return list(db.scalars(query))
 
 

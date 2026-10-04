@@ -23,6 +23,7 @@ import { PageHeader } from '../../shared/page-header';
           <thead>
             <tr>
               <th>Fatura</th>
+              <th>Cliente</th>
               <th>Origem</th>
               <th>Emissão</th>
               <th>Status</th>
@@ -39,6 +40,10 @@ import { PageHeader } from '../../shared/page-header';
                   @if (i.marketplace_order_id) {
                     <small class="block">Pedido #{{ i.marketplace_order_id }}</small>
                   }
+                </td>
+                <td class="customer-cell">
+                  <strong>{{ i.customer?.name || 'Consumidor não identificado' }}</strong>
+                  <small>{{ i.customer?.document || i.customer?.email || 'Sem cadastro vinculado' }}</small>
                 </td>
                 <td>{{ i.source === 'mercadolivre' ? 'Mercado Livre' : 'Manual' }}</td>
                 <td>{{ i.issued_at || i.created_at | date: 'dd/MM/yyyy HH:mm' }}</td>
@@ -67,7 +72,7 @@ import { PageHeader } from '../../shared/page-header';
               </tr>
             } @empty {
               <tr>
-                <td colspan="7"><div class="empty">Nenhuma fatura registrada.</div></td>
+                <td colspan="8"><div class="empty">Nenhuma fatura registrada.</div></td>
               </tr>
             }
           </tbody>

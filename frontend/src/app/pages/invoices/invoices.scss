@@ -6,6 +6,18 @@
   display: block;
   color: var(--muted);
 }
+.customer-cell {
+  display: grid;
+  gap: 4px;
+  min-width: 170px;
+}
+.customer-cell strong {
+  font-size: 12px;
+}
+.customer-cell small {
+  color: var(--muted);
+  font-size: 11px;
+}
 .doc {
   display: inline-block;
   padding: 4px 7px;

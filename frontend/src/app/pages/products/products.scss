@@ -109,6 +109,7 @@
 .negative { color: #a33b2c; }
 .positive { color: #2c7847; }
 @media (max-width: 600px) {
+  .table-card { margin: 0; border-radius: 14px; }
   .toolbar { gap: 10px; }
   .toolbar .search { max-width: none; flex-basis: 100%; }
   .table-card table { min-width: 0; }

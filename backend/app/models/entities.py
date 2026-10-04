@@ -167,6 +167,8 @@ class MarketplaceConfig(TimestampMixin, Base):
     import_orders: Mapped[bool] = mapped_column(Boolean, default=True)
     automatic_stock: Mapped[bool] = mapped_column(Boolean, default=True)
     sync_documents: Mapped[bool] = mapped_column(Boolean, default=True)
+    auto_issue_invoice: Mapped[bool] = mapped_column(Boolean, default=True)
+    auto_download_label: Mapped[bool] = mapped_column(Boolean, default=True)
 
 
 class ShopeeConfig(TimestampMixin, Base):
@@ -195,6 +197,14 @@ class MarketplaceOrder(TimestampMixin, Base):
     payload: Mapped[dict[str, Any]] = mapped_column(JSON)
     invoice_id: Mapped[str | None] = mapped_column(ForeignKey("sales_invoices.id"), unique=True)
     synchronized_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    shipment_id: Mapped[str | None] = mapped_column(String(80), index=True)
+    shipping_status: Mapped[str | None] = mapped_column(String(60))
+    fiscal_status: Mapped[str] = mapped_column(String(30), default="pending")
+    fiscal_error: Mapped[str | None] = mapped_column(Text)
+    external_invoice_id: Mapped[str | None] = mapped_column(String(80), index=True)
+    label_status: Mapped[str] = mapped_column(String(30), default="pending")
+    label_error: Mapped[str | None] = mapped_column(Text)
+    automation_updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     invoice: Mapped[SalesInvoice | None] = relationship()
 
@@ -215,6 +225,8 @@ class InvoiceDocument(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc)
 
     invoice: Mapped[SalesInvoice] = relationship(back_populates="documents")
+
+
 class TelemetryEvent(Base):
     __tablename__ = "telemetry_events"
     __table_args__ = (Index("ix_telemetry_events_name_created", "name", "created_at"),)

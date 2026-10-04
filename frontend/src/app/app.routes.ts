@@ -7,6 +7,7 @@ export const routes: Routes = [
   // must open the authenticated application instead of exposing the catalog shell.
   { path: '', pathMatch: 'full', redirectTo: 'login' },
   { path: 'login', loadComponent: () => import('./pages/login/login').then((m) => m.LoginPage) },
+  { path: 'document-viewer/:invoiceId/:documentId', loadComponent: () => import('./pages/document-viewer/document-viewer').then((m) => m.DocumentViewerPage), canActivate: [authGuard] },
   {
     path: '',
     component: AppLayout,

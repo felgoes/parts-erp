@@ -134,6 +134,10 @@
 .item-main { display: grid; gap: 5px; }
 .tracking-cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 28px; }
 .tracking-cards strong { text-transform: capitalize; }
+.timeline { display: grid; gap: 0; border-left: 2px solid #dce8da; margin: 4px 0 0 8px; }
+.timeline > div { display: grid; gap: 3px; position: relative; padding: 0 0 16px 18px; }
+.timeline > div::before { content: ''; position: absolute; left: -7px; top: 3px; width: 11px; height: 11px; border-radius: 50%; background: var(--accent); border: 3px solid #fff; box-shadow: 0 0 0 1px #b6caad; }
+.timeline span { color: var(--muted); font-size: 11px; }
 .document-list { display: grid; gap: 10px; }
 .document-card { display: grid; grid-template-columns: 44px 1fr 24px; gap: 13px; align-items: center; width: 100%; padding: 14px; text-align: left; border: 1px solid var(--line); border-radius: 10px; background: #fff; color: var(--text); cursor: pointer; transition: border-color .15s, transform .15s, box-shadow .15s; }
 .document-card:hover { border-color: #a8bf8c; transform: translateY(-1px); box-shadow: 0 8px 20px #203c2e12; }

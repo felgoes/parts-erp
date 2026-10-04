@@ -34,9 +34,6 @@ yarn-error.log
 .sass-cache/
 /connect.lock
 /coverage
-/test-results/
-/playwright-report/
-/.auth/
 /libpeerconnection.log
 testem.log
 /typings
@@ -45,3 +42,4 @@ __screenshots__/
 # System files
 .DS_Store
 Thumbs.db
+/test-results/

@@ -33,16 +33,9 @@ docker compose exec backend python -m app.cli bootstrap-admin
 
 O ERP estará em `http://localhost:4200` e a documentação da API em `http://localhost:8000/docs`.
 
-## Testes de interface (E2E)
+## Validação visual local
 
-Os testes Playwright usam uma conta de QA local para obter uma sessão pela API; eles não automatizam a tela de login nem desativam autenticação. Inicie a API e o frontend localmente, crie uma conta de QA no banco de desenvolvimento e configure `frontend/.env.e2e.local` (arquivo ignorado pelo Git):
-
-```dotenv
-E2E_TEST_EMAIL=qa-admin@example.com
-E2E_TEST_PASSWORD=senha-local-de-teste
-```
-
-Execute `cd frontend && npm run e2e`. Por segurança, o runner recusa URLs fora de `localhost`/`127.0.0.1`/`::1`; não aponte essas variáveis para produção. A conta e os dados de teste devem existir somente no banco local.
+Para alterações de interface, abra `http://localhost:4200` com a API local em execução e confira manualmente a tela no navegador, inclusive em largura mobile quando relevante. Use a conta de QA dedicada do banco local; neste checkout, as credenciais estão no arquivo ignorado `.env.qa.local`, sem reutilizar dados ou acesso de produção. A automação E2E não é requisito para ajustes visuais de rotina; use testes automatizados quando forem úteis para uma regressão lógica específica.
 
 ## Mercado Livre
 

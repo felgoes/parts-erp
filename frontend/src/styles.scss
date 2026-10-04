@@ -344,8 +344,8 @@ textarea:focus {
   color: var(--forest);
   font-weight: 850;
 }
-.date-filter { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 10px 16px; margin: 0 0 16px; padding: 14px 16px; }
-.date-filter small { color: var(--muted); font-size: 11px; }
+.date-filter { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); align-items: center; gap: 10px 12px; margin: 0 0 16px; padding: 14px 16px; }
+.date-filter small { color: var(--muted); font-size: 10px; }
 .date-filter label { display: grid; gap: 4px; color: var(--muted); font-size: 11px; font-weight: 700; }
 .date-filter input { min-height: 44px; min-width: 0; width: 100%; padding: 7px 10px; border: 1px solid var(--line); border-radius: 7px; color: var(--text); background: #fff; font: inherit; cursor: pointer; }
 .date-filter input::-webkit-calendar-picker-indicator { width: 18px; height: 18px; cursor: pointer; padding: 4px; transform: scale(1.15); }
@@ -397,28 +397,52 @@ textarea:focus {
 }
 .date-filter-heading { grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
 .date-filter-heading strong { font-size: 13px; }
-.date-quick-filters { display: flex; flex-wrap: wrap; gap: 7px; }
-.date-preset { min-height: 38px; padding: 7px 12px; border: 1px solid var(--line); border-radius: 8px; background: #fff; color: var(--text); font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; transition: background 120ms ease, border-color 120ms ease, color 120ms ease; }
+.date-filter:not(.has-custom-range) { grid-template-columns: auto minmax(0, 1fr); gap: 8px 14px; }
+.date-filter:not(.has-custom-range) .date-filter-heading { grid-column: 1; align-items: center; justify-content: flex-start; gap: 9px; white-space: nowrap; }
+.date-filter:not(.has-custom-range) > .date-quick-filters { grid-column: 2; justify-content: flex-end; }
+.date-filter-options { grid-column: 2; display: flex; align-items: center; justify-content: flex-end; gap: 10px; min-width: 0; overflow-x: auto; scrollbar-width: thin; }
+.date-filter-options .invoice-status-filter { flex: 0 0 auto; }
+.invoice-filter-toolbar:not(.has-custom-range) { grid-template-columns: auto minmax(0, 1fr); }
+.invoice-filter-toolbar:not(.has-custom-range) .date-filter-options { grid-column: 2; }
+.invoice-filter-toolbar.has-custom-range .date-filter-options,
+.invoice-filter-toolbar.has-custom-range > .date-range-fields { grid-column: 1 / -1; justify-content: flex-start; }
+.date-quick-filters { display: flex; flex-wrap: nowrap; gap: 5px; min-width: 0; overflow-x: auto; scrollbar-width: thin; }
+.date-preset { min-height: 36px; flex: 0 0 auto; padding: 6px 7px; border: 1px solid var(--line); border-radius: 8px; background: #fff; color: var(--text); font: inherit; font-size: 10px; font-weight: 700; white-space: nowrap; cursor: pointer; transition: background 120ms ease, border-color 120ms ease, color 120ms ease; }
 .date-preset:hover { border-color: #9db8a4; background: #f3f7f3; }
 .date-preset.active { border-color: var(--forest); background: var(--forest); color: #fff; }
 .date-preset:focus-visible { outline: 2px solid var(--forest); outline-offset: 2px; }
-.date-range-fields { display: flex; align-items: end; flex-wrap: nowrap; gap: 8px; }
-.date-range-fields label { display: grid; gap: 4px; min-width: 150px; color: var(--muted); font-size: 11px; font-weight: 700; }
+.date-range-fields { display: flex; align-items: end; justify-content: flex-end; flex-wrap: nowrap; gap: 6px; min-width: 0; }
+.date-range-fields label { display: grid; flex: 1 1 0; gap: 4px; min-width: 110px; color: var(--muted); font-size: 11px; font-weight: 700; }
+.date-range-fields button { flex: 0 0 auto; padding-inline: 10px; white-space: nowrap; }
 .post-sale-summary { display: block; margin-top: 5px; color: #a55c16; font-size: 10px; font-weight: 700; }
 .after-sale-cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 12px 0 24px; }
 .after-sale-cards > div { display: grid; align-content: start; gap: 6px; min-width: 0; padding: 14px; border: 1px solid #eadfce; border-radius: 10px; background: #fbf7ef; }
 .after-sale-cards span { color: var(--muted); font-size: 10px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
 .after-sale-cards strong { overflow-wrap: anywhere; font-size: 13px; }
 .post-sale-history-heading { margin-top: 24px; }
-@media (max-width: 1050px) {
+@media (max-width: 900px) {
   .date-filter { grid-template-columns: minmax(0, 1fr); }
-  .date-range-fields { flex-wrap: wrap; }
+  .date-filter:not(.has-custom-range),
+  .invoice-filter-toolbar:not(.has-custom-range) { grid-template-columns: minmax(0, 1fr); }
+  .date-filter:not(.has-custom-range) .date-filter-heading,
+  .date-filter:not(.has-custom-range) > .date-quick-filters,
+  .date-filter-options { grid-column: 1 / -1; }
+  .invoice-filter-toolbar:not(.has-custom-range) .date-filter-options { grid-column: 1 / -1; }
+  .date-filter:not(.has-custom-range) .date-filter-heading { justify-content: space-between; }
+  .date-range-fields { justify-content: flex-start; }
+  .date-filter-options { display: grid; justify-content: stretch; gap: 6px; overflow: visible; }
+  .date-filter-options .date-quick-filters,
+  .date-filter-options .invoice-status-filter { width: 100%; min-width: 0; max-width: 100%; overflow-x: auto; }
 }
 @media (max-width: 600px) {
   .after-sale-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
   .after-sale-cards > div { padding: 12px; }
   .date-filter-heading { align-items: flex-start; flex-direction: row; gap: 8px; }
   .date-filter-heading small { text-align: right; }
+  .date-filter:not(.invoice-filter-toolbar) .date-filter-heading { flex-direction: column; gap: 2px; }
+  .date-filter:not(.invoice-filter-toolbar) .date-filter-heading small { text-align: left; }
+  .date-filter:not(.has-custom-range) .date-filter-heading { align-items: flex-start; }
+  .date-filter-options { grid-column: 1 / -1; }
   .date-filter > .date-quick-filters { grid-column: 1 / -1; flex-wrap: nowrap; overflow-x: auto; margin: 0 -4px; padding: 2px 4px 6px; scrollbar-width: thin; }
   .date-preset { min-height: 38px; flex: 0 0 auto; padding: 6px 10px; white-space: nowrap; }
   .date-filter > .date-range-fields { grid-column: 1 / -1; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; }

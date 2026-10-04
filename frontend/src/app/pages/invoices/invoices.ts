@@ -18,25 +18,29 @@ import { PageHeader } from '../../shared/page-header';
       subtitle="Do orçamento à baixa de estoque, sem retrabalho."
       ><button class="primary" (click)="openNew()">+ Nova venda</button></app-page-header
     >
-    <section class="date-filter card" aria-label="Filtrar faturas por período">
-      <div class="date-filter-heading"><strong>Período das faturas</strong><small>{{ invoices().length }} resultado(s)</small></div>
-      <div class="date-quick-filters" role="group" aria-label="Atalhos de período">
-        @for (preset of datePresets; track preset.id) {
-          <button type="button" class="date-preset" [class.active]="activeDatePreset === preset.id" [attr.aria-pressed]="activeDatePreset === preset.id" (click)="selectDatePreset(preset.id)">{{ preset.label }}</button>
-        }
+    <section class="date-filter card invoice-filter-toolbar" [class.has-custom-range]="activeDatePreset === 'custom'" aria-label="Filtrar faturas por período e situação">
+      <div class="date-filter-heading"><strong>Período</strong><small>{{ invoices().length }} fatura(s)</small></div>
+      <div class="date-filter-options">
+        <div class="date-quick-filters" role="group" aria-label="Atalhos de período">
+          @for (preset of datePresets; track preset.id) {
+            <button type="button" class="date-preset" [class.active]="activeDatePreset === preset.id" [attr.aria-pressed]="activeDatePreset === preset.id" (click)="selectDatePreset(preset.id)">{{ preset.label }}</button>
+          }
+        </div>
+        <div class="invoice-status-filter" role="group" aria-label="Filtrar faturas por situação">
+          <span>Situação</span>
+          <button type="button" [class.active]="statusFilter === 'all'" (click)="statusFilter = 'all'">Todas <small>{{ invoices().length }}</small></button>
+          <button type="button" [class.active]="statusFilter === 'open'" (click)="statusFilter = 'open'">Em andamento <small>{{ countByStatus('open') }}</small></button>
+          <button type="button" [class.active]="statusFilter === 'post_sale'" (click)="statusFilter = 'post_sale'">Canceladas / devoluções <small>{{ countByStatus('post_sale') }}</small></button>
+        </div>
       </div>
-      <div class="date-range-fields">
-        <label>De <input type="date" [(ngModel)]="startDate" (ngModelChange)="markCustom()" /></label>
-        <label>Até <input type="date" [(ngModel)]="endDate" (ngModelChange)="markCustom()" /></label>
-        <button class="secondary" (click)="load()" [disabled]="!validRange()">Aplicar período</button>
-      </div>
+      @if (activeDatePreset === 'custom') {
+        <div class="date-range-fields">
+          <label>De <input type="date" [(ngModel)]="startDate" (ngModelChange)="markCustom()" /></label>
+          <label>Até <input type="date" [(ngModel)]="endDate" (ngModelChange)="markCustom()" /></label>
+          <button class="secondary" (click)="load()" [disabled]="!validRange()">Aplicar período</button>
+        </div>
+      }
     </section>
-    <div class="invoice-status-filter card" role="group" aria-label="Filtrar faturas por situação">
-      <span>Situação</span>
-      <button type="button" [class.active]="statusFilter === 'all'" (click)="statusFilter = 'all'">Todas <small>{{ invoices().length }}</small></button>
-      <button type="button" [class.active]="statusFilter === 'open'" (click)="statusFilter = 'open'">Em andamento <small>{{ countByStatus('open') }}</small></button>
-      <button type="button" [class.active]="statusFilter === 'post_sale'" (click)="statusFilter = 'post_sale'">Cancelamentos e pós-venda <small>{{ countByStatus('post_sale') }}</small></button>
-    </div>
     <section class="card table-card">
       <div class="table-wrap">
         <table>

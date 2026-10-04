@@ -40,18 +40,20 @@ import { PageHeader } from '../../shared/page-header';
           ><small>itens pedem atenção</small>
         </article>
       </section>
-      <section class="date-filter card" aria-label="Filtrar visão geral por período">
+      <section class="date-filter card" [class.has-custom-range]="activeDatePreset === 'custom'" aria-label="Filtrar visão geral por período">
         <div class="date-filter-heading"><strong>Período da visão geral</strong><small>Faturamento, vendas e vendas recentes</small></div>
         <div class="date-quick-filters" role="group" aria-label="Atalhos de período">
           @for (preset of datePresets; track preset.id) {
             <button type="button" class="date-preset" [class.active]="activeDatePreset === preset.id" [attr.aria-pressed]="activeDatePreset === preset.id" (click)="selectDatePreset(preset.id)">{{ preset.label }}</button>
         }
         </div>
-        <div class="date-range-fields">
-          <label>De <input type="date" [(ngModel)]="startDate" (ngModelChange)="markCustom()" /></label>
-          <label>Até <input type="date" [(ngModel)]="endDate" (ngModelChange)="markCustom()" /></label>
-          <button class="secondary" (click)="applyDateFilter()" [disabled]="!validRange()">Aplicar período</button>
-        </div>
+        @if (activeDatePreset === 'custom') {
+          <div class="date-range-fields">
+            <label>De <input type="date" [(ngModel)]="startDate" (ngModelChange)="markCustom()" /></label>
+            <label>Até <input type="date" [(ngModel)]="endDate" (ngModelChange)="markCustom()" /></label>
+            <button class="secondary" (click)="applyDateFilter()" [disabled]="!validRange()">Aplicar período</button>
+          </div>
+        }
       </section>
       <section class="dashboard-grid">
         <article class="card table-card">

@@ -32,9 +32,9 @@ import { PageHeader } from '../../shared/page-header';
           </thead>
           <tbody>
             @for (i of invoices(); track i.id) {
-              <tr>
+              <tr class="clickable-row" (click)="openDetails(i)">
                 <td>
-                    <button class="link-button" (click)="openDetails(i)">{{ i.number }}</button>
+                    <button class="link-button" (click)="$event.stopPropagation(); openDetails(i)">{{ i.number }}</button>
                   @if (i.marketplace_order_id) {
                     <small class="block">Pedido #{{ i.marketplace_order_id }}</small>
                   }
@@ -47,7 +47,7 @@ import { PageHeader } from '../../shared/page-header';
                 <td>
                   @if (i.documents.length) {
                     @for (doc of i.documents; track doc.id) {
-                      <button class="doc" (click)="download(i.id, doc.id, doc.filename)">
+                      <button class="doc" (click)="$event.stopPropagation(); download(i.id, doc.id, doc.filename)">
                         {{ doc.document_type | uppercase }}
                       </button>
                     }
@@ -60,7 +60,7 @@ import { PageHeader } from '../../shared/page-header';
                 </td>
                 <td class="right">
                   @if (i.status === 'draft') {
-                    <button class="secondary small" (click)="confirm(i)">Confirmar</button>
+                    <button class="secondary small" (click)="$event.stopPropagation(); confirm(i)">Confirmar</button>
                   }
                 </td>
               </tr>

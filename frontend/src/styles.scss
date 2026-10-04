@@ -148,6 +148,16 @@ td {
 tbody tr:last-child td {
   border-bottom: 0;
 }
+.clickable-row {
+  cursor: pointer;
+  transition: background 120ms ease, transform 120ms ease;
+}
+.clickable-row:hover {
+  background: #f7faf5;
+}
+.clickable-row:focus-within {
+  background: #f1f7ec;
+}
 .right {
   text-align: right;
 }
@@ -176,6 +186,12 @@ tbody tr:last-child td {
 }
 .muted {
   color: var(--muted);
+}
+.detail-documents {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
 }
 code {
   background: #f0f2ef;

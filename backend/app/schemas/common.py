@@ -235,6 +235,7 @@ class MarketplaceOrderOut(ORMModel):
     label_error: str | None = None
     automation_updated_at: datetime | None = None
     payload: dict | None = None
+    invoice: InvoiceOut | None = None
 
 
 class MarketplaceOrderEventOut(ORMModel):

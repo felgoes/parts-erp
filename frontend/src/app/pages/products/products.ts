@@ -49,7 +49,7 @@ import { PageHeader } from '../../shared/page-header';
           </thead>
           <tbody>
             @for (product of filtered(); track product.id) {
-              <tr>
+              <tr class="clickable-row" (click)="openDetails(product)">
                 <td>
                   <div class="product">
                     <span>{{ product.name[0] }}</span>
@@ -77,8 +77,8 @@ import { PageHeader } from '../../shared/page-header';
                   >
                 </td>
                 <td class="right">
-                  <button class="secondary small" (click)="openDetails(product)">Detalhes</button>
-                  <button class="secondary small" (click)="openAdjust(product)">Ajustar</button>
+                  <button class="secondary small" (click)="$event.stopPropagation(); openDetails(product)">Detalhes</button>
+                  <button class="secondary small" (click)="$event.stopPropagation(); openAdjust(product)">Ajustar</button>
                 </td>
               </tr>
             } @empty {

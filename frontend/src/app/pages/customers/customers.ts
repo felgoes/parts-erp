@@ -39,9 +39,9 @@ import { PageHeader } from '../../shared/page-header';
           </thead>
           <tbody>
             @for (c of filtered(); track c.id) {
-              <tr>
+              <tr class="clickable-row" (click)="openDetails(c)">
                 <td>
-                  <button class="link-button" (click)="openDetails(c)"><strong>{{ c.name }}</strong></button>
+                  <button class="link-button" (click)="$event.stopPropagation(); openDetails(c)"><strong>{{ c.name }}</strong></button>
                 </td>
                 <td>{{ c.document || '—' }}</td>
                 <td>

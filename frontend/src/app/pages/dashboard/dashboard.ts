@@ -2,7 +2,7 @@ import { CurrencyPipe, DatePipe } from '@angular/common';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { ApiService } from '../../core/api.service';
-import { DashboardSummary } from '../../core/models';
+import { DashboardSummary, Invoice } from '../../core/models';
 import { PageHeader } from '../../shared/page-header';
 
 @Component({
@@ -60,7 +60,7 @@ import { PageHeader } from '../../shared/page-header';
                 </thead>
                 <tbody>
                   @for (invoice of summary.recent_invoices; track invoice.id) {
-                    <tr>
+                    <tr class="clickable-row" (click)="openRecent(invoice)">
                       <td>
                         <strong>{{ invoice.number }}</strong>
                       </td>
@@ -101,6 +101,16 @@ import { PageHeader } from '../../shared/page-header';
           >
         </aside>
       </section>
+      @if (detail(); as invoice) {
+        <div class="modal-backdrop" (click)="detail.set(null)">
+          <section class="modal wide" (click)="$event.stopPropagation()">
+            <div class="modal-head"><div><p class="eyebrow">Venda recente</p><h2>{{ invoice.number }}</h2></div><button class="close" (click)="detail.set(null)">×</button></div>
+            <div class="detail-grid"><div><small>Status</small><strong>{{ status(invoice.status) }}</strong></div><div><small>Origem</small><strong>{{ invoice.source === 'mercadolivre' ? 'Mercado Livre' : 'Manual' }}</strong></div><div><small>Total</small><strong>{{ invoice.total | currency:'BRL' }}</strong></div></div>
+            <h3>Itens vendidos</h3><div class="invoice-detail-lines">@for (item of invoice.items; track item.id) { <div><span><strong>{{ item.description }}</strong><small>{{ item.sku }} · {{ item.quantity }} un.</small></span><strong>{{ item.total | currency:'BRL' }}</strong></div> }</div>
+            <h3>Documentos</h3>@for (doc of invoice.documents; track doc.id) { <button class="doc" (click)="download(invoice.id, doc.id, doc.filename)">{{ doc.document_type }} · {{ doc.filename }}</button> } @empty { <p class="muted">Nenhum documento anexado.</p> }
+          </section>
+        </div>
+      }
     } @else {
       <div class="loading">Carregando sua operação…</div>
     }
@@ -110,6 +120,7 @@ import { PageHeader } from '../../shared/page-header';
 export class DashboardPage implements OnInit {
   private readonly api = inject(ApiService);
   readonly data = signal<DashboardSummary | null>(null);
+  readonly detail = signal<Invoice | null>(null);
   ngOnInit() {
     this.api.dashboard().subscribe((v) => this.data.set(v));
   }
@@ -122,5 +133,18 @@ export class DashboardPage implements OnInit {
         >
       )[value] ?? value
     );
+  }
+  openRecent(invoice: Invoice) {
+    this.api.invoice(invoice.id).subscribe((full) => this.detail.set(full));
+  }
+  download(invoiceId: string, documentId: string, filename: string) {
+    this.api.downloadInvoiceDocument(invoiceId, documentId).subscribe((blob) => {
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = filename;
+      anchor.click();
+      URL.revokeObjectURL(url);
+    });
   }
 }

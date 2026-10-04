@@ -1,4 +1,4 @@
-import { DatePipe, JsonPipe } from '@angular/common';
+import { DatePipe, DecimalPipe, JsonPipe, UpperCasePipe } from '@angular/common';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { ApiService } from '../../core/api.service';
 import { MarketplaceOrder, MarketplaceOrderEvent, MarketplaceStatus } from '../../core/models';
@@ -6,7 +6,7 @@ import { PageHeader } from '../../shared/page-header';
 
 @Component({
   selector: 'app-marketplace',
-  imports: [DatePipe, JsonPipe, PageHeader],
+  imports: [DatePipe, DecimalPipe, JsonPipe, UpperCasePipe, PageHeader],
   template: `
     <app-page-header
       eyebrow="Marketplace"
@@ -57,7 +57,7 @@ import { PageHeader } from '../../shared/page-header';
           </thead>
           <tbody>
             @for (o of orders(); track o.id) {
-              <tr>
+              <tr class="clickable-row" (click)="openDetails(o)">
                 <td>
                   <button class="link-button" (click)="openDetails(o)">#{{ o.external_order_id }}</button>
                 </td>
@@ -102,7 +102,7 @@ import { PageHeader } from '../../shared/page-header';
                   <button
                     class="secondary small"
                     [disabled]="!o.invoice_id || retrying() === o.id"
-                    (click)="retry(o)"
+                    (click)="$event.stopPropagation(); retry(o)"
                   >
                     {{ retrying() === o.id ? 'Tentando…' : 'Tentar agora' }}
                   </button>
@@ -122,6 +122,7 @@ import { PageHeader } from '../../shared/page-header';
         <section class="modal wide" (click)="$event.stopPropagation()">
           <div class="modal-head"><div><p class="eyebrow">Pedido Mercado Livre</p><h2>#{{ order.external_order_id }}</h2></div><button class="close" (click)="detail.set(null)">×</button></div>
           <div class="detail-grid"><div><small>Status no ML</small><strong>{{ order.status }}</strong></div><div><small>Sincronização</small><strong>{{ syncLabel(order.sync_status) }}</strong></div><div><small>Envio</small><strong>{{ order.shipping_status || 'Não informado' }}</strong></div><div><small>NF-e</small><strong>{{ automationLabel(order.fiscal_status) }}</strong></div><div><small>Etiqueta</small><strong>{{ automationLabel(order.label_status) }}</strong></div><div><small>Fatura</small><strong>{{ order.invoice_id ? 'Vinculada' : 'Não gerada' }}</strong></div></div>
+          @if (order.invoice; as invoice) { <h3>Fatura e documentos</h3><div class="invoice-detail-lines">@for (item of invoice.items; track item.id) { <div><span><strong>{{ item.description }}</strong><small>{{ item.sku }} · {{ item.quantity }} un.</small></span><strong>{{ item.total | number:'1.2-2' }}</strong></div> }</div><div class="detail-documents">@for (doc of invoice.documents; track doc.id) { <button class="doc" (click)="download(order.invoice_id!, doc.id, doc.filename)">{{ doc.document_type | uppercase }} · {{ doc.filename }}</button> } @empty { <span class="muted">Nenhum documento anexado à fatura.</span> }</div> }
           <h3>Rastreamento e etapas</h3><div class="timeline"><div><strong>Pedido recebido</strong><span>{{ order.created_at | date:'dd/MM/yyyy HH:mm' }}</span></div><div><strong>Status atual: {{ order.status }}</strong><span>{{ order.synchronized_at ? (order.synchronized_at | date:'dd/MM/yyyy HH:mm') : 'Ainda não sincronizado' }}</span></div>@if (order.payload?.['shipping']) { <div><strong>Envio {{ order.payload?.['shipping']?.['id'] || '' }}</strong><span>{{ order.payload?.['shipping']?.['status'] || order.shipping_status || 'Em processamento' }}</span></div> }</div>
           <h3>Histórico de status</h3>@if (history().length) { <div class="timeline">@for (event of history(); track event.id) { <div><strong>{{ event.status }}{{ event.detail ? ' · ' + event.detail : '' }}</strong><span>{{ event.created_at | date:'dd/MM/yyyy HH:mm' }}</span></div> }</div> } @else { <p class="muted">Nenhum evento histórico registrado.</p> }
           <h3>Devolução/cancelamento</h3>@if (order.status === 'cancelled' || order.payload?.['status'] === 'cancelled' || order.payload?.['returns']) { @if (order.payload?.['cancel_detail']) { <div class="detail-grid"><div><small>Motivo</small><strong>{{ order.payload?.['cancel_detail']?.['description'] || 'Não informado' }}</strong></div><div><small>Solicitado por</small><strong>{{ order.payload?.['cancel_detail']?.['requested_by'] || 'Não informado' }}</strong></div><div><small>Pagamento</small><strong>{{ order.payload?.['payments']?.[0]?.['status'] || 'Não informado' }}</strong></div></div> } <pre class="payload">{{ order.payload?.['returns'] || order.payload?.['cancellations'] || order.payload | json }}</pre> } @else { <p class="muted">Nenhuma devolução ou cancelamento registrado neste pedido.</p> }
@@ -188,5 +189,15 @@ export class MarketplacePage implements OnInit {
     this.history.set([]);
     this.api.marketplaceOrder(order.id).subscribe((full) => this.detail.set(full));
     this.api.marketplaceOrderHistory(order.id).subscribe((events) => this.history.set(events));
+  }
+  download(invoiceId: string, documentId: string, filename: string) {
+    this.api.downloadInvoiceDocument(invoiceId, documentId).subscribe((blob) => {
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = filename;
+      anchor.click();
+      URL.revokeObjectURL(url);
+    });
   }
 }

@@ -67,10 +67,26 @@
 .object-hero { align-items: center; }
 .object-hero .detail-subtitle { color: var(--muted); font-size: 12px; margin: 7px 0 0; }
 .object-hero-actions { display: flex; align-items: center; gap: 12px; }
-.object-modal > h3 { padding-top: 8px; border-top: 1px solid var(--line); }
-.timeline { display: grid; gap: 8px; margin-bottom: 18px; }
-.timeline div { display: flex; justify-content: space-between; gap: 12px; border-left: 3px solid var(--forest); padding: 10px 12px; background: #f7faf8; }
-.timeline span { color: var(--muted); }
+.order-section { padding: 22px 0 6px; border-top: 1px solid var(--line); }
+.order-section + .order-section { margin-top: 14px; }
+.section-heading { display: flex; align-items: end; justify-content: space-between; gap: 16px; margin-bottom: 14px; }
+.section-heading h3 { margin: 0; font-size: 18px; }
+.section-heading .eyebrow { margin: 0 0 5px; }
+.invoice-detail-lines { display: grid; gap: 0; }
+.invoice-detail-lines > div { display: flex; align-items: start; justify-content: space-between; gap: 18px; padding: 13px 0; border-bottom: 1px solid var(--line); }
+.invoice-detail-lines > div:last-child { border-bottom: 0; }
+.invoice-detail-lines span { display: grid; gap: 4px; min-width: 0; }
+.invoice-detail-lines small { color: var(--muted); }
+.detail-documents { display: grid; gap: 8px; margin-top: 16px; }
+.documents-label { color: var(--muted); font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+.detail-documents .doc { display: flex; align-items: center; gap: 10px; width: 100%; padding: 11px 13px; border: 1px solid var(--line); border-radius: 9px; background: #fff; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+.detail-documents .doc:hover { border-color: #a8bf8c; background: #f7faf5; }
+.detail-documents .doc span { display: inline-grid; place-items: center; min-width: 34px; padding: 4px 6px; border-radius: 5px; background: #e9f1df; color: #547522; font-size: 10px; font-weight: 900; }
+.detail-documents .doc b { margin-left: auto; color: var(--forest); font-size: 18px; }
+.timeline { display: grid; gap: 0; border-left: 2px solid #dce8da; margin: 4px 0 8px 8px; }
+.timeline div { display: grid; gap: 4px; position: relative; padding: 0 0 18px 18px; border: 0; background: transparent; }
+.timeline div::before { content: ''; position: absolute; left: -7px; top: 2px; width: 11px; height: 11px; border-radius: 50%; background: var(--accent); border: 3px solid #fff; box-shadow: 0 0 0 1px #b6caad; }
+.timeline span { color: var(--muted); font-size: 11px; }
 .payload { max-height: 220px; overflow: auto; background: #f7f7f5; padding: 12px; font-size: 12px; white-space: pre-wrap; }
 @media (max-width: 600px) {
   .table-card table { min-width: 0; }

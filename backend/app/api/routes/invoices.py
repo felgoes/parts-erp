@@ -107,6 +107,7 @@ def get_invoice(
             events = db.scalars(
                 select(MarketplaceOrderEvent)
                 .where(MarketplaceOrderEvent.order_id == order.id)
+                .where(MarketplaceOrderEvent.event_type == "shipment_status")
                 .order_by(MarketplaceOrderEvent.created_at.asc())
             )
             result.tracking = InvoiceTrackingOut(

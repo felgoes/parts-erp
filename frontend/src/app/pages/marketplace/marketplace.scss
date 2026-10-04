@@ -73,7 +73,19 @@
 .timeline span { color: var(--muted); }
 .payload { max-height: 220px; overflow: auto; background: #f7f7f5; padding: 12px; font-size: 12px; white-space: pre-wrap; }
 @media (max-width: 600px) {
-  .table-card table { min-width: 680px; }
+  .table-card table { min-width: 0; }
+  .table-card table thead { display: none; }
+  .table-card table tbody, .table-card table tr, .table-card table td { display: block; }
+  .table-card table tr { padding: 13px 0; border-bottom: 1px solid var(--line); }
+  .table-card table td { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 5px 0; border: 0; }
+  .table-card table td:not(:first-child)::before { color: var(--muted); content: 'Recebido'; font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+  .table-card table td:nth-child(3)::before { content: 'Status no ML'; }
+  .table-card table td:nth-child(4)::before { content: 'Sincronização'; }
+  .table-card table td:nth-child(5)::before { content: 'Fatura'; }
+  .table-card table td:nth-child(6)::before { content: 'NF-e'; }
+  .table-card table td:nth-child(7)::before { content: 'Etiqueta'; }
+  .table-card table td:nth-child(8)::before { content: ''; }
+  .table-card table td:first-child::before { display: none; }
   .object-hero { align-items: flex-start; }
   .object-hero-actions { margin-left: auto; align-items: flex-start; }
   .timeline div { display: grid; gap: 5px; }

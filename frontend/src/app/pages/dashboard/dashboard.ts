@@ -39,7 +39,7 @@ import { PageHeader } from '../../shared/page-header';
         </article>
       </section>
       <section class="dashboard-grid">
-        <article class="card">
+        <article class="card table-card">
           <div class="card-head">
             <div>
               <h2>Vendas recentes</h2>
@@ -160,9 +160,10 @@ export class DashboardPage implements OnInit {
     return total ? Math.max(4, (value / total) * 100) : 0;
   }
   openDocument(invoiceId: string, documentId: string) {
+    const preview = window.open('about:blank', '_blank', 'noopener,noreferrer');
     this.api.downloadInvoiceDocument(invoiceId, documentId).subscribe((blob) => {
       const url = URL.createObjectURL(blob);
-      window.open(url, '_blank', 'noopener,noreferrer');
+      if (preview) preview.location.href = url;
       window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
     });
   }

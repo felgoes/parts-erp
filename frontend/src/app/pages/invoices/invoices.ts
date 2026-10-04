@@ -213,9 +213,10 @@ export class InvoicesPage implements OnInit {
     this.api.invoice(i.id).subscribe((full) => this.detail.set(full));
   }
   openDocument(invoiceId: string, documentId: string) {
+    const preview = window.open('about:blank', '_blank', 'noopener,noreferrer');
     this.api.downloadInvoiceDocument(invoiceId, documentId).subscribe((blob) => {
       const url = URL.createObjectURL(blob);
-      window.open(url, '_blank', 'noopener,noreferrer');
+      if (preview) preview.location.href = url;
       window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
     });
   }

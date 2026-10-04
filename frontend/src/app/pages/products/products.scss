@@ -111,7 +111,19 @@
 @media (max-width: 600px) {
   .toolbar { gap: 10px; }
   .toolbar .search { max-width: none; flex-basis: 100%; }
-  .table-card table { min-width: 620px; }
+  .table-card table { min-width: 0; }
+  .table-card table thead { display: none; }
+  .table-card table tbody, .table-card table tr, .table-card table td { display: block; }
+  .table-card table tr { padding: 13px 0; border-bottom: 1px solid var(--line); }
+  .table-card table td { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 5px 0; border: 0; }
+  .table-card table td:first-child { padding-top: 2px; }
+  .table-card table td:not(:first-child)::before { color: var(--muted); content: 'SKU'; font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+  .table-card table td:nth-child(3)::before { content: 'Preço'; }
+  .table-card table td:nth-child(4)::before { content: 'Estoque'; }
+  .table-card table td:nth-child(5)::before { content: 'Condição'; }
+  .table-card table td:nth-child(6)::before { content: ''; }
+  .table-card table td:first-child::before { display: none; }
+  .table-card table td:first-child .product { width: 100%; }
   .product-hero { align-items: flex-start; }
   .product-detail-summary > div { padding: 13px; }
   .listing-card { padding: 11px; }

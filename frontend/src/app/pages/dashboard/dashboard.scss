@@ -200,7 +200,23 @@
   .dashboard-grid { gap: 14px; }
   .dashboard-grid > .card { min-width: 0; }
   .dashboard-grid .table-wrap { border-radius: 10px; scrollbar-width: thin; }
-  .dashboard-grid table { min-width: 760px; }
+  .dashboard-grid table { min-width: 0; }
+  .dashboard-grid table thead { display: none; }
+  .dashboard-grid table tbody, .dashboard-grid table tr, .dashboard-grid table td { display: block; }
+  .dashboard-grid table tr { padding: 13px 0; border-bottom: 1px solid var(--line); }
+  .dashboard-grid table td { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 5px 0; border: 0; }
+  .dashboard-grid table td:first-child { padding-top: 2px; }
+  .dashboard-grid table td:not(:first-child)::before { color: var(--muted); content: 'Cliente'; font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+  .dashboard-grid table td:nth-child(3)::before { content: 'Origem'; }
+  .dashboard-grid table td:nth-child(4)::before { content: 'Emissão'; }
+  .dashboard-grid table td:nth-child(5)::before { content: 'Status'; }
+  .dashboard-grid table td:nth-child(6)::before { content: 'Documentos'; }
+  .dashboard-grid table td:nth-child(7)::before { content: 'Total'; }
+  .dashboard-grid table td:first-child::before { display: none; }
+  .dashboard-grid table td:nth-child(2) { display: grid; grid-template-columns: auto 1fr; }
+  .dashboard-grid table td:nth-child(2)::before { grid-row: span 2; align-self: start; }
+  .dashboard-grid table td:nth-child(6) { align-items: center; }
+  .dashboard-grid table td:nth-child(7) { justify-content: space-between; }
   .detail-hero, .financial-head { align-items: flex-start; }
   .detail-hero .hero-actions, .financial-head .close { margin-left: auto; }
   .hero-actions { align-items: flex-start; gap: 8px; }

@@ -170,6 +170,7 @@ export class MarketplacePage implements OnInit {
           requesting: 'Solicitando',
           waiting: 'Aguardando envio',
           waiting_shipment: 'Sem envio',
+          completed: 'Etapa concluída',
           not_applicable: 'Não aplicável',
           error: 'Requer atenção',
         } as Record<string, string>

@@ -33,6 +33,7 @@ const labels: Record<string, string> = {
   stolen: 'Roubado',
   waiting: 'Aguardando',
   waiting_shipment: 'Aguardando envio',
+  completed: 'Etapa concluída',
   downloaded: 'Baixada',
   authorized: 'Autorizada',
   requesting: 'Solicitando',

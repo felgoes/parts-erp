@@ -23,11 +23,44 @@ const labels: Record<string, string> = {
   returning_to_sender: 'Em devolução ao remetente',
   returned_to_sender: 'Devolvido ao remetente',
   waiting_for_withdrawal: 'Aguardando retirada',
+  waiting_for_label_generation: 'Aguardando emissão da etiqueta',
+  waiting_for_carrier_authorization: 'Aguardando autorização da transportadora',
+  waiting_for_documentation: 'Aguardando documentação',
+  held_for_documentation: 'Aguardando documentação',
+  waiting_for_delivery: 'Aguardando entrega',
+  waiting_for_pickup: 'Aguardando coleta',
+  waiting_for_shipment: 'Aguardando envio',
+  waiting_for_drop_off: 'Aguardando postagem',
+  waiting_for_dropoff: 'Aguardando postagem',
   waiting_for_action: 'Aguardando ação',
   at_the_branch: 'Na agência',
   in_hub: 'No centro de distribuição',
   on_route: 'Em rota de entrega',
   in_packing_list: 'Em lista de despacho',
+  ready_to_pack: 'Pronto para embalar',
+  packed: 'Pedido embalado',
+  shipped_to_carrier: 'Enviado à transportadora',
+  at_pickup_point: 'Disponível para retirada',
+  at_the_pickup_point: 'Disponível para retirada',
+  delivery_attempt_failed: 'Tentativa de entrega sem sucesso',
+  delivery_attempts_exceeded: 'Limite de tentativas de entrega atingido',
+  buyer_missed_delivery_window: 'Prazo de recebimento não atendido',
+  shipment_cancelled: 'Envio cancelado',
+  shipment_canceled: 'Envio cancelado',
+  shipment_delayed: 'Envio atrasado',
+  need_review: 'Em revisão',
+  reclaimed: 'Envio em análise',
+  rescheduled: 'Entrega reagendada',
+  rescheduled_delivery: 'Entrega reagendada',
+  address_not_found: 'Endereço não localizado',
+  incorrect_address: 'Endereço incorreto',
+  refused_delivery: 'Entrega recusada',
+  refused_by_buyer: 'Entrega recusada pelo comprador',
+  package_damaged: 'Pacote danificado',
+  package_lost: 'Pacote extraviado',
+  package_stolen: 'Pacote roubado',
+  delivered_to_neighbor: 'Entregue a um vizinho',
+  delivered_to_reception: 'Entregue na portaria',
   buffered: 'Aguardando processamento',
   claimed: 'Com reclamação aberta',
   estimated_delivery: 'Entrega estimada',
@@ -68,14 +101,48 @@ const labels: Record<string, string> = {
 
 export function statusLabel(value: string | null | undefined): string {
   if (!value) return '—';
-  const normalized = value.trim().toLowerCase();
+  const normalized = normalizeStatus(value);
   if (labels[normalized]) return labels[normalized];
-  return normalized
-    .replaceAll('_', ' ')
-    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+  // Do not leak new Mercado Livre/carrier enum values in English into the UI.
+  // Keep the raw code in the technical payload for diagnostics instead.
+  return 'Status não mapeado';
 }
 
 export function trackingEventLabel(status: string, detail?: string | null): string {
   const translatedStatus = statusLabel(status);
-  return detail ? `${translatedStatus} · ${statusLabel(detail)}` : translatedStatus;
+  const translatedDetail = trackingDetailLabel(detail);
+  return translatedDetail ? `${translatedStatus} · ${translatedDetail}` : translatedStatus;
+}
+
+function trackingDetailLabel(value: string | null | undefined): string | null {
+  if (!value?.trim()) return null;
+  const normalized = normalizeStatus(value);
+  if (labels[normalized]) return labels[normalized];
+
+  const phrases: Record<string, string> = {
+    'delivery attempt was unsuccessful': 'Tentativa de entrega sem sucesso',
+    'delivery attempt failed': 'Tentativa de entrega sem sucesso',
+    'buyer was not at home': 'Destinatário ausente',
+    'recipient was not at home': 'Destinatário ausente',
+    'package is delayed': 'Pacote atrasado',
+    'package was damaged': 'Pacote danificado',
+    'package was lost': 'Pacote extraviado',
+    'package was stolen': 'Pacote roubado',
+    'returned to sender': 'Devolvido ao remetente',
+  };
+  const phrase = value.trim().toLowerCase().replace(/[.]/g, ' ').replace(/\s+/g, ' ');
+  if (phrases[phrase]) return phrases[phrase];
+  // Preserve a readable Portuguese description when the carrier supplies one.
+  if (/[áàâãéêíóôõúç]/i.test(value) || /\b(entrega|pacote|destinatário|remetente|agência|coleta|pedido)\b/i.test(value)) {
+    return value.trim();
+  }
+  return null;
+}
+
+function normalizeStatus(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[.\s-]+/g, '_')
+    .replace(/_+/g, '_');
 }

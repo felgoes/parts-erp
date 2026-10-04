@@ -179,6 +179,8 @@ class MarketplaceStatus(BaseModel):
     seller_id: str | None = None
     nickname: str | None = None
     token_expires_at: datetime | None = None
+    auto_issue_invoice: bool = True
+    auto_download_label: bool = True
 
 
 class MarketplaceConfigOut(BaseModel):
@@ -189,6 +191,8 @@ class MarketplaceConfigOut(BaseModel):
     import_orders: bool
     automatic_stock: bool
     sync_documents: bool
+    auto_issue_invoice: bool = True
+    auto_download_label: bool = True
 
 
 class MarketplaceConfigUpdate(BaseModel):
@@ -199,6 +203,8 @@ class MarketplaceConfigUpdate(BaseModel):
     import_orders: bool = True
     automatic_stock: bool = True
     sync_documents: bool = True
+    auto_issue_invoice: bool = True
+    auto_download_label: bool = True
 
 
 class ShopeeStatus(BaseModel):

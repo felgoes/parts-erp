@@ -5,6 +5,7 @@ error_log __APP_DIR__/data/logs/nginx-error.log warn;
 events { worker_connections 256; }
 
 http {
+  server_names_hash_bucket_size 64;
   include __PREFIX__/etc/nginx/mime.types;
   default_type application/octet-stream;
   log_format safe '$remote_addr - $status "$request_method $uri $server_protocol"';

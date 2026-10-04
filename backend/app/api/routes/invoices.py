@@ -1,15 +1,33 @@
-from fastapi import APIRouter, Depends, HTTPException
+from datetime import UTC, date, datetime, time, timedelta, timezone
+
+from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import FileResponse
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.api.deps import get_current_user, require_roles
 from app.db.session import get_db
-from app.models import InvoiceDocument, MarketplaceAccount, MarketplaceOrder, MarketplaceOrderEvent, Product, SalesInvoice, User, UserRole
-from app.schemas.common import InvoiceCreate, InvoiceCustomerOut, InvoiceOut, InvoiceTrackingEventOut, InvoiceTrackingOut
+from app.models import (
+    InvoiceDocument,
+    MarketplaceAccount,
+    MarketplaceOrder,
+    MarketplaceOrderEvent,
+    Product,
+    SalesInvoice,
+    User,
+    UserRole,
+)
+from app.schemas.common import (
+    InvoiceCreate,
+    InvoiceCustomerOut,
+    InvoiceOut,
+    InvoiceTrackingEventOut,
+    InvoiceTrackingOut,
+)
 from app.services.sales import cancel_invoice, confirm_invoice, create_invoice
 
 router = APIRouter(prefix="/invoices", tags=["Faturas de venda"])
+BRAZIL_TZ = timezone(timedelta(hours=-3))
 
 
 def _sync_marketplace_stock_for_invoice(db: Session, invoice: SalesInvoice) -> None:
@@ -22,14 +40,27 @@ def _sync_marketplace_stock_for_invoice(db: Session, invoice: SalesInvoice) -> N
             try:
                 sync_product_stock(db, product)
             except Exception:
-                # A venda local não deve falhar porque o marketplace está temporariamente indisponível.
+                # A venda local não falha se o marketplace estiver temporariamente indisponível.
                 db.rollback()
 
 
 @router.get("", response_model=list[InvoiceOut])
 def list_invoices(
-    db: Session = Depends(get_db), _: User = Depends(get_current_user)
+    start_date: date | None = Query(default=None),
+    end_date: date | None = Query(default=None),
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
 ) -> list[SalesInvoice]:
+    today = datetime.now(BRAZIL_TZ).date()
+    start = start_date or today.replace(day=1)
+    end = end_date or today
+    if start > end:
+        raise HTTPException(status_code=422, detail="A data inicial deve ser anterior à data final")
+    if (end - start).days > 364:
+        raise HTTPException(status_code=422, detail="O período máximo é de 365 dias")
+    since = datetime.combine(start, time.min, BRAZIL_TZ).astimezone(UTC)
+    until = datetime.combine(end + timedelta(days=1), time.min, BRAZIL_TZ).astimezone(UTC)
+    invoice_date = func.coalesce(SalesInvoice.issued_at, SalesInvoice.created_at)
     query = (
         select(SalesInvoice)
         .options(
@@ -37,6 +68,7 @@ def list_invoices(
             selectinload(SalesInvoice.documents),
             selectinload(SalesInvoice.customer),
         )
+        .where(invoice_date >= since, invoice_date < until)
         .order_by(SalesInvoice.created_at.desc())
         .limit(200)
     )

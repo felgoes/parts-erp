@@ -1,5 +1,6 @@
 import { CurrencyPipe, DatePipe, DecimalPipe, UpperCasePipe } from '@angular/common';
 import { Component, OnInit, inject, signal } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { ApiService } from '../../core/api.service';
 import { DashboardFinancialMetrics, DashboardSummary, Invoice } from '../../core/models';
@@ -8,7 +9,7 @@ import { PageHeader } from '../../shared/page-header';
 
 @Component({
   selector: 'app-dashboard',
-  imports: [CurrencyPipe, DatePipe, DecimalPipe, UpperCasePipe, RouterLink, PageHeader],
+  imports: [CurrencyPipe, DatePipe, DecimalPipe, UpperCasePipe, RouterLink, PageHeader, FormsModule],
   template: `
     <app-page-header
       eyebrow="Centro de controle"
@@ -20,14 +21,14 @@ import { PageHeader } from '../../shared/page-header';
       <section class="metric-grid">
         <article class="metric featured metric-clickable" tabindex="0" role="button" (click)="openFinancial()" (keydown.enter)="openFinancial()" (keydown.space)="$event.preventDefault(); openFinancial()">
           <div>
-            <span>Faturamento no mês</span
+            <span>Faturamento no período</span
             ><strong>{{ summary.revenue_month | currency: 'BRL' }}</strong>
           </div>
           <i>↗</i><small>Vendas confirmadas</small>
         </article>
         <article class="metric metric-clickable" tabindex="0" role="button" (click)="navigate('/invoices')" (keydown.enter)="navigate('/invoices')">
           <span>Vendas confirmadas</span><strong>{{ summary.confirmed_sales }}</strong
-          ><small>neste mês</small>
+          ><small>no período</small>
         </article>
         <article class="metric metric-clickable" tabindex="0" role="button" (click)="navigate('/products')" (keydown.enter)="navigate('/products')">
           <span>Produtos ativos</span><strong>{{ summary.products_count }}</strong
@@ -37,6 +38,12 @@ import { PageHeader } from '../../shared/page-header';
           <span>Estoque baixo</span><strong>{{ summary.low_stock_count }}</strong
           ><small>itens pedem atenção</small>
         </article>
+      </section>
+      <section class="date-filter card" aria-label="Filtrar visão geral por período">
+        <div><strong>Período da visão geral</strong><small>Faturamento, vendas e vendas recentes</small></div>
+        <label>De <input type="date" [(ngModel)]="startDate" /></label>
+        <label>Até <input type="date" [(ngModel)]="endDate" /></label>
+        <button class="secondary" (click)="applyDateFilter()" [disabled]="!validRange()">Aplicar</button>
       </section>
       <section class="dashboard-grid">
         <article class="card table-card">
@@ -93,9 +100,9 @@ import { PageHeader } from '../../shared/page-header';
       @if (financial(); as finance) {
         <div class="modal-backdrop" (click)="financial.set(null)">
           <section class="modal wide object-modal financial-modal" (click)="$event.stopPropagation()">
-            <div class="modal-head financial-head"><div><p class="eyebrow">Financeiro · {{ finance.period_label }}</p><h2>Faturamento do mês</h2><p class="detail-subtitle">Uma leitura rápida da receita, do ritmo de vendas e da composição do caixa.</p></div><button class="close" aria-label="Fechar métricas financeiras" (click)="financial.set(null)">×</button></div>
-            <div class="financial-kpis"><div class="financial-kpi primary-kpi"><span>Receita confirmada</span><strong>{{ finance.revenue | currency:'BRL' }}</strong><small [class.positive-text]="finance.revenue_change_percent >= 0" [class.negative-text]="finance.revenue_change_percent < 0">{{ finance.revenue_change_percent >= 0 ? '↑' : '↓' }} {{ abs(finance.revenue_change_percent) | number:'1.0-2' }}% vs. mês anterior</small></div><div class="financial-kpi"><span>Ticket médio</span><strong>{{ finance.average_ticket | currency:'BRL' }}</strong><small>{{ finance.sales_count }} vendas confirmadas</small></div><div class="financial-kpi"><span>Documentos emitidos</span><strong>{{ finance.documents_count }}</strong><small>Notas e arquivos da operação</small></div><div class="financial-kpi"><span>Cancelamentos</span><strong>{{ finance.cancelled_count }}</strong><small>neste mês</small></div></div>
-            <div class="financial-grid"><section class="financial-panel"><div class="section-heading"><div><p class="eyebrow">Ritmo de vendas</p><h3>Receita nos últimos dias</h3></div><span class="muted">{{ finance.period_label }}</span></div><div class="revenue-chart" aria-label="Receita diária">@for (day of finance.daily; track day.date) { <div class="chart-column"><span class="chart-value">{{ day.amount | currency:'BRL':'symbol':'1.0-0' }}</span><div class="chart-track"><i [style.height.%]="chartHeight(day.amount, finance.daily)"></i></div><small>{{ day.label }}</small></div> }</div></section><section class="financial-panel"><div class="section-heading"><div><p class="eyebrow">Composição</p><h3>Por canal de venda</h3></div></div><div class="source-breakdown">@for (source of finance.by_source; track source.label) { <div><div class="source-row"><strong>{{ source.label }}</strong><span>{{ source.amount | currency:'BRL' }}</span></div><div class="source-bar"><i [style.width.%]="sourceWidth(source.amount, finance.revenue)"></i></div><small>{{ source.count }} venda(s)</small></div> } @empty { <p class="muted">Nenhuma venda confirmada no período.</p> }</div></section></div>
+            <div class="modal-head financial-head"><div><p class="eyebrow">Financeiro · {{ finance.period_label }}</p><h2>Faturamento no período</h2><p class="detail-subtitle">Uma leitura rápida da receita, do ritmo de vendas e da composição do caixa.</p></div><button class="close" aria-label="Fechar métricas financeiras" (click)="financial.set(null)">×</button></div>
+            <div class="financial-kpis"><div class="financial-kpi primary-kpi"><span>Receita confirmada</span><strong>{{ finance.revenue | currency:'BRL' }}</strong><small [class.positive-text]="finance.revenue_change_percent >= 0" [class.negative-text]="finance.revenue_change_percent < 0">{{ finance.revenue_change_percent >= 0 ? '↑' : '↓' }} {{ abs(finance.revenue_change_percent) | number:'1.0-2' }}% vs. período anterior</small></div><div class="financial-kpi"><span>Ticket médio</span><strong>{{ finance.average_ticket | currency:'BRL' }}</strong><small>{{ finance.sales_count }} vendas confirmadas</small></div><div class="financial-kpi"><span>Documentos emitidos</span><strong>{{ finance.documents_count }}</strong><small>Notas e arquivos da operação</small></div><div class="financial-kpi"><span>Cancelamentos</span><strong>{{ finance.cancelled_count }}</strong><small>no período</small></div></div>
+            <div class="financial-grid"><section class="financial-panel"><div class="section-heading"><div><p class="eyebrow">Ritmo de vendas</p><h3>Receita diária no período</h3></div><span class="muted">{{ finance.period_label }}</span></div><div class="revenue-chart" aria-label="Receita diária">@for (day of finance.daily; track day.date) { <div class="chart-column"><span class="chart-value">{{ day.amount | currency:'BRL':'symbol':'1.0-0' }}</span><div class="chart-track"><i [style.height.%]="chartHeight(day.amount, finance.daily)"></i></div><small>{{ day.label }}</small></div> }</div></section><section class="financial-panel"><div class="section-heading"><div><p class="eyebrow">Composição</p><h3>Por canal de venda</h3></div></div><div class="source-breakdown">@for (source of finance.by_source; track source.label) { <div><div class="source-row"><strong>{{ source.label }}</strong><span>{{ source.amount | currency:'BRL' }}</span></div><div class="source-bar"><i [style.width.%]="sourceWidth(source.amount, finance.revenue)"></i></div><small>{{ source.count }} venda(s)</small></div> } @empty { <p class="muted">Nenhuma venda confirmada no período.</p> }</div></section></div>
           </section>
         </div>
       }
@@ -124,11 +131,18 @@ export class DashboardPage implements OnInit {
   readonly financial = signal<DashboardFinancialMetrics | null>(null);
   readonly detail = signal<Invoice | null>(null);
   readonly invoiceTab = signal<'items' | 'tracking' | 'documents'>('items');
+  startDate = this.monthStart();
+  endDate = this.today();
   readonly statusLabel = statusLabel;
   readonly trackingEventLabel = trackingEventLabel;
   ngOnInit() {
-    this.api.dashboard().subscribe((v) => this.data.set(v));
+    this.load();
   }
+  load() { if (this.validRange()) this.api.dashboard(this.startDate, this.endDate).subscribe((v) => this.data.set(v)); }
+  applyDateFilter() { this.load(); }
+  validRange() { return !!this.startDate && !!this.endDate && this.startDate <= this.endDate; }
+  private today() { return new Date().toLocaleDateString('sv-SE'); }
+  private monthStart() { return `${this.today().slice(0, 7)}-01`; }
   status(value: string) {
     return (
       (
@@ -147,7 +161,7 @@ export class DashboardPage implements OnInit {
     void this.router.navigate([path]);
   }
   openFinancial() {
-    this.api.dashboardFinancial().subscribe((metrics) => this.financial.set(metrics));
+    this.api.dashboardFinancial(this.startDate, this.endDate).subscribe((metrics) => this.financial.set(metrics));
   }
   abs(value: number) {
     return Math.abs(value);

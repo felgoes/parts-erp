@@ -29,11 +29,11 @@ export class ApiService {
       ? 'https://erp.goesautoparts.com.br/api/v1'
       : '/api/v1';
   }
-  dashboard(): Observable<DashboardSummary> {
-    return this.http.get<DashboardSummary>(`${this.base}/dashboard/summary`);
+  dashboard(startDate: string, endDate: string): Observable<DashboardSummary> {
+    return this.http.get<DashboardSummary>(`${this.base}/dashboard/summary`, { params: { start_date: startDate, end_date: endDate } });
   }
-  dashboardFinancial(): Observable<DashboardFinancialMetrics> {
-    return this.http.get<DashboardFinancialMetrics>(`${this.base}/dashboard/financial`);
+  dashboardFinancial(startDate: string, endDate: string): Observable<DashboardFinancialMetrics> {
+    return this.http.get<DashboardFinancialMetrics>(`${this.base}/dashboard/financial`, { params: { start_date: startDate, end_date: endDate } });
   }
   products(search = '', lowStock = false): Observable<Product[]> {
     let params = new HttpParams();
@@ -83,8 +83,8 @@ export class ApiService {
   automateMarketplaceOrder(id: string): Observable<MarketplaceOrder> {
     return this.http.post<MarketplaceOrder>(`${this.base}/integrations/mercadolivre/orders/${id}/automate`, {});
   }
-  invoices(): Observable<Invoice[]> {
-    return this.http.get<Invoice[]>(`${this.base}/invoices`);
+  invoices(startDate: string, endDate: string): Observable<Invoice[]> {
+    return this.http.get<Invoice[]>(`${this.base}/invoices`, { params: { start_date: startDate, end_date: endDate } });
   }
   invoice(id: string): Observable<Invoice> {
     return this.http.get<Invoice>(`${this.base}/invoices/${id}`);

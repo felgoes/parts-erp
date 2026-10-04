@@ -1,29 +1,52 @@
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, time, timedelta, timezone
 from decimal import Decimal
 
-from fastapi import APIRouter, Depends
-from sqlalchemy import extract, func, select
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.api.deps import get_current_user
 from app.db.session import get_db
 from app.models import InvoiceStatus, Product, SalesInvoice, User
-from app.schemas.common import DashboardBreakdown, DashboardDailyMetric, DashboardFinancialMetrics, DashboardSummary
+from app.schemas.common import (
+    DashboardBreakdown,
+    DashboardDailyMetric,
+    DashboardFinancialMetrics,
+    DashboardSummary,
+)
 
 router = APIRouter(prefix="/dashboard", tags=["Painel"])
-MONTHS_PT = (
-    "janeiro", "fevereiro", "março", "abril", "maio", "junho",
-    "julho", "agosto", "setembro", "outubro", "novembro", "dezembro",
-)
+BRAZIL_TZ = timezone(timedelta(hours=-3))
+
+
+def _period(
+    start_date: date | None, end_date: date | None
+) -> tuple[date, date, datetime, datetime]:
+    today = datetime.now(BRAZIL_TZ).date()
+    start = start_date or today.replace(day=1)
+    end = end_date or today
+    if start > end:
+        raise HTTPException(status_code=422, detail="A data inicial deve ser anterior à data final")
+    if (end - start).days > 364:
+        raise HTTPException(status_code=422, detail="O período máximo é de 365 dias")
+    since = datetime.combine(start, time.min, BRAZIL_TZ).astimezone(UTC)
+    until = datetime.combine(end + timedelta(days=1), time.min, BRAZIL_TZ).astimezone(UTC)
+    return start, end, since, until
 
 
 @router.get("/summary", response_model=DashboardSummary)
-def summary(db: Session = Depends(get_db), _: User = Depends(get_current_user)) -> DashboardSummary:
-    now = datetime.now(UTC)
+def summary(
+    start_date: date | None = Query(default=None),
+    end_date: date | None = Query(default=None),
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+) -> DashboardSummary:
+    _, _, since, until = _period(start_date, end_date)
+    invoice_date = func.coalesce(SalesInvoice.issued_at, SalesInvoice.created_at)
     month_filter = (
         SalesInvoice.status == InvoiceStatus.confirmed,
-        extract("year", SalesInvoice.issued_at) == now.year,
-        extract("month", SalesInvoice.issued_at) == now.month,
+        invoice_date >= since,
+        invoice_date < until,
     )
     revenue = db.scalar(select(func.coalesce(func.sum(SalesInvoice.total), 0)).where(*month_filter))
     sales = db.scalar(select(func.count(SalesInvoice.id)).where(*month_filter)) or 0
@@ -44,6 +67,7 @@ def summary(db: Session = Depends(get_db), _: User = Depends(get_current_user)) 
                 selectinload(SalesInvoice.documents),
                 selectinload(SalesInvoice.items),
             )
+            .where(invoice_date >= since, invoice_date < until)
             .order_by(SalesInvoice.created_at.desc())
             .limit(5)
         )
@@ -59,32 +83,37 @@ def summary(db: Session = Depends(get_db), _: User = Depends(get_current_user)) 
 
 @router.get("/financial", response_model=DashboardFinancialMetrics)
 def financial_metrics(
-    db: Session = Depends(get_db), _: User = Depends(get_current_user)
+    start_date: date | None = Query(default=None),
+    end_date: date | None = Query(default=None),
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
 ) -> DashboardFinancialMetrics:
-    now = datetime.now(UTC)
-    month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-    previous_start = (month_start - timedelta(days=1)).replace(day=1)
+    start, end, since, until = _period(start_date, end_date)
+    duration = until - since
+    previous_start = since - duration
+    invoice_date = func.coalesce(SalesInvoice.issued_at, SalesInvoice.created_at)
     rows = list(
         db.scalars(
             select(SalesInvoice)
             .options(selectinload(SalesInvoice.documents))
-            .where(SalesInvoice.created_at >= previous_start)
+            .where(invoice_date >= previous_start, invoice_date < until)
         )
     )
 
     def timestamp(invoice: SalesInvoice) -> datetime:
         value = invoice.issued_at or invoice.created_at
-        return value.replace(tzinfo=UTC) if value.tzinfo is None else value
+        return value.replace(tzinfo=UTC) if value.tzinfo is None else value.astimezone(UTC)
 
     current = [
         invoice
         for invoice in rows
-        if month_start <= timestamp(invoice) <= now and invoice.status == InvoiceStatus.confirmed
+        if since <= timestamp(invoice) < until and invoice.status == InvoiceStatus.confirmed
     ]
     previous = [
         invoice
         for invoice in rows
-        if previous_start <= timestamp(invoice) < month_start and invoice.status == InvoiceStatus.confirmed
+        if previous_start <= timestamp(invoice) < since
+        and invoice.status == InvoiceStatus.confirmed
     ]
     revenue = sum((invoice.total for invoice in current), Decimal("0"))
     previous_revenue = sum((invoice.total for invoice in previous), Decimal("0"))
@@ -100,10 +129,12 @@ def financial_metrics(
         amount, count = source_totals.get(label, (Decimal("0"), 0))
         source_totals[label] = (amount + invoice.total, count + 1)
     daily: list[DashboardDailyMetric] = []
-    first_day = max(month_start, now - timedelta(days=13))
-    for offset in range((now.date() - first_day.date()).days + 1):
-        day = first_day.date() + timedelta(days=offset)
-        day_rows = [invoice for invoice in current if timestamp(invoice).date() == day]
+    first_day = start
+    for offset in range((end - first_day).days + 1):
+        day = first_day + timedelta(days=offset)
+        day_rows = [
+            invoice for invoice in current if timestamp(invoice).astimezone(BRAZIL_TZ).date() == day
+        ]
         daily.append(
             DashboardDailyMetric(
                 date=day.isoformat(),
@@ -115,10 +146,10 @@ def financial_metrics(
     cancelled_count = sum(
         1
         for invoice in rows
-        if month_start <= timestamp(invoice) <= now and invoice.status == InvoiceStatus.cancelled
+        if since <= timestamp(invoice) < until and invoice.status == InvoiceStatus.cancelled
     )
     return DashboardFinancialMetrics(
-        period_label=f"{MONTHS_PT[now.month - 1]} de {now.year}",
+        period_label=f"{start.strftime('%d/%m/%Y')} a {end.strftime('%d/%m/%Y')}",
         revenue=revenue,
         sales_count=len(current),
         average_ticket=(revenue / len(current) if current else Decimal("0")),

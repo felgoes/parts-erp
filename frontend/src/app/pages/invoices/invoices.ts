@@ -17,6 +17,12 @@ import { PageHeader } from '../../shared/page-header';
       subtitle="Do orçamento à baixa de estoque, sem retrabalho."
       ><button class="primary" (click)="openNew()">+ Nova venda</button></app-page-header
     >
+    <section class="date-filter card" aria-label="Filtrar faturas por período">
+      <div><strong>Período das faturas</strong><small>{{ invoices().length }} resultado(s)</small></div>
+      <label>De <input type="date" [(ngModel)]="startDate" /></label>
+      <label>Até <input type="date" [(ngModel)]="endDate" /></label>
+      <button class="secondary" (click)="load()" [disabled]="!validRange()">Aplicar</button>
+    </section>
     <section class="card table-card">
       <div class="table-wrap">
         <table>
@@ -164,12 +170,18 @@ export class InvoicesPage implements OnInit {
   customerId = '';
   selectedProduct = '';
   quantity = 1;
+  startDate = this.monthStart();
+  endDate = this.today();
   ngOnInit() {
     this.load();
   }
   load() {
-    this.api.invoices().subscribe((v) => this.invoices.set(v));
+    if (!this.validRange()) return;
+    this.api.invoices(this.startDate, this.endDate).subscribe((v) => this.invoices.set(v));
   }
+  validRange() { return !!this.startDate && !!this.endDate && this.startDate <= this.endDate; }
+  private today() { return new Date().toLocaleDateString('sv-SE'); }
+  private monthStart() { return `${this.today().slice(0, 7)}-01`; }
   openNew() {
     forkJoin([this.api.products(), this.api.customers()]).subscribe(([p, c]) => {
       this.products.set(p);

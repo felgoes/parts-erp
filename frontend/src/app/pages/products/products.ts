@@ -152,7 +152,7 @@ import { PageHeader } from '../../shared/page-header';
     }
     @if (detail(); as product) {
       <div class="modal-backdrop" (click)="detail.set(null)">
-        <section class="modal wide" (click)="$event.stopPropagation()">
+        <section class="modal wide object-modal" (click)="$event.stopPropagation()">
           <div class="modal-head product-hero"><div><p class="eyebrow">Catálogo · Produto</p><h2>{{ product.name }}</h2><p class="detail-subtitle">SKU {{ product.sku }} · atualizado no estoque</p></div><button class="close" aria-label="Fechar produto" (click)="detail.set(null)">×</button></div>
           <div class="product-detail-summary"><div><span>SKU</span><strong>{{ product.sku }}</strong></div><div><span>Preço de venda</span><strong>{{ product.sale_price | currency:'BRL' }}</strong></div><div><span>Estoque atual</span><strong>{{ product.current_stock | number:'1.0-3' }} un.</strong><small>mínimo {{ product.minimum_stock | number:'1.0-3' }} un.</small></div></div>
           <div class="product-description"><span class="eyebrow">Descrição</span><p>{{ product.description || 'Este produto ainda não possui uma descrição cadastrada.' }}</p></div>

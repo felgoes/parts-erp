@@ -13,6 +13,16 @@
 .customer-chevron { margin-left: auto; color: #9aa59c; font-size: 24px; line-height: 1; transition: transform 120ms ease, color 120ms ease; }
 .customer-link:hover .customer-main strong { color: #567b2e; }
 .customer-link:hover .customer-chevron { color: #567b2e; transform: translateX(3px); }
+.customer-detail-head { align-items: center; }
+.customer-detail-title { display: flex; align-items: center; gap: 14px; }
+.detail-avatar { display: grid; place-items: center; width: 48px; height: 48px; border-radius: 14px; background: #e4efda; color: #567b2e; font-size: 20px; font-weight: 850; text-transform: uppercase; }
+.detail-subtitle { color: var(--muted); font-size: 12px; margin: 7px 0 0; }
+.customer-metrics { margin: 0 0 25px; }
+.customer-metrics div { border: 1px solid #e1e9e1; }
+.object-section-heading { display: flex; align-items: end; justify-content: space-between; gap: 12px; margin: 20px 0 12px; }
+.object-section-heading h3 { margin: 0; }
+.object-section-heading .eyebrow { margin: 0 0 5px; }
+.customer-purchases { max-height: 300px; border: 1px solid var(--line); border-radius: 10px; overflow: auto; }
 @media (max-width: 700px) {
   .toolbar { flex-wrap: wrap; }
   .count { display: none; }
@@ -29,4 +39,6 @@
   .table-card td:nth-child(4)::before { content: 'Cliente desde'; }
   .table-card td:not(:first-child)::before { color: var(--muted); font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
   .table-card .empty { padding: 14px 0; }
+  .customer-detail-title { align-items: start; }
+  .customer-detail-head { align-items: start; }
 }

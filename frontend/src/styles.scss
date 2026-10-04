@@ -271,7 +271,51 @@ textarea:focus {
   box-shadow: 0 25px 70px #0004;
 }
 .modal.wide {
-  width: min(720px, 100%);
+  width: min(860px, 100%);
+}
+.object-modal {
+  border: 1px solid #dfe6df;
+  background: #fbfcf9;
+  border-radius: 18px;
+  padding: 28px 30px 30px;
+}
+.object-modal .modal-head {
+  align-items: center;
+  padding-bottom: 18px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid #e4e9e3;
+}
+.object-modal .modal-head h2 {
+  color: var(--text);
+  font-size: 28px;
+  letter-spacing: -0.035em;
+}
+.object-modal h3 {
+  margin: 24px 0 12px;
+  color: var(--text);
+  font-size: 16px;
+  letter-spacing: -0.01em;
+}
+.object-modal .eyebrow {
+  margin-bottom: 6px;
+}
+.object-modal .close {
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  background: #eef3ed;
+  color: var(--forest);
+  font-size: 22px;
+  line-height: 1;
+}
+.object-modal .close:hover {
+  background: #e2ecdf;
+}
+.object-modal .empty {
+  border: 1px dashed #ccd8ca;
+  border-radius: 10px;
+  background: #f8faf7;
+  padding: 24px;
 }
 .modal-head {
   display: flex;
@@ -316,5 +360,12 @@ textarea:focus {
   }
   .modal {
     padding: 20px;
+  }
+  .object-modal {
+    padding: 22px 18px 24px;
+    border-radius: 14px;
+  }
+  .object-modal .modal-head h2 {
+    font-size: 24px;
   }
 }

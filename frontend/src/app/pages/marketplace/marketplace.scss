@@ -64,6 +64,10 @@
 .detail-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 18px 0; }
 .detail-grid div { display: grid; gap: 4px; padding: 12px; background: #f1f5f2; border-radius: 8px; }
 .detail-grid small { color: var(--muted); }
+.object-hero { align-items: center; }
+.object-hero .detail-subtitle { color: var(--muted); font-size: 12px; margin: 7px 0 0; }
+.object-hero-actions { display: flex; align-items: center; gap: 12px; }
+.object-modal > h3 { padding-top: 8px; border-top: 1px solid var(--line); }
 .timeline { display: grid; gap: 8px; margin-bottom: 18px; }
 .timeline div { display: flex; justify-content: space-between; gap: 12px; border-left: 3px solid var(--forest); padding: 10px 12px; background: #f7faf8; }
 .timeline span { color: var(--muted); }

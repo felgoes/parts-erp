@@ -81,7 +81,7 @@ import { PageHeader } from '../../shared/page-header';
     </section>
     @if (modal()) {
       <div class="modal-backdrop" (click)="modal.set(false)">
-        <section class="modal wide" (click)="$event.stopPropagation()">
+        <section class="modal wide object-modal" (click)="$event.stopPropagation()">
           <div class="modal-head">
             <div>
               <p class="eyebrow">Nova operação</p>
@@ -137,7 +137,7 @@ import { PageHeader } from '../../shared/page-header';
     }
     @if (detail(); as invoice) {
       <div class="modal-backdrop" (click)="detail.set(null)">
-        <section class="modal wide" (click)="$event.stopPropagation()">
+        <section class="modal wide object-modal" (click)="$event.stopPropagation()">
           <div class="modal-head detail-hero"><div><p class="eyebrow">Venda {{ invoice.source === 'mercadolivre' ? 'Mercado Livre' : 'manual' }}</p><h2>{{ invoice.number }}</h2><p class="detail-subtitle">Criada em {{ invoice.created_at | date:'dd/MM/yyyy HH:mm' }}{{ invoice.issued_at ? ' · emitida em ' + (invoice.issued_at | date:'dd/MM/yyyy HH:mm') : '' }}</p></div><div class="hero-actions"><span class="badge" [class]="invoice.status">{{ label(invoice.status) }}</span><button class="close" aria-label="Fechar detalhe" (click)="detail.set(null)">×</button></div></div>
           <div class="detail-summary"><div><span>Cliente</span><strong>{{ invoice.customer?.name || 'Consumidor não identificado' }}</strong><small>{{ invoice.customer?.document || invoice.customer?.email || 'Sem cadastro vinculado' }}</small></div><div><span>Pedido relacionado</span><strong>{{ invoice.marketplace_order_id ? '#' + invoice.marketplace_order_id : 'Venda local' }}</strong><small>{{ invoice.items.length }} item(ns) · {{ invoice.total | currency:'BRL' }}</small></div></div>
           <nav class="detail-tabs" aria-label="Detalhes da venda"><button [class.active]="invoiceTab() === 'items'" (click)="invoiceTab.set('items')">Itens <small>{{ invoice.items.length }}</small></button><button [class.active]="invoiceTab() === 'tracking'" (click)="invoiceTab.set('tracking')">Rastreio</button><button [class.active]="invoiceTab() === 'documents'" (click)="invoiceTab.set('documents')">Documentos <small>{{ invoice.documents.length }}</small></button></nav>

@@ -78,7 +78,7 @@ def _listing_out(listing) -> CatalogListingOut:
         provider=listing.provider,
         external_item_id=listing.external_item_id,
         title=listing.title,
-        permalink=listing.permalink,
+        permalink=_listing_permalink(listing.provider, listing.external_item_id, listing.permalink),
         thumbnail=_secure_url(listing.thumbnail),
         images=[_secure_url(str(image)) for image in (listing.images or []) if image],
         marketplace_price=listing.marketplace_price,
@@ -95,3 +95,12 @@ def _secure_url(value: str | None) -> str | None:
     if not value:
         return None
     return value.replace("http://", "https://", 1) if value.startswith("http://") else value
+
+
+def _listing_permalink(provider: str | None, item_id: str | None, permalink: str | None) -> str | None:
+    """Keep the public catalog useful even when an older sync lacks permalink."""
+    if permalink:
+        return _secure_url(permalink)
+    if provider == "mercadolivre" and item_id and item_id.startswith("MLB"):
+        return f"https://produto.mercadolivre.com.br/{item_id[:3]}-{item_id[3:]}"
+    return None

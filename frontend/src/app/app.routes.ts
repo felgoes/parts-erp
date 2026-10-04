@@ -3,7 +3,9 @@ import { authGuard } from './core/auth.guard';
 import { AppLayout } from './layout/app-layout';
 
 export const routes: Routes = [
-  { path: '', pathMatch: 'full', loadComponent: () => import('./pages/catalog/catalog').then((m) => m.CatalogPage) },
+  // The public catalog is hosted by goesautoparts-site on www. The ERP hostname
+  // must open the authenticated application instead of exposing the catalog shell.
+  { path: '', pathMatch: 'full', redirectTo: 'login' },
   { path: 'login', loadComponent: () => import('./pages/login/login').then((m) => m.LoginPage) },
   {
     path: '',

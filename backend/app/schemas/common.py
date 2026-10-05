@@ -1,5 +1,6 @@
 from datetime import UTC, date, datetime
 from decimal import Decimal
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_serializer, field_validator
 
@@ -377,6 +378,73 @@ class InvoiceAfterSaleOut(BaseModel):
     refund_amount: Decimal | None = None
     requested_at: datetime | None = None
     history: list[InvoiceTrackingEventOut] = Field(default_factory=list)
+    cases: list["AfterSaleCaseOut"] = Field(default_factory=list)
+
+
+class AfterSaleCaseEventOut(ORMModel):
+    event_type: str
+    status: str
+    detail: str | None = None
+    created_at: datetime
+
+
+class AfterSaleCaseItemOut(ORMModel):
+    id: str
+    invoice_item_id: str | None
+    product_id: str
+    sku: str
+    description: str
+    requested_quantity: Decimal
+    received_quantity: Decimal
+    inspected_quantity: Decimal
+    restocked_quantity: Decimal
+    disposition: str
+    notes: str | None = None
+
+
+class AfterSaleCaseOut(ORMModel):
+    id: str
+    provider: str
+    external_case_id: str
+    marketplace_order_id: str
+    invoice_id: str | None
+    kind: str
+    workflow_status: str
+    marketplace_status: str
+    reason: str | None
+    requested_by: str | None
+    payment_status: str | None
+    refund_amount: Decimal | None
+    requested_at: datetime | None
+    completed_at: datetime | None
+    notes: str | None
+    items: list[AfterSaleCaseItemOut]
+    events: list[AfterSaleCaseEventOut]
+
+
+class AfterSaleReceiveItemIn(BaseModel):
+    item_id: str
+    received_quantity: Decimal = Field(ge=0, max_digits=14, decimal_places=3)
+
+
+class AfterSaleReceiveIn(BaseModel):
+    items: list[AfterSaleReceiveItemIn] = Field(min_length=1)
+    notes: str | None = Field(default=None, max_length=500)
+
+
+class AfterSaleInspectItemIn(BaseModel):
+    item_id: str
+    restock_quantity: Decimal = Field(ge=0, max_digits=14, decimal_places=3)
+    disposition: Literal["restock", "mixed", "damaged", "discarded"]
+    notes: str | None = Field(default=None, max_length=500)
+
+
+class AfterSaleInspectIn(BaseModel):
+    items: list[AfterSaleInspectItemIn] = Field(min_length=1)
+
+
+class AfterSaleCloseIn(BaseModel):
+    note: str = Field(min_length=3, max_length=500)
 
 
 class InvoiceOut(ORMModel):

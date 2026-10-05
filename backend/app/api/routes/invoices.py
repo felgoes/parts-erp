@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session, selectinload
 from app.api.deps import get_current_user, require_roles
 from app.db.session import get_db
 from app.models import (
+    AfterSaleCase,
     InvoiceDocument,
     MarketplaceAccount,
     MarketplaceOrder,
@@ -18,6 +19,7 @@ from app.models import (
     UserRole,
 )
 from app.schemas.common import (
+    AfterSaleCaseOut,
     InvoiceCreate,
     InvoiceCustomerOut,
     InvoiceOut,
@@ -130,6 +132,16 @@ def get_invoice(
         if order:
             result.after_sale = invoice_after_sale(order, invoice.total)
             if result.after_sale:
+                return_cases = list(db.scalars(
+                    select(AfterSaleCase)
+                    .options(
+                        selectinload(AfterSaleCase.items),
+                        selectinload(AfterSaleCase.events),
+                    )
+                    .where(AfterSaleCase.invoice_id == invoice.id)
+                    .order_by(AfterSaleCase.created_at.desc())
+                ))
+                result.after_sale.cases = [AfterSaleCaseOut.model_validate(case) for case in return_cases]
                 result.after_sale.history = [
                     InvoiceTrackingEventOut(
                         status=event.status,

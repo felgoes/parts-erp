@@ -92,7 +92,7 @@ def overview(
                 totals["outbound_value"] += amount
                 row["outbound_value"] += amount
                 day["outbound_value"] += amount
-        if movement.movement_type == MovementType.cancellation:
+        if movement.movement_type in {MovementType.cancellation, MovementType.customer_return}:
             totals["return_quantity"] += abs(quantity)
             row["return_quantity"] += abs(quantity)
             if amount is not None:
@@ -142,7 +142,7 @@ def overview(
     confirmed_ids = {invoice.id for invoice in invoices}
     for movement in movements:
         if (
-            movement.movement_type == MovementType.cancellation
+            movement.movement_type in {MovementType.cancellation, MovementType.customer_return}
             and movement.reference in confirmed_ids
         ):
             if movement.movement_value is None:

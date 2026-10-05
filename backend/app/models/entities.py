@@ -4,7 +4,18 @@ from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
 
-from sqlalchemy import JSON, Boolean, DateTime, Enum, ForeignKey, Index, Numeric, String, Text
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    DateTime,
+    Enum,
+    ForeignKey,
+    Index,
+    Numeric,
+    String,
+    Text,
+    UniqueConstraint,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -41,6 +52,7 @@ class MovementType(enum.StrEnum):
     cancellation = "cancellation"
     adjustment = "adjustment"
     purchase_received = "purchase_received"
+    customer_return = "customer_return"
 
 
 class TimestampMixin:
@@ -324,6 +336,85 @@ class MarketplaceOrderEvent(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc)
 
     order: Mapped[MarketplaceOrder] = relationship()
+
+
+class AfterSaleCase(TimestampMixin, Base):
+    """A marketplace return/claim linked to its original order and invoice."""
+
+    __tablename__ = "after_sale_cases"
+    __table_args__ = (
+        UniqueConstraint("provider", "external_case_id", name="uq_after_sale_provider_external"),
+        Index("ix_after_sale_invoice", "invoice_id"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    provider: Mapped[str] = mapped_column(String(30), default="mercadolivre")
+    external_case_id: Mapped[str] = mapped_column(String(100))
+    marketplace_order_id: Mapped[str] = mapped_column(ForeignKey("marketplace_orders.id"))
+    invoice_id: Mapped[str | None] = mapped_column(ForeignKey("sales_invoices.id"))
+    kind: Mapped[str] = mapped_column(String(20), default="return")
+    workflow_status: Mapped[str] = mapped_column(String(30), default="requested", index=True)
+    marketplace_status: Mapped[str] = mapped_column(String(60), default="unknown")
+    reason: Mapped[str | None] = mapped_column(String(500))
+    requested_by: Mapped[str | None] = mapped_column(String(80))
+    payment_status: Mapped[str | None] = mapped_column(String(40))
+    refund_amount: Mapped[Decimal | None] = mapped_column(Numeric(14, 2))
+    requested_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    notes: Mapped[str | None] = mapped_column(Text)
+    payload: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+
+    order: Mapped[MarketplaceOrder] = relationship()
+    invoice: Mapped[SalesInvoice | None] = relationship()
+    items: Mapped[list["AfterSaleCaseItem"]] = relationship(
+        cascade="all, delete-orphan", back_populates="case", lazy="selectin"
+    )
+    events: Mapped[list["AfterSaleCaseEvent"]] = relationship(
+        cascade="all, delete-orphan",
+        back_populates="case",
+        lazy="selectin",
+        order_by="AfterSaleCaseEvent.created_at",
+    )
+
+
+class AfterSaleCaseItem(Base):
+    __tablename__ = "after_sale_case_items"
+    __table_args__ = (Index("ix_after_sale_case_items_case", "case_id"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    case_id: Mapped[str] = mapped_column(ForeignKey("after_sale_cases.id", ondelete="CASCADE"))
+    invoice_item_id: Mapped[str | None] = mapped_column(ForeignKey("invoice_items.id"))
+    product_id: Mapped[str] = mapped_column(ForeignKey("products.id"))
+    sku: Mapped[str] = mapped_column(String(80))
+    description: Mapped[str] = mapped_column(String(200))
+    requested_quantity: Mapped[Decimal] = mapped_column(Numeric(14, 3))
+    received_quantity: Mapped[Decimal] = mapped_column(Numeric(14, 3), default=0)
+    inspected_quantity: Mapped[Decimal] = mapped_column(Numeric(14, 3), default=0)
+    restocked_quantity: Mapped[Decimal] = mapped_column(Numeric(14, 3), default=0)
+    disposition: Mapped[str] = mapped_column(String(30), default="pending")
+    notes: Mapped[str | None] = mapped_column(String(500))
+
+    case: Mapped[AfterSaleCase] = relationship(back_populates="items")
+    product: Mapped[Product] = relationship()
+
+
+class AfterSaleCaseEvent(Base):
+    __tablename__ = "after_sale_case_events"
+    __table_args__ = (
+        Index("ix_after_sale_case_events_case_created", "case_id", "created_at"),
+        UniqueConstraint("case_id", "fingerprint", name="uq_after_sale_case_event_fingerprint"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    case_id: Mapped[str] = mapped_column(ForeignKey("after_sale_cases.id", ondelete="CASCADE"))
+    event_type: Mapped[str] = mapped_column(String(40))
+    status: Mapped[str] = mapped_column(String(60))
+    detail: Mapped[str | None] = mapped_column(String(500))
+    fingerprint: Mapped[str] = mapped_column(String(180))
+    payload: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc)
+
+    case: Mapped[AfterSaleCase] = relationship(back_populates="events")
 
 
 class InvoiceDocument(Base):

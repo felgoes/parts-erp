@@ -210,6 +210,45 @@ export interface InvoiceAfterSale {
   refund_amount: number | null;
   requested_at: string | null;
   history: InvoiceTrackingEvent[];
+  cases: AfterSaleCase[];
+}
+export interface AfterSaleCase {
+  id: string;
+  provider: string;
+  external_case_id: string;
+  marketplace_order_id: string;
+  invoice_id: string | null;
+  kind: string;
+  workflow_status: string;
+  marketplace_status: string;
+  reason: string | null;
+  requested_by: string | null;
+  payment_status: string | null;
+  refund_amount: number | null;
+  requested_at: string | null;
+  completed_at: string | null;
+  notes: string | null;
+  items: AfterSaleCaseItem[];
+  events: AfterSaleCaseEvent[];
+}
+export interface AfterSaleCaseItem {
+  id: string;
+  invoice_item_id: string | null;
+  product_id: string;
+  sku: string;
+  description: string;
+  requested_quantity: number;
+  received_quantity: number;
+  inspected_quantity: number;
+  restocked_quantity: number;
+  disposition: string;
+  notes: string | null;
+}
+export interface AfterSaleCaseEvent {
+  event_type: string;
+  status: string;
+  detail: string | null;
+  created_at: string;
 }
 export interface InvoiceCustomer {
   name: string;

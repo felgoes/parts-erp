@@ -16,7 +16,7 @@ from app.integrations.mercadolivre.sync import (
 from app.integrations.shopee.sync import sync_all as sync_shopee_all
 from app.integrations.shopee.sync import sync_order as sync_shopee_order
 from app.models import MarketplaceAccount, MarketplaceOrderEvent
-from app.services.after_sale import after_sale_notification
+from app.services.after_sale import after_sale_notification, upsert_after_sale_case
 
 
 async def process_mercadolivre_notification(
@@ -61,6 +61,9 @@ async def process_mercadolivre_notification(
             order = sync_order(db, seller_id, f"/orders/{order_id}")
             if topic in {"claims", "returns"} and order:
                 event_data = after_sale_notification(topic, data)
+                case_id = str(
+                    event_data.get("id") or resource.rsplit("/", 1)[-1]
+                )[:100]
                 saved_events = (order.payload or {}).get("_erp_after_sale_events", [])
                 if not isinstance(saved_events, list):
                     saved_events = []
@@ -94,7 +97,8 @@ async def process_mercadolivre_notification(
                             created_at=event_date,
                         )
                     )
-                    db.commit()
+                upsert_after_sale_case(db, order, event_data, data, case_id)
+                db.commit()
             if order.invoice_id and topic == "invoices":
                 sync_invoice_documents(db, account, order_id, order.invoice_id)
 

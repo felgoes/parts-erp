@@ -25,6 +25,7 @@ from app.models import (
     SalesInvoice,
 )
 from app.schemas.common import InvoiceCreate, InvoiceItemCreate
+from app.services.after_sale import link_pending_after_sale_cases
 from app.services.sales import cancel_invoice, confirm_invoice, create_invoice
 
 ORDER_RESOURCE = re.compile(r"^/orders/(?P<id>\d+)$")
@@ -300,6 +301,11 @@ def sync_order(db: Session, seller_id: str, resource: str) -> MarketplaceOrder:
             invoice = db.get(SalesInvoice, record.invoice_id)
             if invoice and invoice.status != InvoiceStatus.cancelled:
                 cancel_invoice(db, invoice)
+
+        if record.invoice_id:
+            linked_invoice = db.get(SalesInvoice, record.invoice_id)
+            if linked_invoice:
+                link_pending_after_sale_cases(db, record, linked_invoice)
 
         order_created_at = _parse_event_datetime(str(order.get("date_created") or ""))
         if record.invoice_id and order_created_at:

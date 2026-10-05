@@ -1,4 +1,7 @@
 from app.models.entities import (
+    AfterSaleCase,
+    AfterSaleCaseEvent,
+    AfterSaleCaseItem,
     Customer,
     HealthSnapshot,
     InvoiceDocument,
@@ -25,6 +28,9 @@ from app.models.entities import (
 )
 
 __all__ = [
+    "AfterSaleCase",
+    "AfterSaleCaseEvent",
+    "AfterSaleCaseItem",
     "HealthSnapshot",
     "TelemetryEvent",
     "Customer",

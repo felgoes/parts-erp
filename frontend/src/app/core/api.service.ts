@@ -10,6 +10,7 @@ import {
   MarketplaceOrder,
   MarketplaceOrderEvent,
   MarketplaceStatus,
+  AfterSaleCase,
   MarketplaceConfig,
   ShopeeConfig,
   ShopeeStatus,
@@ -116,6 +117,18 @@ export class ApiService {
   }
   invoice(id: string): Observable<Invoice> {
     return this.http.get<Invoice>(`${this.base}/invoices/${id}`);
+  }
+  receiveAfterSale(caseId: string, items: { item_id: string; received_quantity: number }[], notes?: string): Observable<AfterSaleCase> {
+    return this.http.post<AfterSaleCase>(`${this.base}/after-sales/${caseId}/receive`, { items, notes });
+  }
+  inspectAfterSale(
+    caseId: string,
+    items: { item_id: string; restock_quantity: number; disposition: 'restock' | 'mixed' | 'damaged' | 'discarded'; notes?: string }[],
+  ): Observable<AfterSaleCase> {
+    return this.http.post<AfterSaleCase>(`${this.base}/after-sales/${caseId}/inspect`, { items });
+  }
+  closeAfterSaleWithoutStock(caseId: string, note: string): Observable<AfterSaleCase> {
+    return this.http.post<AfterSaleCase>(`${this.base}/after-sales/${caseId}/close-without-stock`, { note });
   }
   createInvoice(payload: unknown): Observable<Invoice> {
     return this.http.post<Invoice>(`${this.base}/invoices`, payload);

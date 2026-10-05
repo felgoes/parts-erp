@@ -2,6 +2,7 @@ import { CurrencyPipe, KeyValuePipe } from '@angular/common';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { apiUrl } from '../../core/api-url';
 import { CatalogProduct } from '../../core/models';
 
 @Component({
@@ -165,7 +166,7 @@ export class CatalogPage implements OnInit {
     const key = 'goes_visitor';
     const anonymousId = localStorage.getItem(key) ?? crypto.randomUUID();
     localStorage.setItem(key, anonymousId);
-    void fetch('/api/v1/telemetry/events', {
+    void fetch(apiUrl('/telemetry/events'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name, anonymous_id: anonymousId, properties }),

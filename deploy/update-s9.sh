@@ -24,6 +24,10 @@ ssh "${SSH_OPTS[@]}" "$REMOTE" bash -s -- "$S9_APP_DIR" "$STAGE" "$VERSION" <<\D
 set -euo pipefail
 APP="$(realpath -m "$HOME/$1")"; STAGE="$2"; VERSION="$3"; [[ "$APP" == "$HOME"/* && "$APP" != "$HOME" ]]
 [[ "$STAGE" =~ ^\.deploy-[a-f0-9]+$ ]]; S="$APP/data/$STAGE"; [[ -s "$S/frontend/index.html" && -f "$S/backend/app/main.py" ]]
+cd "$APP"
+V="$APP/backend/.venv-termux"
+[[ -x "$V/bin/python" ]] || { echo "Virtualenv Termux não encontrado; abortando antes da parada." >&2; exit 1; }
+(cd "$APP/backend" && PYTHONPATH="$S/backend" "$V/bin/python" -c "import app.main")
 mkdir -p "$APP/data/backups"; NOW="$(date +%Y%m%d-%H%M%S)"
 tar -czf "$APP/data/backups/code-$NOW.tar.gz" -C "$APP" backend/app backend/alembic/versions backend/pyproject.toml frontend/dist/frontend deploy/termux; chmod 600 "$APP/data/backups/code-$NOW.tar.gz"
 if [[ -f "$APP/data/parts-erp.db" ]]; then
@@ -39,9 +43,6 @@ fi
 rm -rf "$APP/backend/app" "$APP/backend/alembic/versions"
 cp -a "$S/backend/app" "$APP/backend/app"; cp -a "$S/backend/alembic/versions" "$APP/backend/alembic/versions"; cp -a "$S/backend/pyproject.toml" "$APP/backend/pyproject.toml"
 rm -rf "$APP/frontend/dist/frontend"; mkdir -p "$APP/frontend/dist/frontend"; cp -a "$S/frontend/." "$APP/frontend/dist/frontend/"; cp -a "$S/deploy/." "$APP/deploy/"
-V="$APP/backend/.venv-termux"; HASH="$APP/data/.backend-deps-hash"; H="$(sha256sum backend/pyproject.toml | cut -d " " -f1)"
-if [[ ! -x "$V/bin/python" ]]; then python -m venv --system-site-packages "$V"; fi
-if [[ "$(cat "$HASH" 2>/dev/null || true)" != "$H" ]]; then "$V/bin/python" -m pip install --extra-index-url https://termux-user-repository.github.io/pypi/ ./backend; printf "%s\n" "$H" >"$HASH"; fi
 chmod 600 backend/.env
 if [[ -f deploy/termux/redis.conf.in ]]; then sed "s|__APP_DIR__|$APP|g" deploy/termux/redis.conf.in >deploy/termux/redis.conf; fi
 chmod +x deploy/termux/*.sh; (cd backend && "$V/bin/alembic" upgrade heads)

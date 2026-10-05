@@ -40,6 +40,7 @@ class MovementType(enum.StrEnum):
     sale = "sale"
     cancellation = "cancellation"
     adjustment = "adjustment"
+    purchase_received = "purchase_received"
 
 
 class TimestampMixin:
@@ -164,12 +165,84 @@ class StockMovement(Base):
     movement_type: Mapped[MovementType] = mapped_column(Enum(MovementType))
     quantity: Mapped[Decimal] = mapped_column(Numeric(14, 3))
     balance_after: Mapped[Decimal] = mapped_column(Numeric(14, 3))
+    unit_cost: Mapped[Decimal | None] = mapped_column(Numeric(14, 2))
+    movement_value: Mapped[Decimal | None] = mapped_column(Numeric(14, 2))
     reason: Mapped[str] = mapped_column(String(255))
     reference: Mapped[str | None] = mapped_column(String(100))
     idempotency_key: Mapped[str] = mapped_column(String(160), unique=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc)
 
     product: Mapped[Product] = relationship()
+
+
+class PurchaseCase(TimestampMixin, Base):
+    """A procurement cycle, from supplier negotiation through stock receipt."""
+
+    __tablename__ = "purchase_cases"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    number: Mapped[str] = mapped_column(String(30), unique=True, index=True)
+    status: Mapped[str] = mapped_column(String(30), default="negotiating", index=True)
+    selected_quote_id: Mapped[str | None] = mapped_column(String(36))
+    needed_by: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    ordered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    notes: Mapped[str | None] = mapped_column(Text)
+    items: Mapped[list["PurchaseItem"]] = relationship(
+        cascade="all, delete-orphan", back_populates="purchase", lazy="selectin"
+    )
+    quotes: Mapped[list["PurchaseQuote"]] = relationship(
+        cascade="all, delete-orphan",
+        back_populates="purchase",
+        lazy="selectin",
+        foreign_keys="PurchaseQuote.purchase_id",
+    )
+    events: Mapped[list["PurchaseEvent"]] = relationship(
+        cascade="all, delete-orphan", back_populates="purchase", lazy="selectin"
+    )
+
+
+class PurchaseItem(Base):
+    __tablename__ = "purchase_items"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    purchase_id: Mapped[str] = mapped_column(
+        ForeignKey("purchase_cases.id", ondelete="CASCADE"), index=True
+    )
+    product_id: Mapped[str | None] = mapped_column(ForeignKey("products.id"))
+    sku: Mapped[str] = mapped_column(String(80))
+    description: Mapped[str] = mapped_column(String(200))
+    quantity: Mapped[Decimal] = mapped_column(Numeric(14, 3))
+    received_quantity: Mapped[Decimal] = mapped_column(Numeric(14, 3), default=0)
+    unit_cost: Mapped[Decimal] = mapped_column(Numeric(14, 2), default=0)
+    purchase: Mapped[PurchaseCase] = relationship(back_populates="items")
+    product: Mapped[Product | None] = relationship()
+
+
+class PurchaseQuote(TimestampMixin, Base):
+    __tablename__ = "purchase_quotes"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    purchase_id: Mapped[str] = mapped_column(
+        ForeignKey("purchase_cases.id", ondelete="CASCADE"), index=True
+    )
+    supplier_name: Mapped[str] = mapped_column(String(200))
+    supplier_contact: Mapped[str | None] = mapped_column(String(200))
+    total: Mapped[Decimal] = mapped_column(Numeric(14, 2))
+    item_costs: Mapped[dict[str, str]] = mapped_column(JSON, default=dict)
+    delivery_days: Mapped[int | None] = mapped_column()
+    payment_terms: Mapped[str | None] = mapped_column(String(200))
+    notes: Mapped[str | None] = mapped_column(Text)
+    purchase: Mapped[PurchaseCase] = relationship(
+        back_populates="quotes", foreign_keys=[purchase_id]
+    )
+
+
+class PurchaseEvent(Base):
+    __tablename__ = "purchase_events"
+    __table_args__ = (Index("ix_purchase_events_purchase_created", "purchase_id", "created_at"),)
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    purchase_id: Mapped[str] = mapped_column(ForeignKey("purchase_cases.id", ondelete="CASCADE"))
+    event_type: Mapped[str] = mapped_column(String(40))
+    detail: Mapped[str] = mapped_column(String(500))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc)
+    purchase: Mapped[PurchaseCase] = relationship(back_populates="events")
 
 
 class MarketplaceAccount(TimestampMixin, Base):

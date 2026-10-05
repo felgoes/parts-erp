@@ -12,6 +12,7 @@ from app.models import (
     MovementType,
     Product,
     SalesInvoice,
+    StockMovement,
 )
 from app.schemas.common import InvoiceCreate
 from app.services.stock import move_stock
@@ -99,6 +100,12 @@ def cancel_invoice(db: Session, invoice: SalesInvoice) -> SalesInvoice:
         return invoice
     if invoice.status == InvoiceStatus.confirmed:
         for item in invoice.items:
+            sale_movement = db.scalar(
+                select(StockMovement).where(
+                    StockMovement.idempotency_key
+                    == f"invoice:{invoice.id}:item:{item.id}:confirm"
+                )
+            )
             move_stock(
                 db,
                 product_id=item.product_id,
@@ -107,6 +114,7 @@ def cancel_invoice(db: Session, invoice: SalesInvoice) -> SalesInvoice:
                 reason=f"Cancelamento {invoice.number}",
                 reference=invoice.id,
                 idempotency_key=f"invoice:{invoice.id}:item:{item.id}:cancel",
+                unit_cost=sale_movement.unit_cost if sale_movement else None,
             )
     invoice.status = InvoiceStatus.cancelled
     db.flush()

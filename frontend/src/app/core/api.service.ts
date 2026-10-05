@@ -5,6 +5,7 @@ import {
   Customer,
   DashboardSummary,
   DashboardFinancialMetrics,
+  FinanceOverview,
   Invoice,
   MarketplaceOrder,
   MarketplaceOrderEvent,
@@ -14,6 +15,7 @@ import {
   ShopeeStatus,
   Product,
   ProductDetail,
+  Purchase,
   CustomerDetail,
   User,
   TelemetrySummary,
@@ -34,6 +36,11 @@ export class ApiService {
   }
   dashboardFinancial(startDate: string, endDate: string): Observable<DashboardFinancialMetrics> {
     return this.http.get<DashboardFinancialMetrics>(`${this.base}/dashboard/financial`, { params: { start_date: startDate, end_date: endDate } });
+  }
+  financeOverview(startDate: string, endDate: string): Observable<FinanceOverview> {
+    return this.http.get<FinanceOverview>(`${this.base}/finance/overview`, {
+      params: { start_date: startDate, end_date: endDate },
+    });
   }
   products(search = '', lowStock = false): Observable<Product[]> {
     let params = new HttpParams();
@@ -58,6 +65,27 @@ export class ApiService {
       quantity,
       reason,
     });
+  }
+  purchases(): Observable<Purchase[]> {
+    return this.http.get<Purchase[]>(`${this.base}/purchases`);
+  }
+  createPurchase(payload: unknown): Observable<Purchase> {
+    return this.http.post<Purchase>(`${this.base}/purchases`, payload);
+  }
+  addPurchaseQuote(id: string, payload: unknown): Observable<Purchase> {
+    return this.http.post<Purchase>(`${this.base}/purchases/${id}/quotes`, payload);
+  }
+  selectPurchaseQuote(id: string, quoteId: string): Observable<Purchase> {
+    return this.http.post<Purchase>(`${this.base}/purchases/${id}/select-quote/${quoteId}`, {});
+  }
+  placePurchaseOrder(id: string): Observable<Purchase> {
+    return this.http.post<Purchase>(`${this.base}/purchases/${id}/place-order`, {});
+  }
+  receivePurchase(id: string, payload: unknown): Observable<Purchase> {
+    return this.http.post<Purchase>(`${this.base}/purchases/${id}/receive`, payload);
+  }
+  cancelPurchase(id: string): Observable<Purchase> {
+    return this.http.post<Purchase>(`${this.base}/purchases/${id}/cancel`, {});
   }
   customers(): Observable<Customer[]> {
     return this.http.get<Customer[]>(`${this.base}/customers`);

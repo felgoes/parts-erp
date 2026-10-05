@@ -1,0 +1,178 @@
+import { CurrencyPipe, DatePipe, DecimalPipe } from '@angular/common';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { FormArray, FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { finalize } from 'rxjs';
+import { ApiService } from '../../core/api.service';
+import { Product, Purchase, PurchaseItem, PurchaseStatus } from '../../core/models';
+import { DateRange, quickDateRange } from '../../core/quick-date-ranges';
+import { PageHeader } from '../../shared/page-header';
+import { PeriodFilter } from '../../shared/period-filter';
+
+@Component({
+  selector: 'app-purchases',
+  imports: [CurrencyPipe, DatePipe, DecimalPipe, ReactiveFormsModule, PageHeader, PeriodFilter],
+  template: `
+    <app-page-header eyebrow="Suprimentos" title="Compras" subtitle="Da negociação com fornecedores ao recebimento das peças no estoque.">
+      <button class="primary" type="button" (click)="openNew()">+ Nova compra</button>
+    </app-page-header>
+    <section class="purchase-summary">
+      @for (card of summary(); track card.status) {
+        <button type="button" class="purchase-stat" [class.active-stat]="statusFilter() === card.status" (click)="toggleStatus(card.status)">
+          <span>{{ card.label }}</span><strong>{{ card.count }}</strong><small>{{ card.note }}</small>
+        </button>
+      }
+    </section>
+    <app-period-filter heading="Período das compras" description="Filtra pela data de abertura da negociação." ariaLabel="Filtrar compras por período" initialPreset="last30" [initialStartDate]="startDate()" [initialEndDate]="endDate()" (rangeChange)="applyPeriod($event)" />
+    <section class="purchase-toolbar">
+      <label class="purchase-search"><span>⌕</span><input aria-label="Buscar compras" placeholder="Buscar número, peça ou fornecedor…" [value]="search()" (input)="search.set($any($event.target).value)" /></label>
+      <label class="purchase-select">Etapa <select [value]="statusFilter()" (change)="statusFilter.set($any($event.target).value)"><option value="all">Todas</option>@for (status of statuses; track status.value) { <option [value]="status.value">{{ status.label }}</option> }</select></label>
+      <span class="muted">{{ filtered().length }} compras</span>
+    </section>
+    <section class="card purchase-table-card">
+      <div class="table-wrap"><table><thead><tr><th>COMPRA</th><th>PEÇAS</th><th>FORNECEDOR / COTAÇÕES</th><th>ETAPA</th><th>PREVISÃO</th><th>ABERTA EM</th><th></th></tr></thead><tbody>
+        @for (purchase of filtered(); track purchase.id) {
+          <tr class="purchase-row" tabindex="0" (click)="openDetails(purchase)" (keydown.enter)="openDetails(purchase)">
+            <td><strong>{{ purchase.number }}</strong><small>{{ purchase.items.length }} {{ purchase.items.length === 1 ? 'item' : 'itens' }}</small></td>
+            <td><div class="purchase-products">@for (item of purchase.items.slice(0, 2); track item.id) { <span>{{ item.description }}</span> } @if (purchase.items.length > 2) { <small>+{{ purchase.items.length - 2 }} outras</small> }</div></td>
+            <td>@if (selectedQuote(purchase); as quote) { <strong>{{ quote.supplier_name }}</strong><small>{{ quote.total | currency:'BRL' }} · cotação escolhida</small> } @else { <strong class="muted">Em cotação</strong><small>{{ purchase.quotes.length }} {{ purchase.quotes.length === 1 ? 'proposta registrada' : 'propostas registradas' }}</small> }</td>
+            <td><span class="purchase-badge" [attr.data-status]="purchase.status">{{ statusLabel(purchase.status) }}</span></td>
+            <td>{{ purchase.needed_by ? (purchase.needed_by | date:'dd/MM/yyyy') : '—' }}</td><td>{{ purchase.created_at | date:'dd/MM/yyyy' }}</td><td class="row-action">Abrir <span>→</span></td>
+          </tr>
+        } @empty { <tr><td colspan="7"><div class="purchase-empty"><strong>Nenhuma compra neste período</strong><span>Comece uma negociação para acompanhar propostas e recebimentos por aqui.</span><button class="secondary" (click)="openNew()">Criar compra</button></div></td></tr> }
+      </tbody></table></div>
+    </section>
+
+    @if (showNew()) {
+      <div class="modal-backdrop" (click)="showNew.set(false)"><section class="modal wide purchase-modal" role="dialog" aria-modal="true" aria-labelledby="new-purchase-title" (click)="$event.stopPropagation()">
+        <div class="modal-head"><div><p class="eyebrow">Suprimentos · Negociação</p><h2 id="new-purchase-title">Planejar uma compra</h2><p class="modal-intro">Registre as peças em negociação. O estoque só muda quando você confirmar o recebimento.</p></div><button class="close" aria-label="Fechar" (click)="showNew.set(false)">×</button></div>
+        <form [formGroup]="form" (ngSubmit)="create()">
+          <div class="purchase-form-meta"><label>Previsão desejada<input type="date" formControlName="needed_by" /></label><label class="notes-field">Observações<textarea rows="2" formControlName="notes" placeholder="Ex.: fornecedor aguardando confirmação de disponibilidade"></textarea></label></div>
+          <div class="purchase-form-section"><div class="section-heading"><div><p class="eyebrow">Lista de compra</p><h3>Peças em negociação</h3></div><button type="button" class="secondary small" (click)="addLine()">+ Adicionar peça</button></div>
+            <div formArrayName="items" class="purchase-line-list">@for (line of lines.controls; track $index; let i = $index) { <div class="purchase-line-form" [formGroupName]="i"><label>Produto cadastrado<select formControlName="product_id" (change)="selectProduct(i, $any($event.target).value)"><option value="">Cadastrar/vincular depois</option>@for (product of products(); track product.id) { <option [value]="product.id">{{ product.sku }} · {{ product.name }}</option> }</select></label><label>SKU<input formControlName="sku" placeholder="Ex.: LR174890" /></label><label class="line-description">Peça / descrição<input formControlName="description" placeholder="Nome da peça" /></label><label>Quantidade<input type="number" min="0.001" step="0.001" formControlName="quantity" /></label><label>Custo unitário estimado<input type="number" min="0" step="0.01" formControlName="unit_cost" /></label>@if (lines.length > 1) { <button type="button" class="remove-line" aria-label="Remover peça" (click)="removeLine(i)">×</button> }</div> }</div>
+          </div>
+          @if (error()) { <p class="purchase-error" role="alert">{{ error() }}</p> }
+          <div class="purchase-form-actions"><span class="muted">{{ lines.length }} {{ lines.length === 1 ? 'peça' : 'peças' }} · nenhum saldo será movimentado ainda</span><button class="primary" [disabled]="form.invalid || saving()">{{ saving() ? 'Salvando…' : 'Iniciar negociação' }}</button></div>
+        </form>
+      </section></div>
+    }
+
+    @if (detail(); as purchase) {
+      <div class="modal-backdrop" (click)="detail.set(null)"><section class="modal wide purchase-modal purchase-detail" role="dialog" aria-modal="true" [attr.aria-label]="'Compra ' + purchase.number" (click)="$event.stopPropagation()">
+        <div class="modal-head"><div><p class="eyebrow">Suprimentos · {{ purchase.number }}</p><h2>{{ purchase.number }}</h2><p class="modal-intro">Criada em {{ purchase.created_at | date:'dd/MM/yyyy HH:mm' }} @if (purchase.needed_by) { · Previsão {{ purchase.needed_by | date:'dd/MM/yyyy' }} }</p></div><div class="detail-head-actions"><span class="purchase-badge" [attr.data-status]="purchase.status">{{ statusLabel(purchase.status) }}</span><button class="close" aria-label="Fechar" (click)="detail.set(null)">×</button></div></div>
+        <div class="purchase-steps" aria-label="Etapas da compra">@for (step of workflow; track step.value; let i = $index) { <div class="purchase-step" [class.step-done]="stepIndex(purchase.status) > i" [class.step-current]="stepIndex(purchase.status) === i"><span>{{ stepIndex(purchase.status) > i ? '✓' : i + 1 }}</span><small>{{ step.label }}</small></div> }</div>
+        <div class="purchase-detail-grid">
+          <div class="purchase-detail-main">
+            <section class="purchase-form-section"><div class="section-heading"><div><p class="eyebrow">Itens e recebimento</p><h3>Peças da compra</h3></div></div><div class="purchase-item-cards">@for (item of purchase.items; track item.id) { <article class="purchase-item-card"><div class="item-title"><div><strong>{{ item.description }}</strong><small><code>{{ item.sku }}</code>@if (item.product_id) { · vinculada ao catálogo } @else { · ainda sem produto no catálogo }</small></div><strong>{{ item.unit_cost | currency:'BRL' }} <small>/ un.</small></strong></div><div class="receipt-progress"><span>Recebido <b>{{ item.received_quantity | number:'1.0-3' }} / {{ item.quantity | number:'1.0-3' }} un.</b></span><div><i [style.width.%]="progress(item)"></i></div></div>@if (purchase.status === 'ordered' || purchase.status === 'partially_received') { <div class="receive-controls"><label>Receber agora<input type="number" min="0.001" [max]="item.quantity - item.received_quantity" step="0.001" [value]="receiveQty(item)" (input)="setReceiveQty(item, $any($event.target).value)" /></label>@if (!item.product_id) { <label class="map-product">Vincular produto existente<select [value]="receiveProduct(item)" (change)="setReceiveProduct(item, $any($event.target).value)"><option value="">Selecione um produto…</option>@for (product of products(); track product.id) { <option [value]="product.id">{{ product.sku }} · {{ product.name }}</option> }</select></label><label class="create-product-check"><input type="checkbox" [checked]="createNewProduct(item)" (change)="setCreateNewProduct(item, $any($event.target).checked)" /> Criar produto no catálogo ao receber</label> }<button type="button" class="secondary small" [disabled]="saving() || receiveQty(item) <= 0" (click)="receive(item)">Registrar recebimento</button></div> }</article> }</div></section>
+            @if (purchase.status === 'negotiating') { <section class="purchase-form-section"><div class="section-heading"><div><p class="eyebrow">Concorrência</p><h3>Cotações de fornecedores</h3></div></div>@if (purchase.quotes.length) { <div class="quote-cards">@for (quote of purchase.quotes; track quote.id) { <article class="quote-card" [class.quote-selected]="purchase.selected_quote_id === quote.id"><div><strong>{{ quote.supplier_name }}</strong><b>{{ quote.total | currency:'BRL' }}</b></div><p>{{ quote.delivery_days !== null ? quote.delivery_days + ' dias para entrega' : 'Prazo não informado' }} @if (quote.payment_terms) { · {{ quote.payment_terms }} }</p><div class="quote-cost-summary">@for (item of purchase.items; track item.id) { <small>{{ item.sku }} · {{ quote.item_costs[item.id] | currency:'BRL' }}/un.</small> }</div>@if (quote.notes) { <small>{{ quote.notes }}</small> }<button type="button" class="secondary small" (click)="selectQuote(quote.id)">Escolher esta cotação</button></article> }</div> } @else { <p class="muted">Registre as propostas recebidas para comparar preço e prazo.</p> }
+              <form class="quote-form" [formGroup]="quoteForm" (ngSubmit)="addQuote()"><div class="quote-item-costs"><strong>Custo por peça nesta proposta</strong>@for (item of purchase.items; track item.id) { <label>{{ item.sku }} · {{ item.description }}<input type="number" min="0" step="0.01" [value]="quoteUnitCost(item)" (input)="setQuoteUnitCost(item, $any($event.target).value)" /></label> }</div><label>Fornecedor<input formControlName="supplier_name" placeholder="Nome do fornecedor" /></label><label>Contato<input formControlName="supplier_contact" placeholder="Telefone ou e-mail" /></label><label>Total da proposta<input type="number" min="0" step="0.01" formControlName="total" /></label><label>Prazo (dias)<input type="number" min="0" formControlName="delivery_days" /></label><label>Condição de pagamento<input formControlName="payment_terms" placeholder="Ex.: 30/60 dias" /></label><label class="quote-notes">Observações<input formControlName="notes" placeholder="Frete, validade da proposta…" /></label><button class="primary" [disabled]="quoteForm.invalid || !quoteCostsComplete(purchase) || saving()">Registrar cotação</button></form>
+            </section> }
+            @if (purchase.status === 'approved') { <div class="workflow-action"><div><strong>Cotação aprovada</strong><span>A compra ainda não altera o estoque.</span></div><button class="primary" [disabled]="saving()" (click)="placeOrder()">Registrar pedido ao fornecedor</button></div> }
+            @if (purchase.notes) { <section class="purchase-notes"><span class="eyebrow">Observações internas</span><p>{{ purchase.notes }}</p></section> }
+          </div>
+          <aside class="purchase-aside"><section class="purchase-aside-card"><p class="eyebrow">Resumo</p><div><span>Itens</span><strong>{{ purchase.items.length }}</strong></div><div><span>Unidades pedidas</span><strong>{{ totalUnits(purchase) | number:'1.0-3' }}</strong></div><div><span>Recebidas</span><strong>{{ receivedUnits(purchase) | number:'1.0-3' }}</strong></div>@if (selectedQuote(purchase); as quote) { <div><span>Fornecedor escolhido</span><strong>{{ quote.supplier_name }}</strong></div><div><span>Valor acordado</span><strong>{{ quote.total | currency:'BRL' }}</strong></div> }</section>
+            <section class="purchase-aside-card timeline-card"><p class="eyebrow">Histórico da compra</p>@for (event of purchase.events; track event.id) { <div class="purchase-event"><i></i><div><strong>{{ event.detail }}</strong><small>{{ event.created_at | date:'dd/MM/yyyy HH:mm' }}</small></div></div> }</section>
+            @if (purchase.status !== 'received' && purchase.status !== 'cancelled') { <button type="button" class="cancel-purchase" (click)="cancel()">Cancelar compra</button> }
+          </aside>
+        </div>
+        @if (error()) { <p class="purchase-error" role="alert">{{ error() }}</p> }
+      </section></div>
+    }
+  `,
+  styleUrl: './purchases.scss',
+})
+export class PurchasesPage implements OnInit {
+  private readonly api = inject(ApiService);
+  private readonly fb = inject(FormBuilder);
+  readonly purchases = signal<Purchase[]>([]);
+  readonly products = signal<Product[]>([]);
+  readonly detail = signal<Purchase | null>(null);
+  readonly showNew = signal(false);
+  readonly saving = signal(false);
+  readonly error = signal('');
+  readonly search = signal('');
+  readonly statusFilter = signal('all');
+  readonly receiveValues = signal<Record<string, { quantity: number; productId: string; create: boolean }>>({});
+  readonly receiptIds = signal<Record<string, string>>({});
+  readonly quoteCosts = signal<Record<string, number>>({});
+  private readonly initialRange = quickDateRange('last30');
+  readonly startDate = signal(this.initialRange.startDate);
+  readonly endDate = signal(this.initialRange.endDate);
+  readonly statuses: { value: string; label: string }[] = [
+    { value: 'negotiating', label: 'Em negociação' }, { value: 'approved', label: 'Aprovada' },
+    { value: 'ordered', label: 'Pedido enviado' }, { value: 'partially_received', label: 'Recebimento parcial' },
+    { value: 'received', label: 'Recebida' }, { value: 'cancelled', label: 'Cancelada' },
+  ];
+  readonly workflow = [{ value: 'negotiating', label: 'Negociação' }, { value: 'approved', label: 'Aprovação' }, { value: 'ordered', label: 'Pedido' }, { value: 'received', label: 'Recebimento' }];
+  readonly form = this.fb.group({
+    needed_by: [''], notes: [''], items: this.fb.array([this.newLine()]),
+  });
+  readonly quoteForm = this.fb.nonNullable.group({ supplier_name: ['', Validators.required], supplier_contact: [''], total: [0, [Validators.required, Validators.min(0)]], delivery_days: [null as number | null], payment_terms: [''], notes: [''] });
+  readonly lines = this.form.controls.items as FormArray;
+  readonly filtered = computed(() => {
+    const term = this.search().trim().toLocaleLowerCase('pt-BR');
+    return this.purchases().filter((purchase) => {
+      const date = new Date(purchase.created_at).toISOString().slice(0, 10);
+      const matchPeriod = (!this.startDate() || date >= this.startDate()) && (!this.endDate() || date <= this.endDate());
+      const matchStatus = this.statusFilter() === 'all' || purchase.status === this.statusFilter();
+      const haystack = [purchase.number, ...purchase.items.flatMap((item) => [item.sku, item.description]), ...purchase.quotes.map((quote) => quote.supplier_name)].join(' ').toLocaleLowerCase('pt-BR');
+      return matchPeriod && matchStatus && (!term || haystack.includes(term));
+    });
+  });
+  readonly summary = computed(() => [
+    { status: 'negotiating', label: 'Em negociação', count: this.purchases().filter((p) => p.status === 'negotiating').length, note: 'Aguardando propostas' },
+    { status: 'ordered', label: 'Pedidos em aberto', count: this.purchases().filter((p) => ['ordered', 'partially_received'].includes(p.status)).length, note: 'Aguardando recebimento' },
+    { status: 'received', label: 'Recebidas', count: this.purchases().filter((p) => p.status === 'received').length, note: 'Estoque atualizado' },
+  ]);
+
+  ngOnInit() { this.load(); this.api.products().subscribe({ next: (items) => this.products.set(items), error: () => undefined }); }
+  private newLine() { return this.fb.group({ product_id: [''], sku: ['', Validators.required], description: ['', Validators.required], quantity: [1, [Validators.required, Validators.min(0.001)]], unit_cost: [0, [Validators.required, Validators.min(0)]] }); }
+  load() { this.api.purchases().subscribe({ next: (items) => this.purchases.set(items), error: () => this.error.set('Não foi possível carregar as compras. Tente novamente.') }); }
+  applyPeriod(range: DateRange) { this.startDate.set(range.startDate); this.endDate.set(range.endDate); }
+  toggleStatus(status: string) { this.statusFilter.set(this.statusFilter() === status ? 'all' : status); }
+  openNew() { this.error.set(''); this.form.reset({ needed_by: '', notes: '' }); while (this.lines.length) this.lines.removeAt(0); this.addLine(); this.showNew.set(true); }
+  addLine() { this.lines.push(this.newLine()); }
+  removeLine(index: number) { this.lines.removeAt(index); }
+  selectProduct(index: number, id: string) { const line = this.lines.at(index); const product = this.products().find((entry) => entry.id === id); if (product) line.patchValue({ product_id: id, sku: product.sku, description: product.name, unit_cost: product.cost_price }); else line.patchValue({ product_id: '', sku: '', description: '' }); }
+  create() {
+    if (this.form.invalid || this.saving()) return;
+    this.saving.set(true); this.error.set('');
+    const value = this.form.getRawValue();
+    this.api.createPurchase({ needed_by: value.needed_by || null, notes: value.notes || null, items: value.items.map((item) => ({ ...item, product_id: item.product_id || null })) }).pipe(finalize(() => this.saving.set(false))).subscribe({ next: (purchase) => { this.showNew.set(false); this.purchases.update((list) => [purchase, ...list]); this.openDetails(purchase); }, error: (err) => this.error.set(err.error?.detail || 'Não foi possível salvar a compra.') });
+  }
+  openDetails(purchase: Purchase) { this.error.set(''); this.receiveValues.set(Object.fromEntries(purchase.items.map((item) => [item.id, { quantity: Math.max(0, item.quantity - item.received_quantity), productId: item.product_id || '', create: !item.product_id }]))); this.quoteCosts.set(Object.fromEntries(purchase.items.map((item) => [item.id, 0]))); this.detail.set(purchase); }
+  selectedQuote(purchase: Purchase) { return purchase.quotes.find((quote) => quote.id === purchase.selected_quote_id) ?? null; }
+  statusLabel(status: PurchaseStatus) { return this.statuses.find((entry) => entry.value === status)?.label ?? status; }
+  stepIndex(status: PurchaseStatus) { if (status === 'cancelled') return -1; if (status === 'received') return 4; if (status === 'partially_received') return 3; return ['negotiating', 'approved', 'ordered'].indexOf(status); }
+  progress(item: PurchaseItem) { return item.quantity ? Math.min(100, item.received_quantity / item.quantity * 100) : 0; }
+  totalUnits(purchase: Purchase) { return purchase.items.reduce((sum, item) => sum + item.quantity, 0); }
+  receivedUnits(purchase: Purchase) { return purchase.items.reduce((sum, item) => sum + item.received_quantity, 0); }
+  receiveQty(item: PurchaseItem) { return this.receiveValues()[item.id]?.quantity ?? 0; }
+  setReceiveQty(item: PurchaseItem, value: string) { this.receiveValues.update((values) => ({ ...values, [item.id]: { ...values[item.id], quantity: Number(value) } })); this.clearReceiptId(item); }
+  receiveProduct(item: PurchaseItem) { return this.receiveValues()[item.id]?.productId ?? ''; }
+  setReceiveProduct(item: PurchaseItem, value: string) { this.receiveValues.update((values) => ({ ...values, [item.id]: { ...values[item.id], productId: value, create: false } })); this.clearReceiptId(item); }
+  createNewProduct(item: PurchaseItem) { return this.receiveValues()[item.id]?.create ?? false; }
+  setCreateNewProduct(item: PurchaseItem, value: boolean) { this.receiveValues.update((values) => ({ ...values, [item.id]: { ...values[item.id], create: value, productId: value ? '' : values[item.id]?.productId ?? '' } })); this.clearReceiptId(item); }
+  quoteUnitCost(item: PurchaseItem) { return this.quoteCosts()[item.id] ?? 0; }
+  setQuoteUnitCost(item: PurchaseItem, value: string) { this.quoteCosts.update((costs) => ({ ...costs, [item.id]: Number(value) })); }
+  quoteCostsComplete(purchase: Purchase) { return purchase.items.every((item) => Number.isFinite(this.quoteUnitCost(item)) && this.quoteUnitCost(item) >= 0); }
+  addQuote() { const purchase = this.detail(); if (!purchase || this.quoteForm.invalid || !this.quoteCostsComplete(purchase) || this.saving()) return; this.saving.set(true); this.error.set(''); this.api.addPurchaseQuote(purchase.id, { ...this.quoteForm.getRawValue(), item_costs: this.quoteCosts() }).pipe(finalize(() => this.saving.set(false))).subscribe({ next: (updated) => { this.setPurchase(updated); this.quoteForm.reset({ supplier_name: '', supplier_contact: '', total: 0, delivery_days: null, payment_terms: '', notes: '' }); this.quoteCosts.set(Object.fromEntries(purchase.items.map((item) => [item.id, 0]))); }, error: (err) => this.error.set(err.error?.detail || 'Não foi possível registrar a cotação.') }); }
+  selectQuote(id: string) { const purchase = this.detail(); if (!purchase || this.saving()) return; if (!confirm('Aprovar esta cotação? A compra seguirá para envio do pedido ao fornecedor.')) return; this.runAction(this.api.selectPurchaseQuote(purchase.id, id)); }
+  placeOrder() { const purchase = this.detail(); if (purchase) this.runAction(this.api.placePurchaseOrder(purchase.id)); }
+  receive(item: PurchaseItem) {
+    const purchase = this.detail();
+    if (!purchase || this.saving()) return;
+    const choice = this.receiveValues()[item.id];
+    if (!choice || choice.quantity <= 0) return;
+    const receiptId = this.receiptIds()[item.id] ?? crypto.randomUUID();
+    this.receiptIds.update((ids) => ({ ...ids, [item.id]: receiptId }));
+    this.saving.set(true); this.error.set('');
+    this.api.receivePurchase(purchase.id, { items: [{ item_id: item.id, receipt_id: receiptId, quantity: choice.quantity, product_id: choice.productId || null, create_product: choice.create }] }).pipe(finalize(() => this.saving.set(false))).subscribe({
+      next: (updated) => { this.setPurchase(updated); this.clearReceiptId(item); this.api.products().subscribe((items) => this.products.set(items)); },
+      error: (err) => this.error.set(err.error?.detail || 'Não foi possível registrar o recebimento.')
+    });
+  }
+  private clearReceiptId(item: PurchaseItem) { this.receiptIds.update((ids) => { const updated = { ...ids }; delete updated[item.id]; return updated; }); }
+  cancel() { const purchase = this.detail(); if (!purchase || this.saving()) return; if (!confirm(`Cancelar ${purchase.number}? Essa ação não poderá ser desfeita.`)) return; this.runAction(this.api.cancelPurchase(purchase.id)); }
+  private runAction(request: ReturnType<ApiService['placePurchaseOrder']>) { const purchase = this.detail(); if (!purchase) return; this.saving.set(true); this.error.set(''); request.pipe(finalize(() => this.saving.set(false))).subscribe({ next: (updated) => { this.setPurchase(updated); if (updated.status === 'received') this.api.products().subscribe((items) => this.products.set(items)); }, error: (err) => this.error.set(err.error?.detail || 'Não foi possível atualizar esta compra.') }); }
+  private setPurchase(purchase: Purchase) { this.detail.set(purchase); this.purchases.update((items) => items.map((item) => item.id === purchase.id ? purchase : item)); }
+}

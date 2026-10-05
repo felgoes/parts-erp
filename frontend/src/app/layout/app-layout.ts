@@ -49,6 +49,8 @@ export class AppLayout {
       { path: '/dashboard', label: 'Visão geral', icon: '◫' },
       { path: '/monitoring', label: 'Monitoramento', icon: 'O' },
       { path: '/products', label: 'Produtos e estoque', icon: '◇' },
+      { path: '/purchases', label: 'Compras', icon: '↙' },
+      { path: '/finance', label: 'Financeiro', icon: '$' },
       { path: '/invoices', label: 'Faturas de venda', icon: '▤' },
       { path: '/customers', label: 'Clientes', icon: '○' },
       { path: '/marketplace', label: 'Pedidos do ML', icon: 'M' },

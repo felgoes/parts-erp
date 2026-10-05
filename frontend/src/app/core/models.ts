@@ -46,9 +46,95 @@ export interface StockMovement {
   movement_type: string;
   quantity: number;
   balance_after: number;
+  unit_cost: number | null;
+  movement_value: number | null;
   reason: string;
   reference: string | null;
   created_at: string;
+}
+export interface FinanceProductMetric {
+  product_id: string;
+  sku: string;
+  name: string;
+  current_stock: number;
+  average_cost: number;
+  inventory_value: number;
+  inbound_quantity: number;
+  inbound_value: number;
+  outbound_quantity: number;
+  outbound_value: number;
+  return_quantity: number;
+  return_value: number;
+  net_cost_of_goods: number;
+}
+export interface FinanceDailyMetric {
+  date: string;
+  label: string;
+  inbound_value: number;
+  outbound_value: number;
+  return_value: number;
+  revenue: number;
+}
+export interface FinanceOverview {
+  period_label: string;
+  inventory_units: number;
+  inventory_value: number;
+  inbound_quantity: number;
+  inbound_value: number;
+  outbound_quantity: number;
+  outbound_value: number;
+  return_quantity: number;
+  return_value: number;
+  net_cost_of_goods: number;
+  revenue: number;
+  gross_margin: number | null;
+  gross_margin_percent: number | null;
+  known_movements: number;
+  unknown_cost_movements: number;
+  unvalued_sales_items: number;
+  by_product: FinanceProductMetric[];
+  daily: FinanceDailyMetric[];
+}
+export type PurchaseStatus = 'negotiating' | 'approved' | 'ordered' | 'partially_received' | 'received' | 'cancelled';
+export interface PurchaseItem {
+  id: string;
+  product_id: string | null;
+  sku: string;
+  description: string;
+  quantity: number;
+  received_quantity: number;
+  unit_cost: number;
+}
+export interface PurchaseQuote {
+  id: string;
+  supplier_name: string;
+  supplier_contact: string | null;
+  total: number;
+  item_costs: Record<string, number>;
+  delivery_days: number | null;
+  payment_terms: string | null;
+  notes: string | null;
+  created_at: string;
+}
+export interface PurchaseEvent {
+  id: string;
+  event_type: string;
+  detail: string;
+  created_at: string;
+}
+export interface Purchase {
+  id: string;
+  number: string;
+  status: PurchaseStatus;
+  selected_quote_id: string | null;
+  needed_by: string | null;
+  ordered_at: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+  items: PurchaseItem[];
+  quotes: PurchaseQuote[];
+  events: PurchaseEvent[];
 }
 export interface Customer {
   id: string;

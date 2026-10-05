@@ -100,12 +100,14 @@
 .listing-link span { font-size: 16px; }
 .stock-section { padding-top: 4px; }
 .movement-list { display: grid; max-height: 280px; overflow: auto; border: 1px solid var(--line); border-radius: 10px; }
-.movement-row { display: grid; grid-template-columns: 140px 70px minmax(0, 1fr) 100px; gap: 12px; align-items: center; padding: 13px 14px; font-size: 13px; border-bottom: 1px solid var(--line); }
+.movement-row { display: grid; grid-template-columns: 140px 70px minmax(0, 1fr) 125px 100px; gap: 12px; align-items: center; padding: 13px 14px; font-size: 13px; border-bottom: 1px solid var(--line); }
 .movement-row:last-child { border-bottom: 0; }
 .movement-date, .movement-row small { color: var(--muted); font-size: 11px; }
 .movement-reason { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .movement-row small { text-align: right; }
 .movement-row small b { color: var(--text); }
+.movement-value { display: grid; gap: 3px; text-align: right; }
+.movement-value > small { text-align: right; }
 .negative { color: #a33b2c; }
 .positive { color: #2c7847; }
 @media (max-width: 600px) {
@@ -139,7 +141,9 @@
   .listing-metrics > div:nth-child(2) { border-right: 0; }
   .movement-row { grid-template-columns: 1fr auto; gap: 5px 10px; }
   .movement-reason { grid-column: 1 / -1; }
-  .movement-row small { text-align: right; }
+  .movement-value { grid-column: 1; text-align: left; }
+  .movement-value > small { text-align: left; }
+  .movement-row > small { grid-column: 2; grid-row: 3; text-align: right; }
 }
 .selected-product span {
   color: var(--muted);

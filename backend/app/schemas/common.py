@@ -1,7 +1,7 @@
 from datetime import UTC, date, datetime
 from decimal import Decimal
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_serializer
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_serializer, field_validator
 
 from app.models import UserRole
 
@@ -100,9 +100,57 @@ class StockMovementOut(ORMModel):
     movement_type: str
     quantity: Decimal
     balance_after: Decimal
+    unit_cost: Decimal | None
+    movement_value: Decimal | None
     reason: str
     reference: str | None
     created_at: datetime
+
+
+class FinanceProductMetric(BaseModel):
+    product_id: str
+    sku: str
+    name: str
+    current_stock: Decimal
+    average_cost: Decimal
+    inventory_value: Decimal
+    inbound_quantity: Decimal
+    inbound_value: Decimal
+    outbound_quantity: Decimal
+    outbound_value: Decimal
+    return_quantity: Decimal
+    return_value: Decimal
+    net_cost_of_goods: Decimal
+
+
+class FinanceDailyMetric(BaseModel):
+    date: date
+    label: str
+    inbound_value: Decimal
+    outbound_value: Decimal
+    return_value: Decimal
+    revenue: Decimal
+
+
+class FinanceOverview(BaseModel):
+    period_label: str
+    inventory_units: Decimal
+    inventory_value: Decimal
+    inbound_quantity: Decimal
+    inbound_value: Decimal
+    outbound_quantity: Decimal
+    outbound_value: Decimal
+    return_quantity: Decimal
+    return_value: Decimal
+    net_cost_of_goods: Decimal
+    revenue: Decimal
+    gross_margin: Decimal | None
+    gross_margin_percent: Decimal | None
+    known_movements: int
+    unknown_cost_movements: int
+    unvalued_sales_items: int
+    by_product: list[FinanceProductMetric]
+    daily: list[FinanceDailyMetric]
 
 
 class CatalogListingOut(BaseModel):
@@ -134,6 +182,93 @@ class CatalogProductOut(BaseModel):
 class StockAdjustment(BaseModel):
     quantity: Decimal
     reason: str = Field(min_length=3, max_length=255)
+
+
+class PurchaseItemCreate(BaseModel):
+    product_id: str | None = None
+    sku: str = Field(min_length=1, max_length=80)
+    description: str = Field(min_length=2, max_length=200)
+    quantity: Decimal = Field(gt=0)
+    unit_cost: Decimal = Field(default=Decimal("0"), ge=0)
+
+
+class PurchaseCreate(BaseModel):
+    needed_by: datetime | None = None
+    notes: str | None = Field(default=None, max_length=4000)
+    items: list[PurchaseItemCreate] = Field(min_length=1, max_length=100)
+
+
+class PurchaseQuoteCreate(BaseModel):
+    supplier_name: str = Field(min_length=2, max_length=200)
+    supplier_contact: str | None = Field(default=None, max_length=200)
+    total: Decimal = Field(ge=0)
+    item_costs: dict[str, Decimal] = Field(min_length=1)
+    delivery_days: int | None = Field(default=None, ge=0, le=3650)
+    payment_terms: str | None = Field(default=None, max_length=200)
+    notes: str | None = Field(default=None, max_length=2000)
+
+    @field_validator("item_costs")
+    @classmethod
+    def validate_item_costs(cls, value: dict[str, Decimal]) -> dict[str, Decimal]:
+        if any(cost < 0 for cost in value.values()):
+            raise ValueError("O custo cotado não pode ser negativo")
+        return value
+
+
+class PurchaseReceiveItem(BaseModel):
+    item_id: str
+    receipt_id: str = Field(min_length=12, max_length=120)
+    quantity: Decimal = Field(gt=0)
+    product_id: str | None = None
+    create_product: bool = False
+
+
+class PurchaseReceive(BaseModel):
+    items: list[PurchaseReceiveItem] = Field(min_length=1)
+
+
+class PurchaseItemOut(ORMModel):
+    id: str
+    product_id: str | None
+    sku: str
+    description: str
+    quantity: Decimal
+    received_quantity: Decimal
+    unit_cost: Decimal
+
+
+class PurchaseQuoteOut(ORMModel):
+    id: str
+    supplier_name: str
+    supplier_contact: str | None
+    total: Decimal
+    item_costs: dict[str, Decimal]
+    delivery_days: int | None
+    payment_terms: str | None
+    notes: str | None
+    created_at: datetime
+
+
+class PurchaseEventOut(ORMModel):
+    id: str
+    event_type: str
+    detail: str
+    created_at: datetime
+
+
+class PurchaseOut(ORMModel):
+    id: str
+    number: str
+    status: str
+    selected_quote_id: str | None
+    needed_by: datetime | None
+    ordered_at: datetime | None
+    notes: str | None
+    created_at: datetime
+    updated_at: datetime
+    items: list[PurchaseItemOut]
+    quotes: list[PurchaseQuoteOut]
+    events: list[PurchaseEventOut]
 
 
 class CustomerCreate(BaseModel):

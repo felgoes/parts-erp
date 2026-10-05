@@ -149,6 +149,11 @@ async def callback(code: str, state: str, db: Session = Depends(get_db)) -> Redi
         if payload.get("type") != "ml_oauth":
             raise jwt.InvalidTokenError
         tokens = MercadoLivreClient(db).exchange_code(code)
+        if not tokens.get("refresh_token"):
+            raise MercadoLivreError(
+                "O Mercado Livre não retornou o token de renovação necessário "
+                "para a sincronização contínua."
+            )
         temporary = MarketplaceAccount(
             seller_id=str(tokens["user_id"]),
             encrypted_access_token=encrypt_secret(tokens["access_token"]),
@@ -269,6 +274,30 @@ async def sync_now(
     )
     if not account:
         raise HTTPException(status_code=409, detail="Conta do Mercado Livre não conectada")
+    expires = account.token_expires_at
+    if expires and expires.tzinfo is None:
+        expires = expires.replace(tzinfo=UTC)
+    if (
+        not account.encrypted_refresh_token
+        and (not expires or expires <= datetime.now(UTC) + timedelta(minutes=2))
+    ):
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "A autorização do Mercado Livre expirou. Acesse Integrações, reconecte a conta "
+                "e depois sincronize novamente."
+            ),
+        )
+    try:
+        MercadoLivreClient(db, account).get("/users/me")
+    except MercadoLivreError as exc:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "Não foi possível renovar a autorização do Mercado Livre. Acesse Integrações e "
+                "reconecte a conta para importar os pedidos pendentes."
+            ),
+        ) from exc
     redis = await create_pool(RedisSettings.from_dsn(get_settings().redis_url))
     await redis.enqueue_job("sync_mercadolivre_account", account.seller_id)
     await redis.close()

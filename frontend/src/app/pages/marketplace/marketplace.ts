@@ -14,8 +14,23 @@ import { PageHeader } from '../../shared/page-header';
       eyebrow="Marketplace"
       title="Pedidos do Mercado Livre"
       subtitle="Importação, conciliação e baixa automática de estoque."
-      ><button class="secondary" (click)="load()">↻ Atualizar</button></app-page-header
     >
+      @if (canProcess()) {
+        <button
+          class="secondary"
+          [disabled]="syncing() || status()?.connected !== true"
+          (click)="syncNow()"
+        >
+          {{ syncing() ? 'Enviando sincronização…' : 'Sincronizar agora' }}
+        </button>
+      }
+    </app-page-header>
+    @if (syncMessage()) {
+      <p class="notice" role="status">{{ syncMessage() }}</p>
+    }
+    @if (syncError()) {
+      <p class="error-text" role="alert">{{ syncError() }}</p>
+    }
     @if (status(); as s) {
       @if (!s.connected) {
         <section class="notice">
@@ -61,7 +76,9 @@ import { PageHeader } from '../../shared/page-header';
             @for (o of orders(); track o.id) {
               <tr class="clickable-row" (click)="openDetails(o)">
                 <td>
-                  <button class="link-button" (click)="openDetails(o)">#{{ o.external_order_id }}</button>
+                  <button class="link-button" (click)="openDetails(o)">
+                    #{{ o.external_order_id }}
+                  </button>
                 </td>
                 <td>{{ o.created_at | date: 'dd/MM/yyyy HH:mm' }}</td>
                 <td>{{ statusLabel(o.status) }}</td>
@@ -101,13 +118,15 @@ import { PageHeader } from '../../shared/page-header';
                   }
                 </td>
                 <td>
-                  @if (canProcess()) { <button
-                    class="secondary small"
-                    [disabled]="!o.invoice_id || retrying() === o.id"
-                    (click)="$event.stopPropagation(); retry(o)"
-                  >
-                    {{ retrying() === o.id ? 'Tentando…' : 'Tentar agora' }}
-                  </button> }
+                  @if (canProcess()) {
+                    <button
+                      class="secondary small"
+                      [disabled]="!o.invoice_id || retrying() === o.id"
+                      (click)="$event.stopPropagation(); retry(o)"
+                    >
+                      {{ retrying() === o.id ? 'Tentando…' : 'Tentar agora' }}
+                    </button>
+                  }
                 </td>
               </tr>
             } @empty {
@@ -122,22 +141,194 @@ import { PageHeader } from '../../shared/page-header';
     @if (detail(); as order) {
       <div class="modal-backdrop" (click)="detail.set(null)">
         <section class="modal wide object-modal" (click)="$event.stopPropagation()">
-          <div class="modal-head object-hero"><div><p class="eyebrow">Marketplace · Pedido Mercado Livre</p><h2>#{{ order.external_order_id }}</h2><p class="detail-subtitle">Recebido em {{ order.created_at | date:'dd/MM/yyyy HH:mm' }}</p></div><div class="object-hero-actions"><span class="badge" [class.cancelled]="order.status === 'cancelled'" [class.success]="order.status === 'paid'">{{ statusLabel(order.status) }}</span><button class="close" aria-label="Fechar pedido" (click)="detail.set(null)">×</button></div></div>
-          <div class="detail-grid"><div><small>Status no ML</small><strong>{{ statusLabel(order.status) }}</strong></div><div><small>Sincronização</small><strong>{{ syncLabel(order.sync_status) }}</strong></div><div><small>Envio</small><strong>{{ statusLabel(order.shipping_status) }}</strong></div><div><small>NF-e</small><strong>{{ automationLabel(order.fiscal_status) }}</strong></div><div><small>Etiqueta</small><strong>{{ automationLabel(order.label_status) }}</strong></div><div><small>Fatura</small><strong>{{ order.invoice_id ? 'Vinculada' : 'Não gerada' }}</strong></div></div>
+          <div class="modal-head object-hero">
+            <div>
+              <p class="eyebrow">Marketplace · Pedido Mercado Livre</p>
+              <h2>#{{ order.external_order_id }}</h2>
+              <p class="detail-subtitle">
+                Recebido em {{ order.created_at | date: 'dd/MM/yyyy HH:mm' }}
+              </p>
+            </div>
+            <div class="object-hero-actions">
+              <span
+                class="badge"
+                [class.cancelled]="order.status === 'cancelled'"
+                [class.success]="order.status === 'paid'"
+                >{{ statusLabel(order.status) }}</span
+              ><button class="close" aria-label="Fechar pedido" (click)="detail.set(null)">
+                ×
+              </button>
+            </div>
+          </div>
+          <div class="detail-grid">
+            <div>
+              <small>Status no ML</small><strong>{{ statusLabel(order.status) }}</strong>
+            </div>
+            <div>
+              <small>Sincronização</small><strong>{{ syncLabel(order.sync_status) }}</strong>
+            </div>
+            <div>
+              <small>Envio</small><strong>{{ statusLabel(order.shipping_status) }}</strong>
+            </div>
+            <div>
+              <small>NF-e</small><strong>{{ automationLabel(order.fiscal_status) }}</strong>
+            </div>
+            <div>
+              <small>Etiqueta</small><strong>{{ automationLabel(order.label_status) }}</strong>
+            </div>
+            <div>
+              <small>Fatura</small
+              ><strong>{{ order.invoice_id ? 'Vinculada' : 'Não gerada' }}</strong>
+            </div>
+          </div>
           @if (order.invoice; as invoice) {
             <section class="order-section">
-              <div class="section-heading"><div><p class="eyebrow">Comercial</p><h3>Fatura e itens</h3></div><strong>{{ invoice.total | number:'1.2-2' }}</strong></div>
-              <div class="invoice-detail-lines">@for (item of invoice.items; track item.id) { <div><span><strong>{{ item.description }}</strong><small>{{ item.sku }} · {{ item.quantity }} unidade(s) · {{ item.unit_price | number:'1.2-2' }} cada</small></span><strong>{{ item.total | number:'1.2-2' }}</strong></div> }</div>
-              <div class="detail-documents"><span class="documents-label">Documentos fiscais</span>@for (doc of invoice.documents; track doc.id) { <button class="doc" (click)="download(order.invoice_id!, doc.id, doc.filename)"><span>{{ doc.document_type | uppercase }}</span>{{ doc.filename }}<b>↗</b></button> } @empty { <span class="muted">Nenhum documento anexado à fatura.</span> }</div>
+              <div class="section-heading">
+                <div>
+                  <p class="eyebrow">Comercial</p>
+                  <h3>Fatura e itens</h3>
+                </div>
+                <strong>{{ invoice.total | number: '1.2-2' }}</strong>
+              </div>
+              <div class="invoice-detail-lines">
+                @for (item of invoice.items; track item.id) {
+                  <div>
+                    <span
+                      ><strong>{{ item.description }}</strong
+                      ><small
+                        >{{ item.sku }} · {{ item.quantity }} unidade(s) ·
+                        {{ item.unit_price | number: '1.2-2' }} cada</small
+                      ></span
+                    ><strong>{{ item.total | number: '1.2-2' }}</strong>
+                  </div>
+                }
+              </div>
+              <div class="detail-documents">
+                <span class="documents-label">Documentos fiscais</span>
+                @for (doc of invoice.documents; track doc.id) {
+                  <button class="doc" (click)="download(order.invoice_id!, doc.id, doc.filename)">
+                    <span>{{ doc.document_type | uppercase }}</span
+                    >{{ doc.filename }}<b>↗</b>
+                  </button>
+                } @empty {
+                  <span class="muted">Nenhum documento anexado à fatura.</span>
+                }
+              </div>
             </section>
           }
           <section class="order-section">
-            <div class="section-heading"><div><p class="eyebrow">Mercado Envios</p><h3>Rastreamento e etapas</h3></div><span class="muted">{{ order.synchronized_at ? ('Atualizado ' + (order.synchronized_at | date:'dd/MM/yyyy HH:mm')) : 'Aguardando sincronização' }}</span></div>
-            <div class="timeline"><div><strong>Pedido recebido</strong><span>{{ order.created_at | date:'dd/MM/yyyy HH:mm' }}</span></div><div><strong>Status atual: {{ statusLabel(order.status) }}</strong><span>{{ order.synchronized_at ? (order.synchronized_at | date:'dd/MM/yyyy HH:mm') : 'Ainda não sincronizado' }}</span></div>@if (order.payload?.['shipping']) { <div><strong>Envio {{ order.payload?.['shipping']?.['id'] || '' }}</strong><span>{{ statusLabel(order.payload?.['shipping']?.['status'] || order.shipping_status) }}</span></div> }</div>
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">Mercado Envios</p>
+                <h3>Rastreamento e etapas</h3>
+              </div>
+              <span class="muted">{{
+                order.synchronized_at
+                  ? 'Atualizado ' + (order.synchronized_at | date: 'dd/MM/yyyy HH:mm')
+                  : 'Aguardando sincronização'
+              }}</span>
+            </div>
+            <div class="timeline">
+              <div>
+                <strong>Pedido recebido</strong
+                ><span>{{ order.created_at | date: 'dd/MM/yyyy HH:mm' }}</span>
+              </div>
+              <div>
+                <strong>Status atual: {{ statusLabel(order.status) }}</strong
+                ><span>{{
+                  order.synchronized_at
+                    ? (order.synchronized_at | date: 'dd/MM/yyyy HH:mm')
+                    : 'Ainda não sincronizado'
+                }}</span>
+              </div>
+              @if (order.payload?.['shipping']) {
+                <div>
+                  <strong>Envio {{ order.payload?.['shipping']?.['id'] || '' }}</strong
+                  ><span>{{
+                    statusLabel(order.payload?.['shipping']?.['status'] || order.shipping_status)
+                  }}</span>
+                </div>
+              }
+            </div>
           </section>
-          <section class="order-section"><div class="section-heading"><div><p class="eyebrow">Histórico</p><h3>Histórico de status</h3></div></div>@if (history().length) { <div class="timeline">@for (event of history(); track event.id) { <div><strong>{{ trackingEventLabel(event.status, event.detail) }}</strong><span>{{ event.created_at | date:'dd/MM/yyyy HH:mm' }}</span></div> }</div> } @else { <p class="muted">Nenhum evento histórico registrado.</p> }</section>
-          <section class="order-section"><div class="section-heading"><div><p class="eyebrow">Pós-venda</p><h3>Devolução ou cancelamento</h3></div></div>@if (order.status === 'cancelled' || order.payload?.['status'] === 'cancelled' || order.payload?.['returns']) { @if (order.payload?.['cancel_detail']) { <div class="detail-grid"><div><small>Motivo</small><strong>{{ cancelReason(order.payload?.['cancel_detail']?.['description']) }}</strong></div><div><small>Solicitado por</small><strong>{{ cancelRequester(order.payload?.['cancel_detail']?.['requested_by']) }}</strong></div><div><small>Pagamento</small><strong>{{ statusLabel(order.payload?.['payments']?.[0]?.['status']) }}</strong></div></div> } <details class="technical-details"><summary>Ver dados técnicos do Mercado Livre</summary><pre class="payload">{{ order.payload?.['returns'] || order.payload?.['cancellations'] || order.payload | json }}</pre></details> } @else { <p class="muted">Nenhuma devolução ou cancelamento registrado neste pedido.</p> }</section>
-          @if (order.sync_error || order.fiscal_error || order.label_error) { <section class="order-section"><div class="section-heading"><div><p class="eyebrow">Atenção</p><h3>Ocorrências</h3></div></div><p class="error-text">{{ order.sync_error || order.fiscal_error || order.label_error }}</p></section> }
+          <section class="order-section">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">Histórico</p>
+                <h3>Histórico de status</h3>
+              </div>
+            </div>
+            @if (history().length) {
+              <div class="timeline">
+                @for (event of history(); track event.id) {
+                  <div>
+                    <strong>{{ trackingEventLabel(event.status, event.detail) }}</strong
+                    ><span>{{ event.created_at | date: 'dd/MM/yyyy HH:mm' }}</span>
+                  </div>
+                }
+              </div>
+            } @else {
+              <p class="muted">Nenhum evento histórico registrado.</p>
+            }
+          </section>
+          <section class="order-section">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">Pós-venda</p>
+                <h3>Devolução ou cancelamento</h3>
+              </div>
+            </div>
+            @if (
+              order.status === 'cancelled' ||
+              order.payload?.['status'] === 'cancelled' ||
+              order.payload?.['returns']
+            ) {
+              @if (order.payload?.['cancel_detail']) {
+                <div class="detail-grid">
+                  <div>
+                    <small>Motivo</small
+                    ><strong>{{
+                      cancelReason(order.payload?.['cancel_detail']?.['description'])
+                    }}</strong>
+                  </div>
+                  <div>
+                    <small>Solicitado por</small
+                    ><strong>{{
+                      cancelRequester(order.payload?.['cancel_detail']?.['requested_by'])
+                    }}</strong>
+                  </div>
+                  <div>
+                    <small>Pagamento</small
+                    ><strong>{{
+                      statusLabel(order.payload?.['payments']?.[0]?.['status'])
+                    }}</strong>
+                  </div>
+                </div>
+              }
+              <details class="technical-details">
+                <summary>Ver dados técnicos do Mercado Livre</summary>
+                <pre class="payload">{{
+                  order.payload?.['returns'] || order.payload?.['cancellations'] || order.payload
+                    | json
+                }}</pre>
+              </details>
+            } @else {
+              <p class="muted">Nenhuma devolução ou cancelamento registrado neste pedido.</p>
+            }
+          </section>
+          @if (order.sync_error || order.fiscal_error || order.label_error) {
+            <section class="order-section">
+              <div class="section-heading">
+                <div>
+                  <p class="eyebrow">Atenção</p>
+                  <h3>Ocorrências</h3>
+                </div>
+              </div>
+              <p class="error-text">
+                {{ order.sync_error || order.fiscal_error || order.label_error }}
+              </p>
+            </section>
+          }
         </section>
       </div>
     }
@@ -149,18 +340,58 @@ export class MarketplacePage implements OnInit {
   private readonly auth = inject(AuthService);
   readonly status = signal<MarketplaceStatus | null>(null);
   readonly orders = signal<MarketplaceOrder[]>([]);
+  readonly syncing = signal(false);
+  readonly syncMessage = signal<string | null>(null);
+  readonly syncError = signal<string | null>(null);
   readonly retrying = signal<string | null>(null);
   readonly detail = signal<MarketplaceOrder | null>(null);
   readonly history = signal<MarketplaceOrderEvent[]>([]);
   readonly statusLabel = statusLabel;
   readonly trackingEventLabel = trackingEventLabel;
-  canProcess() { const role = this.auth.user()?.role; return role === 'admin' || role === 'manager'; }
+  canProcess() {
+    const role = this.auth.user()?.role;
+    return role === 'admin' || role === 'manager';
+  }
   ngOnInit() {
     this.load();
   }
   load() {
     this.api.marketplaceStatus().subscribe((v) => this.status.set(v));
-    this.api.marketplaceOrders().subscribe((v) => this.orders.set(v));
+    this.api.marketplaceOrders().subscribe({
+      next: (v) => this.orders.set(v),
+      error: () => this.syncError.set('Não foi possível carregar os pedidos do Mercado Livre.'),
+    });
+  }
+  syncNow() {
+    this.syncing.set(true);
+    this.syncError.set(null);
+    this.syncMessage.set(null);
+    this.api.syncMarketplace().subscribe({
+      next: (result) => {
+        this.syncing.set(false);
+        this.syncMessage.set(
+          result.accepted
+            ? 'Busca enviada ao Mercado Livre. Os pedidos serão atualizados assim que a importação terminar.'
+            : 'A sincronização não foi iniciada. Tente novamente.',
+        );
+        if (!result.accepted) return;
+        const refreshUntil = Date.now() + 60_000;
+        const refresh = () => {
+          this.load();
+          if (Date.now() < refreshUntil) window.setTimeout(refresh, 5_000);
+        };
+        window.setTimeout(refresh, 3_000);
+      },
+      error: (error: { error?: { detail?: unknown } }) => {
+        this.syncing.set(false);
+        const detail = error.error?.detail;
+        this.syncError.set(
+          typeof detail === 'string'
+            ? detail
+            : 'Não foi possível iniciar a sincronização. Verifique a conexão com o Mercado Livre e tente novamente.',
+        );
+      },
+    });
   }
   syncLabel(s: string) {
     return (
@@ -199,8 +430,14 @@ export class MarketplacePage implements OnInit {
     return reason;
   }
   cancelRequester(value: unknown) {
-    const requester = String(value || '').trim().toLowerCase();
-    return ({ meli: 'Mercado Livre', buyer: 'Comprador', seller: 'Vendedor' } as Record<string, string>)[requester] ?? (requester ? this.cancelReason(requester) : 'Não informado');
+    const requester = String(value || '')
+      .trim()
+      .toLowerCase();
+    return (
+      ({ meli: 'Mercado Livre', buyer: 'Comprador', seller: 'Vendedor' } as Record<string, string>)[
+        requester
+      ] ?? (requester ? this.cancelReason(requester) : 'Não informado')
+    );
   }
   retry(order: MarketplaceOrder) {
     this.retrying.set(order.id);

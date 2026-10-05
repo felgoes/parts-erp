@@ -2,9 +2,10 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
-from app.api.deps import get_current_user, require_roles
+from app.api.deps import require_permission
+from app.core.permissions import Permission
 from app.db.session import get_db
-from app.models import AfterSaleCase, User, UserRole
+from app.models import AfterSaleCase, User
 from app.schemas.common import (
     AfterSaleCaseOut,
     AfterSaleCloseIn,
@@ -35,7 +36,7 @@ def _case(db: Session, case_id: str) -> AfterSaleCase:
 def get_case(
     case_id: str,
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
+    _: User = Depends(require_permission(Permission.AFTER_SALE_READ)),
 ) -> AfterSaleCase:
     return _case(db, case_id)
 
@@ -45,7 +46,7 @@ def receive_items(
     case_id: str,
     payload: AfterSaleReceiveIn,
     db: Session = Depends(get_db),
-    user: User = Depends(require_roles(UserRole.admin, UserRole.manager)),
+    user: User = Depends(require_permission(Permission.AFTER_SALE_PROCESS)),
 ) -> AfterSaleCase:
     case = _case(db, case_id)
     try:
@@ -63,7 +64,7 @@ def inspect_items(
     case_id: str,
     payload: AfterSaleInspectIn,
     db: Session = Depends(get_db),
-    user: User = Depends(require_roles(UserRole.admin, UserRole.manager)),
+    user: User = Depends(require_permission(Permission.AFTER_SALE_PROCESS)),
 ) -> AfterSaleCase:
     case = _case(db, case_id)
     try:
@@ -81,7 +82,7 @@ def close_without_stock(
     case_id: str,
     payload: AfterSaleCloseIn,
     db: Session = Depends(get_db),
-    user: User = Depends(require_roles(UserRole.admin, UserRole.manager)),
+    user: User = Depends(require_permission(Permission.AFTER_SALE_CLOSE)),
 ) -> AfterSaleCase:
     case = _case(db, case_id)
     try:

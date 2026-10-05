@@ -91,10 +91,10 @@ registerLocaleData(localePtBr);
         </section>
         <div class="limitations-note"><strong>Limites dos dados:</strong> disponibilidade pode vir aproximada; venda acumulada do anúncio não é giro mensal; vendedor do anúncio é apenas uma pista para cotação, não fornecedor validado; compatibilidade deve ser conferida.</div>
 
-        <div class="result-actions">
+        @if (canManage) { <div class="result-actions">
       @if (study.linked_purchase_id) { <a class="primary" routerLink="/purchases">Abrir negociação de compra →</a> }
           @else { <button class="secondary" type="button" (click)="draftStudy.set(study)">Transformar em rascunho de compra</button> }
-        </div>
+        </div> }
         @if (draftStudy()?.id === study.id) { <div class="draft-box"><p><strong>Iniciar negociação de compra</strong><small>O estudo não faz pedido. Vai abrir uma negociação para você inserir cotações e decidir.</small></p><label>SKU a negociar<input [(ngModel)]="purchaseDraft.sku" placeholder="SKU interno ou provisório" /></label><label>Quantidade desejada<input type="number" min="0.001" step="0.001" [(ngModel)]="purchaseDraft.quantity" /></label><button class="primary" [disabled]="creatingPurchase() || !purchaseDraft.sku.trim()" (click)="createPurchase(study)">{{ creatingPurchase() ? 'Criando…' : 'Criar negociação' }}</button><button class="text-button" (click)="draftStudy.set(null)">Cancelar</button></div> }
       </section>
     }

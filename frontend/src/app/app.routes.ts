@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './core/auth.guard';
+import { accessGuard } from './core/access.guard';
 import { AppLayout } from './layout/app-layout';
 
 export const routes: Routes = [
@@ -11,7 +12,7 @@ export const routes: Routes = [
   {
     path: '',
     component: AppLayout,
-    canActivate: [authGuard],
+    canActivate: [authGuard, accessGuard],
     children: [
       { path: '', pathMatch: 'full', redirectTo: 'dashboard' },
       { path: 'monitoring', loadComponent: () => import('./pages/monitoring/monitoring').then((m) => m.MonitoringPage) },

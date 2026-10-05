@@ -3,7 +3,9 @@ import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormArray, FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { finalize } from 'rxjs';
 import { ApiService } from '../../core/api.service';
+import { AuthService } from '../../core/auth.service';
 import { Product, Purchase, PurchaseItem, PurchaseStatus } from '../../core/models';
+import { canAdjustStock, canManagePurchases, canReadCosts } from '../../core/user-access';
 import { DateRange, quickDateRange } from '../../core/quick-date-ranges';
 import { PageHeader } from '../../shared/page-header';
 import { PeriodFilter } from '../../shared/period-filter';
@@ -13,7 +15,7 @@ import { PeriodFilter } from '../../shared/period-filter';
   imports: [CurrencyPipe, DatePipe, DecimalPipe, ReactiveFormsModule, PageHeader, PeriodFilter],
   template: `
     <app-page-header eyebrow="Suprimentos" title="Compras" subtitle="Da negociação com fornecedores ao recebimento das peças no estoque.">
-      <button class="primary" type="button" (click)="openNew()">+ Nova compra</button>
+      @if (canManagePurchases()) { <button class="primary" type="button" (click)="openNew()">+ Nova compra</button> }
     </app-page-header>
     <section class="purchase-summary">
       @for (card of summary(); track card.status) {
@@ -28,7 +30,7 @@ import { PeriodFilter } from '../../shared/period-filter';
       <label class="purchase-select">Etapa <select [value]="statusFilter()" (change)="statusFilter.set($any($event.target).value)"><option value="all">Todas</option>@for (status of statuses; track status.value) { <option [value]="status.value">{{ status.label }}</option> }</select></label>
       <span class="muted">{{ filtered().length }} compras</span>
     </section>
-    <section class="card purchase-table-card">
+    <section class="card purchase-table-card" [class.restricted-costs]="!canReadCosts()">
       <div class="table-wrap"><table><thead><tr><th>COMPRA</th><th>PEÇAS</th><th>FORNECEDOR / COTAÇÕES</th><th>ETAPA</th><th>PREVISÃO</th><th>ABERTA EM</th><th></th></tr></thead><tbody>
         @for (purchase of filtered(); track purchase.id) {
           <tr class="purchase-row" tabindex="0" (click)="openDetails(purchase)" (keydown.enter)="openDetails(purchase)">
@@ -38,7 +40,7 @@ import { PeriodFilter } from '../../shared/period-filter';
             <td><span class="purchase-badge" [attr.data-status]="purchase.status">{{ statusLabel(purchase.status) }}</span></td>
             <td>{{ purchase.needed_by ? (purchase.needed_by | date:'dd/MM/yyyy') : '—' }}</td><td>{{ purchase.created_at | date:'dd/MM/yyyy' }}</td><td class="row-action">Abrir <span>→</span></td>
           </tr>
-        } @empty { <tr><td colspan="7"><div class="purchase-empty"><strong>Nenhuma compra neste período</strong><span>Comece uma negociação para acompanhar propostas e recebimentos por aqui.</span><button class="secondary" (click)="openNew()">Criar compra</button></div></td></tr> }
+        } @empty { <tr><td colspan="7"><div class="purchase-empty"><strong>Nenhuma compra neste período</strong><span>Comece uma negociação para acompanhar propostas e recebimentos por aqui.</span>@if (canManagePurchases()) { <button class="secondary" (click)="openNew()">Criar compra</button> }</div></td></tr> }
       </tbody></table></div>
     </section>
 
@@ -57,7 +59,7 @@ import { PeriodFilter } from '../../shared/period-filter';
     }
 
     @if (detail(); as purchase) {
-      <div class="modal-backdrop" (click)="detail.set(null)"><section class="modal wide purchase-modal purchase-detail" role="dialog" aria-modal="true" [attr.aria-label]="'Compra ' + purchase.number" (click)="$event.stopPropagation()">
+      <div class="modal-backdrop" (click)="detail.set(null)"><section class="modal wide purchase-modal purchase-detail" [class.restricted-costs]="!canReadCosts()" [class.read-only-purchases]="!canManagePurchases()" [class.no-receiving]="!canAdjustStock()" role="dialog" aria-modal="true" [attr.aria-label]="'Compra ' + purchase.number" (click)="$event.stopPropagation()">
         <div class="modal-head"><div><p class="eyebrow">Suprimentos · {{ purchase.number }}</p><h2>{{ purchase.number }}</h2><p class="modal-intro">Criada em {{ purchase.created_at | date:'dd/MM/yyyy HH:mm' }} @if (purchase.needed_by) { · Previsão {{ purchase.needed_by | date:'dd/MM/yyyy' }} }</p></div><div class="detail-head-actions"><span class="purchase-badge" [attr.data-status]="purchase.status">{{ statusLabel(purchase.status) }}</span><button class="close" aria-label="Fechar" (click)="detail.set(null)">×</button></div></div>
         <div class="purchase-steps" aria-label="Etapas da compra">@for (step of workflow; track step.value; let i = $index) { <div class="purchase-step" [class.step-done]="stepIndex(purchase.status) > i" [class.step-current]="stepIndex(purchase.status) === i"><span>{{ stepIndex(purchase.status) > i ? '✓' : i + 1 }}</span><small>{{ step.label }}</small></div> }</div>
         <div class="purchase-detail-grid">
@@ -66,12 +68,12 @@ import { PeriodFilter } from '../../shared/period-filter';
             @if (purchase.status === 'negotiating') { <section class="purchase-form-section"><div class="section-heading"><div><p class="eyebrow">Concorrência</p><h3>Cotações de fornecedores</h3></div></div>@if (purchase.quotes.length) { <div class="quote-cards">@for (quote of purchase.quotes; track quote.id) { <article class="quote-card" [class.quote-selected]="purchase.selected_quote_id === quote.id"><div><strong>{{ quote.supplier_name }}</strong><b>{{ quote.total | currency:'BRL' }}</b></div><p>{{ quote.delivery_days !== null ? quote.delivery_days + ' dias para entrega' : 'Prazo não informado' }} @if (quote.payment_terms) { · {{ quote.payment_terms }} }</p><div class="quote-cost-summary">@for (item of purchase.items; track item.id) { <small>{{ item.sku }} · {{ quote.item_costs[item.id] | currency:'BRL' }}/un.</small> }</div>@if (quote.notes) { <small>{{ quote.notes }}</small> }<button type="button" class="secondary small" (click)="selectQuote(quote.id)">Escolher esta cotação</button></article> }</div> } @else { <p class="muted">Registre as propostas recebidas para comparar preço e prazo.</p> }
               <form class="quote-form" [formGroup]="quoteForm" (ngSubmit)="addQuote()"><div class="quote-item-costs"><strong>Custo por peça nesta proposta</strong>@for (item of purchase.items; track item.id) { <label>{{ item.sku }} · {{ item.description }}<input type="number" min="0" step="0.01" [value]="quoteUnitCost(item)" (input)="setQuoteUnitCost(item, $any($event.target).value)" /></label> }</div><label>Fornecedor<input formControlName="supplier_name" placeholder="Nome do fornecedor" /></label><label>Contato<input formControlName="supplier_contact" placeholder="Telefone ou e-mail" /></label><label>Total da proposta<input type="number" min="0" step="0.01" formControlName="total" /></label><label>Prazo (dias)<input type="number" min="0" formControlName="delivery_days" /></label><label>Condição de pagamento<input formControlName="payment_terms" placeholder="Ex.: 30/60 dias" /></label><label class="quote-notes">Observações<input formControlName="notes" placeholder="Frete, validade da proposta…" /></label><button class="primary" [disabled]="quoteForm.invalid || !quoteCostsComplete(purchase) || saving()">Registrar cotação</button></form>
             </section> }
-            @if (purchase.status === 'approved') { <div class="workflow-action"><div><strong>Cotação aprovada</strong><span>A compra ainda não altera o estoque.</span></div><button class="primary" [disabled]="saving()" (click)="placeOrder()">Registrar pedido ao fornecedor</button></div> }
+            @if (purchase.status === 'approved' && canManagePurchases()) { <div class="workflow-action"><div><strong>Cotação aprovada</strong><span>A compra ainda não altera o estoque.</span></div><button class="primary" [disabled]="saving()" (click)="placeOrder()">Registrar pedido ao fornecedor</button></div> }
             @if (purchase.notes) { <section class="purchase-notes"><span class="eyebrow">Observações internas</span><p>{{ purchase.notes }}</p></section> }
           </div>
           <aside class="purchase-aside"><section class="purchase-aside-card"><p class="eyebrow">Resumo</p><div><span>Itens</span><strong>{{ purchase.items.length }}</strong></div><div><span>Unidades pedidas</span><strong>{{ totalUnits(purchase) | number:'1.0-3' }}</strong></div><div><span>Recebidas</span><strong>{{ receivedUnits(purchase) | number:'1.0-3' }}</strong></div>@if (selectedQuote(purchase); as quote) { <div><span>Fornecedor escolhido</span><strong>{{ quote.supplier_name }}</strong></div><div><span>Valor acordado</span><strong>{{ quote.total | currency:'BRL' }}</strong></div> }</section>
             <section class="purchase-aside-card timeline-card"><p class="eyebrow">Histórico da compra</p>@for (event of purchase.events; track event.id) { <div class="purchase-event"><i></i><div><strong>{{ event.detail }}</strong><small>{{ event.created_at | date:'dd/MM/yyyy HH:mm' }}</small></div></div> }</section>
-            @if (purchase.status !== 'received' && purchase.status !== 'cancelled') { <button type="button" class="cancel-purchase" (click)="cancel()">Cancelar compra</button> }
+            @if (canManagePurchases() && purchase.status !== 'received' && purchase.status !== 'cancelled') { <button type="button" class="cancel-purchase" (click)="cancel()">Cancelar compra</button> }
           </aside>
         </div>
         @if (error()) { <p class="purchase-error" role="alert">{{ error() }}</p> }
@@ -82,8 +84,12 @@ import { PeriodFilter } from '../../shared/period-filter';
 })
 export class PurchasesPage implements OnInit {
   private readonly api = inject(ApiService);
+  private readonly auth = inject(AuthService);
   private readonly fb = inject(FormBuilder);
   readonly purchases = signal<Purchase[]>([]);
+  canManagePurchases() { return canManagePurchases(this.auth.user()?.role); }
+  canAdjustStock() { return canAdjustStock(this.auth.user()?.role); }
+  canReadCosts() { return canReadCosts(this.auth.user()?.role); }
   readonly products = signal<Product[]>([]);
   readonly detail = signal<Purchase | null>(null);
   readonly showNew = signal(false);
@@ -132,7 +138,7 @@ export class PurchasesPage implements OnInit {
   openNew() { this.error.set(''); this.form.reset({ needed_by: '', notes: '' }); while (this.lines.length) this.lines.removeAt(0); this.addLine(); this.showNew.set(true); }
   addLine() { this.lines.push(this.newLine()); }
   removeLine(index: number) { this.lines.removeAt(index); }
-  selectProduct(index: number, id: string) { const line = this.lines.at(index); const product = this.products().find((entry) => entry.id === id); if (product) line.patchValue({ product_id: id, sku: product.sku, description: product.name, unit_cost: product.cost_price }); else line.patchValue({ product_id: '', sku: '', description: '' }); }
+  selectProduct(index: number, id: string) { const line = this.lines.at(index); const product = this.products().find((entry) => entry.id === id); if (product) line.patchValue({ product_id: id, sku: product.sku, description: product.name, unit_cost: product.cost_price ?? 0 }); else line.patchValue({ product_id: '', sku: '', description: '' }); }
   create() {
     if (this.form.invalid || this.saving()) return;
     this.saving.set(true); this.error.set('');

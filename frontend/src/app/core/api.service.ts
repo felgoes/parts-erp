@@ -157,7 +157,7 @@ export class ApiService {
   resetUserPassword(id: string, password: string): Observable<User> {
     return this.http.patch<User>(`${this.base}/users/${id}/password`, { password });
   }
-  updateUser(id: string, payload: { email?: string; full_name?: string; password?: string }): Observable<User> {
+  updateUser(id: string, payload: { email?: string; full_name?: string; password?: string; role?: User['role']; active?: boolean }): Observable<User> {
     return this.http.patch<User>(`${this.base}/users/${id}`, payload);
   }
   automateMarketplaceOrder(id: string): Observable<MarketplaceOrder> {

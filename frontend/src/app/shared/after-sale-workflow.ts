@@ -2,6 +2,7 @@ import { CurrencyPipe, DatePipe, DecimalPipe, LowerCasePipe } from '@angular/com
 import { Component, Input, OnChanges, SimpleChanges, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../core/api.service';
+import { AuthService } from '../core/auth.service';
 import { AfterSaleCase, AfterSaleCaseItem, InvoiceAfterSale } from '../core/models';
 import { statusLabel } from '../core/status-labels';
 
@@ -47,7 +48,7 @@ interface ReturnItemForm {
               <article class="return-item">
                 <div class="return-item-title"><div><strong>{{ item.description }}</strong><small>SKU {{ item.sku }} · limite do pedido {{ item.requested_quantity | number:'1.0-3' }} un.</small></div><span class="badge" [class.success]="item.disposition === 'restock'">{{ item.disposition === 'pending' ? 'Aguardando conferência' : statusLabel(item.disposition) }}</span></div>
                 <div class="return-quantities"><div><small>Recebidas</small><strong>{{ item.received_quantity | number:'1.0-3' }} un.</strong></div><div><small>Inspecionadas</small><strong>{{ item.inspected_quantity | number:'1.0-3' }} un.</strong></div><div><small>Devolvidas ao estoque</small><strong>{{ item.restocked_quantity | number:'1.0-3' }} un.</strong></div></div>
-                @if (caseRecord.workflow_status !== 'resolved') {
+                @if (caseRecord.workflow_status !== 'resolved' && canProcess()) {
                   <div class="return-actions">
                     @if (item.received_quantity < item.requested_quantity) {
                       <label>Recebida fisicamente (total acumulado)<input type="number" min="{{ item.received_quantity }}" max="{{ item.requested_quantity }}" step="0.001" [ngModel]="formFor(item).received" (ngModelChange)="setForm(item.id, 'received', $event)" /></label>
@@ -61,14 +62,14 @@ interface ReturnItemForm {
                     }
                   </div>
                 } @else {
-                  <p class="return-outcome">{{ item.restocked_quantity | number:'1.0-3' }} unidade(s) reintegrada(s) ao estoque. O restante foi registrado como {{ statusLabel(item.disposition) | lowercase }}.</p>
+                  @if (caseRecord.workflow_status === 'resolved') { <p class="return-outcome">{{ item.restocked_quantity | number:'1.0-3' }} unidade(s) reintegrada(s) ao estoque. O restante foi registrado como {{ statusLabel(item.disposition) | lowercase }}.</p> }
                 }
                 @if (item.notes) { <small class="return-item-notes">{{ item.notes }}</small> }
               </article>
             } @empty {
               <p class="muted">A devolução ainda não trouxe itens conciliáveis. Confira o pedido no Mercado Livre antes de registrar entrada de estoque.</p>
             }
-            @if (caseRecord.workflow_status !== 'resolved' && canCloseWithoutStock(caseRecord)) {
+            @if (caseRecord.workflow_status !== 'resolved' && canClose() && canCloseWithoutStock(caseRecord)) {
               <button class="secondary small close-return" [disabled]="busy() === caseRecord.id + ':close'" (click)="closeWithoutStock(caseRecord)">{{ hasReceivedItems(caseRecord) ? 'Encerrar sem outras peças recebidas' : 'Encerrar sem retorno físico da peça' }}</button>
             }
             @if (caseRecord.events.length) {
@@ -96,6 +97,17 @@ export class AfterSaleWorkflow implements OnChanges {
   readonly messageIsError = signal(false);
   readonly statusLabel = statusLabel;
   private readonly api = inject(ApiService);
+  private readonly auth = inject(AuthService);
+
+  canProcess() {
+    const role = this.auth.user()?.role;
+    return role === 'admin' || role === 'manager' || role === 'stock';
+  }
+
+  canClose() {
+    const role = this.auth.user()?.role;
+    return role === 'admin' || role === 'manager';
+  }
 
   ngOnChanges(_changes: SimpleChanges) {
     this.cases.set(this.afterSale?.cases ?? []);

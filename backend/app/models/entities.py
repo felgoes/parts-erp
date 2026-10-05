@@ -33,6 +33,9 @@ class UserRole(enum.StrEnum):
     admin = "admin"
     manager = "manager"
     operator = "operator"
+    stock = "stock"
+    finance = "finance"
+    viewer = "viewer"
 
 
 class InvoiceStatus(enum.StrEnum):

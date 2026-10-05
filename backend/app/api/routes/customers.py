@@ -1,10 +1,11 @@
-from fastapi import APIRouter, Depends
 from decimal import Decimal
 
+from fastapi import APIRouter, Depends
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user
+from app.api.deps import require_permission
+from app.core.permissions import Permission
 from app.core.text import normalize_customer_name
 from app.db.session import get_db
 from app.models import Customer, MarketplaceOrder, SalesInvoice, User
@@ -15,7 +16,7 @@ router = APIRouter(prefix="/customers", tags=["Clientes"])
 
 @router.get("", response_model=list[CustomerOut])
 def list_customers(
-    db: Session = Depends(get_db), _: User = Depends(get_current_user)
+    db: Session = Depends(get_db), _: User = Depends(require_permission(Permission.CUSTOMER_READ))
 ) -> list[Customer]:
     return list(db.scalars(select(Customer).order_by(Customer.name).limit(500)))
 
@@ -24,7 +25,7 @@ def list_customers(
 def create_customer(
     payload: CustomerCreate,
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
+    _: User = Depends(require_permission(Permission.CUSTOMER_MANAGE)),
 ) -> Customer:
     values = payload.model_dump()
     values["name"] = normalize_customer_name(values["name"])
@@ -39,7 +40,7 @@ def create_customer(
 def customer_detail(
     customer_id: str,
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
+    _: User = Depends(require_permission(Permission.CUSTOMER_READ)),
 ) -> dict:
     customer = db.get(Customer, customer_id)
     if not customer:
@@ -53,15 +54,20 @@ def customer_detail(
             .order_by(SalesInvoice.created_at.desc())
         )
     )
-    order_ids = {invoice.marketplace_order_id for invoice in invoices if invoice.marketplace_order_id}
+    order_ids = {
+        invoice.marketplace_order_id for invoice in invoices if invoice.marketplace_order_id
+    }
     cancelled = 0
     if order_ids:
-        cancelled = db.scalar(
-            select(func.count(MarketplaceOrder.id)).where(
-                MarketplaceOrder.external_order_id.in_(order_ids),
-                MarketplaceOrder.status == "cancelled",
+        cancelled = (
+            db.scalar(
+                select(func.count(MarketplaceOrder.id)).where(
+                    MarketplaceOrder.external_order_id.in_(order_ids),
+                    MarketplaceOrder.status == "cancelled",
+                )
             )
-        ) or 0
+            or 0
+        )
     confirmed = [
         invoice
         for invoice in invoices
@@ -73,8 +79,12 @@ def customer_detail(
         CustomerPurchaseOut(
             id=invoice.id,
             number=invoice.number,
-            status=str(invoice.status.value if hasattr(invoice.status, "value") else invoice.status),
-            source=str(invoice.source.value if hasattr(invoice.source, "value") else invoice.source),
+            status=str(
+                invoice.status.value if hasattr(invoice.status, "value") else invoice.status
+            ),
+            source=str(
+                invoice.source.value if hasattr(invoice.source, "value") else invoice.source
+            ),
             marketplace_order_id=invoice.marketplace_order_id,
             total=invoice.total,
             issued_at=invoice.issued_at,

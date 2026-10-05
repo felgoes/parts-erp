@@ -5,7 +5,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
-from app.api.deps import get_current_user
+from app.api.deps import require_permission
+from app.core.permissions import Permission
 from app.db.session import get_db
 from app.models import InvoiceStatus, Product, SalesInvoice, User
 from app.schemas.common import (
@@ -41,7 +42,7 @@ def summary(
     start_date: date | None = Query(default=None),
     end_date: date | None = Query(default=None),
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
+    _: User = Depends(require_permission(Permission.DASHBOARD_READ)),
 ) -> DashboardSummary:
     _, _, since, until = _period(start_date, end_date)
     invoice_date = func.coalesce(SalesInvoice.issued_at, SalesInvoice.created_at)
@@ -105,7 +106,7 @@ def financial_metrics(
     start_date: date | None = Query(default=None),
     end_date: date | None = Query(default=None),
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
+    _: User = Depends(require_permission(Permission.DASHBOARD_READ)),
 ) -> DashboardFinancialMetrics:
     start, end, since, until = _period(start_date, end_date)
     duration = until - since

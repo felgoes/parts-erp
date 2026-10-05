@@ -4,9 +4,10 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user, require_roles
+from app.api.deps import require_permission
+from app.core.permissions import Permission
 from app.db.session import get_db
-from app.models import MarketStudy, User, UserRole
+from app.models import MarketStudy, User
 from app.schemas.common import (
     MarketStudyConnectorOut,
     MarketStudyConnectorUpdate,
@@ -24,11 +25,12 @@ from app.services.market_research import (
 )
 
 router = APIRouter(prefix="/market-studies", tags=["Estudos de mercado"])
-MANAGERS = (UserRole.admin, UserRole.manager)
 
 
 @router.get("/connector", response_model=MarketStudyConnectorOut)
-def get_connector(db: Session = Depends(get_db), _: User = Depends(get_current_user)) -> dict:
+def get_connector(
+    db: Session = Depends(get_db), _: User = Depends(require_permission(Permission.STUDY_READ))
+) -> dict:
     return connector_output(connector_config(db))
 
 
@@ -36,7 +38,7 @@ def get_connector(db: Session = Depends(get_db), _: User = Depends(get_current_u
 def update_connector(
     payload: MarketStudyConnectorUpdate,
     db: Session = Depends(get_db),
-    _: User = Depends(require_roles(*MANAGERS)),
+    _: User = Depends(require_permission(Permission.STUDY_CONFIG)),
 ) -> dict:
     try:
         config = save_connector(db, **payload.model_dump())
@@ -49,7 +51,7 @@ def update_connector(
 
 @router.get("", response_model=list[MarketStudyOut])
 def list_studies(
-    db: Session = Depends(get_db), _: User = Depends(get_current_user)
+    db: Session = Depends(get_db), _: User = Depends(require_permission(Permission.STUDY_READ))
 ) -> list[MarketStudy]:
     return list(db.scalars(select(MarketStudy).order_by(MarketStudy.created_at.desc()).limit(100)))
 
@@ -58,7 +60,7 @@ def list_studies(
 def create_study(
     payload: MarketStudyCreate,
     db: Session = Depends(get_db),
-    user: User = Depends(require_roles(*MANAGERS)),
+    user: User = Depends(require_permission(Permission.STUDY_RUN)),
 ) -> MarketStudy:
     try:
         return run_study(db, user, payload)
@@ -75,7 +77,7 @@ def create_purchase_draft(
     study_id: str,
     payload: MarketStudyPurchaseIn,
     db: Session = Depends(get_db),
-    user: User = Depends(require_roles(*MANAGERS)),
+    user: User = Depends(require_permission(Permission.PURCHASE_MANAGE)),
 ):
     study = db.scalar(select(MarketStudy).where(MarketStudy.id == study_id).with_for_update())
     if not study:

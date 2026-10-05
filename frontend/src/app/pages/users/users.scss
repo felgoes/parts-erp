@@ -7,7 +7,27 @@
 }
 
 .table-card table {
-  min-width: 560px;
+  min-width: 760px;
+}
+
+.role-description {
+  display: block;
+  max-width: 360px;
+  margin-top: 5px;
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+
+.active-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.active-toggle input {
+  width: 18px;
+  height: 18px;
 }
 
 .form-message.error {

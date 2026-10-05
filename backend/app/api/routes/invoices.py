@@ -5,7 +5,8 @@ from fastapi.responses import FileResponse
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
-from app.api.deps import get_current_user, require_roles
+from app.api.deps import require_permission
+from app.core.permissions import Permission
 from app.db.session import get_db
 from app.models import (
     AfterSaleCase,
@@ -16,7 +17,6 @@ from app.models import (
     Product,
     SalesInvoice,
     User,
-    UserRole,
 )
 from app.schemas.common import (
     AfterSaleCaseOut,
@@ -52,7 +52,7 @@ def list_invoices(
     start_date: date | None = Query(default=None),
     end_date: date | None = Query(default=None),
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
+    _: User = Depends(require_permission(Permission.INVOICE_READ)),
 ) -> list[InvoiceOut]:
     today = datetime.now(BRAZIL_TZ).date()
     start = start_date or today.replace(day=1)
@@ -89,7 +89,7 @@ def list_invoices(
 def add_invoice(
     payload: InvoiceCreate,
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
+    _: User = Depends(require_permission(Permission.INVOICE_CREATE)),
 ) -> SalesInvoice:
     invoice = create_invoice(db, payload)
     db.commit()
@@ -101,7 +101,7 @@ def add_invoice(
 def get_invoice(
     invoice_id: str,
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
+    _: User = Depends(require_permission(Permission.INVOICE_READ)),
 ) -> InvoiceOut:
     invoice = db.scalar(
         select(SalesInvoice)
@@ -205,7 +205,7 @@ def get_invoice(
 def confirm(
     invoice_id: str,
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
+    _: User = Depends(require_permission(Permission.INVOICE_CONFIRM)),
 ) -> SalesInvoice:
     invoice = db.get(SalesInvoice, invoice_id)
     if not invoice:
@@ -221,7 +221,7 @@ def confirm(
 def cancel(
     invoice_id: str,
     db: Session = Depends(get_db),
-    _: User = Depends(require_roles(UserRole.admin, UserRole.manager)),
+    _: User = Depends(require_permission(Permission.INVOICE_CANCEL)),
 ) -> SalesInvoice:
     invoice = db.get(SalesInvoice, invoice_id)
     if not invoice:
@@ -238,7 +238,7 @@ def download_document(
     invoice_id: str,
     document_id: str,
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
+    _: User = Depends(require_permission(Permission.INVOICE_READ)),
 ) -> FileResponse:
     document = db.scalar(
         select(InvoiceDocument).where(

@@ -3,7 +3,9 @@ import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { finalize } from 'rxjs';
 import { ApiService } from '../../core/api.service';
+import { AuthService } from '../../core/auth.service';
 import { Product, ProductChannelDraft, ProductChannelMetadata, ProductDetail, ProductFitment, ProductImage, StockMovement } from '../../core/models';
+import { canAdjustStock, canManageCatalog, canReadCosts } from '../../core/user-access';
 import { PageHeader } from '../../shared/page-header';
 
 @Component({
@@ -14,7 +16,7 @@ import { PageHeader } from '../../shared/page-header';
       eyebrow="Catálogo"
       title="Produtos e estoque"
       subtitle="Peças, preços e disponibilidade em um só lugar."
-      ><button class="primary" (click)="openNew()">+ Novo produto</button></app-page-header
+      >@if (canManageCatalog()) { <button class="primary" (click)="openNew()">+ Novo produto</button> }</app-page-header
     >
     <section class="toolbar">
       <div class="search">
@@ -78,7 +80,7 @@ import { PageHeader } from '../../shared/page-header';
                 </td>
                 <td class="right">
                   <button class="secondary small" (click)="$event.stopPropagation(); openDetails(product)">Detalhes</button>
-                  <button class="secondary small" (click)="$event.stopPropagation(); openAdjust(product)">Ajustar</button>
+                  @if (canAdjustStock()) { <button class="secondary small" (click)="$event.stopPropagation(); openAdjust(product)">Ajustar</button> }
                 </td>
               </tr>
             } @empty {
@@ -140,7 +142,7 @@ import { PageHeader } from '../../shared/page-header';
                     type="number"
                     step="0.01"
                     formControlName="sale_price" /></label
-                ><label>Custo<input type="number" step="0.01" formControlName="cost_price" /></label
+                >@if (canReadCosts()) { <label>Custo<input type="number" step="0.01" formControlName="cost_price" /></label> }
                 ><label
                   >Estoque inicial<input
                     type="number"
@@ -170,18 +172,18 @@ import { PageHeader } from '../../shared/page-header';
       <div class="modal-backdrop" (click)="detail.set(null)">
         <section class="modal wide object-modal" (click)="$event.stopPropagation()">
           <div class="modal-head product-hero"><div><p class="eyebrow">Catálogo · Produto</p><h2>{{ product.name }}</h2><p class="detail-subtitle">SKU {{ product.sku }} · atualizado no estoque</p></div><button class="close" aria-label="Fechar produto" (click)="detail.set(null)">×</button></div>
-          <div class="detail-actions"><button class="secondary small" (click)="openEdit(product)">Editar ficha</button><button class="secondary small" (click)="detailPhotoInput.click()">Adicionar fotos</button><input #detailPhotoInput hidden type="file" accept="image/jpeg,image/png,image/webp" multiple (change)="uploadDetailPhotos(product, $event)" /></div>
+          @if (canManageCatalog()) { <div class="detail-actions"><button class="secondary small" (click)="openEdit(product)">Editar ficha</button><button class="secondary small" (click)="detailPhotoInput.click()">Adicionar fotos</button><input #detailPhotoInput hidden type="file" accept="image/jpeg,image/png,image/webp" multiple (change)="uploadDetailPhotos(product, $event)" /></div> }
           <div class="product-detail-summary"><div><span>SKU</span><strong>{{ product.sku }}</strong></div><div><span>Preço de venda</span><strong>{{ product.sale_price | currency:'BRL' }}</strong></div><div><span>Estoque atual</span><strong>{{ product.current_stock | number:'1.0-3' }} un.</strong><small>mínimo {{ product.minimum_stock | number:'1.0-3' }} un.</small></div></div>
-          @if (product.images.length) { <div class="master-photo-grid">@for (photo of product.images; track photo.id) { <figure><a [href]="photo.url" target="_blank" rel="noopener"><img [src]="photo.url" [alt]="product.name" /></a><button class="photo-remove" aria-label="Remover foto" (click)="removePhoto(product, photo)">×</button></figure> }</div> }
+          @if (product.images.length) { <div class="master-photo-grid">@for (photo of product.images; track photo.id) { <figure><a [href]="photo.url" target="_blank" rel="noopener"><img [src]="photo.url" [alt]="product.name" /></a>@if (canManageCatalog()) { <button class="photo-remove" aria-label="Remover foto" (click)="removePhoto(product, photo)">×</button> }</figure> }</div> }
           <div class="product-detail-summary product-spec-grid">@if (product.brand) { <div><span>Marca</span><strong>{{ product.brand }}</strong></div> }@if (product.manufacturer_part_number) { <div><span>OEM / MPN</span><strong>{{ product.manufacturer_part_number }}</strong></div> }@if (product.barcode) { <div><span>GTIN / EAN</span><strong>{{ product.barcode }}</strong></div> }@if (product.category) { <div><span>Categoria</span><strong>{{ product.category }}</strong></div> }@if (product.weight_g) { <div><span>Peso embalado</span><strong>{{ product.weight_g }} g</strong></div> }@if (product.warranty_days !== null) { <div><span>Garantia</span><strong>{{ product.warranty_days }} dias</strong></div> }</div>
           @if (product.fitments.length) { <section class="product-section"><div class="section-heading"><div><p class="eyebrow">Aplicação</p><h3>Veículos compatíveis</h3></div></div><div class="fitment-chips">@for (fit of product.fitments; track $index) { <span>{{ fit.make }} {{ fit.model }} · {{ fit.year_from || '—' }}–{{ fit.year_to || '—' }}{{ fit.engine ? ' · ' + fit.engine : '' }}</span> }</div></section> }
           <div class="product-description"><span class="eyebrow">Descrição</span><p>{{ product.description || 'Este produto ainda não possui uma descrição cadastrada.' }}</p></div>
-          <section class="product-section"><div class="section-heading"><div><p class="eyebrow">Canais de venda</p><h3>Anúncios vinculados</h3></div>@if (product.listings.some(hasExternalListing)) { <button class="secondary small" (click)="syncMarketplace(product)">Sincronizar estoque nos anúncios</button> }</div>
+          <section class="product-section"><div class="section-heading"><div><p class="eyebrow">Canais de venda</p><h3>Anúncios vinculados</h3></div>@if (canAdjustStock() && product.listings.some(hasExternalListing)) { <button class="secondary small" (click)="syncMarketplace(product)">Sincronizar estoque nos anúncios</button> }</div>
             @for (listing of product.listings; track listing.id) {
               <article class="listing-card">@if (listing.thumbnail) { <img [src]="listing.thumbnail" [alt]="listing.title || 'Imagem do anúncio'" /> } @else { <div class="listing-placeholder">{{ listing.provider === 'shopee' ? 'S' : 'ML' }}</div> }<div class="listing-content"><div class="listing-title"><div><span class="eyebrow">{{ listing.provider === 'shopee' ? 'Shopee' : 'Mercado Livre' }} · {{ listing.external_item_id || 'rascunho' }}</span><strong>{{ listing.title || 'Rascunho sem título' }}</strong></div><span class="badge" [class.success]="listing.sync_status === 'published'">{{ syncStatusLabel(listing.sync_status) }}</span></div><div class="listing-metrics"><div><small>Estoque no canal</small><strong>{{ listing.available_quantity ?? '—' }}</strong></div><div><small>Vendidos</small><strong>{{ listing.sold_quantity ?? 0 }}</strong></div><div><small>Visitas</small><strong>{{ listing.visits ?? 0 }}</strong></div><div><small>Preço</small><strong>{{ listing.marketplace_price | currency:'BRL' }}</strong></div></div>@if (listing.sync_error) { <p class="channel-notice">{{ listing.sync_error }}</p> }@if (listing.permalink) { <a class="listing-link" [href]="listing.permalink" target="_blank" rel="noopener">Abrir anúncio <span>↗</span></a> }</div></article>
             } @empty { <div class="empty">Nenhum anúncio do Mercado Livre vinculado a este SKU.</div> }
           </section>
-          <section class="product-section channel-publish">
+          @if (canManageCatalog()) { <section class="product-section channel-publish">
             <div class="section-heading"><div><p class="eyebrow">Cadastro multicanal</p><h3>Preparar anúncio</h3><p class="muted">Cada plataforma tem campos, categorias e políticas próprias. Salvar rascunho não publica nem altera anúncios.</p></div></div>
             <div class="channel-tabs"><button [class.active]="channelProvider() === 'mercadolivre'" (click)="selectProvider('mercadolivre')">Mercado Livre</button><button [class.active]="channelProvider() === 'shopee'" (click)="selectProvider('shopee')">Shopee</button></div>
             @if (channelMetadata(); as meta) {
@@ -211,8 +213,8 @@ import { PageHeader } from '../../shared/page-header';
               <button class="secondary small" (click)="loadChannelMetadata()">Carregar requisitos do canal</button>
             }
             @if (channelMessage()) { <p class="channel-notice">{{ channelMessage() }}</p> }
-          </section>
-          <section class="product-section stock-section"><div class="section-heading"><div><p class="eyebrow">Movimentações</p><h3>Histórico de estoque</h3><p class="muted">Cada saída usa o custo médio vigente no momento do movimento.</p></div><span class="muted">{{ movements().length }} registro(s)</span></div><div class="movement-list">@for (movement of movements(); track movement.id) { <div class="movement-row"><span class="movement-date">{{ movement.created_at | date:'dd/MM/yyyy HH:mm' }}</span><strong [class.negative]="movement.quantity < 0" [class.positive]="movement.quantity > 0">{{ movement.quantity > 0 ? '+' : '' }}{{ movement.quantity | number:'1.0-3' }}</strong><span class="movement-reason">{{ movement.reason }}</span><span class="movement-value">@if (movement.movement_value !== null) { <strong>{{ movement.movement_value | currency:'BRL' }}</strong><small>{{ movement.unit_cost | currency:'BRL' }} / un.</small> } @else { <small>Custo histórico indisponível</small> }</span><small>Saldo <b>{{ movement.balance_after | number:'1.0-3' }}</b></small></div> } @empty { <p class="muted">Nenhuma movimentação registrada.</p> }</div></section>
+          </section> }
+          <section class="product-section stock-section"><div class="section-heading"><div><p class="eyebrow">Movimentações</p><h3>Histórico de estoque</h3>@if (canReadCosts()) { <p class="muted">Cada saída usa o custo médio vigente no momento do movimento.</p> }</div><span class="muted">{{ movements().length }} registro(s)</span></div><div class="movement-list">@for (movement of movements(); track movement.id) { <div class="movement-row"><span class="movement-date">{{ movement.created_at | date:'dd/MM/yyyy HH:mm' }}</span><strong [class.negative]="movement.quantity < 0" [class.positive]="movement.quantity > 0">{{ movement.quantity > 0 ? '+' : '' }}{{ movement.quantity | number:'1.0-3' }}</strong><span class="movement-reason">{{ movement.reason }}</span>@if (canReadCosts()) { <span class="movement-value">@if (movement.movement_value !== null) { <strong>{{ movement.movement_value | currency:'BRL' }}</strong><small>{{ movement.unit_cost | currency:'BRL' }} / un.</small> } @else { <small>Custo histórico indisponível</small> }</span> }<small>Saldo <b>{{ movement.balance_after | number:'1.0-3' }}</b></small></div> } @empty { <p class="muted">Nenhuma movimentação registrada.</p> }</div></section>
         </section>
       </div>
     }
@@ -221,6 +223,7 @@ import { PageHeader } from '../../shared/page-header';
 })
 export class ProductsPage implements OnInit {
   private readonly api = inject(ApiService);
+  private readonly auth = inject(AuthService);
   private readonly fb = inject(FormBuilder);
   readonly products = signal<Product[]>([]);
   readonly search = signal('');
@@ -236,6 +239,9 @@ export class ProductsPage implements OnInit {
   readonly attributesText = signal('');
   readonly fitmentsText = signal('');
   readonly channelProvider = signal<'mercadolivre' | 'shopee'>('mercadolivre');
+  canManageCatalog() { return canManageCatalog(this.auth.user()?.role); }
+  canAdjustStock() { return canAdjustStock(this.auth.user()?.role); }
+  canReadCosts() { return canReadCosts(this.auth.user()?.role); }
   readonly channelMetadata = signal<ProductChannelMetadata | null>(null);
   readonly categoryQuery = signal('');
   readonly selectedCategory = signal('');
@@ -297,7 +303,7 @@ export class ProductsPage implements OnInit {
     this.detail.set(null); this.adjusting.set(null); this.editing.set(product); this.selectedFiles.set([]); this.photoPreviews.set([]);
     this.attributesText.set(Object.entries(product.attributes || {}).map(([key, value]) => `${key}: ${value}`).join('\n'));
     this.fitmentsText.set((product.fitments || []).map((fit) => [fit.make, fit.model, fit.year_from || '', fit.year_to || '', fit.engine || ''].join(' | ')).join('\n'));
-    this.productForm.reset({ sku: product.sku, name: product.name, description: product.description || '', sale_price: product.sale_price, cost_price: product.cost_price, current_stock: product.current_stock, minimum_stock: product.minimum_stock, brand: product.brand || '', manufacturer: product.manufacturer || '', manufacturer_part_number: product.manufacturer_part_number || '', barcode: product.barcode || '', category: product.category || '', item_condition: product.item_condition, warranty_days: product.warranty_days, origin_country: product.origin_country || '', weight_g: product.weight_g, package_length_cm: product.package_length_cm, package_width_cm: product.package_width_cm, package_height_cm: product.package_height_cm });
+    this.productForm.reset({ sku: product.sku, name: product.name, description: product.description || '', sale_price: product.sale_price, cost_price: product.cost_price ?? 0, current_stock: product.current_stock, minimum_stock: product.minimum_stock, brand: product.brand || '', manufacturer: product.manufacturer || '', manufacturer_part_number: product.manufacturer_part_number || '', barcode: product.barcode || '', category: product.category || '', item_condition: product.item_condition, warranty_days: product.warranty_days, origin_country: product.origin_country || '', weight_g: product.weight_g, package_length_cm: product.package_length_cm, package_width_cm: product.package_width_cm, package_height_cm: product.package_height_cm });
     this.modal.set(true);
   }
   selectPhotos(event: Event) { const files = Array.from((event.target as HTMLInputElement).files || []); this.selectedFiles.set(files); this.photoPreviews.set(files.map((file) => URL.createObjectURL(file))); }
@@ -334,7 +340,7 @@ export class ProductsPage implements OnInit {
     this.detail.set(null);
     this.movements.set([]);
     this.channelMetadata.set(null); this.channelMessage.set('');
-    this.api.productDetail(p.id).subscribe((v) => { this.detail.set(v); this.loadChannelMetadata(); });
+    this.api.productDetail(p.id).subscribe((v) => { this.detail.set(v); if (this.canManageCatalog()) this.loadChannelMetadata(); });
     this.api.productMovements(p.id).subscribe((v) => this.movements.set(v));
   }
   syncMarketplace(p: ProductDetail) {

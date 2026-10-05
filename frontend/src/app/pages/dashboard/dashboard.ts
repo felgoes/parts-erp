@@ -2,7 +2,9 @@ import { CurrencyPipe, DatePipe, DecimalPipe, UpperCasePipe } from '@angular/com
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { ApiService } from '../../core/api.service';
+import { AuthService } from '../../core/auth.service';
 import { DashboardFinancialMetrics, DashboardSummary, Invoice } from '../../core/models';
+import { canAdjustStock, canManageCatalog, canSell } from '../../core/user-access';
 import { statusLabel, trackingEventLabel } from '../../core/status-labels';
 import { PageHeader } from '../../shared/page-header';
 import { PeriodFilter } from '../../shared/period-filter';
@@ -16,7 +18,7 @@ import { AfterSaleWorkflow } from '../../shared/after-sale-workflow';
       eyebrow="Centro de controle"
       title="Visão geral"
       subtitle="O pulso da sua operação, agora."
-      ><a class="primary" routerLink="/invoices">+ Nova venda</a></app-page-header
+      >@if (canSell()) { <a class="primary" routerLink="/invoices">+ Nova venda</a> }</app-page-header
     >
     @if (data(); as summary) {
       <section class="metric-grid">
@@ -85,15 +87,17 @@ import { AfterSaleWorkflow } from '../../shared/after-sale-workflow';
         <aside class="card quick">
           <h2>Ações rápidas</h2>
           <p>Atalhos para o dia a dia</p>
-          <a routerLink="/products"
+          @if (canManageCatalog()) { <a routerLink="/products"
             ><span>◇</span>
             <div><strong>Cadastrar produto</strong><small>Adicione uma nova peça</small></div>
             <b>→</b></a
-          ><a routerLink="/products"
+          > }
+          @if (canAdjustStock()) { <a routerLink="/products"
             ><span>±</span>
             <div><strong>Ajustar estoque</strong><small>Entrada, perda ou inventário</small></div>
             <b>→</b></a
-          ><a routerLink="/marketplace"
+          > }
+          <a routerLink="/marketplace"
             ><span>M</span>
             <div><strong>Revisar pedidos</strong><small>Acompanhe a conciliação</small></div>
             <b>→</b></a
@@ -130,6 +134,10 @@ import { AfterSaleWorkflow } from '../../shared/after-sale-workflow';
 })
 export class DashboardPage implements OnInit {
   private readonly api = inject(ApiService);
+  private readonly auth = inject(AuthService);
+  canSell() { return canSell(this.auth.user()?.role); }
+  canManageCatalog() { return canManageCatalog(this.auth.user()?.role); }
+  canAdjustStock() { return canAdjustStock(this.auth.user()?.role); }
   private readonly router = inject(Router);
   readonly data = signal<DashboardSummary | null>(null);
   readonly financial = signal<DashboardFinancialMetrics | null>(null);

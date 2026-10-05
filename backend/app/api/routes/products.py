@@ -7,7 +7,8 @@ from sqlalchemy import or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user, require_roles
+from app.api.deps import require_permission
+from app.core.permissions import Permission, has_permission
 from app.db.session import get_db
 from app.models import (
     MovementType,
@@ -15,7 +16,6 @@ from app.models import (
     ProductMarketplaceListing,
     StockMovement,
     User,
-    UserRole,
 )
 from app.schemas.common import (
     ProductChannelDraftIn,
@@ -44,7 +44,7 @@ def get_channel_metadata(
     query: str | None = Query(default=None, max_length=200),
     category_id: str | None = Query(default=None, max_length=80),
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
+    _: User = Depends(require_permission(Permission.LISTING_MANAGE)),
 ) -> dict:
     try:
         return channel_metadata(db, provider, query=query, category_id=category_id)
@@ -63,7 +63,7 @@ def update_channel_draft(
     provider: str,
     payload: ProductChannelDraftIn,
     db: Session = Depends(get_db),
-    _: User = Depends(require_roles(UserRole.admin, UserRole.manager)),
+    _: User = Depends(require_permission(Permission.PRODUCT_MANAGE)),
 ) -> Product:
     product = db.get(Product, product_id)
     if not product:
@@ -83,7 +83,7 @@ def publish_product_channel(
     product_id: str,
     provider: str,
     db: Session = Depends(get_db),
-    _: User = Depends(require_roles(UserRole.admin, UserRole.manager)),
+    _: User = Depends(require_permission(Permission.PRODUCT_MANAGE)),
 ) -> Product:
     product = db.get(Product, product_id)
     if not product:
@@ -125,8 +125,8 @@ def list_products(
     low_stock: bool = False,
     limit: int = Query(default=100, le=500),
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
-) -> list[Product]:
+    actor: User = Depends(require_permission(Permission.PRODUCT_READ)),
+) -> list[ProductOut]:
     query = select(Product).order_by(Product.name).limit(limit)
     if search:
         query = query.where(
@@ -134,14 +134,20 @@ def list_products(
         )
     if low_stock:
         query = query.where(Product.current_stock <= Product.minimum_stock)
-    return list(db.scalars(query))
+    products = list(db.scalars(query))
+    if has_permission(actor.role, Permission.FINANCE_READ):
+        return products
+    return [
+        ProductOut.model_validate(product).model_copy(update={"cost_price": None})
+        for product in products
+    ]
 
 
 @router.post("", response_model=ProductOut, status_code=201)
 def create_product(
     payload: ProductCreate,
     db: Session = Depends(get_db),
-    _: User = Depends(require_roles(UserRole.admin, UserRole.manager)),
+    _: User = Depends(require_permission(Permission.PRODUCT_MANAGE)),
 ) -> Product:
     product = Product(**payload.model_dump(exclude={"current_stock"}), current_stock=0)
     db.add(product)
@@ -170,7 +176,7 @@ def update_product(
     product_id: str,
     payload: ProductUpdate,
     db: Session = Depends(get_db),
-    _: User = Depends(require_roles(UserRole.admin, UserRole.manager)),
+    _: User = Depends(require_permission(Permission.PRODUCT_MANAGE)),
 ) -> Product:
     product = db.get(Product, product_id)
     if not product:
@@ -187,7 +193,7 @@ def upload_product_images(
     product_id: str,
     files: list[UploadFile] = File(...),
     db: Session = Depends(get_db),
-    _: User = Depends(require_roles(UserRole.admin, UserRole.manager)),
+    _: User = Depends(require_permission(Permission.PRODUCT_MANAGE)),
 ) -> Product:
     product = db.get(Product, product_id)
     if not product:
@@ -239,7 +245,7 @@ def delete_product_image(
     product_id: str,
     image_id: str,
     db: Session = Depends(get_db),
-    _: User = Depends(require_roles(UserRole.admin, UserRole.manager)),
+    _: User = Depends(require_permission(Permission.PRODUCT_MANAGE)),
 ) -> Product:
     product = db.get(Product, product_id)
     if not product:
@@ -267,12 +273,14 @@ def delete_product_image(
 def product_detail(
     product_id: str,
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
-) -> Product:
+    actor: User = Depends(require_permission(Permission.PRODUCT_READ)),
+) -> ProductDetailOut:
     product = db.get(Product, product_id)
     if not product:
         raise HTTPException(status_code=404, detail="Produto não encontrado")
-    return product
+    if has_permission(actor.role, Permission.FINANCE_READ):
+        return product
+    return ProductDetailOut.model_validate(product).model_copy(update={"cost_price": None})
 
 
 @router.post("/{product_id}/adjust-stock", response_model=ProductOut)
@@ -280,8 +288,8 @@ def adjust_stock(
     product_id: str,
     payload: StockAdjustment,
     db: Session = Depends(get_db),
-    _: User = Depends(require_roles(UserRole.admin, UserRole.manager)),
-) -> Product:
+    actor: User = Depends(require_permission(Permission.INVENTORY_ADJUST)),
+) -> ProductOut:
     move_stock(
         db,
         product_id=product_id,
@@ -302,15 +310,17 @@ def adjust_stock(
     except Exception:
         # O saldo local permanece registrado; a sincronização será tentada no próximo ciclo.
         db.rollback()
-    return product
+    if has_permission(actor.role, Permission.FINANCE_READ):
+        return product
+    return ProductOut.model_validate(product).model_copy(update={"cost_price": None})
 
 
 @router.post("/{product_id}/sync-marketplace", response_model=ProductOut)
 def sync_marketplace_stock(
     product_id: str,
     db: Session = Depends(get_db),
-    _: User = Depends(require_roles(UserRole.admin, UserRole.manager)),
-) -> Product:
+    actor: User = Depends(require_permission(Permission.INVENTORY_ADJUST)),
+) -> ProductOut:
     product = db.get(Product, product_id)
     if not product:
         raise HTTPException(status_code=404, detail="Produto não encontrado")
@@ -327,18 +337,20 @@ def sync_marketplace_stock(
             status_code=502, detail=f"Falha ao atualizar estoque no marketplace: {exc}"
         ) from exc
     db.refresh(product)
-    return product
+    if has_permission(actor.role, Permission.FINANCE_READ):
+        return product
+    return ProductOut.model_validate(product).model_copy(update={"cost_price": None})
 
 
 @router.get("/{product_id}/movements", response_model=list[StockMovementOut])
 def product_movements(
     product_id: str,
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
-) -> list[StockMovement]:
+    actor: User = Depends(require_permission(Permission.PRODUCT_READ)),
+) -> list[StockMovementOut]:
     if not db.get(Product, product_id):
         raise HTTPException(status_code=404, detail="Produto não encontrado")
-    return list(
+    movements = list(
         db.scalars(
             select(StockMovement)
             .where(StockMovement.product_id == product_id)
@@ -346,3 +358,11 @@ def product_movements(
             .limit(100)
         )
     )
+    if has_permission(actor.role, Permission.FINANCE_READ):
+        return movements
+    return [
+        StockMovementOut.model_validate(movement).model_copy(
+            update={"unit_cost": None, "movement_value": None}
+        )
+        for movement in movements
+    ]

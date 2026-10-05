@@ -1,6 +1,7 @@
 import { Component, inject, signal } from '@angular/core';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AuthService } from '../core/auth.service';
+import { canAccessPage, ROLE_LABELS } from '../core/user-access';
 
 @Component({
   selector: 'app-layout',
@@ -57,9 +58,8 @@ export class AppLayout {
       { path: '/marketplace', label: 'Pedidos do ML', icon: 'M' },
       { path: '/integrations', label: 'Integrações', icon: '⌁' },
     ];
-    return this.auth.user()?.role === 'admin'
-      ? [...items, { path: '/users', label: 'Usuários', icon: '♙' }]
-      : items;
+    const allItems = [...items, { path: '/users', label: 'Usuários', icon: '♙' }];
+    return allItems.filter((item) => canAccessPage(this.auth.user()?.role, item.path));
   }
   get initials(): string {
     return (this.auth.user()?.full_name ?? 'U')
@@ -70,8 +70,6 @@ export class AppLayout {
       .toUpperCase();
   }
   get roleLabel(): string {
-    return (
-      { admin: 'Administrador', manager: 'Gerente', operator: 'Operador' } as Record<string, string>
-    )[this.auth.user()?.role ?? 'operator'];
+    return ROLE_LABELS[this.auth.user()?.role ?? 'operator'];
   }
 }

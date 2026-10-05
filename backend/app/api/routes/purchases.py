@@ -6,7 +6,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
-from app.api.deps import get_current_user, require_roles
+from app.api.deps import require_permission
+from app.core.permissions import Permission, has_permission
 from app.db.session import get_db
 from app.models import (
     MovementType,
@@ -23,7 +24,27 @@ from app.schemas.common import PurchaseCreate, PurchaseOut, PurchaseQuoteCreate,
 from app.services.stock import move_stock
 
 router = APIRouter(prefix="/purchases", tags=["Compras"])
-MUTATORS = (UserRole.admin, UserRole.manager)
+
+
+def _present(purchase: PurchaseCase, user: User) -> PurchaseOut:
+    if has_permission(getattr(user, "role", UserRole.admin), Permission.FINANCE_READ):
+        return PurchaseOut.model_validate(purchase)
+    result = PurchaseOut.model_validate(purchase)
+    return result.model_copy(
+        update={
+            "items": [item.model_copy(update={"unit_cost": None}) for item in result.items],
+            "quotes": [
+                quote.model_copy(update={"total": None, "item_costs": {}})
+                for quote in result.quotes
+            ],
+            "events": [
+                event.model_copy(update={"detail": "Cotação selecionada."})
+                if event.event_type == "quote_selected"
+                else event
+                for event in result.events
+            ],
+        }
+    )
 
 
 def _event(db: Session, purchase: PurchaseCase, event_type: str, detail: str) -> None:
@@ -51,9 +72,10 @@ def _load(db: Session, purchase_id: str, *, for_update: bool = False) -> Purchas
 
 @router.get("", response_model=list[PurchaseOut])
 def list_purchases(
-    db: Session = Depends(get_db), _: User = Depends(get_current_user)
-) -> list[PurchaseCase]:
-    return list(
+    db: Session = Depends(get_db),
+    user: User = Depends(require_permission(Permission.PURCHASE_READ)),
+) -> list[PurchaseOut]:
+    purchases = list(
         db.scalars(
             select(PurchaseCase)
             .options(
@@ -65,14 +87,15 @@ def list_purchases(
             .limit(500)
         )
     )
+    return [_present(purchase, user) for purchase in purchases]
 
 
 @router.post("", response_model=PurchaseOut, status_code=201)
 def create_purchase(
     payload: PurchaseCreate,
     db: Session = Depends(get_db),
-    user: User = Depends(require_roles(*MUTATORS)),
-) -> PurchaseCase:
+    user: User = Depends(require_permission(Permission.PURCHASE_MANAGE)),
+) -> PurchaseOut:
     for item in payload.items:
         if item.product_id and not db.get(Product, item.product_id):
             raise HTTPException(status_code=404, detail=f"Produto não encontrado: {item.sku}")
@@ -87,14 +110,16 @@ def create_purchase(
     db.flush()
     _event(db, purchase, "created", f"Negociação criada por {user.full_name}.")
     db.commit()
-    return _load(db, purchase.id)
+    return _present(_load(db, purchase.id), user)
 
 
 @router.get("/{purchase_id}", response_model=PurchaseOut)
 def get_purchase(
-    purchase_id: str, db: Session = Depends(get_db), _: User = Depends(get_current_user)
-) -> PurchaseCase:
-    return _load(db, purchase_id)
+    purchase_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_permission(Permission.PURCHASE_READ)),
+) -> PurchaseOut:
+    return _present(_load(db, purchase_id), user)
 
 
 @router.post("/{purchase_id}/quotes", response_model=PurchaseOut)
@@ -102,7 +127,7 @@ def add_quote(
     purchase_id: str,
     payload: PurchaseQuoteCreate,
     db: Session = Depends(get_db),
-    user: User = Depends(require_roles(*MUTATORS)),
+    user: User = Depends(require_permission(Permission.PURCHASE_MANAGE)),
 ) -> PurchaseCase:
     purchase = _load(db, purchase_id)
     if purchase.status != "negotiating":
@@ -137,7 +162,7 @@ def select_quote(
     purchase_id: str,
     quote_id: str,
     db: Session = Depends(get_db),
-    user: User = Depends(require_roles(*MUTATORS)),
+    user: User = Depends(require_permission(Permission.PURCHASE_MANAGE)),
 ) -> PurchaseCase:
     purchase = _load(db, purchase_id)
     if purchase.status != "negotiating":
@@ -163,7 +188,9 @@ def select_quote(
 
 @router.post("/{purchase_id}/place-order", response_model=PurchaseOut)
 def place_order(
-    purchase_id: str, db: Session = Depends(get_db), user: User = Depends(require_roles(*MUTATORS))
+    purchase_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_permission(Permission.PURCHASE_MANAGE)),
 ) -> PurchaseCase:
     purchase = _load(db, purchase_id)
     if purchase.status != "approved" or not purchase.selected_quote_id:
@@ -183,8 +210,8 @@ def receive_purchase(
     purchase_id: str,
     payload: PurchaseReceive,
     db: Session = Depends(get_db),
-    user: User = Depends(require_roles(*MUTATORS)),
-) -> PurchaseCase:
+    user: User = Depends(require_permission(Permission.PURCHASE_RECEIVE)),
+) -> PurchaseOut:
     purchase = _load(db, purchase_id, for_update=True)
     if purchase.status not in {"ordered", "partially_received"}:
         raise HTTPException(
@@ -274,12 +301,14 @@ def receive_purchase(
     if purchase.status == "received":
         _event(db, purchase, "received", "Todos os itens foram recebidos e lançados no estoque.")
     db.commit()
-    return _load(db, purchase.id)
+    return _present(_load(db, purchase.id), user)
 
 
 @router.post("/{purchase_id}/cancel", response_model=PurchaseOut)
 def cancel_purchase(
-    purchase_id: str, db: Session = Depends(get_db), user: User = Depends(require_roles(*MUTATORS))
+    purchase_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_permission(Permission.PURCHASE_MANAGE)),
 ) -> PurchaseCase:
     purchase = _load(db, purchase_id)
     if purchase.status in {"received", "cancelled"}:

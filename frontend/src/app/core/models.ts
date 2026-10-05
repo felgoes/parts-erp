@@ -2,7 +2,8 @@ export interface User {
   id: string;
   email: string;
   full_name: string;
-  role: 'admin' | 'manager' | 'operator';
+  role: 'admin' | 'manager' | 'operator' | 'stock' | 'finance' | 'viewer';
+  active: boolean;
 }
 export interface AuthToken {
   access_token: string;
@@ -30,7 +31,7 @@ export interface Product {
   fitments: ProductFitment[];
   images: ProductImage[];
   sale_price: number;
-  cost_price: number;
+  cost_price: number | null;
   current_stock: number;
   minimum_stock: number;
   active: boolean;
@@ -164,13 +165,13 @@ export interface PurchaseItem {
   description: string;
   quantity: number;
   received_quantity: number;
-  unit_cost: number;
+  unit_cost: number | null;
 }
 export interface PurchaseQuote {
   id: string;
   supplier_name: string;
   supplier_contact: string | null;
-  total: number;
+  total: number | null;
   item_costs: Record<string, number>;
   delivery_days: number | null;
   payment_terms: string | null;

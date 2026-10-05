@@ -23,7 +23,8 @@ class UserOut(ORMModel):
     id: str
     email: str
     full_name: str
-    role: str
+    role: UserRole
+    active: bool
 
 
 class UserCreate(BaseModel):
@@ -41,6 +42,8 @@ class UserUpdate(BaseModel):
     email: EmailStr | None = None
     full_name: str | None = Field(default=None, min_length=2, max_length=160)
     password: str | None = Field(default=None, min_length=12, max_length=128)
+    role: UserRole | None = None
+    active: bool | None = None
 
 
 class Token(BaseModel):
@@ -118,7 +121,7 @@ class ProductOut(ORMModel):
     fitments: list[dict[str, Any]] = Field(default_factory=list)
     images: list[dict[str, Any]] = Field(default_factory=list)
     sale_price: Decimal
-    cost_price: Decimal
+    cost_price: Decimal | None = None
     current_stock: Decimal
     minimum_stock: Decimal
     active: bool
@@ -323,15 +326,15 @@ class PurchaseItemOut(ORMModel):
     description: str
     quantity: Decimal
     received_quantity: Decimal
-    unit_cost: Decimal
+    unit_cost: Decimal | None = None
 
 
 class PurchaseQuoteOut(ORMModel):
     id: str
     supplier_name: str
     supplier_contact: str | None
-    total: Decimal
-    item_costs: dict[str, Decimal]
+    total: Decimal | None = None
+    item_costs: dict[str, Decimal] | None = None
     delivery_days: int | None
     payment_terms: str | None
     notes: str | None

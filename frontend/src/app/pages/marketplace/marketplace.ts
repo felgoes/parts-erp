@@ -1,6 +1,7 @@
 import { DatePipe, DecimalPipe, JsonPipe, UpperCasePipe } from '@angular/common';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { ApiService } from '../../core/api.service';
+import { AuthService } from '../../core/auth.service';
 import { MarketplaceOrder, MarketplaceOrderEvent, MarketplaceStatus } from '../../core/models';
 import { statusLabel, trackingEventLabel } from '../../core/status-labels';
 import { PageHeader } from '../../shared/page-header';
@@ -100,13 +101,13 @@ import { PageHeader } from '../../shared/page-header';
                   }
                 </td>
                 <td>
-                  <button
+                  @if (canProcess()) { <button
                     class="secondary small"
                     [disabled]="!o.invoice_id || retrying() === o.id"
                     (click)="$event.stopPropagation(); retry(o)"
                   >
                     {{ retrying() === o.id ? 'Tentando…' : 'Tentar agora' }}
-                  </button>
+                  </button> }
                 </td>
               </tr>
             } @empty {
@@ -145,6 +146,7 @@ import { PageHeader } from '../../shared/page-header';
 })
 export class MarketplacePage implements OnInit {
   private readonly api = inject(ApiService);
+  private readonly auth = inject(AuthService);
   readonly status = signal<MarketplaceStatus | null>(null);
   readonly orders = signal<MarketplaceOrder[]>([]);
   readonly retrying = signal<string | null>(null);
@@ -152,6 +154,7 @@ export class MarketplacePage implements OnInit {
   readonly history = signal<MarketplaceOrderEvent[]>([]);
   readonly statusLabel = statusLabel;
   readonly trackingEventLabel = trackingEventLabel;
+  canProcess() { const role = this.auth.user()?.role; return role === 'admin' || role === 'manager'; }
   ngOnInit() {
     this.load();
   }

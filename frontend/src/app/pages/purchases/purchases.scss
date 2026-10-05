@@ -168,3 +168,16 @@
   .quote-form > button { grid-column: 1 / -1; }
   .workflow-action { align-items: stretch; flex-direction: column; }
 }
+.purchase-table-card.restricted-costs tbody td:nth-child(3) small {
+  display: none;
+}
+
+.purchase-detail.restricted-costs .item-title > strong,
+.purchase-detail.restricted-costs .quote-cost-summary,
+.purchase-detail.restricted-costs .purchase-aside-card > div:last-child,
+.purchase-detail.read-only-purchases .quote-form,
+.purchase-detail.read-only-purchases .quote-card > button,
+.purchase-detail.read-only-purchases .workflow-action,
+.purchase-detail.no-receiving .receive-controls {
+  display: none;
+}

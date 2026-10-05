@@ -6,7 +6,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
-from app.api.deps import get_current_user
+from app.api.deps import require_permission
+from app.core.permissions import Permission
 from app.db.session import get_db
 from app.models import InvoiceStatus, MovementType, Product, SalesInvoice, StockMovement, User
 from app.schemas.common import FinanceDailyMetric, FinanceOverview, FinanceProductMetric
@@ -40,7 +41,7 @@ def overview(
     start_date: date | None = Query(default=None),
     end_date: date | None = Query(default=None),
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
+    _: User = Depends(require_permission(Permission.FINANCE_READ)),
 ) -> FinanceOverview:
     start, end, since, until = _period(start_date, end_date)
     movements = list(
@@ -115,9 +116,7 @@ def overview(
     sale_movements = (
         list(
             db.scalars(
-                select(StockMovement).where(
-                    StockMovement.idempotency_key.in_(sale_item_keys)
-                )
+                select(StockMovement).where(StockMovement.idempotency_key.in_(sale_item_keys))
             )
         )
         if sale_item_keys
@@ -156,9 +155,7 @@ def overview(
     inventory_value = sum(
         (Decimal(product.current_stock) * Decimal(product.cost_price) for product in products), ZERO
     )
-    gross_margin = (
-        revenue - totals["net_cost_of_goods"] if unvalued_sales_items == 0 else None
-    )
+    gross_margin = revenue - totals["net_cost_of_goods"] if unvalued_sales_items == 0 else None
     gross_margin_percent = (
         gross_margin / revenue * Decimal("100")
         if gross_margin is not None and revenue

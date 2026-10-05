@@ -3,7 +3,9 @@ import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { forkJoin } from 'rxjs';
 import { ApiService } from '../../core/api.service';
+import { AuthService } from '../../core/auth.service';
 import { Customer, Invoice, Product } from '../../core/models';
+import { canSell } from '../../core/user-access';
 import { statusLabel, trackingEventLabel } from '../../core/status-labels';
 import { PageHeader } from '../../shared/page-header';
 import { PeriodFilter, PeriodFilterStatusOption } from '../../shared/period-filter';
@@ -17,7 +19,7 @@ import { AfterSaleWorkflow } from '../../shared/after-sale-workflow';
       eyebrow="Comercial"
       title="Faturas de venda"
       subtitle="Do orçamento à baixa de estoque, sem retrabalho."
-      ><button class="primary" (click)="openNew()">+ Nova venda</button></app-page-header
+      >@if (canSell()) { <button class="primary" (click)="openNew()">+ Nova venda</button> }</app-page-header
     >
     <app-period-filter
       heading="Período"
@@ -79,7 +81,7 @@ import { AfterSaleWorkflow } from '../../shared/after-sale-workflow';
                   <strong>{{ i.total | currency: 'BRL' }}</strong>
                 </td>
                 <td class="right">
-                  @if (i.status === 'draft') {
+                  @if (i.status === 'draft' && canSell()) {
                     <button class="secondary small" (click)="$event.stopPropagation(); confirm(i)">Confirmar</button>
                   }
                 </td>
@@ -167,6 +169,8 @@ import { AfterSaleWorkflow } from '../../shared/after-sale-workflow';
 })
 export class InvoicesPage implements OnInit {
   private readonly api = inject(ApiService);
+  private readonly auth = inject(AuthService);
+  canSell() { return canSell(this.auth.user()?.role); }
   readonly invoices = signal<Invoice[]>([]);
   readonly products = signal<Product[]>([]);
   readonly customers = signal<Customer[]>([]);

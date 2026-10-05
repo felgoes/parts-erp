@@ -18,6 +18,7 @@ export const routes: Routes = [
       { path: 'dashboard', loadComponent: () => import('./pages/dashboard/dashboard').then((m) => m.DashboardPage) },
       { path: 'products', loadComponent: () => import('./pages/products/products').then((m) => m.ProductsPage) },
       { path: 'purchases', loadComponent: () => import('./pages/purchases/purchases').then((m) => m.PurchasesPage) },
+      { path: 'market-studies', loadComponent: () => import('./pages/market-studies/market-studies').then((m) => m.MarketStudiesPage) },
       { path: 'finance', loadComponent: () => import('./pages/finance/finance').then((m) => m.FinancePage) },
       { path: 'invoices', loadComponent: () => import('./pages/invoices/invoices').then((m) => m.InvoicesPage) },
       { path: 'customers', loadComponent: () => import('./pages/customers/customers').then((m) => m.CustomersPage) },

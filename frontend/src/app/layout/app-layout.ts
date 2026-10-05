@@ -50,6 +50,7 @@ export class AppLayout {
       { path: '/monitoring', label: 'Monitoramento', icon: 'O' },
       { path: '/products', label: 'Produtos e estoque', icon: '◇' },
       { path: '/purchases', label: 'Compras', icon: '↙' },
+      { path: '/market-studies', label: 'Estudos de mercado', icon: '⌕' },
       { path: '/finance', label: 'Financeiro', icon: '$' },
       { path: '/invoices', label: 'Faturas de venda', icon: '▤' },
       { path: '/customers', label: 'Clientes', icon: '○' },

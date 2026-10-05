@@ -257,6 +257,38 @@ class PurchaseEvent(Base):
     purchase: Mapped[PurchaseCase] = relationship(back_populates="events")
 
 
+class MarketStudyConnectorConfig(TimestampMixin, Base):
+    __tablename__ = "market_study_connector_config"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    provider: Mapped[str] = mapped_column(String(40), default="openai_responses")
+    base_url: Mapped[str | None] = mapped_column(String(500))
+    model: Mapped[str] = mapped_column(String(120), default="gpt-6-luna")
+    encrypted_api_key: Mapped[str | None] = mapped_column(Text)
+    enabled: Mapped[bool] = mapped_column(Boolean, default=False)
+
+
+class MarketStudy(TimestampMixin, Base):
+    __tablename__ = "market_studies"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    created_by_id: Mapped[str] = mapped_column(ForeignKey("users.id"))
+    search_term: Mapped[str] = mapped_column(String(200), index=True)
+    sku: Mapped[str | None] = mapped_column(String(80))
+    category_id: Mapped[str | None] = mapped_column(String(40))
+    landed_cost: Mapped[Decimal] = mapped_column(Numeric(14, 2))
+    target_margin_pct: Mapped[Decimal] = mapped_column(Numeric(5, 2))
+    marketplace_fee_pct: Mapped[Decimal] = mapped_column(Numeric(5, 2))
+    shipping_cost: Mapped[Decimal] = mapped_column(Numeric(14, 2), default=0)
+    status: Mapped[str] = mapped_column(String(30), default="completed")
+    provider_used: Mapped[str | None] = mapped_column(String(40))
+    result: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    linked_purchase_id: Mapped[str | None] = mapped_column(ForeignKey("purchase_cases.id"))
+
+    created_by: Mapped[User] = relationship()
+    linked_purchase: Mapped[PurchaseCase | None] = relationship()
+
+
 class MarketplaceAccount(TimestampMixin, Base):
     __tablename__ = "marketplace_accounts"
 

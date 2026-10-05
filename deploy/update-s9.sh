@@ -9,11 +9,11 @@ git -C "$ROOT_DIR" branch -r --contains HEAD | grep -q origin/ || { echo "Publiq
 VERSION="$(git -C "$ROOT_DIR" rev-parse --short HEAD)"; STAGE=".deploy-$VERSION"
 LOCAL_STAGE="$(mktemp -d "${TMPDIR:-/tmp}/parts-erp-$VERSION.XXXXXX")"
 trap 'rm -rf "$LOCAL_STAGE"' EXIT
-mkdir -p "$LOCAL_STAGE/frontend"
+mkdir -p "$LOCAL_STAGE/source" "$LOCAL_STAGE/site"
 (cd "$ROOT_DIR/frontend" && npm run build -- --configuration production)
-cp -a "$ROOT_DIR/frontend/dist/frontend/browser/." "$LOCAL_STAGE/frontend/"
-git -C "$ROOT_DIR" archive --format=tar HEAD | tar -xf - -C "$LOCAL_STAGE"
-test -s "$LOCAL_STAGE/frontend/index.html" && test -f "$LOCAL_STAGE/backend/app/main.py"
+cp -a "$ROOT_DIR/frontend/dist/frontend/browser/." "$LOCAL_STAGE/site/"
+git -C "$ROOT_DIR" archive --format=tar HEAD | tar -xf - -C "$LOCAL_STAGE/source"
+test -s "$LOCAL_STAGE/site/index.html" && test -f "$LOCAL_STAGE/source/backend/app/main.py"
 ssh "${SSH_OPTS[@]}" "$REMOTE" bash -s -- "$S9_APP_DIR" "$STAGE" <<\PREP
 set -euo pipefail; [[ "$2" =~ ^\.deploy-[a-f0-9]+$ ]]
 APP="$(realpath -m "$HOME/$1")"; [[ "$APP" == "$HOME"/* && "$APP" != "$HOME" ]]
@@ -23,7 +23,8 @@ tar -C "$LOCAL_STAGE" -cf - . | ssh "${SSH_OPTS[@]}" "$REMOTE" "tar -xf - -C \$H
 ssh "${SSH_OPTS[@]}" "$REMOTE" bash -s -- "$S9_APP_DIR" "$STAGE" "$VERSION" <<\DEPLOY
 set -euo pipefail
 APP="$(realpath -m "$HOME/$1")"; STAGE="$2"; VERSION="$3"; [[ "$APP" == "$HOME"/* && "$APP" != "$HOME" ]]
-[[ "$STAGE" =~ ^\.deploy-[a-f0-9]+$ ]]; S="$APP/data/$STAGE"; [[ -s "$S/frontend/index.html" && -f "$S/backend/app/main.py" ]]
+[[ "$STAGE" =~ ^\.deploy-[a-f0-9]+$ ]]; S="$APP/data/$STAGE/source"; WEB="$APP/data/$STAGE/site"
+[[ -s "$WEB/index.html" && -f "$S/backend/app/main.py" ]]
 cd "$APP"
 V="$APP/backend/.venv-termux"
 [[ -x "$V/bin/python" ]] || { echo "Virtualenv Termux não encontrado; abortando antes da parada." >&2; exit 1; }
@@ -42,7 +43,10 @@ fi
 [[ ! -x "$APP/deploy/termux/stop.sh" ]] || PARTS_ERP_DIR="$APP" "$APP/deploy/termux/stop.sh"
 rm -rf "$APP/backend/app" "$APP/backend/alembic/versions"
 cp -a "$S/backend/app" "$APP/backend/app"; cp -a "$S/backend/alembic/versions" "$APP/backend/alembic/versions"; cp -a "$S/backend/pyproject.toml" "$APP/backend/pyproject.toml"
-rm -rf "$APP/frontend/dist/frontend"; mkdir -p "$APP/frontend/dist/frontend"; cp -a "$S/frontend/." "$APP/frontend/dist/frontend/"; cp -a "$S/deploy/." "$APP/deploy/"
+mv "$APP/frontend/dist/frontend" "$APP/data/backups/frontend-pre-$NOW"
+mkdir -p "$APP/frontend/dist/frontend/browser"
+cp -a "$WEB/." "$APP/frontend/dist/frontend/browser/"
+cp -a "$S/deploy/." "$APP/deploy/"
 chmod 600 backend/.env
 if [[ -f deploy/termux/redis.conf.in ]]; then sed "s|__APP_DIR__|$APP|g" deploy/termux/redis.conf.in >deploy/termux/redis.conf; fi
 chmod +x deploy/termux/*.sh; (cd backend && "$V/bin/alembic" upgrade heads)

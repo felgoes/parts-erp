@@ -1,0 +1,48 @@
+<app-page-header eyebrow="Sistema" title="Configurações" subtitle="Dê ao ERP a identidade da sua empresa e ajuste como prefere trabalhar."></app-page-header>
+
+@if (loading()) {
+  <div class="settings-loading" role="status">Carregando suas configurações…</div>
+} @else {
+  @if (error()) { <p class="settings-message is-error" role="alert">{{ error() }}</p> }
+  @if (message()) { <p class="settings-message" role="status">{{ message() }}</p> }
+
+  <form class="settings-form" (ngSubmit)="save()">
+    <section class="settings-card">
+      <div class="settings-heading"><span class="section-icon">✳</span><div><p class="eyebrow">Identidade</p><h2>Sua empresa no ERP</h2><p>O nome e o símbolo aparecem no menu para toda a equipe.</p></div></div>
+      <div class="identity-layout">
+        <div class="logo-preview" aria-label="Prévia do logotipo">
+          @if (draft.logo_data_url) { <img [src]="draft.logo_data_url" alt="Prévia do logotipo da empresa" /> }
+          @else { <span>{{ draft.company_short_name.slice(0, 1).toUpperCase() || 'P' }}</span> }
+        </div>
+        <div class="identity-fields">
+          <label>Nome da empresa<input name="company_name" [(ngModel)]="draft.company_name" maxlength="120" required placeholder="Ex.: Goes Auto Parts" /></label>
+          <label>Nome curto no menu<input name="company_short_name" [(ngModel)]="draft.company_short_name" maxlength="40" required placeholder="Ex.: Goes" /></label>
+          <div class="logo-controls"><label class="secondary upload-button">{{ draft.logo_data_url ? 'Trocar logotipo' : 'Enviar logotipo' }}<input type="file" accept="image/png,image/jpeg,image/webp" (change)="selectLogo($event)" /></label>@if (draft.logo_data_url) { <button class="quiet-button" type="button" (click)="removeLogo()">Remover</button> }<small>PNG, JPEG ou WebP · até 2 MB</small></div>
+          @if (logoError()) { <small class="field-error" role="alert">{{ logoError() }}</small> }
+        </div>
+      </div>
+    </section>
+
+    <section class="settings-card">
+      <div class="settings-heading"><span class="section-icon">◐</span><div><p class="eyebrow">Aparência</p><h2>Escolha seu tema</h2><p>Preferência salva neste dispositivo e aplicada imediatamente.</p></div></div>
+      <div class="theme-options" role="group" aria-label="Tema do ERP">
+        <button type="button" class="theme-option" [class.is-selected]="appearance.theme() === 'light'" [attr.aria-pressed]="appearance.theme() === 'light'" (click)="chooseTheme('light')"><span class="theme-swatch light-swatch"><i></i><i></i><i></i></span><span><strong>Claro</strong><small>Leve e familiar</small></span><span class="radio-mark"></span></button>
+        <button type="button" class="theme-option" [class.is-selected]="appearance.theme() === 'dark'" [attr.aria-pressed]="appearance.theme() === 'dark'" (click)="chooseTheme('dark')"><span class="theme-swatch dark-swatch"><i></i><i></i><i></i></span><span><strong>Escuro</strong><small>Confortável em pouca luz</small></span><span class="radio-mark"></span></button>
+      </div>
+    </section>
+
+    <section class="settings-card backup-card">
+      <div class="settings-heading"><span class="section-icon">↻</span><div><p class="eyebrow">Proteção de dados</p><h2>Backups</h2><p>Defina sua política de cópias e retenção.</p></div><span class="status-pill" [class.is-ready]="settings().backup_ready">{{ settings().backup_ready ? 'Em execução' : 'Configuração pendente' }}</span></div>
+      <div class="backup-notice"><strong>A conexão com o Google Drive ainda não está configurada.</strong><span>Esta tela salva sua política, mas o servidor ainda não tem uma rotina que gere e envie cópias. Portanto, nenhum backup será executado até concluirmos a conexão segura com o Drive e o agendador no servidor.</span></div>
+      <div class="backup-grid">
+        <label class="backup-enable"><input type="checkbox" name="backup_enabled" [(ngModel)]="draft.backup_enabled" /><span><strong>Quero ativar os backups</strong><small>Fica como preferência até o serviço estar conectado e operacional.</small></span></label>
+        <label>Frequência<select name="backup_frequency" [(ngModel)]="draft.backup_frequency"><option value="daily">Todos os dias</option><option value="weekly">Toda semana</option></select><small>O agendamento só começa após a configuração do serviço.</small></label>
+        <label>Manter cópias por<select name="backup_retention_days" [(ngModel)]="draft.backup_retention_days"><option [ngValue]="7">7 dias</option><option [ngValue]="14">14 dias</option><option [ngValue]="30">30 dias</option></select><small>Cópias mais antigas que 30 dias serão removidas quando a rotina estiver ativa.</small></label>
+        <div class="destination-field"><span>Destino</span><strong class="drive-destination"><span aria-hidden="true">▣</span> Google Drive</strong><small>Sem custo de armazenamento além do espaço gratuito disponível na sua conta Google.</small></div>
+      </div>
+      <div class="backup-footer"><span>Último backup <strong>{{ settings().backup_ready ? '—' : 'Ainda não realizado' }}</strong></span><span>Conexão com o Drive <strong>{{ settings().backup_ready ? 'Conectado' : 'Pendente' }}</strong></span></div>
+    </section>
+
+    <div class="settings-actions"><p>As alterações de identidade são compartilhadas com todos os usuários do ERP.</p><button class="primary" type="submit" [disabled]="saving()">{{ saving() ? 'Salvando…' : 'Salvar configurações' }}</button></div>
+  </form>
+}

@@ -25,12 +25,19 @@ import {
   CustomerDetail,
   User,
   TelemetrySummary,
+  ErpSettings,
 } from './models';
 
 @Injectable({ providedIn: 'root' })
 export class ApiService {
   private readonly http = inject(HttpClient);
   private readonly base = apiUrl('');
+  erpSettings(): Observable<ErpSettings> {
+    return this.http.get<ErpSettings>(`${this.base}/settings`);
+  }
+  saveErpSettings(settings: Omit<ErpSettings, 'backup_ready' | 'backup_status'>): Observable<ErpSettings> {
+    return this.http.put<ErpSettings>(`${this.base}/settings`, settings);
+  }
   dashboard(startDate: string, endDate: string): Observable<DashboardSummary> {
     return this.http.get<DashboardSummary>(`${this.base}/dashboard/summary`, { params: { start_date: startDate, end_date: endDate } });
   }

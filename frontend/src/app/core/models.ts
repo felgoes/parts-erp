@@ -5,6 +5,17 @@ export interface User {
   role: 'admin' | 'manager' | 'operator' | 'stock' | 'finance' | 'viewer';
   active: boolean;
 }
+export interface ErpSettings {
+  company_name: string;
+  company_short_name: string;
+  logo_data_url: string | null;
+  backup_enabled: boolean;
+  backup_frequency: 'daily' | 'weekly';
+  backup_retention_days: number;
+  backup_destination: 'google_drive';
+  backup_ready: boolean;
+  backup_status: 'setup_required' | 'ready';
+}
 export interface AuthToken {
   access_token: string;
   token_type: string;

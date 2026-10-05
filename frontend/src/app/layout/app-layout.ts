@@ -1,5 +1,7 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { AppearanceService } from '../core/appearance.service';
+import { ErpBrandService } from '../core/erp-brand.service';
 import { AuthService } from '../core/auth.service';
 import { canAccessPage, ROLE_LABELS } from '../core/user-access';
 
@@ -9,8 +11,8 @@ import { canAccessPage, ROLE_LABELS } from '../core/user-access';
   template: ` <div class="app-shell" [class.menu-open]="menuOpen()">
     <aside class="sidebar">
       <div class="brand">
-        <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 48 48" focusable="false"><path d="M12 36V12h13c7 0 11 3 11 9s-4 9-11 9H18" /><path d="M25 30l9-9" /></svg></span>
-        <div><strong>Parts</strong><small>ERP</small></div>
+        @if (brand.logo()) { <img class="brand-logo" [src]="brand.logo()" alt="" /> } @else { <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 48 48" focusable="false"><path d="M12 36V12h13c7 0 11 3 11 9s-4 9-11 9H18" /><path d="M25 30l9-9" /></svg></span> }
+        <div><strong>{{ brand.shortName() }}</strong><small>{{ brand.suffix() }}</small></div>
       </div>
       <nav aria-label="Menu principal">
         @for (item of nav; track item.path) {
@@ -19,6 +21,7 @@ import { canAccessPage, ROLE_LABELS } from '../core/user-access';
             ><span>{{ item.label }}</span></a
           >
         }
+        @if (auth.user()?.role === 'admin') { <a routerLink="/settings" routerLinkActive="active" (click)="menuOpen.set(false)"><span class="nav-icon">⚙</span><span>Configurações</span></a> }
       </nav>
       <div class="sidebar-foot">
         <span class="avatar">{{ initials }}</span>
@@ -35,16 +38,21 @@ import { canAccessPage, ROLE_LABELS } from '../core/user-access';
       <button class="icon-button" aria-label="Abrir menu" (click)="menuOpen.set(!menuOpen())">
         ☰
       </button>
-      <div class="brand"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 48 48" focusable="false"><path d="M12 36V12h13c7 0 11 3 11 9s-4 9-11 9H18" /><path d="M25 30l9-9" /></svg></span><strong>Parts ERP</strong></div>
+      <div class="brand">@if (brand.logo()) { <img class="brand-logo" [src]="brand.logo()" alt="" /> } @else { <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 48 48" focusable="false"><path d="M12 36V12h13c7 0 11 3 11 9s-4 9-11 9H18" /><path d="M25 30l9-9" /></svg></span> }<strong>{{ brand.shortName() }} {{ brand.suffix() }}</strong></div>
     </div>
     <button class="scrim" aria-label="Fechar menu" (click)="menuOpen.set(false)"></button>
     <main><router-outlet /></main>
   </div>`,
   styleUrl: './app-layout.scss',
 })
-export class AppLayout {
+export class AppLayout implements OnInit {
   readonly auth = inject(AuthService);
+  readonly brand = inject(ErpBrandService);
+  readonly appearance = inject(AppearanceService);
   readonly menuOpen = signal(false);
+  ngOnInit(): void {
+    this.brand.load();
+  }
   get nav() {
     const items = [
       { path: '/dashboard', label: 'Visão geral', icon: '◫' },

@@ -30,6 +30,13 @@
   box-shadow: inset 0 1px #ffffff88, 0 5px 12px #0003;
   transform: rotate(-3deg);
 }
+.brand-logo {
+  width: 40px;
+  height: 40px;
+  flex: 0 0 40px;
+  object-fit: contain;
+  border-radius: 9px;
+}
 .brand-mark svg {
   width: 27px;
   height: 27px;
@@ -183,6 +190,7 @@ main {
   .mobile-bar { height: 58px; padding-inline: 14px; }
   .mobile-bar .brand strong { font-size: 16px; }
   .mobile-bar .brand-mark { width: 34px; height: 34px; }
+  .mobile-bar .brand-logo { width: 34px; height: 34px; flex-basis: 34px; }
   .mobile-bar .brand-mark svg { width: 23px; height: 23px; }
   main { padding-inline: 14px; }
   .sidebar { width: min(290px, 86vw); padding-top: 22px; }

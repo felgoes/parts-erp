@@ -32,6 +32,7 @@ const PAGE_ROLES: Record<string, UserRole[]> = {
   marketplace: ['admin', 'manager', 'operator', 'stock', 'finance', 'viewer'],
   integrations: ['admin'],
   users: ['admin'],
+  settings: ['admin'],
 };
 
 export function canAccessPage(role: UserRole | undefined, url: string): boolean {

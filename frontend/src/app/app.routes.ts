@@ -26,6 +26,7 @@ export const routes: Routes = [
       { path: 'marketplace', loadComponent: () => import('./pages/marketplace/marketplace').then((m) => m.MarketplacePage) },
       { path: 'integrations', loadComponent: () => import('./pages/integrations/integrations').then((m) => m.IntegrationsPage) },
       { path: 'users', loadComponent: () => import('./pages/users/users').then((m) => m.UsersPage) },
+      { path: 'settings', loadComponent: () => import('./pages/settings/settings').then((m) => m.SettingsPage) },
     ],
   },
   { path: '**', redirectTo: '' },

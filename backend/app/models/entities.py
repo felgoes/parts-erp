@@ -76,6 +76,21 @@ class User(TimestampMixin, Base):
     active: Mapped[bool] = mapped_column(Boolean, default=True)
 
 
+class ErpSettings(TimestampMixin, Base):
+    """Singleton configuration for shared company identity and backup policy."""
+
+    __tablename__ = "erp_settings"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    company_name: Mapped[str] = mapped_column(String(120), default="Parts ERP")
+    company_short_name: Mapped[str] = mapped_column(String(40), default="Parts")
+    logo_data_url: Mapped[str | None] = mapped_column(Text)
+    backup_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
+    backup_frequency: Mapped[str] = mapped_column(String(20), default="daily")
+    backup_retention_days: Mapped[int] = mapped_column(default=30)
+    backup_destination: Mapped[str] = mapped_column(String(30), default="google_drive")
+
+
 class Product(TimestampMixin, Base):
     __tablename__ = "products"
 

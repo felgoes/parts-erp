@@ -16,6 +16,8 @@ describe('role-aware page access', () => {
 
   it('restricts user management and credential settings to administrators', () => {
     expect(canAccessPage('admin', '/users')).toBe(true);
+    expect(canAccessPage('admin', '/settings')).toBe(true);
+    expect(canAccessPage('manager', '/settings')).toBe(false);
     expect(canAccessPage('manager', '/users')).toBe(false);
     expect(canAccessPage('manager', '/integrations')).toBe(false);
     expect(canAccessPage(undefined, '/dashboard')).toBe(false);

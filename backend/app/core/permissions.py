@@ -31,6 +31,7 @@ class Permission(StrEnum):
     STUDY_CONFIG = "market-studies:configure"
     FINANCE_READ = "finance:read"
     USERS_MANAGE = "users:manage"
+    SETTINGS_MANAGE = "settings:manage"
 
 
 ALL_PERMISSIONS = frozenset(Permission)
@@ -52,7 +53,8 @@ READ_ONLY = frozenset(
 
 ROLE_PERMISSIONS: dict[UserRole, frozenset[Permission]] = {
     UserRole.admin: ALL_PERMISSIONS,
-    UserRole.manager: ALL_PERMISSIONS - {Permission.USERS_MANAGE, Permission.INTEGRATION_CONFIG},
+    UserRole.manager: ALL_PERMISSIONS
+    - {Permission.USERS_MANAGE, Permission.INTEGRATION_CONFIG, Permission.SETTINGS_MANAGE},
     UserRole.operator: frozenset(
         {
             Permission.DASHBOARD_READ,

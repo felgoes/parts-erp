@@ -19,6 +19,28 @@ class ORMModel(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class ErpSettingsOut(BaseModel):
+    company_name: str
+    company_short_name: str
+    logo_data_url: str | None
+    backup_enabled: bool
+    backup_frequency: Literal["daily", "weekly"]
+    backup_retention_days: int
+    backup_destination: Literal["google_drive"]
+    backup_ready: bool = False
+    backup_status: str = "setup_required"
+
+
+class ErpSettingsUpdate(BaseModel):
+    company_name: str = Field(min_length=2, max_length=120)
+    company_short_name: str = Field(min_length=1, max_length=40)
+    logo_data_url: str | None = Field(default=None, max_length=3_000_000)
+    backup_enabled: bool = False
+    backup_frequency: Literal["daily", "weekly"] = "daily"
+    backup_retention_days: int = Field(default=30, ge=1, le=30)
+    backup_destination: Literal["google_drive"] = "google_drive"
+
+
 class UserOut(ORMModel):
     id: str
     email: str

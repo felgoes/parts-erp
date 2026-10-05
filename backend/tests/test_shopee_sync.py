@@ -1,5 +1,6 @@
 from decimal import Decimal
 
+from app.core.security import encrypt_secret
 from app.integrations.shopee import sync as sync_module
 from app.models import InvoiceSource, MarketplaceAccount, SalesInvoice, Product
 from sqlalchemy import select
@@ -22,7 +23,7 @@ def shopee_account(db):
     account = MarketplaceAccount(
         provider="shopee",
         seller_id="9001",
-        encrypted_access_token="ignored",
+        encrypted_access_token=encrypt_secret("qa-only-test-token"),
         token_expires_at=None,
         active=True,
     )

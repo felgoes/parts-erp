@@ -4,6 +4,8 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core.security import hash_password
+
 from app.models import (
     AfterSaleCase,
     AfterSaleCaseItem,
@@ -100,7 +102,7 @@ def _setup_return_case(db: Session):
         id="return-operator",
         email="operator@example.test",
         full_name="Operador de teste",
-        password_hash="not-a-real-password-hash",
+        password_hash=hash_password("qa-only-test-password"),
         role=UserRole.manager,
     )
     db.add(actor)

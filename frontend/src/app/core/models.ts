@@ -183,7 +183,7 @@ export interface PurchaseQuote {
   supplier_name: string;
   supplier_contact: string | null;
   total: number | null;
-  item_costs: Record<string, number>;
+  item_costs: Record<string, number> | null;
   delivery_days: number | null;
   payment_terms: string | null;
   notes: string | null;

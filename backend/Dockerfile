@@ -13,7 +13,7 @@ RUN pip install --upgrade pip && pip install .
 
 COPY alembic.ini ./
 COPY alembic ./alembic
-RUN mkdir -p /app/data/documents && chown -R app:app /app
+RUN mkdir -p /app/data/documents /app/data/product-images && chown -R app:app /app/data
 
 USER app
 EXPOSE 8000

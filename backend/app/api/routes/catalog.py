@@ -1,15 +1,35 @@
-from fastapi import APIRouter, Depends, Query
 import re
 import unicodedata
 
+from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import FileResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
 from app.db.session import get_db
 from app.models import Product
 from app.schemas.common import CatalogListingOut, CatalogProductOut
+from app.services.product_media import product_image_path
 
 router = APIRouter(prefix="/catalog", tags=["Catalogo publico"])
+
+
+@router.get("/images/{filename}", include_in_schema=False)
+def catalog_image(filename: str):
+    try:
+        path = product_image_path(filename)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail="Imagem não encontrada") from exc
+    if not path.is_file():
+        raise HTTPException(status_code=404, detail="Imagem não encontrada")
+    return FileResponse(
+        path,
+        media_type="image/jpeg",
+        headers={
+            "X-Content-Type-Options": "nosniff",
+            "Cache-Control": "public, max-age=31536000, immutable",
+        },
+    )
 
 
 @router.get("/products", response_model=list[CatalogProductOut])
@@ -35,9 +55,18 @@ def catalog_products(
             sku=product.sku,
             name=product.name,
             description=product.description,
+            brand=product.brand,
+            manufacturer_part_number=product.manufacturer_part_number,
+            barcode=product.barcode,
+            category=product.category,
+            attributes=product.attributes or {},
+            fitments=product.fitments or [],
+            images=product.images or [],
             sale_price=product.sale_price,
             in_stock=product.current_stock > 0,
-            listings=[_listing_out(listing) for listing in product.listings],
+            listings=[
+                _listing_out(listing) for listing in product.listings if listing.external_item_id
+            ],
         )
         for product in products
     ]
@@ -59,7 +88,9 @@ def _matches(product: Product, tokens: list[str]) -> bool:
         payload = listing.payload if isinstance(listing.payload, dict) else {}
         for attribute in payload.get("attributes", []):
             if isinstance(attribute, dict):
-                parts.extend([attribute.get("id"), attribute.get("name"), attribute.get("value_name")])
+                parts.extend(
+                    [attribute.get("id"), attribute.get("name"), attribute.get("value_name")]
+                )
     haystack = _normalize(" ".join(str(part or "") for part in parts))
     return all(token in haystack for token in tokens)
 
@@ -99,7 +130,9 @@ def _secure_url(value: str | None) -> str | None:
     return value.replace("http://", "https://", 1) if value.startswith("http://") else value
 
 
-def _listing_permalink(provider: str | None, item_id: str | None, permalink: str | None) -> str | None:
+def _listing_permalink(
+    provider: str | None, item_id: str | None, permalink: str | None
+) -> str | None:
     """Keep the public catalog useful even when an older sync lacks permalink."""
     if permalink:
         return _secure_url(permalink)

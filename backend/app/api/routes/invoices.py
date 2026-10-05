@@ -34,14 +34,14 @@ BRAZIL_TZ = timezone(timedelta(hours=-3))
 
 
 def _sync_marketplace_stock_for_invoice(db: Session, invoice: SalesInvoice) -> None:
-    from app.integrations.mercadolivre.sync import sync_product_stock
+    from app.services.product_channels import sync_product_stock_all
 
     product_ids = {item.product_id for item in invoice.items}
     for product_id in product_ids:
         product = db.get(Product, product_id)
         if product:
             try:
-                sync_product_stock(db, product)
+                sync_product_stock_all(db, product)
             except Exception:
                 # A venda local não falha se o marketplace estiver temporariamente indisponível.
                 db.rollback()
@@ -132,16 +132,20 @@ def get_invoice(
         if order:
             result.after_sale = invoice_after_sale(order, invoice.total)
             if result.after_sale:
-                return_cases = list(db.scalars(
-                    select(AfterSaleCase)
-                    .options(
-                        selectinload(AfterSaleCase.items),
-                        selectinload(AfterSaleCase.events),
+                return_cases = list(
+                    db.scalars(
+                        select(AfterSaleCase)
+                        .options(
+                            selectinload(AfterSaleCase.items),
+                            selectinload(AfterSaleCase.events),
+                        )
+                        .where(AfterSaleCase.invoice_id == invoice.id)
+                        .order_by(AfterSaleCase.created_at.desc())
                     )
-                    .where(AfterSaleCase.invoice_id == invoice.id)
-                    .order_by(AfterSaleCase.created_at.desc())
-                ))
-                result.after_sale.cases = [AfterSaleCaseOut.model_validate(case) for case in return_cases]
+                )
+                result.after_sale.cases = [
+                    AfterSaleCaseOut.model_validate(case) for case in return_cases
+                ]
                 result.after_sale.history = [
                     InvoiceTrackingEventOut(
                         status=event.status,

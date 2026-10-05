@@ -21,6 +21,7 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+psycopg://parts_erp:parts_erp@localhost:5432/parts_erp"
     redis_url: str = "redis://localhost:6379/0"
     documents_dir: str = "data/documents"
+    product_images_dir: str = "data/product-images"
 
     bootstrap_admin_email: EmailStr = Field(default="admin@example.com")
     bootstrap_admin_password: SecretStr | None = None

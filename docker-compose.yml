@@ -30,6 +30,7 @@ services:
     command: sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"
     volumes:
       - documents:/app/data/documents
+      - product_images:/app/data/product-images
     ports:
       - "8000:8000"
     depends_on:
@@ -44,6 +45,7 @@ services:
     command: arq app.workers.settings.WorkerSettings
     volumes:
       - documents:/app/data/documents
+      - product_images:/app/data/product-images
     depends_on:
       postgres:
         condition: service_healthy
@@ -64,3 +66,4 @@ volumes:
   postgres_data:
   redis_data:
   documents:
+  product_images:

@@ -774,12 +774,66 @@ def sync_product_stock(db: Session, product: Product) -> int:
         select(ProductMarketplaceListing).where(
             ProductMarketplaceListing.product_id == product.id,
             ProductMarketplaceListing.provider == "mercadolivre",
+            ProductMarketplaceListing.external_item_id.is_not(None),
         )
     ):
-        result = client.put(
-            f"/items/{listing.external_item_id}",
-            {"available_quantity": max(0, int(product.current_stock))},
-        )
+        external_id = str(listing.external_item_id or "")
+        if not external_id.startswith("ML") or not external_id[2:].isalnum():
+            raise MercadoLivreError("Identificador do anúncio inválido; estoque não alterado")
+        quantity = max(0, int(product.current_stock))
+        user_product_id = (listing.payload or {}).get("user_product_id")
+        result: dict | list
+        if user_product_id and str(user_product_id).startswith("ML"):
+            stock_data, stock_headers = client.get_with_headers(
+                f"/user-products/{user_product_id}/stock"
+            )
+            locations = stock_data.get("locations", []) if isinstance(stock_data, dict) else []
+            seller_warehouses = [
+                row
+                for row in locations
+                if isinstance(row, dict) and row.get("type") == "seller_warehouse"
+            ]
+            if len(seller_warehouses) > 1:
+                raise MercadoLivreError(
+                    "Este User Product usa vários depósitos. Configure a distribuição do estoque "
+                    "por depósito antes de sincronizar para não somar saldos incorretamente."
+                )
+            if len(seller_warehouses) == 1:
+                location = seller_warehouses[0]
+                version = stock_headers.get("x-version")
+                if (
+                    not version
+                    or not location.get("store_id")
+                    or not location.get("network_node_id")
+                ):
+                    raise MercadoLivreError(
+                        "A API não retornou versão ou depósito válido para atualizar o estoque"
+                    )
+                result = client.put(
+                    f"/user-products/{user_product_id}/stock/type/seller_warehouse",
+                    {
+                        "locations": [
+                            {
+                                "store_id": location["store_id"],
+                                "network_node_id": location["network_node_id"],
+                                "quantity": quantity,
+                            }
+                        ]
+                    },
+                    extra_headers={"x-version": version},
+                )
+            elif any(
+                isinstance(row, dict) and row.get("type") == "meli_facility" for row in locations
+            ) and not any(
+                isinstance(row, dict) and row.get("type") == "selling_address" for row in locations
+            ):
+                raise MercadoLivreError(
+                    "O estoque está em Full e é gerenciado pelo Mercado Livre; o ERP não pode alterá-lo"
+                )
+            else:
+                result = client.put(f"/items/{external_id}", {"available_quantity": quantity})
+        else:
+            result = client.put(f"/items/{external_id}", {"available_quantity": quantity})
         listing.available_quantity = product.current_stock
         listing.payload = result if isinstance(result, dict) else listing.payload
         listing.synchronized_at = datetime.now(UTC)

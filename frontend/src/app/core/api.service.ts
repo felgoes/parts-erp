@@ -18,6 +18,8 @@ import {
   ShopeeStatus,
   Product,
   ProductDetail,
+  ProductChannelMetadata,
+  ProductChannelDraft,
   Purchase,
   CustomerDetail,
   User,
@@ -62,6 +64,29 @@ export class ApiService {
   }
   createProduct(payload: Partial<Product>): Observable<Product> {
     return this.http.post<Product>(`${this.base}/products`, payload);
+  }
+  updateProduct(id: string, payload: Partial<Product>): Observable<Product> {
+    return this.http.patch<Product>(`${this.base}/products/${id}`, payload);
+  }
+  uploadProductImages(id: string, files: File[]): Observable<Product> {
+    const form = new FormData();
+    files.forEach((file) => form.append('files', file, file.name));
+    return this.http.post<Product>(`${this.base}/products/${id}/images`, form);
+  }
+  deleteProductImage(id: string, imageId: string): Observable<Product> {
+    return this.http.delete<Product>(`${this.base}/products/${id}/images/${imageId}`);
+  }
+  productChannelMetadata(provider: 'mercadolivre' | 'shopee', query = '', categoryId = ''): Observable<ProductChannelMetadata> {
+    let params = new HttpParams();
+    if (query) params = params.set('query', query);
+    if (categoryId) params = params.set('category_id', categoryId);
+    return this.http.get<ProductChannelMetadata>(`${this.base}/products/channel-metadata/${provider}`, { params });
+  }
+  saveProductChannelDraft(id: string, provider: 'mercadolivre' | 'shopee', draft: ProductChannelDraft): Observable<ProductDetail> {
+    return this.http.put<ProductDetail>(`${this.base}/products/${id}/channels/${provider}/draft`, draft);
+  }
+  publishProductChannel(id: string, provider: 'mercadolivre' | 'shopee'): Observable<ProductDetail> {
+    return this.http.post<ProductDetail>(`${this.base}/products/${id}/channels/${provider}/publish`, {});
   }
   adjustStock(id: string, quantity: number, reason: string): Observable<Product> {
     return this.http.post<Product>(`${this.base}/products/${id}/adjust-stock`, {

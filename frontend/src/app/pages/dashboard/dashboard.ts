@@ -72,8 +72,8 @@ import { AfterSaleWorkflow } from '../../shared/after-sale-workflow';
                       <td class="dashboard-customer"><strong>{{ invoice.customer?.name || 'Consumidor não identificado' }}</strong><small>{{ invoice.customer?.document || invoice.customer?.email || 'Sem cadastro vinculado' }}</small></td>
                       <td>{{ invoice.source === 'mercadolivre' ? 'Mercado Livre' : 'Balcão' }}</td>
                       <td>{{ invoice.issued_at || invoice.created_at | date: 'dd/MM/yyyy HH:mm' }}</td>
-                      <td><span class="badge" [class]="invoice.status">{{ status(invoice.status) }}</span>@if (invoice.tracking?.shipping_status) { <small class="post-sale-summary">Envio · {{ shippingStatusLabel(invoice.tracking?.shipping_status, null, invoice.tracking?.history) }}</small> }@if (invoice.after_sale) { <small class="post-sale-summary">{{ afterSaleLabel(invoice) }}</small> }</td>
-                      <td>@if (invoice.documents.length) { @for (doc of invoice.documents; track doc.id) { <a class="doc" href="#" (click)="$event.preventDefault(); $event.stopPropagation(); openDocument(invoice.id, doc.id)">{{ doc.document_type | uppercase }}</a> } } @else { <span class="muted">—</span> }</td>
+                      <td><div class="sale-status-stack"><span class="badge" [class]="invoice.status">{{ status(invoice.status) }}</span>@if (invoice.tracking?.shipping_status) { <small class="post-sale-summary">Envio · {{ shippingStatusLabel(invoice.tracking?.shipping_status, null, invoice.tracking?.history) }}</small> }@if (invoice.after_sale) { <small class="post-sale-summary">{{ afterSaleLabel(invoice) }}</small> }</div></td>
+                      <td><div class="sale-document-links">@if (invoice.documents.length) { @for (doc of invoice.documents; track doc.id) { <a class="doc" href="#" (click)="$event.preventDefault(); $event.stopPropagation(); openDocument(invoice.id, doc.id)">{{ doc.document_type | uppercase }}</a> } } @else { <span class="muted">—</span> }</div></td>
                       <td class="right"><strong>{{ invoice.total | currency: 'BRL' }}</strong></td>
                     </tr>
                   }

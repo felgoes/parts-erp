@@ -154,3 +154,14 @@
 .invoice-detail-lines span { display: grid; gap: 3px; }
 .invoice-detail-lines small { color: var(--muted); }
 @media (max-width: 600px) { .detail-grid, .detail-summary, .tracking-cards { grid-template-columns: 1fr; } .detail-tabs { margin-left: -20px; margin-right: -20px; padding-left: 20px; padding-right: 20px; } .detail-hero h2 { font-size: 24px; } }
+
+.sale-status-stack, .sale-document-links { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 8px; min-width: 0; }
+@media (max-width: 600px) {
+  .table-card table td:nth-child(5) { align-items: flex-start; }
+  .table-card table td:nth-child(5) .sale-status-stack { flex-direction: column; align-items: flex-end; text-align: right; }
+  .table-card table td:nth-child(5) .post-sale-summary { margin-top: 0; }
+  .table-card table td:nth-child(6) .sale-document-links { flex: 1; justify-content: flex-end; }
+  .table-card table td:not(:first-child)::before { flex: 0 0 76px; }
+  .table-card table td:nth-child(2) { grid-template-columns: 76px minmax(0, 1fr); }
+  .table-card table td:nth-child(2) .customer-cell { min-width: 0; }
+}

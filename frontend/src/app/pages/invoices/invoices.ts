@@ -23,7 +23,7 @@ import { AfterSaleWorkflow } from '../../shared/after-sale-workflow';
     >
     <app-period-filter
       heading="Período"
-      [description]="invoices().length === 1 ? '1 fatura' : invoices().length + ' faturas'"
+      [description]="invoices().length + ' fatura(s)'"
       ariaLabel="Filtrar faturas por período e situação"
       [initialStartDate]="startDate"
       [initialEndDate]="endDate"
@@ -63,6 +63,7 @@ import { AfterSaleWorkflow } from '../../shared/after-sale-workflow';
                 <td>{{ i.source === 'mercadolivre' ? 'Mercado Livre' : 'Manual' }}</td>
                 <td>{{ i.issued_at || i.created_at | date: 'dd/MM/yyyy HH:mm' }}</td>
                 <td>
+                  <div class="sale-status-stack">
                   <span class="badge" [class]="i.status">{{ label(i.status) }}</span>
                   @if (i.tracking?.shipping_status) {
                     <small class="post-sale-summary">
@@ -70,8 +71,10 @@ import { AfterSaleWorkflow } from '../../shared/after-sale-workflow';
                     </small>
                   }
                   @if (i.after_sale) { <small class="post-sale-summary">{{ afterSaleLabel(i) }}</small> }
+                  </div>
                 </td>
                 <td>
+                  <div class="sale-document-links">
                   @if (i.documents.length) {
                     @for (doc of i.documents; track doc.id) {
                       <a class="doc" href="#" (click)="$event.preventDefault(); $event.stopPropagation(); openDocument(i.id, doc.id)">
@@ -81,6 +84,7 @@ import { AfterSaleWorkflow } from '../../shared/after-sale-workflow';
                   } @else {
                     <span class="muted">—</span>
                   }
+                  </div>
                 </td>
                 <td class="right">
                   <strong>{{ i.total | currency: 'BRL' }}</strong>

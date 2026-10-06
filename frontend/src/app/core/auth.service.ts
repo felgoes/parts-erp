@@ -68,6 +68,13 @@ export class AuthService {
     sessionStorage.setItem(this.storageKey, JSON.stringify(updated));
     this.session.set(updated);
   }
+  refreshCurrentUser(): void {
+    if (!this.isAuthenticated()) return;
+    this.http.get<User>('/api/v1/auth/me').subscribe({
+      next: (user) => this.updateCurrentUser(user),
+      error: () => { /* A sessão expirada é tratada pelo interceptor. */ },
+    });
+  }
   logout(): void {
     sessionStorage.removeItem(this.storageKey);
     this.session.set(null);

@@ -38,7 +38,7 @@
   .table-card td:nth-child(2)::before { content: 'Documento'; }
   .table-card td:nth-child(3)::before { content: 'Contato'; }
   .table-card td:nth-child(4)::before { content: 'Cliente desde'; }
-  .table-card td:not(:first-child)::before { color: var(--muted); font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+  .table-card td:not(:first-child)::before { display: inline-block; width: 96px; color: var(--muted); font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
   .table-card .empty { padding: 14px 0; }
   .customer-detail-title { align-items: start; }
   .customer-detail-head { align-items: start; }

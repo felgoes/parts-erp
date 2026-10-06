@@ -26,17 +26,25 @@ import { PageHeader } from '../../shared/page-header';
         </button>
       }
     </app-page-header>
-    @if (syncMessage()) {
-      <p class="notice" role="status">{{ syncMessage() }}</p>
-    }
-    @if (syncError()) {
-      <p class="error-text" role="alert">{{ syncError() }}</p>
-    }
-    @if (actionNotice()) {
-      <p class="notice action-feedback" role="status">{{ actionNotice() }}</p>
-    }
-    @if (actionError()) {
-      <p class="error-text action-feedback" role="alert">{{ actionError() }}</p>
+    @if (feedback(); as toast) {
+      <div class="toast-host">
+        <div
+          class="toast"
+          [class.toast-error]="toast.kind === 'error'"
+          [attr.role]="toast.kind === 'error' ? 'alert' : 'status'"
+        >
+          <span class="toast-indicator" aria-hidden="true"></span>
+          <p>{{ toast.message }}</p>
+          <button
+            class="toast-close"
+            type="button"
+            aria-label="Fechar aviso"
+            (click)="dismissFeedback()"
+          >
+            ×
+          </button>
+        </div>
+      </div>
     }
     @if (status(); as s) {
       @if (!s.connected) {
@@ -76,7 +84,6 @@ import { PageHeader } from '../../shared/page-header';
               <th>Fatura</th>
               <th>NF-e</th>
               <th>Etiqueta</th>
-              <th></th>
             </tr>
           </thead>
           <tbody>
@@ -112,6 +119,35 @@ import { PageHeader } from '../../shared/page-header';
                   @if (o.fiscal_error) {
                     <small class="error-text">{{ o.fiscal_error }}</small>
                   }
+                  @if (documentFor(o, 'pdf'); as fiscalPdf) {
+                    <button
+                      class="document-action"
+                      (click)="
+                        $event.stopPropagation();
+                        download(o.invoice_id!, fiscalPdf.id, fiscalPdf.filename)
+                      "
+                    >
+                      Abrir NF-e <span>↗</span>
+                    </button>
+                  } @else if (documentFor(o, 'xml'); as fiscalXml) {
+                    <button
+                      class="document-action"
+                      (click)="
+                        $event.stopPropagation();
+                        download(o.invoice_id!, fiscalXml.id, fiscalXml.filename)
+                      "
+                    >
+                      Abrir XML <span>↗</span>
+                    </button>
+                  } @else if (canRequestInvoice(o)) {
+                    <button
+                      class="secondary small"
+                      [disabled]="isWorking(o.id)"
+                      (click)="$event.stopPropagation(); requestInvoice(o)"
+                    >
+                      {{ fiscalActionLabel(o) }}
+                    </button>
+                  }
                 </td>
                 <td>
                   <span
@@ -123,31 +159,30 @@ import { PageHeader } from '../../shared/page-header';
                   @if (o.label_error) {
                     <small class="error-text">{{ o.label_error }}</small>
                   }
-                </td>
-                <td>
-                  @if (canProcess()) {
-                    <div class="order-actions" (click)="$event.stopPropagation()">
-                      <button
-                        class="secondary small"
-                        [disabled]="!o.invoice_id || isWorking(o.id) || o.fiscal_status === 'authorized'"
-                        (click)="requestInvoice(o)"
-                      >
-                        {{ isWorking(o.id, 'fiscal') ? 'Solicitando…' : 'Solicitar NF-e' }}
-                      </button>
-                      <button
-                        class="secondary small"
-                        [disabled]="!o.invoice_id || isWorking(o.id)"
-                        (click)="retryLabel(o)"
-                      >
-                        {{ isWorking(o.id, 'label') ? 'Buscando…' : 'Tentar etiqueta' }}
-                      </button>
-                    </div>
+                  @if (documentFor(o, 'label_pdf'); as labelPdf) {
+                    <button
+                      class="document-action"
+                      (click)="
+                        $event.stopPropagation();
+                        download(o.invoice_id!, labelPdf.id, labelPdf.filename)
+                      "
+                    >
+                      Baixar etiqueta <span>↗</span>
+                    </button>
+                  } @else if (canPrintLabel(o)) {
+                    <button
+                      class="secondary small"
+                      [disabled]="isWorking(o.id)"
+                      (click)="$event.stopPropagation(); retryLabel(o)"
+                    >
+                      {{ isWorking(o.id, 'label') ? 'Preparando…' : 'Imprimir etiqueta' }}
+                    </button>
                   }
                 </td>
               </tr>
             } @empty {
               <tr>
-                <td colspan="8"><div class="empty">Os novos pedidos aparecerão aqui.</div></td>
+                <td colspan="7"><div class="empty">Os novos pedidos aparecerão aqui.</div></td>
               </tr>
             }
           </tbody>
@@ -199,20 +234,45 @@ import { PageHeader } from '../../shared/page-header';
           </div>
           @if (canProcess()) {
             <div class="detail-actions">
-              <button
-                class="primary"
-                [disabled]="!order.invoice_id || isWorking(order.id) || order.fiscal_status === 'authorized' || order.status === 'cancelled'"
-                (click)="requestInvoice(order)"
-              >
-                {{ isWorking(order.id, 'fiscal') ? 'Solicitando NF-e…' : 'Solicitar NF-e ao Mercado Livre' }}
-              </button>
-              <button
-                class="secondary"
-                [disabled]="!order.invoice_id || isWorking(order.id)"
-                (click)="retryLabel(order)"
-              >
-                {{ isWorking(order.id, 'label') ? 'Buscando etiqueta…' : 'Tentar baixar etiqueta' }}
-              </button>
+              @if (documentFor(order, 'pdf'); as fiscalPdf) {
+                <button
+                  class="primary"
+                  (click)="download(order.invoice_id!, fiscalPdf.id, fiscalPdf.filename)"
+                >
+                  Abrir NF-e <span>↗</span>
+                </button>
+              } @else if (documentFor(order, 'xml'); as fiscalXml) {
+                <button
+                  class="primary"
+                  (click)="download(order.invoice_id!, fiscalXml.id, fiscalXml.filename)"
+                >
+                  Abrir XML <span>↗</span>
+                </button>
+              } @else if (canRequestInvoice(order)) {
+                <button
+                  class="primary"
+                  [disabled]="isWorking(order.id)"
+                  (click)="requestInvoice(order)"
+                >
+                  {{ isWorking(order.id, 'fiscal') ? 'Consultando…' : fiscalActionLabel(order) }}
+                </button>
+              }
+              @if (documentFor(order, 'label_pdf'); as labelPdf) {
+                <button
+                  class="secondary"
+                  (click)="download(order.invoice_id!, labelPdf.id, labelPdf.filename)"
+                >
+                  Baixar etiqueta <span>↗</span>
+                </button>
+              } @else if (canPrintLabel(order)) {
+                <button
+                  class="secondary"
+                  [disabled]="isWorking(order.id)"
+                  (click)="retryLabel(order)"
+                >
+                  {{ isWorking(order.id, 'label') ? 'Preparando etiqueta…' : 'Imprimir etiqueta' }}
+                </button>
+              }
             </div>
           }
           @if (order.invoice; as invoice) {
@@ -238,7 +298,7 @@ import { PageHeader } from '../../shared/page-header';
                 }
               </div>
               <div class="detail-documents">
-                <span class="documents-label">Documentos fiscais</span>
+                <span class="documents-label">Arquivos do pedido</span>
                 @for (doc of invoice.documents; track doc.id) {
                   <button class="doc" (click)="download(order.invoice_id!, doc.id, doc.filename)">
                     <span>{{ doc.document_type | uppercase }}</span
@@ -375,11 +435,8 @@ export class MarketplacePage implements OnInit {
   readonly status = signal<MarketplaceStatus | null>(null);
   readonly orders = signal<MarketplaceOrder[]>([]);
   readonly syncing = signal(false);
-  readonly syncMessage = signal<string | null>(null);
-  readonly syncError = signal<string | null>(null);
+  readonly feedback = signal<{ kind: 'success' | 'error'; message: string } | null>(null);
   readonly working = signal<{ id: string; kind: 'fiscal' | 'label' } | null>(null);
-  readonly actionNotice = signal<string | null>(null);
-  readonly actionError = signal<string | null>(null);
   readonly detail = signal<MarketplaceOrder | null>(null);
   readonly history = signal<MarketplaceOrderEvent[]>([]);
   readonly statusLabel = statusLabel;
@@ -395,17 +452,18 @@ export class MarketplacePage implements OnInit {
     this.api.marketplaceStatus().subscribe((v) => this.status.set(v));
     this.api.marketplaceOrders().subscribe({
       next: (v) => this.orders.set(v),
-      error: () => this.syncError.set('Não foi possível carregar os pedidos do Mercado Livre.'),
+      error: () =>
+        this.showFeedback('error', 'Não foi possível carregar os pedidos do Mercado Livre.'),
     });
   }
   syncNow() {
     this.syncing.set(true);
-    this.syncError.set(null);
-    this.syncMessage.set(null);
+    this.dismissFeedback();
     this.api.syncMarketplace().subscribe({
       next: (result) => {
         this.syncing.set(false);
-        this.syncMessage.set(
+        this.showFeedback(
+          result.accepted ? 'success' : 'error',
           result.accepted
             ? 'Busca enviada ao Mercado Livre. Os pedidos serão atualizados assim que a importação terminar.'
             : 'A sincronização não foi iniciada. Tente novamente.',
@@ -421,7 +479,8 @@ export class MarketplacePage implements OnInit {
       error: (error: { error?: { detail?: unknown } }) => {
         this.syncing.set(false);
         const detail = error.error?.detail;
-        this.syncError.set(
+        this.showFeedback(
+          'error',
           typeof detail === 'string'
             ? detail
             : 'Não foi possível iniciar a sincronização. Verifique a conexão com o Mercado Livre e tente novamente.',
@@ -479,6 +538,33 @@ export class MarketplacePage implements OnInit {
     const current = this.working();
     return current?.id === id && (!kind || current.kind === kind);
   }
+  documentFor(order: MarketplaceOrder, documentType: string) {
+    return order.invoice?.documents.find((document) => document.document_type === documentType);
+  }
+  canRequestInvoice(order: MarketplaceOrder) {
+    return (
+      this.canProcess() &&
+      Boolean(order.invoice_id) &&
+      order.status !== 'cancelled' &&
+      order.status !== 'canceled' &&
+      order.fiscal_status !== 'authorized'
+    );
+  }
+  fiscalActionLabel(order: MarketplaceOrder) {
+    if (this.isWorking(order.id, 'fiscal')) return 'Consultando…';
+    return order.external_invoice_id ? 'Verificar NF-e' : 'Solicitar NF-e';
+  }
+  canPrintLabel(order: MarketplaceOrder) {
+    const terminalStatuses = ['delivered', 'shipped', 'cancelled', 'canceled'];
+    const finishedLabels = ['downloaded', 'completed', 'not_applicable'];
+    return (
+      this.canProcess() &&
+      Boolean(order.invoice_id) &&
+      !['cancelled', 'canceled'].includes(order.status.toLowerCase()) &&
+      !terminalStatuses.includes(order.shipping_status?.toLowerCase() ?? '') &&
+      !finishedLabels.includes(order.label_status)
+    );
+  }
   requestInvoice(order: MarketplaceOrder) {
     if (
       !window.confirm(
@@ -494,8 +580,7 @@ export class MarketplacePage implements OnInit {
   }
   private runOrderAction(order: MarketplaceOrder, kind: 'fiscal' | 'label') {
     this.working.set({ id: order.id, kind });
-    this.actionNotice.set(null);
-    this.actionError.set(null);
+    this.dismissFeedback();
     const request =
       kind === 'fiscal'
         ? this.api.requestMarketplaceInvoice(order.id)
@@ -506,11 +591,21 @@ export class MarketplacePage implements OnInit {
           orders.map((item) => (item.id === updated.id ? updated : item)),
         );
         if (this.detail()?.id === updated.id) this.detail.set(updated);
-        this.actionNotice.set(
-          kind === 'fiscal'
-            ? 'Solicitação de NF-e concluída. Confira o status atualizado no pedido.'
-            : 'Tentativa de etiqueta concluída. Confira o status atualizado no pedido.',
-        );
+        if (kind === 'fiscal') {
+          this.showFeedback(
+            'success',
+            updated.fiscal_status === 'authorized'
+              ? 'NF-e encontrada e vinculada à fatura.'
+              : 'Solicitação enviada ao Mercado Livre; acompanhe o status neste pedido.',
+          );
+        } else {
+          this.showFeedback(
+            'success',
+            updated.label_status === 'downloaded'
+              ? 'Etiqueta anexada ao pedido. O botão agora permite abri-la.'
+              : `Etapa da etiqueta atualizada: ${this.automationLabel(updated.label_status)}.`,
+          );
+        }
         this.working.set(null);
       },
       error: (error: unknown) => {
@@ -518,10 +613,16 @@ export class MarketplacePage implements OnInit {
           error instanceof HttpErrorResponse
             ? error.error?.detail || error.message
             : 'Não foi possível concluir a ação. Tente novamente.';
-        this.actionError.set(String(detail));
+        this.showFeedback('error', String(detail));
         this.working.set(null);
       },
     });
+  }
+  showFeedback(kind: 'success' | 'error', message: string) {
+    this.feedback.set({ kind, message });
+  }
+  dismissFeedback() {
+    this.feedback.set(null);
   }
   openDetails(order: MarketplaceOrder) {
     this.history.set([]);
@@ -529,10 +630,27 @@ export class MarketplacePage implements OnInit {
     this.api.marketplaceOrderHistory(order.id).subscribe((events) => this.history.set(events));
   }
   download(invoiceId: string, documentId: string, filename: string) {
-    this.api.downloadInvoiceDocument(invoiceId, documentId).subscribe((blob) => {
-      const url = URL.createObjectURL(blob);
-      window.open(url, '_blank', 'noopener,noreferrer');
-      window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
-    });
+    const documentTab = window.open('about:blank', '_blank');
+    if (!documentTab) {
+      this.showFeedback('error', 'Permita a abertura de novas guias para visualizar este arquivo.');
+      return;
+    }
+    this.api.downloadInvoiceDocument(invoiceId, documentId).subscribe(
+      (blob) => {
+        const url = URL.createObjectURL(blob);
+        documentTab.opener = null;
+        documentTab.document.title = filename;
+        documentTab.location.href = url;
+        window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      },
+      (error: unknown) => {
+        documentTab.close();
+        const detail =
+          error instanceof HttpErrorResponse
+            ? error.error?.detail || error.message
+            : 'Não foi possível abrir o arquivo.';
+        this.showFeedback('error', String(detail));
+      },
+    );
   }
 }

@@ -91,6 +91,11 @@ class BiometricCredentialOut(BaseModel):
     expires_at: datetime
 
 
+class PushDeviceRegistration(BaseModel):
+    token: str = Field(min_length=20, max_length=4096)
+    platform: Literal["android"] = "android"
+
+
 class ProductCreate(BaseModel):
     sku: str = Field(min_length=1, max_length=80)
     name: str = Field(min_length=2, max_length=200)

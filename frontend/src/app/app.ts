@@ -1,5 +1,7 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
+import { AuthService } from './core/auth.service';
+import { PushNotificationsService } from './core/push-notifications.service';
 
 @Component({
   selector: 'app-root',
@@ -7,4 +9,11 @@ import { RouterOutlet } from '@angular/router';
   templateUrl: './app.html',
   styleUrl: './app.scss',
 })
-export class App {}
+export class App {
+  private readonly auth = inject(AuthService);
+  private readonly pushNotifications = inject(PushNotificationsService);
+
+  constructor() {
+    if (this.auth.isAuthenticated()) void this.pushNotifications.enableForCurrentDevice();
+  }
+}

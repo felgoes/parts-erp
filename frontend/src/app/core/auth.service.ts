@@ -4,11 +4,13 @@ import { Router } from '@angular/router';
 import { Observable, firstValueFrom, tap } from 'rxjs';
 import { BiometricStatus, biometricLogin } from './biometric-login';
 import { AuthToken, User } from './models';
+import { PushNotificationsService } from './push-notifications.service';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private readonly http = inject(HttpClient);
   private readonly router = inject(Router);
+  private readonly pushNotifications = inject(PushNotificationsService);
   private readonly storageKey = 'parts-erp-session';
   private readonly session = signal<AuthToken | null>(this.restore());
   readonly user = computed(() => this.session()?.user ?? null);
@@ -82,5 +84,6 @@ export class AuthService {
   private storeSession(session: AuthToken): void {
     sessionStorage.setItem(this.storageKey, JSON.stringify(session));
     this.session.set(session);
+    void this.pushNotifications.enableForCurrentDevice();
   }
 }

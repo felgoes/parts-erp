@@ -19,6 +19,7 @@ from app.integrations.shopee.sync import sync_all as sync_shopee_all
 from app.integrations.shopee.sync import sync_order as sync_shopee_order
 from app.models import MarketplaceAccount, MarketplaceOrder, MarketplaceOrderEvent
 from app.services.after_sale import after_sale_notification, upsert_after_sale_case
+from app.services.push_notifications import deliver_pending_notifications, enqueue_sale_notification
 
 
 async def process_mercadolivre_notification(
@@ -90,9 +91,21 @@ async def process_mercadolivre_notification(
             order_id = str(raw_order_id or "")
             if not order_id:
                 continue
+            previous_order = db.scalar(
+                select(MarketplaceOrder).where(
+                    MarketplaceOrder.provider == "mercadolivre",
+                    MarketplaceOrder.seller_id == seller_id,
+                    MarketplaceOrder.external_order_id == order_id,
+                )
+            )
+            previous_invoice_id = previous_order.invoice_id if previous_order else None
             # Always refresh the order before processing its webhook. Existing
             # invoices must also receive cancellations, refunds and returns.
             order = sync_order(db, seller_id, f"/orders/{order_id}")
+            # A sale alert is emitted exactly once, only when this webhook first
+            # turns a marketplace order into a linked ERP invoice.
+            if order and order.invoice_id and not previous_invoice_id:
+                enqueue_sale_notification(db, order)
             if topic in {"claims", "returns"} and order:
                 event_data = after_sale_notification(topic, data)
                 case_id = str(event_data.get("id") or resource.rsplit("/", 1)[-1])[:100]
@@ -177,7 +190,17 @@ async def process_shopee_notification(ctx: dict[str, Any], payload: dict[str, An
         if not account:
             return
         if order_sn:
-            sync_shopee_order(db, account, order_sn)
+            previous_order = db.scalar(
+                select(MarketplaceOrder).where(
+                    MarketplaceOrder.provider == "shopee",
+                    MarketplaceOrder.seller_id == shop_id,
+                    MarketplaceOrder.external_order_id == order_sn,
+                )
+            )
+            previous_invoice_id = previous_order.invoice_id if previous_order else None
+            order = sync_shopee_order(db, account, order_sn)
+            if order and order.invoice_id and not previous_invoice_id:
+                enqueue_sale_notification(db, order)
         else:
             sync_shopee_all(db, account)
 
@@ -188,12 +211,19 @@ async def reconcile_pending_marketplace_documents(ctx: dict[str, Any]) -> int:
         return retry_pending_automations(db)
 
 
+async def retry_pending_push_notifications(ctx: dict[str, Any]) -> int:
+    del ctx
+    with SessionLocal() as db:
+        return deliver_pending_notifications(db)
+
+
 class WorkerSettings:
     functions = [
         process_mercadolivre_notification,
         sync_mercadolivre_account,
         sync_shopee_account,
         process_shopee_notification,
+        retry_pending_push_notifications,
     ]
     cron_jobs = [
         cron(
@@ -201,7 +231,8 @@ class WorkerSettings:
             name="reconcile-pending-marketplace-documents",
             minute=set(range(60)),
             second=0,
-        )
+        ),
+        cron(retry_pending_push_notifications, name="retry-pending-push-notifications", minute=set(range(60)), second=30),
     ]
     redis_settings = RedisSettings.from_dsn(get_settings().redis_url)
     max_jobs = 10

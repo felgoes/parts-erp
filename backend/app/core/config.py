@@ -24,6 +24,9 @@ class Settings(BaseSettings):
     redis_url: str = "redis://localhost:6379/0"
     documents_dir: str = "data/documents"
     product_images_dir: str = "data/product-images"
+    # Kept outside version control. This credential authorizes server-to-device
+    # notifications and must never be bundled in the Android app.
+    firebase_service_account_file: str = ""
 
     bootstrap_admin_email: EmailStr = Field(default="admin@example.com")
     bootstrap_admin_password: SecretStr | None = None

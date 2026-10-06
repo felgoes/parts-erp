@@ -1,8 +1,9 @@
 import os
+import secrets
 from collections.abc import Generator
 from cryptography.fernet import Fernet
 
-os.environ.setdefault("SECRET_KEY", "test-secret-key-that-is-longer-than-32-characters")
+os.environ.setdefault("SECRET_KEY", secrets.token_urlsafe(48))
 os.environ.setdefault("TOKEN_ENCRYPTION_KEY", Fernet.generate_key().decode())
 os.environ.setdefault("DATABASE_URL", "sqlite+pysqlite:///:memory:")
 

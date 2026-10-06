@@ -3,7 +3,7 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { Observable, firstValueFrom, tap } from 'rxjs';
 import { BiometricStatus, biometricLogin } from './biometric-login';
-import { AuthToken } from './models';
+import { AuthToken, User } from './models';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
@@ -58,6 +58,13 @@ export class AuthService {
       await biometricLogin.clearCredential();
       throw error;
     }
+  }
+  updateCurrentUser(user: User): void {
+    const current = this.session();
+    if (!current) return;
+    const updated = { ...current, user };
+    sessionStorage.setItem(this.storageKey, JSON.stringify(updated));
+    this.session.set(updated);
   }
   logout(): void {
     sessionStorage.removeItem(this.storageKey);

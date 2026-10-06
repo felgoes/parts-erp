@@ -3,20 +3,23 @@ import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { forkJoin } from 'rxjs';
 import { ApiService } from '../../core/api.service';
+import { AuthService } from '../../core/auth.service';
 import { Customer, Invoice, Product } from '../../core/models';
+import { canSell } from '../../core/user-access';
 import { statusLabel, trackingEventLabel } from '../../core/status-labels';
 import { PageHeader } from '../../shared/page-header';
 import { PeriodFilter, PeriodFilterStatusOption } from '../../shared/period-filter';
+import { AfterSaleWorkflow } from '../../shared/after-sale-workflow';
 
 @Component({
   selector: 'app-invoices',
-  imports: [CurrencyPipe, DatePipe, UpperCasePipe, FormsModule, PageHeader, PeriodFilter],
+  imports: [CurrencyPipe, DatePipe, UpperCasePipe, FormsModule, PageHeader, PeriodFilter, AfterSaleWorkflow],
   template: `
     <app-page-header
       eyebrow="Comercial"
       title="Faturas de venda"
       subtitle="Do orçamento à baixa de estoque, sem retrabalho."
-      ><button class="primary" (click)="openNew()">+ Nova venda</button></app-page-header
+      >@if (canSell()) { <button class="primary" (click)="openNew()">+ Nova venda</button> }</app-page-header
     >
     <app-period-filter
       heading="Período"
@@ -78,7 +81,7 @@ import { PeriodFilter, PeriodFilterStatusOption } from '../../shared/period-filt
                   <strong>{{ i.total | currency: 'BRL' }}</strong>
                 </td>
                 <td class="right">
-                  @if (i.status === 'draft') {
+                  @if (i.status === 'draft' && canSell()) {
                     <button class="secondary small" (click)="$event.stopPropagation(); confirm(i)">Confirmar</button>
                   }
                 </td>
@@ -157,7 +160,7 @@ import { PeriodFilter, PeriodFilterStatusOption } from '../../shared/period-filt
           @if (invoiceTab() === 'items') { <section class="detail-section"><div class="section-heading"><div><p class="eyebrow">Composição</p><h3>Itens vendidos</h3></div><strong>{{ invoice.total | currency:'BRL' }}</strong></div><div class="invoice-detail-lines">@for (item of invoice.items; track item.id) { <div><span class="item-main"><strong>{{ item.description }}</strong><small>SKU {{ item.sku }} · {{ item.quantity }} unidade(s) · {{ item.unit_price | currency:'BRL' }} cada</small></span><strong>{{ item.total | currency:'BRL' }}</strong></div> }</div></section> }
           @if (invoiceTab() === 'tracking') { <section class="detail-section">@if (invoice.tracking; as tracking) { <div class="tracking-cards"><div><span>Status do pedido</span><strong>{{ statusLabel(tracking.status) }}</strong></div><div><span>Envio</span><strong>{{ statusLabel(tracking.shipping_status) }}</strong></div><div><span>Etiqueta</span><strong>{{ statusLabel(tracking.label_status) }}</strong></div><div><span>Código de rastreio</span><strong>{{ tracking.shipment_id || '—' }}</strong></div></div><div class="section-heading"><div><p class="eyebrow">Mercado Envios</p><h3>Linha do tempo do rastreio</h3></div><small>{{ tracking.last_update ? ('Atualizado ' + (tracking.last_update | date:'dd/MM/yyyy HH:mm')) : '' }}</small></div><div class="timeline">@for (event of tracking.history; track event.created_at + event.status) { <div><strong>{{ trackingEventLabel(event.status, event.detail) }}</strong><span>{{ event.created_at | date:'dd/MM/yyyy HH:mm' }}</span></div> } @empty { <p class="muted">Ainda não há eventos de rastreio registrados.</p> }</div> } @else { <div class="empty">Esta venda não está vinculada a um pedido de marketplace.</div> }</section> }
           @if (invoiceTab() === 'documents') { <section class="detail-section"><div class="section-heading"><div><p class="eyebrow">Fiscal</p><h3>Documentos da venda</h3></div><span class="muted">Clique para abrir em nova guia</span></div>@if (invoice.documents.length) { <div class="document-list">@for (doc of invoice.documents; track doc.id) { <a class="document-card" href="#" (click)="$event.preventDefault(); openDocument(invoice.id, doc.id)"><span class="document-icon">{{ doc.document_type === 'pdf' ? 'PDF' : 'XML' }}</span><span><strong>{{ doc.filename }}</strong><small>{{ doc.document_type === 'pdf' ? 'DANFE para visualização' : 'Nota fiscal eletrônica' }}</small></span><b>↗</b></a> }</div> } @else { <div class="empty">Nenhum documento anexado ainda.</div> }</section> }
-          @if (invoiceTab() === 'aftersale' && invoice.after_sale; as afterSale) { <section class="detail-section"><div class="section-heading"><div><p class="eyebrow">Acompanhamento</p><h3>{{ afterSale.kind === 'return' ? 'Devolução' : afterSale.kind === 'claim' ? 'Reclamação' : 'Cancelamento' }}</h3></div><span class="badge cancelled">{{ statusLabel(afterSale.status) }}</span></div><div class="after-sale-cards"><div><span>Status do Mercado Livre</span><strong>{{ statusLabel(afterSale.status) }}</strong></div>@if (afterSale.reason) { <div><span>Motivo informado</span><strong>{{ afterSaleReason(afterSale.reason) }}</strong></div> }@if (afterSale.requested_by) { <div><span>Solicitado por</span><strong>{{ requesterLabel(afterSale.requested_by) }}</strong></div> }@if (afterSale.payment_status) { <div><span>Pagamento</span><strong>{{ statusLabel(afterSale.payment_status) }}</strong></div> }@if (afterSale.refund_amount !== null) { <div><span>Valor reembolsado</span><strong>{{ afterSale.refund_amount | currency:'BRL' }}</strong></div> }@if (afterSale.return_id) { <div><span>Protocolo</span><strong>{{ afterSale.return_id }}</strong></div> }</div><div class="section-heading post-sale-history-heading"><div><p class="eyebrow">Histórico</p><h3>Etapas do pós-venda</h3></div></div><div class="timeline">@for (event of afterSale.history; track event.created_at + event.status) { <div><strong>{{ statusLabel(event.status) }}{{ event.detail ? ' · ' + afterSaleReason(event.detail) : '' }}</strong><span>{{ event.created_at | date:'dd/MM/yyyy HH:mm' }}</span></div> }@empty { <p class="muted">O Mercado Livre ainda não disponibilizou etapas adicionais para este caso.</p> }</div></section> }
+          @if (invoiceTab() === 'aftersale' && invoice.after_sale) { <app-after-sale-workflow [afterSale]="invoice.after_sale" /> }
         </section>
       </div>
     }
@@ -166,6 +169,8 @@ import { PeriodFilter, PeriodFilterStatusOption } from '../../shared/period-filt
 })
 export class InvoicesPage implements OnInit {
   private readonly api = inject(ApiService);
+  private readonly auth = inject(AuthService);
+  canSell() { return canSell(this.auth.user()?.role); }
   readonly invoices = signal<Invoice[]>([]);
   readonly products = signal<Product[]>([]);
   readonly customers = signal<Customer[]>([]);

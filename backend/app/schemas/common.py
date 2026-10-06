@@ -1,7 +1,16 @@
 from datetime import UTC, date, datetime
 from decimal import Decimal
+from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_serializer, field_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    EmailStr,
+    Field,
+    field_serializer,
+    field_validator,
+    model_validator,
+)
 
 from app.models import UserRole
 
@@ -10,11 +19,34 @@ class ORMModel(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class ErpSettingsOut(BaseModel):
+    company_name: str
+    company_short_name: str
+    logo_data_url: str | None
+    backup_enabled: bool
+    backup_frequency: Literal["daily", "weekly"]
+    backup_retention_days: int
+    backup_destination: Literal["google_drive"]
+    backup_ready: bool = False
+    backup_status: str = "setup_required"
+
+
+class ErpSettingsUpdate(BaseModel):
+    company_name: str = Field(min_length=2, max_length=120)
+    company_short_name: str = Field(min_length=1, max_length=40)
+    logo_data_url: str | None = Field(default=None, max_length=3_000_000)
+    backup_enabled: bool = False
+    backup_frequency: Literal["daily", "weekly"] = "daily"
+    backup_retention_days: int = Field(default=30, ge=1, le=30)
+    backup_destination: Literal["google_drive"] = "google_drive"
+
+
 class UserOut(ORMModel):
     id: str
     email: str
     full_name: str
-    role: str
+    role: UserRole
+    active: bool
 
 
 class UserCreate(BaseModel):
@@ -32,6 +64,8 @@ class UserUpdate(BaseModel):
     email: EmailStr | None = None
     full_name: str | None = Field(default=None, min_length=2, max_length=160)
     password: str | None = Field(default=None, min_length=12, max_length=128)
+    role: UserRole | None = None
+    active: bool | None = None
 
 
 class Token(BaseModel):
@@ -57,6 +91,20 @@ class ProductCreate(BaseModel):
     sku: str = Field(min_length=1, max_length=80)
     name: str = Field(min_length=2, max_length=200)
     description: str | None = None
+    brand: str | None = Field(default=None, max_length=120)
+    manufacturer: str | None = Field(default=None, max_length=160)
+    manufacturer_part_number: str | None = Field(default=None, max_length=120)
+    barcode: str | None = Field(default=None, max_length=32)
+    category: str | None = Field(default=None, max_length=160)
+    item_condition: Literal["new", "used", "refurbished"] = "new"
+    warranty_days: int | None = Field(default=None, ge=0, le=3650)
+    origin_country: str | None = Field(default=None, max_length=80)
+    weight_g: Decimal | None = Field(default=None, gt=0, max_digits=12, decimal_places=3)
+    package_length_cm: Decimal | None = Field(default=None, gt=0, max_digits=10, decimal_places=2)
+    package_width_cm: Decimal | None = Field(default=None, gt=0, max_digits=10, decimal_places=2)
+    package_height_cm: Decimal | None = Field(default=None, gt=0, max_digits=10, decimal_places=2)
+    attributes: dict[str, Any] = Field(default_factory=dict, max_length=100)
+    fitments: list[dict[str, Any]] = Field(default_factory=list, max_length=200)
     sale_price: Decimal = Field(default=Decimal("0"), ge=0)
     cost_price: Decimal = Field(default=Decimal("0"), ge=0)
     current_stock: Decimal = Field(default=Decimal("0"))
@@ -67,6 +115,20 @@ class ProductCreate(BaseModel):
 class ProductUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=2, max_length=200)
     description: str | None = None
+    brand: str | None = Field(default=None, max_length=120)
+    manufacturer: str | None = Field(default=None, max_length=160)
+    manufacturer_part_number: str | None = Field(default=None, max_length=120)
+    barcode: str | None = Field(default=None, max_length=32)
+    category: str | None = Field(default=None, max_length=160)
+    item_condition: Literal["new", "used", "refurbished"] | None = None
+    warranty_days: int | None = Field(default=None, ge=0, le=3650)
+    origin_country: str | None = Field(default=None, max_length=80)
+    weight_g: Decimal | None = Field(default=None, gt=0, max_digits=12, decimal_places=3)
+    package_length_cm: Decimal | None = Field(default=None, gt=0, max_digits=10, decimal_places=2)
+    package_width_cm: Decimal | None = Field(default=None, gt=0, max_digits=10, decimal_places=2)
+    package_height_cm: Decimal | None = Field(default=None, gt=0, max_digits=10, decimal_places=2)
+    attributes: dict[str, Any] | None = Field(default=None, max_length=100)
+    fitments: list[dict[str, Any]] | None = Field(default=None, max_length=200)
     sale_price: Decimal | None = Field(default=None, ge=0)
     cost_price: Decimal | None = Field(default=None, ge=0)
     minimum_stock: Decimal | None = Field(default=None, ge=0)
@@ -78,8 +140,23 @@ class ProductOut(ORMModel):
     sku: str
     name: str
     description: str | None
+    brand: str | None = None
+    manufacturer: str | None = None
+    manufacturer_part_number: str | None = None
+    barcode: str | None = None
+    category: str | None = None
+    item_condition: str = "new"
+    warranty_days: int | None = None
+    origin_country: str | None = None
+    weight_g: Decimal | None = None
+    package_length_cm: Decimal | None = None
+    package_width_cm: Decimal | None = None
+    package_height_cm: Decimal | None = None
+    attributes: dict[str, Any] = Field(default_factory=dict)
+    fitments: list[dict[str, Any]] = Field(default_factory=list)
+    images: list[dict[str, Any]] = Field(default_factory=list)
     sale_price: Decimal
-    cost_price: Decimal
+    cost_price: Decimal | None = None
     current_stock: Decimal
     minimum_stock: Decimal
     active: bool
@@ -90,7 +167,7 @@ class ProductOut(ORMModel):
 class ProductListingOut(ORMModel):
     id: str
     provider: str
-    external_item_id: str
+    external_item_id: str | None
     title: str | None
     permalink: str | None
     thumbnail: str | None
@@ -100,7 +177,37 @@ class ProductListingOut(ORMModel):
     sold_quantity: int | None
     visits: int | None
     status: str | None
+    sync_status: str = "imported"
+    sync_error: str | None = None
+    category_id: str | None = None
+    channel_data: dict[str, Any] = Field(default_factory=dict)
     synchronized_at: datetime | None
+
+
+class ProductChannelDraftIn(BaseModel):
+    category_id: str = Field(min_length=2, max_length=80)
+    title: str | None = Field(default=None, max_length=200)
+    family_name: str | None = Field(default=None, max_length=200)
+    description: str | None = Field(default=None, max_length=10_000)
+    price: Decimal | None = Field(default=None, gt=0, max_digits=14, decimal_places=2)
+    listing_type_id: str | None = Field(default=None, max_length=60)
+    item_condition: Literal["new", "used", "refurbished"] | None = None
+    attributes: list[dict[str, Any]] = Field(default_factory=list, max_length=200)
+    sale_terms: list[dict[str, Any]] = Field(default_factory=list, max_length=30)
+    shipping: dict[str, Any] = Field(default_factory=dict, max_length=30)
+    logistic_info: list[dict[str, Any]] = Field(default_factory=list, max_length=50)
+
+
+class ProductChannelMetadataOut(BaseModel):
+    provider: str
+    connected: bool
+    user_product_seller: bool = False
+    categories: list[dict[str, Any]] = Field(default_factory=list)
+    attributes: list[dict[str, Any]] = Field(default_factory=list)
+    sale_terms: list[dict[str, Any]] = Field(default_factory=list)
+    listing_types: list[dict[str, Any]] = Field(default_factory=list)
+    logistics: list[dict[str, Any]] = Field(default_factory=list)
+    limits: dict[str, Any] = Field(default_factory=dict)
 
 
 class ProductDetailOut(ProductOut):
@@ -187,6 +294,13 @@ class CatalogProductOut(BaseModel):
     sku: str
     name: str
     description: str | None
+    brand: str | None = None
+    manufacturer_part_number: str | None = None
+    barcode: str | None = None
+    category: str | None = None
+    attributes: dict[str, Any] = Field(default_factory=dict)
+    fitments: list[dict[str, Any]] = Field(default_factory=list)
+    images: list[dict[str, Any]] = Field(default_factory=list)
     sale_price: Decimal
     in_stock: bool
     listings: list[CatalogListingOut] = Field(default_factory=list)
@@ -247,15 +361,15 @@ class PurchaseItemOut(ORMModel):
     description: str
     quantity: Decimal
     received_quantity: Decimal
-    unit_cost: Decimal
+    unit_cost: Decimal | None = None
 
 
 class PurchaseQuoteOut(ORMModel):
     id: str
     supplier_name: str
     supplier_contact: str | None
-    total: Decimal
-    item_costs: dict[str, Decimal]
+    total: Decimal | None = None
+    item_costs: dict[str, Decimal] | None = None
     delivery_days: int | None
     payment_terms: str | None
     notes: str | None
@@ -390,6 +504,140 @@ class InvoiceAfterSaleOut(BaseModel):
     refund_amount: Decimal | None = None
     requested_at: datetime | None = None
     history: list[InvoiceTrackingEventOut] = Field(default_factory=list)
+    cases: list["AfterSaleCaseOut"] = Field(default_factory=list)
+
+
+class AfterSaleCaseEventOut(ORMModel):
+    event_type: str
+    status: str
+    detail: str | None = None
+    created_at: datetime
+
+
+class AfterSaleCaseItemOut(ORMModel):
+    id: str
+    invoice_item_id: str | None
+    product_id: str
+    sku: str
+    description: str
+    requested_quantity: Decimal
+    received_quantity: Decimal
+    inspected_quantity: Decimal
+    restocked_quantity: Decimal
+    disposition: str
+    notes: str | None = None
+
+
+class AfterSaleCaseOut(ORMModel):
+    id: str
+    provider: str
+    external_case_id: str
+    marketplace_order_id: str
+    invoice_id: str | None
+    kind: str
+    workflow_status: str
+    marketplace_status: str
+    reason: str | None
+    requested_by: str | None
+    payment_status: str | None
+    refund_amount: Decimal | None
+    requested_at: datetime | None
+    completed_at: datetime | None
+    notes: str | None
+    items: list[AfterSaleCaseItemOut]
+    events: list[AfterSaleCaseEventOut]
+
+
+class AfterSaleReceiveItemIn(BaseModel):
+    item_id: str
+    received_quantity: Decimal = Field(ge=0, max_digits=14, decimal_places=3)
+
+
+class AfterSaleReceiveIn(BaseModel):
+    items: list[AfterSaleReceiveItemIn] = Field(min_length=1)
+    notes: str | None = Field(default=None, max_length=500)
+
+
+class AfterSaleInspectItemIn(BaseModel):
+    item_id: str
+    restock_quantity: Decimal = Field(ge=0, max_digits=14, decimal_places=3)
+    disposition: Literal["restock", "mixed", "damaged", "discarded"]
+    notes: str | None = Field(default=None, max_length=500)
+
+
+class AfterSaleInspectIn(BaseModel):
+    items: list[AfterSaleInspectItemIn] = Field(min_length=1)
+
+
+class AfterSaleCloseIn(BaseModel):
+    note: str = Field(min_length=3, max_length=500)
+
+
+class MarketStudyCreate(BaseModel):
+    search_term: str = Field(min_length=2, max_length=200)
+    sku: str | None = Field(default=None, max_length=80)
+    category_id: str | None = Field(default=None, max_length=40)
+    landed_cost: Decimal = Field(ge=0, max_digits=14, decimal_places=2)
+    target_margin_pct: Decimal = Field(
+        default=Decimal("25"), ge=0, lt=80, max_digits=5, decimal_places=2
+    )
+    marketplace_fee_pct: Decimal = Field(
+        default=Decimal("16"), ge=0, lt=80, max_digits=5, decimal_places=2
+    )
+    shipping_cost: Decimal = Field(default=0, ge=0, max_digits=14, decimal_places=2)
+
+    @field_validator("search_term")
+    @classmethod
+    def trim_search_term(cls, value: str) -> str:
+        normalized = value.strip()
+        if not normalized:
+            raise ValueError("Informe o nome ou código da peça")
+        return normalized
+
+    @model_validator(mode="after")
+    def validate_price_scenario(self) -> "MarketStudyCreate":
+        if self.target_margin_pct + self.marketplace_fee_pct >= 100:
+            raise ValueError("Taxa do canal e margem desejada precisam somar menos de 100%")
+        return self
+
+
+class MarketStudyConnectorUpdate(BaseModel):
+    provider: Literal["openai_responses", "openai_compatible"]
+    model: str = Field(min_length=1, max_length=120)
+    base_url: str | None = Field(default=None, max_length=500)
+    api_key: str | None = Field(default=None, min_length=1, max_length=1000)
+    enabled: bool = True
+
+
+class MarketStudyConnectorOut(BaseModel):
+    provider: str
+    model: str
+    base_url: str | None
+    enabled: bool
+    configured: bool
+    has_api_key: bool
+
+
+class MarketStudyOut(ORMModel):
+    id: str
+    created_by_id: str
+    search_term: str
+    sku: str | None
+    category_id: str | None
+    landed_cost: Decimal
+    target_margin_pct: Decimal
+    marketplace_fee_pct: Decimal
+    shipping_cost: Decimal
+    status: str
+    provider_used: str | None
+    result: dict[str, Any]
+    linked_purchase_id: str | None
+    created_at: datetime
+
+
+class MarketStudyPurchaseIn(BaseModel):
+    sku: str = Field(min_length=1, max_length=80)
+    quantity: Decimal = Field(gt=0, max_digits=14, decimal_places=3)
 
 
 class InvoiceOut(ORMModel):
@@ -467,6 +715,7 @@ class MarketplaceOrderOut(ORMModel):
     provider: str = "mercadolivre"
     shipment_id: str | None = None
     shipping_status: str | None = None
+    shipping_substatus: str | None = None
     fiscal_status: str = "pending"
     fiscal_error: str | None = None
     external_invoice_id: str | None = None

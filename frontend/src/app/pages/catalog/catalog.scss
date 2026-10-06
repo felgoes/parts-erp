@@ -91,6 +91,13 @@ h2 { font-size:clamp(30px, 4vw, 55px); line-height:.98; letter-spacing:-.055em; 
 .attribute-list b { color:#e3e5e7; font-size:12px; }
 .listing-actions { display:flex; gap:10px; flex-wrap:wrap; }
 .listing-actions .button { min-height:40px; }
+.master-photo-gallery { display:grid; grid-template-columns:repeat(auto-fill,minmax(100px,1fr)); gap:10px; margin:18px 0; }
+.master-photo-gallery img { width:100%; aspect-ratio:1; object-fit:contain; border:1px solid #34383a; border-radius:8px; background:#fff; }
+.master-attributes { margin:18px 0; }
+.catalog-fitments { margin:20px 0; padding:16px; border:1px solid #34383a; border-radius:10px; }
+.catalog-fitments>div { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:8px; }
+.catalog-fitments article { display:grid; gap:4px; padding:10px; background:#1b1d1e; }
+.catalog-fitments article span,.catalog-fitments small { color:#a9b0b3; }
 .listing-external { color:#fff; }
 .how-section { border-top:1px solid #282b30; padding:72px 0; display:grid; grid-template-columns:1fr 1fr; gap:60px; }
 .steps { display:flex; flex-direction:column; }

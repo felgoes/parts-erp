@@ -3,6 +3,7 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { finalize } from 'rxjs';
 import { ApiService } from '../../core/api.service';
 import { User } from '../../core/models';
+import { ROLE_DESCRIPTIONS, ROLE_LABELS } from '../../core/user-access';
 import { PageHeader } from '../../shared/page-header';
 
 @Component({
@@ -15,17 +16,18 @@ import { PageHeader } from '../../shared/page-header';
     <section class="card table-card">
       <div class="table-wrap">
         <table>
-          <thead><tr><th>Nome</th><th>E-mail</th><th>Perfil</th><th></th></tr></thead>
+          <thead><tr><th>Nome</th><th>E-mail</th><th>Perfil e acesso</th><th>Situação</th><th></th></tr></thead>
           <tbody>
             @for (user of users(); track user.id) {
               <tr>
                 <td><strong>{{ user.full_name }}</strong></td>
                 <td>{{ user.email }}</td>
-                <td><span class="badge">{{ roleLabel(user.role) }}</span></td>
+                <td><span class="badge">{{ roleLabel(user.role) }}</span><small class="role-description">{{ roleDescription(user.role) }}</small></td>
+                <td><span class="badge" [class.success]="user.active" [class.warning]="!user.active">{{ user.active ? 'Ativo' : 'Desativado' }}</span></td>
                 <td><button class="secondary small" type="button" (click)="openEdit(user)">Editar acesso</button></td>
               </tr>
             } @empty {
-              <tr><td colspan="4"><div class="empty">Nenhum usuário encontrado.</div></td></tr>
+              <tr><td colspan="5"><div class="empty">Nenhum usuário encontrado.</div></td></tr>
             }
           </tbody>
         </table>
@@ -43,7 +45,7 @@ import { PageHeader } from '../../shared/page-header';
               <label>Nome completo<input formControlName="full_name" autocomplete="name" /></label>
               <label>E-mail<input type="email" formControlName="email" autocomplete="email" /></label>
               <label>Senha<input type="password" formControlName="password" autocomplete="new-password" /><small>Mínimo de 12 caracteres.</small></label>
-              <label>Perfil<select formControlName="role"><option value="operator">Operador</option><option value="manager">Gerente</option><option value="admin">Administrador</option></select></label>
+              <label>Perfil<select formControlName="role">@for (role of roleChoices; track role) { <option [value]="role">{{ roleLabel(role) }}</option> }</select><small>{{ roleDescription(userForm.controls.role.value) }}</small></label>
             </div>
             @if (message()) { <p class="form-message error">{{ message() }}</p> }
             <button class="primary full" [disabled]="userForm.invalid || saving()">
@@ -60,12 +62,15 @@ import { PageHeader } from '../../shared/page-header';
             <div><p class="eyebrow">Acesso</p><h2>Editar usuário</h2></div>
             <button class="close" type="button" (click)="closeReset()">×</button>
           </div>
-          <p>Altere o e-mail e, se necessário, defina uma nova senha para <strong>{{ selectedUser()?.full_name }}</strong>.</p>
+          <p>Atualize o perfil e a situação de acesso de <strong>{{ selectedUser()?.full_name }}</strong>. Uma senha em branco será mantida.</p>
           <form [formGroup]="resetForm" (ngSubmit)="resetPassword()">
             <label>E-mail<input type="email" formControlName="email" autocomplete="email" /></label>
+            <label>Perfil<select formControlName="role">@for (role of roleChoices; track role) { <option [value]="role">{{ roleLabel(role) }}</option> }</select><small>{{ roleDescription(resetForm.controls.role.value) }}</small></label>
+            <label class="active-toggle"><input type="checkbox" formControlName="active" /> Acesso ativo</label>
             <label>Nova senha<input type="password" formControlName="password" autocomplete="new-password" placeholder="Deixe vazio para manter" /><small>Se preencher, use mínimo de 12 caracteres.</small></label>
             @if (resetMessage()) { <p class="form-message error">{{ resetMessage() }}</p> }
-            <button class="primary full" [disabled]="resetForm.invalid || resetting()">{{ resetting() ? 'Salvando…' : 'Salvar nova senha' }}</button>
+            @if (selectedUser()?.role === 'admin' && selectedUser()?.active) { <p class="muted">O sistema sempre exige ao menos um administrador ativo.</p> }
+            <button class="primary full" [disabled]="resetForm.invalid || resetting()">{{ resetting() ? 'Salvando…' : 'Salvar acesso' }}</button>
           </form>
         </section>
       </div>
@@ -84,6 +89,7 @@ export class UsersPage implements OnInit {
   readonly selectedUser = signal<User | null>(null);
   readonly resetting = signal(false);
   readonly resetMessage = signal('');
+  readonly roleChoices: User['role'][] = ['operator', 'stock', 'finance', 'manager', 'viewer', 'admin'];
   readonly userForm = this.fb.nonNullable.group({
     full_name: ['', [Validators.required, Validators.minLength(2)]],
     email: ['', [Validators.required, Validators.email]],
@@ -92,6 +98,8 @@ export class UsersPage implements OnInit {
   });
   readonly resetForm = this.fb.nonNullable.group({
     email: ['', [Validators.required, Validators.email]],
+    role: ['operator' as User['role'], Validators.required],
+    active: [true],
     password: ['', [Validators.minLength(12)]],
   });
 
@@ -115,7 +123,7 @@ export class UsersPage implements OnInit {
 
   openEdit(user: User) {
     this.selectedUser.set(user);
-    this.resetForm.reset({ email: user.email, password: '' });
+    this.resetForm.reset({ email: user.email, role: user.role, active: user.active, password: '' });
     this.resetMessage.set('');
     this.resetModal.set(true);
   }
@@ -131,14 +139,18 @@ export class UsersPage implements OnInit {
     this.resetting.set(true);
     this.resetMessage.set('');
     const values = this.resetForm.getRawValue();
-    const payload = values.password ? values : { email: values.email };
+    const payload = { email: values.email, role: values.role, active: values.active, ...(values.password ? { password: values.password } : {}) };
     this.api.updateUser(user.id, payload)
       .pipe(finalize(() => this.resetting.set(false)))
-      .subscribe({ next: () => this.closeReset(), error: () => this.resetMessage.set('Não foi possível redefinir a senha.') });
+      .subscribe({ next: () => { this.closeReset(); this.load(); }, error: (error) => this.resetMessage.set(error.error?.detail || 'Não foi possível salvar as alterações do usuário.') });
   }
 
   roleLabel(role: User['role']) {
-    return { admin: 'Administrador', manager: 'Gerente', operator: 'Operador' }[role];
+    return ROLE_LABELS[role];
+  }
+
+  roleDescription(role: User['role']) {
+    return ROLE_DESCRIPTIONS[role];
   }
 
   save() {

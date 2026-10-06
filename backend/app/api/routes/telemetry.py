@@ -9,8 +9,9 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user
+from app.api.deps import require_permission
 from app.core.config import get_settings
+from app.core.permissions import Permission
 from app.db.session import get_db
 from app.models import HealthSnapshot, Product, TelemetryEvent, User
 from app.schemas.common import (
@@ -100,7 +101,7 @@ def summary(
     start_date: date | None = Query(default=None),
     end_date: date | None = Query(default=None),
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
+    _: User = Depends(require_permission(Permission.MONITORING_READ)),
 ) -> TelemetrySummary:
     today = datetime.now(UTC).date()
     start = start_date or (today - timedelta(days=days - 1))
@@ -126,9 +127,7 @@ def summary(
     if dialect == "sqlite":
         local_event_date = func.date(TelemetryEvent.created_at, "-3 hours")
     else:
-        local_event_date = func.date(
-            func.timezone("America/Sao_Paulo", TelemetryEvent.created_at)
-        )
+        local_event_date = func.date(func.timezone("America/Sao_Paulo", TelemetryEvent.created_at))
     daily_rows = db.execute(
         select(local_event_date, TelemetryEvent.name, func.count(TelemetryEvent.id))
         .where(TelemetryEvent.created_at >= since)
@@ -178,7 +177,7 @@ def summary(
 @router.get("/health", response_model=list[TelemetryHealthOut])
 def health(
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
+    _: User = Depends(require_permission(Permission.MONITORING_READ)),
 ) -> list[TelemetryHealthOut]:
     return list(
         db.scalars(select(HealthSnapshot).order_by(HealthSnapshot.checked_at.desc()).limit(50))

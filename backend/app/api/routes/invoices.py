@@ -5,9 +5,11 @@ from fastapi.responses import FileResponse
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
-from app.api.deps import get_current_user, require_roles
+from app.api.deps import require_permission
+from app.core.permissions import Permission
 from app.db.session import get_db
 from app.models import (
+    AfterSaleCase,
     InvoiceDocument,
     MarketplaceAccount,
     MarketplaceOrder,
@@ -15,9 +17,9 @@ from app.models import (
     Product,
     SalesInvoice,
     User,
-    UserRole,
 )
 from app.schemas.common import (
+    AfterSaleCaseOut,
     InvoiceCreate,
     InvoiceCustomerOut,
     InvoiceOut,
@@ -25,6 +27,7 @@ from app.schemas.common import (
     InvoiceTrackingOut,
 )
 from app.services.after_sale import after_sales_for_invoices, invoice_after_sale
+from app.services.invoice_tracking import attach_invoice_tracking
 from app.services.sales import cancel_invoice, confirm_invoice, create_invoice
 
 router = APIRouter(prefix="/invoices", tags=["Faturas de venda"])
@@ -32,14 +35,14 @@ BRAZIL_TZ = timezone(timedelta(hours=-3))
 
 
 def _sync_marketplace_stock_for_invoice(db: Session, invoice: SalesInvoice) -> None:
-    from app.integrations.mercadolivre.sync import sync_product_stock
+    from app.services.product_channels import sync_product_stock_all
 
     product_ids = {item.product_id for item in invoice.items}
     for product_id in product_ids:
         product = db.get(Product, product_id)
         if product:
             try:
-                sync_product_stock(db, product)
+                sync_product_stock_all(db, product)
             except Exception:
                 # A venda local não falha se o marketplace estiver temporariamente indisponível.
                 db.rollback()
@@ -50,7 +53,7 @@ def list_invoices(
     start_date: date | None = Query(default=None),
     end_date: date | None = Query(default=None),
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
+    _: User = Depends(require_permission(Permission.INVOICE_READ)),
 ) -> list[InvoiceOut]:
     today = datetime.now(BRAZIL_TZ).date()
     start = start_date or today.replace(day=1)
@@ -80,6 +83,7 @@ def list_invoices(
         output = InvoiceOut.model_validate(invoice)
         output.after_sale = after_sales.get(invoice.id)
         outputs.append(output)
+    attach_invoice_tracking(db, outputs)
     return outputs
 
 
@@ -87,7 +91,7 @@ def list_invoices(
 def add_invoice(
     payload: InvoiceCreate,
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
+    _: User = Depends(require_permission(Permission.INVOICE_CREATE)),
 ) -> SalesInvoice:
     invoice = create_invoice(db, payload)
     db.commit()
@@ -99,7 +103,7 @@ def add_invoice(
 def get_invoice(
     invoice_id: str,
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
+    _: User = Depends(require_permission(Permission.INVOICE_READ)),
 ) -> InvoiceOut:
     invoice = db.scalar(
         select(SalesInvoice)
@@ -130,6 +134,20 @@ def get_invoice(
         if order:
             result.after_sale = invoice_after_sale(order, invoice.total)
             if result.after_sale:
+                return_cases = list(
+                    db.scalars(
+                        select(AfterSaleCase)
+                        .options(
+                            selectinload(AfterSaleCase.items),
+                            selectinload(AfterSaleCase.events),
+                        )
+                        .where(AfterSaleCase.invoice_id == invoice.id)
+                        .order_by(AfterSaleCase.created_at.desc())
+                    )
+                )
+                result.after_sale.cases = [
+                    AfterSaleCaseOut.model_validate(case) for case in return_cases
+                ]
                 result.after_sale.history = [
                     InvoiceTrackingEventOut(
                         status=event.status,
@@ -189,7 +207,7 @@ def get_invoice(
 def confirm(
     invoice_id: str,
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
+    _: User = Depends(require_permission(Permission.INVOICE_CONFIRM)),
 ) -> SalesInvoice:
     invoice = db.get(SalesInvoice, invoice_id)
     if not invoice:
@@ -205,7 +223,7 @@ def confirm(
 def cancel(
     invoice_id: str,
     db: Session = Depends(get_db),
-    _: User = Depends(require_roles(UserRole.admin, UserRole.manager)),
+    _: User = Depends(require_permission(Permission.INVOICE_CANCEL)),
 ) -> SalesInvoice:
     invoice = db.get(SalesInvoice, invoice_id)
     if not invoice:
@@ -222,7 +240,7 @@ def download_document(
     invoice_id: str,
     document_id: str,
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
+    _: User = Depends(require_permission(Permission.INVOICE_READ)),
 ) -> FileResponse:
     document = db.scalar(
         select(InvoiceDocument).where(
@@ -231,5 +249,7 @@ def download_document(
     )
     if not document:
         raise HTTPException(status_code=404, detail="Documento não encontrado")
-    media_type = "application/pdf" if document.document_type == "pdf" else "application/xml"
+    media_type = (
+        "application/pdf" if document.document_type in {"pdf", "label_pdf"} else "application/xml"
+    )
     return FileResponse(document.storage_path, media_type=media_type, filename=document.filename)

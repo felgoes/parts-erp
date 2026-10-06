@@ -204,11 +204,10 @@
   .dashboard-grid table { min-width: 0; }
   .dashboard-grid table thead { display: none; }
   .dashboard-grid table tbody, .dashboard-grid table tr, .dashboard-grid table td { display: block; }
-  .dashboard-grid table tr { padding: 13px 16px; border-bottom: 1px solid var(--line); }
+  .dashboard-grid table tr { padding: 13px 0; border-bottom: 1px solid var(--line); }
   .dashboard-grid table td { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 5px 0; border: 0; }
   .dashboard-grid table td:first-child { padding-top: 2px; }
   .dashboard-grid table td:not(:first-child)::before { color: var(--muted); content: 'Cliente'; font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
-  .dashboard-grid table td::before { flex: 0 0 96px; text-align: left; }
   .dashboard-grid table td:nth-child(3)::before { content: 'Origem'; }
   .dashboard-grid table td:nth-child(4)::before { content: 'Emissão'; }
   .dashboard-grid table td:nth-child(5)::before { content: 'Status'; }

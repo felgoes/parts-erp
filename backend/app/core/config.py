@@ -1,4 +1,5 @@
 from functools import lru_cache
+from typing import Literal
 
 from pydantic import AnyHttpUrl, EmailStr, Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -22,6 +23,7 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+psycopg://parts_erp:parts_erp@localhost:5432/parts_erp"
     redis_url: str = "redis://localhost:6379/0"
     documents_dir: str = "data/documents"
+    product_images_dir: str = "data/product-images"
 
     bootstrap_admin_email: EmailStr = Field(default="admin@example.com")
     bootstrap_admin_password: SecretStr | None = None
@@ -34,6 +36,7 @@ class Settings(BaseSettings):
     mercadolivre_site_id: str = "MLB"
     mercadolivre_api_url: str = "https://api.mercadolibre.com"
     mercadolivre_auth_url: str = "https://auth.mercadolivre.com.br/authorization"
+    mercadolivre_label_format: Literal["pdf"] = "pdf"
     shopee_partner_id: str = ""
     shopee_partner_key: SecretStr | None = None
     shopee_redirect_uri: AnyHttpUrl = AnyHttpUrl(

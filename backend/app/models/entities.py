@@ -4,7 +4,18 @@ from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
 
-from sqlalchemy import JSON, Boolean, DateTime, Enum, ForeignKey, Index, Numeric, String, Text
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    DateTime,
+    Enum,
+    ForeignKey,
+    Index,
+    Numeric,
+    String,
+    Text,
+    UniqueConstraint,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -22,6 +33,9 @@ class UserRole(enum.StrEnum):
     admin = "admin"
     manager = "manager"
     operator = "operator"
+    stock = "stock"
+    finance = "finance"
+    viewer = "viewer"
 
 
 class InvoiceStatus(enum.StrEnum):
@@ -41,6 +55,7 @@ class MovementType(enum.StrEnum):
     cancellation = "cancellation"
     adjustment = "adjustment"
     purchase_received = "purchase_received"
+    customer_return = "customer_return"
 
 
 class TimestampMixin:
@@ -61,6 +76,21 @@ class User(TimestampMixin, Base):
     active: Mapped[bool] = mapped_column(Boolean, default=True)
 
 
+class ErpSettings(TimestampMixin, Base):
+    """Singleton configuration for shared company identity and backup policy."""
+
+    __tablename__ = "erp_settings"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    company_name: Mapped[str] = mapped_column(String(120), default="Parts ERP")
+    company_short_name: Mapped[str] = mapped_column(String(40), default="Parts")
+    logo_data_url: Mapped[str | None] = mapped_column(Text)
+    backup_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
+    backup_frequency: Mapped[str] = mapped_column(String(20), default="daily")
+    backup_retention_days: Mapped[int] = mapped_column(default=30)
+    backup_destination: Mapped[str] = mapped_column(String(30), default="google_drive")
+
+
 class Product(TimestampMixin, Base):
     __tablename__ = "products"
 
@@ -68,6 +98,21 @@ class Product(TimestampMixin, Base):
     sku: Mapped[str] = mapped_column(String(80), unique=True, index=True)
     name: Mapped[str] = mapped_column(String(200), index=True)
     description: Mapped[str | None] = mapped_column(Text)
+    brand: Mapped[str | None] = mapped_column(String(120))
+    manufacturer: Mapped[str | None] = mapped_column(String(160))
+    manufacturer_part_number: Mapped[str | None] = mapped_column(String(120), index=True)
+    barcode: Mapped[str | None] = mapped_column(String(32), index=True)
+    category: Mapped[str | None] = mapped_column(String(160))
+    item_condition: Mapped[str] = mapped_column(String(24), default="new")
+    warranty_days: Mapped[int | None] = mapped_column()
+    origin_country: Mapped[str | None] = mapped_column(String(80))
+    weight_g: Mapped[Decimal | None] = mapped_column(Numeric(12, 3))
+    package_length_cm: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))
+    package_width_cm: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))
+    package_height_cm: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))
+    attributes: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    fitments: Mapped[list[dict[str, Any]]] = mapped_column(JSON, default=list)
+    images: Mapped[list[dict[str, Any]]] = mapped_column(JSON, default=list)
     sale_price: Mapped[Decimal] = mapped_column(Numeric(14, 2), default=0)
     cost_price: Mapped[Decimal] = mapped_column(Numeric(14, 2), default=0)
     current_stock: Mapped[Decimal] = mapped_column(Numeric(14, 3), default=0)
@@ -88,7 +133,7 @@ class ProductMarketplaceListing(TimestampMixin, Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
     product_id: Mapped[str] = mapped_column(ForeignKey("products.id", ondelete="CASCADE"))
     provider: Mapped[str] = mapped_column(String(30), default="mercadolivre")
-    external_item_id: Mapped[str] = mapped_column(String(80))
+    external_item_id: Mapped[str | None] = mapped_column(String(80))
     title: Mapped[str | None] = mapped_column(String(200))
     permalink: Mapped[str | None] = mapped_column(String(1000))
     thumbnail: Mapped[str | None] = mapped_column(String(1000))
@@ -98,6 +143,10 @@ class ProductMarketplaceListing(TimestampMixin, Base):
     sold_quantity: Mapped[int | None] = mapped_column()
     visits: Mapped[int | None] = mapped_column()
     status: Mapped[str | None] = mapped_column(String(40))
+    sync_status: Mapped[str] = mapped_column(String(30), default="imported")
+    sync_error: Mapped[str | None] = mapped_column(Text)
+    category_id: Mapped[str | None] = mapped_column(String(80))
+    channel_data: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
     payload: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
     synchronized_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
@@ -245,6 +294,38 @@ class PurchaseEvent(Base):
     purchase: Mapped[PurchaseCase] = relationship(back_populates="events")
 
 
+class MarketStudyConnectorConfig(TimestampMixin, Base):
+    __tablename__ = "market_study_connector_config"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    provider: Mapped[str] = mapped_column(String(40), default="openai_responses")
+    base_url: Mapped[str | None] = mapped_column(String(500))
+    model: Mapped[str] = mapped_column(String(120), default="gpt-6-luna")
+    encrypted_api_key: Mapped[str | None] = mapped_column(Text)
+    enabled: Mapped[bool] = mapped_column(Boolean, default=False)
+
+
+class MarketStudy(TimestampMixin, Base):
+    __tablename__ = "market_studies"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    created_by_id: Mapped[str] = mapped_column(ForeignKey("users.id"))
+    search_term: Mapped[str] = mapped_column(String(200), index=True)
+    sku: Mapped[str | None] = mapped_column(String(80))
+    category_id: Mapped[str | None] = mapped_column(String(40))
+    landed_cost: Mapped[Decimal] = mapped_column(Numeric(14, 2))
+    target_margin_pct: Mapped[Decimal] = mapped_column(Numeric(5, 2))
+    marketplace_fee_pct: Mapped[Decimal] = mapped_column(Numeric(5, 2))
+    shipping_cost: Mapped[Decimal] = mapped_column(Numeric(14, 2), default=0)
+    status: Mapped[str] = mapped_column(String(30), default="completed")
+    provider_used: Mapped[str | None] = mapped_column(String(40))
+    result: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    linked_purchase_id: Mapped[str | None] = mapped_column(ForeignKey("purchase_cases.id"))
+
+    created_by: Mapped[User] = relationship()
+    linked_purchase: Mapped[PurchaseCase | None] = relationship()
+
+
 class MarketplaceAccount(TimestampMixin, Base):
     __tablename__ = "marketplace_accounts"
 
@@ -301,6 +382,7 @@ class MarketplaceOrder(TimestampMixin, Base):
     synchronized_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     shipment_id: Mapped[str | None] = mapped_column(String(80), index=True)
     shipping_status: Mapped[str | None] = mapped_column(String(60))
+    shipping_substatus: Mapped[str | None] = mapped_column(String(80))
     fiscal_status: Mapped[str] = mapped_column(String(30), default="pending")
     fiscal_error: Mapped[str | None] = mapped_column(Text)
     external_invoice_id: Mapped[str | None] = mapped_column(String(80), index=True)
@@ -324,6 +406,85 @@ class MarketplaceOrderEvent(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc)
 
     order: Mapped[MarketplaceOrder] = relationship()
+
+
+class AfterSaleCase(TimestampMixin, Base):
+    """A marketplace return/claim linked to its original order and invoice."""
+
+    __tablename__ = "after_sale_cases"
+    __table_args__ = (
+        UniqueConstraint("provider", "external_case_id", name="uq_after_sale_provider_external"),
+        Index("ix_after_sale_invoice", "invoice_id"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    provider: Mapped[str] = mapped_column(String(30), default="mercadolivre")
+    external_case_id: Mapped[str] = mapped_column(String(100))
+    marketplace_order_id: Mapped[str] = mapped_column(ForeignKey("marketplace_orders.id"))
+    invoice_id: Mapped[str | None] = mapped_column(ForeignKey("sales_invoices.id"))
+    kind: Mapped[str] = mapped_column(String(20), default="return")
+    workflow_status: Mapped[str] = mapped_column(String(30), default="requested", index=True)
+    marketplace_status: Mapped[str] = mapped_column(String(60), default="unknown")
+    reason: Mapped[str | None] = mapped_column(String(500))
+    requested_by: Mapped[str | None] = mapped_column(String(80))
+    payment_status: Mapped[str | None] = mapped_column(String(40))
+    refund_amount: Mapped[Decimal | None] = mapped_column(Numeric(14, 2))
+    requested_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    notes: Mapped[str | None] = mapped_column(Text)
+    payload: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+
+    order: Mapped[MarketplaceOrder] = relationship()
+    invoice: Mapped[SalesInvoice | None] = relationship()
+    items: Mapped[list["AfterSaleCaseItem"]] = relationship(
+        cascade="all, delete-orphan", back_populates="case", lazy="selectin"
+    )
+    events: Mapped[list["AfterSaleCaseEvent"]] = relationship(
+        cascade="all, delete-orphan",
+        back_populates="case",
+        lazy="selectin",
+        order_by="AfterSaleCaseEvent.created_at",
+    )
+
+
+class AfterSaleCaseItem(Base):
+    __tablename__ = "after_sale_case_items"
+    __table_args__ = (Index("ix_after_sale_case_items_case", "case_id"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    case_id: Mapped[str] = mapped_column(ForeignKey("after_sale_cases.id", ondelete="CASCADE"))
+    invoice_item_id: Mapped[str | None] = mapped_column(ForeignKey("invoice_items.id"))
+    product_id: Mapped[str] = mapped_column(ForeignKey("products.id"))
+    sku: Mapped[str] = mapped_column(String(80))
+    description: Mapped[str] = mapped_column(String(200))
+    requested_quantity: Mapped[Decimal] = mapped_column(Numeric(14, 3))
+    received_quantity: Mapped[Decimal] = mapped_column(Numeric(14, 3), default=0)
+    inspected_quantity: Mapped[Decimal] = mapped_column(Numeric(14, 3), default=0)
+    restocked_quantity: Mapped[Decimal] = mapped_column(Numeric(14, 3), default=0)
+    disposition: Mapped[str] = mapped_column(String(30), default="pending")
+    notes: Mapped[str | None] = mapped_column(String(500))
+
+    case: Mapped[AfterSaleCase] = relationship(back_populates="items")
+    product: Mapped[Product] = relationship()
+
+
+class AfterSaleCaseEvent(Base):
+    __tablename__ = "after_sale_case_events"
+    __table_args__ = (
+        Index("ix_after_sale_case_events_case_created", "case_id", "created_at"),
+        UniqueConstraint("case_id", "fingerprint", name="uq_after_sale_case_event_fingerprint"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    case_id: Mapped[str] = mapped_column(ForeignKey("after_sale_cases.id", ondelete="CASCADE"))
+    event_type: Mapped[str] = mapped_column(String(40))
+    status: Mapped[str] = mapped_column(String(60))
+    detail: Mapped[str | None] = mapped_column(String(500))
+    fingerprint: Mapped[str] = mapped_column(String(180))
+    payload: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc)
+
+    case: Mapped[AfterSaleCase] = relationship(back_populates="events")
 
 
 class InvoiceDocument(Base):

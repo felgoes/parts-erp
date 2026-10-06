@@ -2,7 +2,19 @@ export interface User {
   id: string;
   email: string;
   full_name: string;
-  role: 'admin' | 'manager' | 'operator';
+  role: 'admin' | 'manager' | 'operator' | 'stock' | 'finance' | 'viewer';
+  active: boolean;
+}
+export interface ErpSettings {
+  company_name: string;
+  company_short_name: string;
+  logo_data_url: string | null;
+  backup_enabled: boolean;
+  backup_frequency: 'daily' | 'weekly';
+  backup_retention_days: number;
+  backup_destination: 'google_drive';
+  backup_ready: boolean;
+  backup_status: 'setup_required' | 'ready';
 }
 export interface AuthToken {
   access_token: string;
@@ -14,18 +26,51 @@ export interface Product {
   sku: string;
   name: string;
   description: string | null;
+  brand: string | null;
+  manufacturer: string | null;
+  manufacturer_part_number: string | null;
+  barcode: string | null;
+  category: string | null;
+  item_condition: 'new' | 'used' | 'refurbished';
+  warranty_days: number | null;
+  origin_country: string | null;
+  weight_g: number | null;
+  package_length_cm: number | null;
+  package_width_cm: number | null;
+  package_height_cm: number | null;
+  attributes: Record<string, string>;
+  fitments: ProductFitment[];
+  images: ProductImage[];
   sale_price: number;
-  cost_price: number;
+  cost_price: number | null;
   current_stock: number;
   minimum_stock: number;
   active: boolean;
   created_at: string;
   updated_at: string;
 }
+export interface ProductImage {
+  id: string;
+  filename: string;
+  url: string;
+  position: number;
+  width: number;
+  height: number;
+  uploaded_at: string;
+}
+export interface ProductFitment {
+  make: string;
+  model: string;
+  year_from?: number | null;
+  year_to?: number | null;
+  engine?: string | null;
+  version?: string | null;
+  notes?: string | null;
+}
 export interface ProductListing {
   id: string;
   provider: string;
-  external_item_id: string;
+  external_item_id: string | null;
   title: string | null;
   permalink: string | null;
   thumbnail: string | null;
@@ -35,7 +80,35 @@ export interface ProductListing {
   sold_quantity: number | null;
   visits: number | null;
   status: string | null;
+  sync_status: 'draft' | 'published' | 'partial' | 'blocked' | 'error' | 'imported';
+  sync_error: string | null;
+  category_id: string | null;
+  channel_data: ProductChannelDraft;
   synchronized_at: string | null;
+}
+export interface ProductChannelDraft {
+  category_id: string;
+  title?: string | null;
+  family_name?: string | null;
+  description?: string | null;
+  price?: number | null;
+  listing_type_id?: string | null;
+  item_condition?: 'new' | 'used' | 'refurbished' | null;
+  attributes: { id: string; value_id?: string; value_name?: string }[];
+  sale_terms: Record<string, unknown>[];
+  shipping: Record<string, unknown>;
+  logistic_info: Record<string, unknown>[];
+}
+export interface ProductChannelMetadata {
+  provider: 'mercadolivre' | 'shopee';
+  connected: boolean;
+  user_product_seller: boolean;
+  categories: { id: string; name: string; domain_id?: string | null; path?: unknown[] }[];
+  attributes: { id: string; name: string; required: boolean; new_required?: boolean; conditional_required?: boolean; value_type: string; values: { id?: string; name?: string; value_id?: string; original_value_name?: string }[]; max_length?: number }[];
+  sale_terms: { id: string; name: string; value_type: string; values?: { id: string; name: string }[]; allowed_units?: { id: string; name: string }[] }[];
+  listing_types: { id: string; name: string; listing_exposure?: string }[];
+  logistics: { id: number; name: string }[];
+  limits: { max_pictures?: number; max_title_length?: number; category_name?: string };
 }
 export interface ProductDetail extends Product {
   listings: ProductListing[];
@@ -103,14 +176,14 @@ export interface PurchaseItem {
   description: string;
   quantity: number;
   received_quantity: number;
-  unit_cost: number;
+  unit_cost: number | null;
 }
 export interface PurchaseQuote {
   id: string;
   supplier_name: string;
   supplier_contact: string | null;
-  total: number;
-  item_costs: Record<string, number>;
+  total: number | null;
+  item_costs: Record<string, number> | null;
   delivery_days: number | null;
   payment_terms: string | null;
   notes: string | null;
@@ -135,6 +208,80 @@ export interface Purchase {
   items: PurchaseItem[];
   quotes: PurchaseQuote[];
   events: PurchaseEvent[];
+}
+export interface MarketStudyConnector {
+  provider: 'openai_responses' | 'openai_compatible';
+  model: string;
+  base_url: string | null;
+  enabled: boolean;
+  configured: boolean;
+  has_api_key: boolean;
+}
+export interface MarketStudyOffer {
+  id: string;
+  title: string;
+  price: string;
+  available_quantity_reference: number | null;
+  sold_quantity_lifetime: number | null;
+  seller_id: string | null;
+  permalink: string | null;
+  thumbnail: string | null;
+  similarity: number;
+}
+export interface MarketStudy {
+  id: string;
+  created_by_id: string;
+  search_term: string;
+  sku: string | null;
+  category_id: string | null;
+  landed_cost: number;
+  target_margin_pct: number;
+  marketplace_fee_pct: number;
+  shipping_cost: number;
+  status: string;
+  provider_used: string | null;
+  result: {
+    observed_at: string;
+    site_id: string;
+    market_metrics: {
+      offers_found: number;
+      comparable_offers: number;
+      median_price: string | null;
+      min_price: string | null;
+      max_price: string | null;
+      sold_units_lifetime_in_comparables: number;
+      trend_keyword_matches: number;
+    };
+    price_scenario: {
+      landed_cost: string;
+      marketplace_fee_pct: string;
+      target_margin_pct: string;
+      break_even_price: string | null;
+      target_price: string | null;
+      market_margin_at_median_pct: string | null;
+      competitive_at_target_price: boolean;
+    };
+    internal_sales: {
+      units_last_90_days: number | string;
+      units_per_month: number | string;
+      stock_units: number | string;
+      coverage_months: number | string | null;
+    };
+    trend_matches: { keyword: string; url: string }[];
+    offers: MarketStudyOffer[];
+    possible_sources_note: string;
+    data_limitations: string[];
+    ai_report: null | {
+      summary?: string;
+      opportunities?: string[];
+      risks?: string[];
+      next_steps?: string[];
+      confidence?: 'low' | 'medium' | 'high';
+      error?: string;
+    };
+  };
+  linked_purchase_id: string | null;
+  created_at: string;
 }
 export interface Customer {
   id: string;
@@ -210,6 +357,45 @@ export interface InvoiceAfterSale {
   refund_amount: number | null;
   requested_at: string | null;
   history: InvoiceTrackingEvent[];
+  cases: AfterSaleCase[];
+}
+export interface AfterSaleCase {
+  id: string;
+  provider: string;
+  external_case_id: string;
+  marketplace_order_id: string;
+  invoice_id: string | null;
+  kind: string;
+  workflow_status: string;
+  marketplace_status: string;
+  reason: string | null;
+  requested_by: string | null;
+  payment_status: string | null;
+  refund_amount: number | null;
+  requested_at: string | null;
+  completed_at: string | null;
+  notes: string | null;
+  items: AfterSaleCaseItem[];
+  events: AfterSaleCaseEvent[];
+}
+export interface AfterSaleCaseItem {
+  id: string;
+  invoice_item_id: string | null;
+  product_id: string;
+  sku: string;
+  description: string;
+  requested_quantity: number;
+  received_quantity: number;
+  inspected_quantity: number;
+  restocked_quantity: number;
+  disposition: string;
+  notes: string | null;
+}
+export interface AfterSaleCaseEvent {
+  event_type: string;
+  status: string;
+  detail: string | null;
+  created_at: string;
 }
 export interface InvoiceCustomer {
   name: string;
@@ -293,6 +479,7 @@ export interface MarketplaceOrder {
   invoice_id: string | null;
   shipment_id: string | null;
   shipping_status: string | null;
+  shipping_substatus: string | null;
   fiscal_status: string;
   fiscal_error: string | null;
   external_invoice_id: string | null;
@@ -337,6 +524,13 @@ export interface CatalogProduct {
   sku: string;
   name: string;
   description: string | null;
+  brand: string | null;
+  manufacturer_part_number: string | null;
+  barcode: string | null;
+  category: string | null;
+  attributes: Record<string, string>;
+  fitments: ProductFitment[];
+  images: ProductImage[];
   sale_price: number;
   in_stock: boolean;
   listings: CatalogListing[];

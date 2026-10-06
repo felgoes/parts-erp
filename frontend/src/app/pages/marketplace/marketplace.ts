@@ -730,7 +730,6 @@ export class MarketplacePage implements OnInit, OnDestroy {
   }
   private shouldKeepChecking(order: MarketplaceOrder, kind: 'fiscal' | 'label') {
     if (kind === 'fiscal' && order.fiscal_status === 'error') return false;
-    if (kind === 'label' && order.label_status === 'error') return false;
     if (kind === 'label') {
       return (
         !['downloaded', 'completed', 'not_applicable'].includes(order.label_status) &&
@@ -740,7 +739,6 @@ export class MarketplacePage implements OnInit, OnDestroy {
       );
     }
     if (order.fiscal_status !== 'authorized') return true;
-    if (order.label_status === 'error') return false;
     const hasInvoiceFile = Boolean(
       this.documentFor(order, 'pdf') || this.documentFor(order, 'xml'),
     );

@@ -15,9 +15,7 @@ from pydantic import (
 from app.models import UserRole
 
 
-class ORMModel(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
+class UtcModel(BaseModel):
     @field_serializer("*", when_used="json")
     def serialize_utc_datetimes(self, value: Any) -> Any:
         """SQLite stores our UTC timestamps without tzinfo; make that explicit in JSON."""
@@ -25,6 +23,10 @@ class ORMModel(BaseModel):
             normalized = value.replace(tzinfo=UTC) if value.tzinfo is None else value.astimezone(UTC)
             return normalized.isoformat().replace("+00:00", "Z")
         return value
+
+
+class ORMModel(UtcModel):
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ErpSettingsOut(BaseModel):
@@ -431,7 +433,7 @@ class CustomerOut(ORMModel):
     created_at: datetime
 
 
-class CustomerPurchaseOut(BaseModel):
+class CustomerPurchaseOut(UtcModel):
     id: str
     number: str
     status: str
@@ -496,13 +498,13 @@ class InvoiceCustomerOut(ORMModel):
     phone: str | None = None
 
 
-class InvoiceTrackingEventOut(BaseModel):
+class InvoiceTrackingEventOut(UtcModel):
     status: str
     detail: str | None
     created_at: datetime
 
 
-class InvoiceTrackingOut(BaseModel):
+class InvoiceTrackingOut(UtcModel):
     shipment_id: str | None
     status: str | None
     shipping_status: str | None
@@ -511,7 +513,7 @@ class InvoiceTrackingOut(BaseModel):
     history: list[InvoiceTrackingEventOut]
 
 
-class InvoiceAfterSaleOut(BaseModel):
+class InvoiceAfterSaleOut(UtcModel):
     kind: str
     status: str
     reason: str | None = None

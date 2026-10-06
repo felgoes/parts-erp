@@ -1,7 +1,8 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
-import { Observable, tap } from 'rxjs';
+import { Observable, firstValueFrom, tap } from 'rxjs';
+import { BiometricStatus, biometricLogin } from './biometric-login';
 import { AuthToken } from './models';
 
 @Injectable({ providedIn: 'root' })
@@ -22,11 +23,41 @@ export class AuthService {
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       })
       .pipe(
-        tap((session) => {
-          sessionStorage.setItem(this.storageKey, JSON.stringify(session));
-          this.session.set(session);
+        tap((session) => this.storeSession(session)),
+      );
+  }
+  async biometricStatus(): Promise<BiometricStatus> {
+    if (!biometricLogin.isNativeAndroid()) {
+      return { available: false, configured: false, email: null };
+    }
+    try {
+      return await biometricLogin.status();
+    } catch {
+      return { available: false, configured: false, email: null };
+    }
+  }
+  async enableBiometric(email: string): Promise<void> {
+    const enrollment = await firstValueFrom(
+      this.http.post<{ credential: string }>('/api/v1/auth/biometric/credentials', {
+        device_name: 'Parts ERP no Android',
+      }),
+    );
+    await biometricLogin.saveCredential(enrollment.credential, email);
+  }
+  async loginWithBiometric(): Promise<AuthToken> {
+    const nativeCredential = await biometricLogin.authenticate();
+    try {
+      const session = await firstValueFrom(
+        this.http.post<AuthToken>('/api/v1/auth/biometric/login', {
+          credential: nativeCredential.credential,
         }),
       );
+      this.storeSession(session);
+      return session;
+    } catch (error) {
+      await biometricLogin.clearCredential();
+      throw error;
+    }
   }
   logout(): void {
     sessionStorage.removeItem(this.storageKey);
@@ -40,5 +71,9 @@ export class AuthService {
       sessionStorage.removeItem(this.storageKey);
       return null;
     }
+  }
+  private storeSession(session: AuthToken): void {
+    sessionStorage.setItem(this.storageKey, JSON.stringify(session));
+    this.session.set(session);
   }
 }

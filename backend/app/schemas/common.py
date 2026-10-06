@@ -40,6 +40,19 @@ class Token(BaseModel):
     user: UserOut
 
 
+class BiometricCredentialCreate(BaseModel):
+    device_name: str = Field(min_length=1, max_length=160)
+
+
+class BiometricCredentialLogin(BaseModel):
+    credential: str = Field(min_length=32, max_length=512)
+
+
+class BiometricCredentialOut(BaseModel):
+    credential: str
+    expires_at: datetime
+
+
 class ProductCreate(BaseModel):
     sku: str = Field(min_length=1, max_length=80)
     name: str = Field(min_length=2, max_length=200)

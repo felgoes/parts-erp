@@ -138,6 +138,76 @@
   font-size: 12px;
   margin: 22px 0 0;
 }
+.biometric-opt-in {
+  display: flex !important;
+  grid-template-columns: none !important;
+  align-items: flex-start;
+  gap: 11px !important;
+  margin-top: 18px !important;
+  padding: 13px 14px;
+  border: 1px solid #dfe5dd;
+  border-radius: 12px;
+  background: #f7faf6;
+  cursor: pointer;
+}
+.biometric-opt-in input {
+  width: 18px;
+  height: 18px;
+  margin: 2px 0 0;
+  accent-color: var(--ink);
+}
+.biometric-opt-in span,
+.biometric-button span:last-child {
+  display: grid;
+  gap: 2px;
+  text-align: left;
+}
+.biometric-opt-in small,
+.biometric-button small {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+}
+.login-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 18px 0;
+  color: #89918c;
+  font-size: 12px;
+}
+.login-divider:before,
+.login-divider:after {
+  content: '';
+  height: 1px;
+  flex: 1;
+  background: #e3e5e1;
+}
+.biometric-button {
+  width: 100%;
+  min-height: 58px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  border: 1px solid #bfd099;
+  border-radius: 12px;
+  background: #f6faee;
+  color: var(--ink);
+  cursor: pointer;
+}
+.biometric-button:hover { background: #eef6df; }
+.biometric-button:disabled { opacity: .6; cursor: wait; }
+.fingerprint {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--ink);
+  color: var(--accent);
+  font-size: 21px;
+}
 .error {
   margin-top: 16px;
   padding: 10px 12px;

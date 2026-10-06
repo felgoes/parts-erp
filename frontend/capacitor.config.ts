@@ -7,7 +7,7 @@ const config: CapacitorConfig = {
   bundledWebRuntime: false,
   android: {
     // Keep WebView content clear of Android 15+ status and navigation bars.
-    adjustMarginsForEdgeToEdge: 'auto',
+    adjustMarginsForEdgeToEdge: 'force',
   },
   // Keep the installed APK pointed at the ERP so web releases arrive without reinstalling.
   server: {

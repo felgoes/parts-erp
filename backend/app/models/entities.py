@@ -59,6 +59,25 @@ class User(TimestampMixin, Base):
     password_hash: Mapped[str] = mapped_column(String(255))
     role: Mapped[UserRole] = mapped_column(Enum(UserRole), default=UserRole.operator)
     active: Mapped[bool] = mapped_column(Boolean, default=True)
+    biometric_credentials: Mapped[list["BiometricCredential"]] = relationship(
+        cascade="all, delete-orphan", back_populates="user", lazy="selectin"
+    )
+
+
+class BiometricCredential(TimestampMixin, Base):
+    __tablename__ = "biometric_credentials"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    user_id: Mapped[str] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    device_name: Mapped[str] = mapped_column(String(160))
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    user: Mapped[User] = relationship(back_populates="biometric_credentials")
 
 
 class Product(TimestampMixin, Base):

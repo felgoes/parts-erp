@@ -4,6 +4,7 @@ from types import SimpleNamespace
 from sqlalchemy import select
 
 from app.api.routes.integrations import request_order_fiscal_document
+from app.core.config import Settings
 from app.core.security import encrypt_secret
 from app.integrations.mercadolivre import sync as sync_module
 from app.integrations.mercadolivre.client import MercadoLivreClient, MercadoLivreError
@@ -26,6 +27,10 @@ def marketplace_account(db):
     db.add(account)
     db.flush()
     return account
+
+
+def test_label_format_is_configured_as_pdf_by_default():
+    assert Settings().mercadolivre_label_format == "pdf"
 
 
 def test_order_webhook_creates_invoice_and_documents(db, monkeypatch, tmp_path):

@@ -1,4 +1,5 @@
 from functools import lru_cache
+from typing import Literal
 
 from pydantic import AnyHttpUrl, EmailStr, Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -34,6 +35,7 @@ class Settings(BaseSettings):
     mercadolivre_site_id: str = "MLB"
     mercadolivre_api_url: str = "https://api.mercadolibre.com"
     mercadolivre_auth_url: str = "https://auth.mercadolivre.com.br/authorization"
+    mercadolivre_label_format: Literal["pdf"] = "pdf"
     shopee_partner_id: str = ""
     shopee_partner_key: SecretStr | None = None
     shopee_redirect_uri: AnyHttpUrl = AnyHttpUrl(

@@ -27,19 +27,26 @@
 @media (max-width: 700px) {
   .toolbar { flex-wrap: wrap; }
   .count { display: none; }
-  .table-card { margin: 0 -18px; border-radius: 0; }
+  .table-card { margin: 0; border-radius: 14px; }
+  .table-card .table-wrap { margin: 0; padding: 8px 12px; overflow: visible; }
   .table-card table { min-width: 0; }
   .table-card thead { display: none; }
-  .table-card tbody, .table-card tr, .table-card td { display: block; }
-  .table-card tr { padding: 13px 0; }
-  .table-card td { padding: 3px 16px; border: 0; }
-  .table-card td:first-child { padding-top: 12px; }
-  .table-card td:last-child { padding-bottom: 12px; }
+  .table-card tbody { display: grid; gap: 9px; }
+  .table-card tr { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px 12px; padding: 12px; border: 1px solid var(--line); border-radius: 12px; background: #fff; }
+  .table-card td { min-width: 0; padding: 3px 0; border: 0; overflow-wrap: anywhere; }
+  .table-card td:first-child { grid-column: 1 / -1; padding: 0 0 10px; border-bottom: 1px solid var(--line); }
+  .table-card td[colspan] { grid-column: 1 / -1; }
+  .table-card td:nth-child(n+2) { display: grid; align-content: start; gap: 4px; }
   .table-card td:nth-child(2)::before { content: 'Documento'; }
   .table-card td:nth-child(3)::before { content: 'Contato'; }
   .table-card td:nth-child(4)::before { content: 'Cliente desde'; }
-  .table-card td:not(:first-child)::before { display: inline-block; width: 96px; color: var(--muted); font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+  .table-card td:not(:first-child)::before { display: block; color: var(--muted); font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
   .table-card .empty { padding: 14px 0; }
+  .customer-link { gap: 10px; }
+  .customer-main { min-width: 0; }
+  .customer-main strong, .customer-main small { overflow-wrap: anywhere; }
+  .customer-chevron { flex: 0 0 auto; }
+  .contact-main { font-size: 12px; }
   .customer-detail-title { align-items: start; }
   .customer-detail-head { align-items: start; }
 }

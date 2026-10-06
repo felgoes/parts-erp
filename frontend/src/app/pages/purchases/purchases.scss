@@ -133,14 +133,14 @@
   .purchase-table-card table { min-width: 0; }
   .purchase-table-card thead { display: none; }
   .purchase-table-card tbody, .purchase-table-card tbody tr, .purchase-table-card tbody td { display: block; }
-  .purchase-table-card tbody tr.purchase-row { position: relative; padding: 12px 22px 12px 0; border-bottom: 1px solid var(--line); }
+  .purchase-table-card tbody tr.purchase-row { position: relative; padding: 12px 16px; border-bottom: 1px solid var(--line); }
   .purchase-table-card tbody tr td { padding: 3px 0; border: 0; }
   .purchase-table-card tbody tr td:nth-child(2) { margin-top: 5px; }
   .purchase-table-card tbody tr td:nth-child(4), .purchase-table-card tbody tr td:nth-child(5), .purchase-table-card tbody tr td:nth-child(6) { display: inline-block; margin: 8px 9px 0 0; font-size: 10px; }
   .purchase-table-card tbody tr td:nth-child(5), .purchase-table-card tbody tr td:nth-child(6) { color: var(--muted); }
   .purchase-table-card tbody tr td:nth-child(5)::before { content: 'Prev.: '; }
   .purchase-table-card tbody tr td:nth-child(6)::before { content: 'Aberta: '; }
-  .purchase-table-card .row-action { position: absolute; top: 14px; right: 0; font-size: 0; }
+  .purchase-table-card .row-action { position: absolute; top: 14px; right: 16px; font-size: 0; }
   .purchase-table-card .row-action span { font-size: 20px; }
   .purchase-modal { width: 100%; max-height: 92dvh; padding: 20px 16px calc(20px + env(safe-area-inset-bottom)); border-radius: 20px 20px 0 0; }
   .purchase-form-meta { grid-template-columns: 1fr; }

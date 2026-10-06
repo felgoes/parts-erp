@@ -5,7 +5,7 @@ from sqlalchemy import select
 
 from app.core.security import encrypt_secret
 from app.integrations.mercadolivre import sync as sync_module
-from app.integrations.mercadolivre.client import MercadoLivreClient
+from app.integrations.mercadolivre.client import MercadoLivreClient, MercadoLivreError
 from app.models import (
     InvoiceDocument,
     MarketplaceAccount,
@@ -161,6 +161,80 @@ def test_manual_invoice_request_works_when_automatic_issuance_is_disabled(db, mo
     # Even if the follow-up lookup is briefly empty, don't issue a duplicate.
     sync_module.issue_and_sync_invoice(db, order, account, force_issue=True)
     assert len(calls) == 1
+
+
+def test_manual_invoice_request_treats_missing_invoice_as_not_yet_issued(db, monkeypatch):
+    account = marketplace_account(db)
+    invoice = SalesInvoice(number="VEN-TEST-404", marketplace_order_id="124")
+    order = MarketplaceOrder(
+        external_order_id="124",
+        seller_id=account.seller_id,
+        status="paid",
+        payload={},
+        invoice=invoice,
+    )
+    db.add(order)
+    db.commit()
+    calls = []
+
+    monkeypatch.setattr(
+        sync_module,
+        "_automation_config",
+        lambda _db: SimpleNamespace(auto_issue_invoice=False),
+    )
+
+    def fake_get(_self, path):
+        assert path == "/users/77/invoices/orders/124"
+        raise MercadoLivreError("Mercado Livre respondeu 404: invoice not found", status_code=404)
+
+    def fake_post(_self, path, payload):
+        calls.append((path, payload))
+        return [{"id": "nf-manual-404", "status": "pending"}]
+
+    monkeypatch.setattr(MercadoLivreClient, "get", fake_get)
+    monkeypatch.setattr(MercadoLivreClient, "post", fake_post)
+
+    sync_module.issue_and_sync_invoice(db, order, account, force_issue=True)
+
+    assert calls == [("/users/77/invoices/orders", {"orders": [124]})]
+    assert order.external_invoice_id == "nf-manual-404"
+    assert order.fiscal_status == "pending"
+    assert order.fiscal_error is None
+
+
+def test_manual_invoice_request_does_not_issue_after_non_404_lookup_error(db, monkeypatch):
+    account = marketplace_account(db)
+    invoice = SalesInvoice(number="VEN-TEST-500", marketplace_order_id="125")
+    order = MarketplaceOrder(
+        external_order_id="125",
+        seller_id=account.seller_id,
+        status="paid",
+        payload={},
+        invoice=invoice,
+    )
+    db.add(order)
+    db.commit()
+    posts = []
+
+    monkeypatch.setattr(
+        sync_module,
+        "_automation_config",
+        lambda _db: SimpleNamespace(auto_issue_invoice=False),
+    )
+    monkeypatch.setattr(
+        MercadoLivreClient,
+        "get",
+        lambda *_args: (_ for _ in ()).throw(
+            MercadoLivreError("Mercado Livre respondeu 503: indisponível", status_code=503)
+        ),
+    )
+    monkeypatch.setattr(MercadoLivreClient, "post", lambda *args: posts.append(args))
+
+    sync_module.issue_and_sync_invoice(db, order, account, force_issue=True)
+
+    assert posts == []
+    assert order.fiscal_status == "error"
+    assert "503" in order.fiscal_error
 
 
 def test_label_waits_until_mercado_livre_releases_printing_substatus(db, monkeypatch, tmp_path):

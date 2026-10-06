@@ -12,7 +12,9 @@ from app.models import MarketplaceAccount, MarketplaceConfig
 
 
 class MercadoLivreError(RuntimeError):
-    pass
+    def __init__(self, message: str, *, status_code: int | None = None) -> None:
+        super().__init__(message)
+        self.status_code = status_code
 
 
 class MercadoLivreClient:
@@ -180,4 +182,7 @@ class MercadoLivreClient:
             detail = response.json().get("message", response.text)
         except ValueError:
             detail = response.text
-        raise MercadoLivreError(f"Mercado Livre respondeu {response.status_code}: {detail[:300]}")
+        raise MercadoLivreError(
+            f"Mercado Livre respondeu {response.status_code}: {detail[:300]}",
+            status_code=response.status_code,
+        )

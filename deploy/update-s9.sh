@@ -4,7 +4,10 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 S9_HOST="${S9_HOST:-remote-host}"; S9_USER="${S9_USER:-deploy-user}"; S9_PORT="${S9_PORT:-8022}"; S9_APP_DIR="${S9_APP_DIR:-parts-erp}"
 SSH_OPTS=(-p "$S9_PORT" -o BatchMode=yes -o ConnectTimeout=10); [[ -z "${S9_IDENTITY_FILE:-}" ]] || SSH_OPTS+=(-i "$S9_IDENTITY_FILE"); REMOTE="$S9_USER@$S9_HOST"
 [[ -z "$(git -C "$ROOT_DIR" status --porcelain)" ]] || { echo "Deploy exige commit limpo." >&2; exit 1; }
-git -C "$ROOT_DIR" branch -r --contains HEAD | grep -q origin/ || { echo "Publique commit antes do deploy." >&2; exit 1; }
+git -C "$ROOT_DIR" fetch --quiet origin main
+EXPECTED="$(git -C "$ROOT_DIR" rev-parse origin/main)"
+ACTUAL="$(git -C "$ROOT_DIR" rev-parse HEAD)"
+[[ "$ACTUAL" == "$EXPECTED" ]] || { echo "Deploy bloqueado: checkout não está exatamente em origin/main ($ACTUAL != $EXPECTED)." >&2; exit 1; }
 [[ -x "$ROOT_DIR/frontend/node_modules/.bin/ng" ]] || { echo "Rode npm ci em frontend." >&2; exit 1; }
 VERSION="$(git -C "$ROOT_DIR" rev-parse --short HEAD)"; STAGE=".deploy-$VERSION"
 LOCAL_STAGE="$(mktemp -d "${TMPDIR:-/tmp}/parts-erp-$VERSION.XXXXXX")"
@@ -14,6 +17,9 @@ mkdir -p "$LOCAL_STAGE/source" "$LOCAL_STAGE/site"
 cp -a "$ROOT_DIR/frontend/dist/frontend/browser/." "$LOCAL_STAGE/site/"
 git -C "$ROOT_DIR" archive --format=tar HEAD | tar -xf - -C "$LOCAL_STAGE/source"
 test -s "$LOCAL_STAGE/site/index.html" && test -f "$LOCAL_STAGE/source/backend/app/main.py"
+for module in settings purchases finance market-studies; do
+  find "$LOCAL_STAGE/site" -maxdepth 1 -type f -name "*${module}*.js" | grep -q . || { echo "Build sem módulo obrigatório: $module" >&2; exit 1; }
+done
 ssh "${SSH_OPTS[@]}" "$REMOTE" bash -s -- "$S9_APP_DIR" "$STAGE" <<\PREP
 set -euo pipefail; [[ "$2" =~ ^\.deploy-[a-f0-9]+$ ]]
 APP="$(realpath -m "$HOME/$1")"; [[ "$APP" == "$HOME"/* && "$APP" != "$HOME" ]]

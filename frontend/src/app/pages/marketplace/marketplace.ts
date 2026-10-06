@@ -486,7 +486,11 @@ export class MarketplacePage implements OnInit, OnDestroy {
   readonly orders = signal<MarketplaceOrder[]>([]);
   readonly syncing = signal(false);
   readonly feedback = signal<{ kind: 'success' | 'error' | 'info'; message: string } | null>(null);
-  readonly working = signal<{ id: string; kind: 'fiscal' | 'label' } | null>(null);
+  readonly working = signal<{
+    id: string;
+    kind: 'fiscal' | 'label';
+    startedAt: number;
+  } | null>(null);
   readonly detail = signal<MarketplaceOrder | null>(null);
   readonly history = signal<MarketplaceOrderEvent[]>([]);
   private progressTimer: number | null = null;
@@ -693,7 +697,7 @@ export class MarketplacePage implements OnInit, OnDestroy {
     this.runOrderAction(order, 'label');
   }
   private runOrderAction(order: MarketplaceOrder, kind: 'fiscal' | 'label') {
-    this.working.set({ id: order.id, kind });
+    this.working.set({ id: order.id, kind, startedAt: Date.now() });
     this.dismissFeedback();
     const request =
       kind === 'fiscal'
@@ -750,20 +754,14 @@ export class MarketplacePage implements OnInit, OnDestroy {
     return !hasInvoiceFile || !labelReady;
   }
   private checkOrderProgress(order: MarketplaceOrder, kind: 'fiscal' | 'label', startedAt: number) {
-    if (Date.now() - startedAt >= 180_000) {
-      this.working.set(null);
-      this.showFeedback(
-        'info',
-        'O Mercado Livre ainda está processando. O ERP continuará atualizando a NF-e e a etiqueta em segundo plano.',
-      );
-      return;
-    }
+    const elapsed = Date.now() - startedAt;
+    const pollInterval = elapsed < 180_000 ? 5_000 : 15_000;
     this.progressTimer = window.setTimeout(() => {
       this.api.marketplaceOrder(order.id).subscribe({
         next: (updated) => {
           this.applyOrderUpdate(updated);
           if (updated.fiscal_status === 'authorized' && kind === 'fiscal') {
-            this.working.set({ id: order.id, kind: 'label' });
+            this.working.set({ id: order.id, kind: 'label', startedAt });
           }
           if (this.shouldKeepChecking(updated, kind)) {
             this.checkOrderProgress(updated, kind, startedAt);
@@ -772,14 +770,10 @@ export class MarketplacePage implements OnInit, OnDestroy {
           }
         },
         error: () => {
-          this.working.set(null);
-          this.showFeedback(
-            'info',
-            'Não consegui consultar o status agora. O ERP continuará sincronizando em segundo plano.',
-          );
+          this.checkOrderProgress(order, kind, startedAt);
         },
       });
-    }, 5_000);
+    }, pollInterval);
   }
   private finishOrderAction(order: MarketplaceOrder, kind: 'fiscal' | 'label') {
     if (order.fiscal_status === 'error' || order.label_status === 'error') {

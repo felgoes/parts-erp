@@ -23,7 +23,7 @@ import { AfterSaleWorkflow } from '../../shared/after-sale-workflow';
     >
     <app-period-filter
       heading="Período"
-      [description]="invoices().length + ' fatura(s)'"
+      [description]="invoices().length === 1 ? '1 fatura' : invoices().length + ' faturas'"
       ariaLabel="Filtrar faturas por período e situação"
       [initialStartDate]="startDate"
       [initialEndDate]="endDate"

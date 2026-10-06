@@ -547,12 +547,13 @@ img, video, canvas, svg { max-width: 100%; }
   .date-filter-options,
   .invoice-filter-toolbar:not(.has-custom-range) .date-filter-options { grid-column: 1 / -1; }
   .date-filter-heading { min-width: 0; align-items: flex-start; justify-content: space-between; gap: 8px; }
-  .date-quick-filters { width: 100%; min-width: 0; max-width: 100%; flex-wrap: nowrap; overflow-x: auto; padding: 2px 2px 7px; scrollbar-width: thin; }
-  .date-preset { min-height: 40px; padding-inline: 10px; }
+  .date-quick-filters { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); width: 100%; min-width: 0; max-width: 100%; overflow: visible; padding: 2px 0; }
+  .date-preset { min-width: 0; min-height: 44px; padding: 7px 5px; white-space: normal; line-height: 1.2; }
   .date-filter-options { display: grid; gap: 8px; min-width: 0; overflow: visible; }
-  .date-filter-options .date-quick-filters, .date-filter-options .invoice-status-filter { width: 100%; min-width: 0; max-width: 100%; overflow-x: auto; }
-  .invoice-status-filter { flex-wrap: nowrap; }
-  .invoice-status-filter button { min-height: 40px; }
+  .date-filter-options .date-quick-filters, .date-filter-options .invoice-status-filter { width: 100%; min-width: 0; max-width: 100%; overflow: visible; }
+  .invoice-status-filter { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+  .invoice-status-filter button { min-width: 0; min-height: 44px; justify-content: center; padding-inline: 6px; white-space: normal; text-align: center; line-height: 1.2; }
+  .invoice-status-filter button:last-child { grid-column: 1 / -1; }
   .date-range-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: end; gap: 8px; }
   .date-range-fields input { min-height: 44px; }
   .date-range-fields button { grid-column: 1 / -1; min-height: 44px; }
@@ -583,6 +584,7 @@ img, video, canvas, svg { max-width: 100%; }
 
 @media (max-width: 420px) {
   main { padding-inline: 14px; }
+  .date-quick-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .page-header { margin-bottom: 18px; }
   .page-header h1 { font-size: 27px; }
   .subtitle { font-size: 13px; }

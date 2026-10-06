@@ -74,6 +74,7 @@ class User(TimestampMixin, Base):
     password_hash: Mapped[str] = mapped_column(String(255))
     role: Mapped[UserRole] = mapped_column(Enum(UserRole), default=UserRole.operator)
     active: Mapped[bool] = mapped_column(Boolean, default=True)
+    avatar_filename: Mapped[str | None] = mapped_column(String(80))
 
 
 class ErpSettings(TimestampMixin, Base):

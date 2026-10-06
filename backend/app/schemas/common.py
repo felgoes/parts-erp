@@ -60,6 +60,10 @@ class UserPasswordUpdate(BaseModel):
     password: str = Field(min_length=12, max_length=128)
 
 
+class UserProfileUpdate(BaseModel):
+    email: EmailStr
+
+
 class UserUpdate(BaseModel):
     email: EmailStr | None = None
     full_name: str | None = Field(default=None, min_length=2, max_length=160)

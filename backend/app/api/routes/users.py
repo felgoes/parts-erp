@@ -1,16 +1,87 @@
-from fastapi import APIRouter, Depends, HTTPException
+from pathlib import Path
+
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi.responses import FileResponse
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.api.deps import require_permission
+from app.api.deps import get_current_user, require_permission
 from app.core.permissions import Permission
 from app.core.security import hash_password
 from app.db.session import get_db
 from app.models import User, UserRole
-from app.schemas.common import UserCreate, UserOut, UserPasswordUpdate, UserUpdate
+from app.schemas.common import (
+    UserCreate,
+    UserOut,
+    UserPasswordUpdate,
+    UserProfileUpdate,
+    UserUpdate,
+)
+from app.services.user_media import (
+    MAX_USER_AVATAR_BYTES,
+    store_user_avatar,
+    user_avatar_path,
+)
 
 router = APIRouter(prefix="/users", tags=["Usuários"])
+
+
+@router.patch("/me/profile", response_model=UserOut)
+def update_my_profile(
+    payload: UserProfileUpdate,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+) -> User:
+    user.email = str(payload.email).lower().strip()
+    try:
+        db.commit()
+    except IntegrityError as exc:
+        db.rollback()
+        raise HTTPException(status_code=409, detail="Já existe um usuário com este e-mail") from exc
+    db.refresh(user)
+    return user
+
+
+@router.post("/me/avatar", response_model=UserOut)
+async def upload_my_avatar(
+    image: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+) -> User:
+    contents = await image.read(MAX_USER_AVATAR_BYTES + 1)
+    try:
+        filename = store_user_avatar(contents)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    previous = user.avatar_filename
+    user.avatar_filename = filename
+    db.commit()
+    db.refresh(user)
+    if previous:
+        try:
+            user_avatar_path(previous).unlink(missing_ok=True)
+        except (OSError, ValueError):
+            pass
+    return user
+
+
+@router.get("/me/avatar", response_class=FileResponse)
+def read_my_avatar(user: User = Depends(get_current_user)) -> FileResponse:
+    if not user.avatar_filename:
+        raise HTTPException(status_code=404, detail="Foto de perfil não cadastrada")
+    try:
+        path: Path = user_avatar_path(user.avatar_filename)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail="Foto de perfil não encontrada") from exc
+    if not path.is_file():
+        raise HTTPException(status_code=404, detail="Foto de perfil não encontrada")
+    return FileResponse(
+        path,
+        media_type="image/jpeg",
+        filename="avatar.jpg",
+        headers={"Cache-Control": "private, no-store"},
+    )
 
 
 @router.get("", response_model=list[UserOut])

@@ -51,7 +51,7 @@ def test_marketplace_invoice_uses_original_order_date_on_create_and_resync(db, m
             {"item": {"seller_sku": "ORDER-DATE-001"}, "quantity": 1, "unit_price": 45}
         ],
     }
-    monkeypatch.setattr(MercadoLivreClient, "get", lambda self, path: order)
+    monkeypatch.setattr(MercadoLivreClient, "get", lambda self, path, **kwargs: order)
     monkeypatch.setattr(
         sync_module,
         "automate_order_documents",

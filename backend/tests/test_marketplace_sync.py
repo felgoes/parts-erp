@@ -47,9 +47,15 @@ def test_order_webhook_creates_invoice_and_documents(db, monkeypatch, tmp_path):
         "shipping": {"id": 555},
     }
 
-    def fake_get(self, path):
+    def fake_get(self, path, **kwargs):
         if path == "/orders/123":
             return order
+        if path == "/orders/123/shipments":
+            return {"id": 555}
+        if path == "/shipments/555":
+            return {"id": 555, "status": "ready_to_ship"}
+        if path == "/shipments/555/history":
+            return []
         if path.startswith("/users/77/invoices/orders/123"):
             return [
                 {
@@ -265,7 +271,7 @@ def test_marketplace_cancellation_keeps_invoice_and_restores_stock_once(db, monk
         "buyer": {"id": 19, "first_name": "João", "last_name": "Cliente"},
         "order_items": [{"item": {"seller_sku": "CANCEL-001"}, "quantity": 1, "unit_price": 80}],
     }
-    monkeypatch.setattr(MercadoLivreClient, "get", lambda self, path: order)
+    monkeypatch.setattr(MercadoLivreClient, "get", lambda self, path, **kwargs: order)
     monkeypatch.setattr(
         sync_module,
         "_automation_config",

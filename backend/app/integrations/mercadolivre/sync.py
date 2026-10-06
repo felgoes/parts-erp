@@ -474,6 +474,10 @@ def issue_and_sync_invoice(
             record.fiscal_status = "authorized"
         elif statuses:
             record.fiscal_status = sorted(statuses)[0]
+        elif record.external_invoice_id and record.fiscal_status == "authorized":
+            # Uma consulta temporariamente vazia não deve desfazer uma NF-e
+            # que já foi confirmada anteriormente pelo Mercado Livre.
+            record.fiscal_status = "authorized"
         else:
             record.fiscal_status = "pending"
         record.fiscal_error = None
@@ -638,7 +642,9 @@ def automate_order_documents(
     issue_and_sync_invoice(db, record, connected_account)
     config = _automation_config(db)
     download_label = (
-        config.auto_download_label if config else get_settings().mercadolivre_auto_download_label
+        config.auto_download_label
+        if config
+        else getattr(get_settings(), "mercadolivre_auto_download_label", True)
     )
     if download_label:
         sync_shipping_label(db, record, connected_account)
@@ -649,7 +655,7 @@ def automate_order_documents(
 
 
 def retry_pending_automations(db: Session) -> int:
-    cutoff = datetime.now(UTC) - timedelta(minutes=2)
+    cutoff = datetime.now(UTC) - timedelta(seconds=45)
     orders = list(
         db.scalars(
             select(MarketplaceOrder)
@@ -833,7 +839,8 @@ def sync_product_stock(db: Session, product: Product) -> int:
                 isinstance(row, dict) and row.get("type") == "selling_address" for row in locations
             ):
                 raise MercadoLivreError(
-                    "O estoque está em Full e é gerenciado pelo Mercado Livre; o ERP não pode alterá-lo"
+                    "O estoque está em Full e é gerenciado pelo Mercado Livre; "
+                    "o ERP não pode alterá-lo"
                 )
             else:
                 result = client.put(f"/items/{external_id}", {"available_quantity": quantity})

@@ -1,6 +1,6 @@
 import { DatePipe, DecimalPipe, JsonPipe, UpperCasePipe } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
 import { ApiService } from '../../core/api.service';
 import { AuthService } from '../../core/auth.service';
 import { MarketplaceOrder, MarketplaceOrderEvent, MarketplaceStatus } from '../../core/models';
@@ -234,6 +234,12 @@ import { PageHeader } from '../../shared/page-header';
               ><strong>{{ order.invoice_id ? 'Vinculada' : 'Não gerada' }}</strong>
             </div>
           </div>
+          @if (isWorking(order.id)) {
+            <div class="document-progress" role="status" aria-live="polite">
+              <span class="document-progress-spinner" aria-hidden="true"></span>
+              <p>{{ documentProgressText(order) }}</p>
+            </div>
+          }
           @if (canProcess()) {
             <section class="fulfillment-panel" aria-label="Documentos e expedição do pedido">
               <div class="fulfillment-heading">
@@ -248,7 +254,9 @@ import { PageHeader } from '../../shared/page-header';
                     <span class="fulfillment-icon fiscal-icon" aria-hidden="true">NF</span>
                     <div>
                       <h4>Nota fiscal</h4>
-                      <span class="fulfillment-state">{{ automationLabel(order.fiscal_status) }}</span>
+                      <span class="fulfillment-state">{{
+                        automationLabel(order.fiscal_status)
+                      }}</span>
                     </div>
                   </div>
                   <p class="fulfillment-help">
@@ -275,7 +283,9 @@ import { PageHeader } from '../../shared/page-header';
                         [disabled]="isWorking(order.id)"
                         (click)="requestInvoice(order)"
                       >
-                        {{ isWorking(order.id, 'fiscal') ? 'Consultando…' : fiscalActionLabel(order) }}
+                        {{
+                          isWorking(order.id, 'fiscal') ? 'Consultando…' : fiscalActionLabel(order)
+                        }}
                       </button>
                     } @else {
                       <span class="muted">Sem documento fiscal vinculado</span>
@@ -469,7 +479,7 @@ import { PageHeader } from '../../shared/page-header';
   `,
   styleUrl: './marketplace.scss',
 })
-export class MarketplacePage implements OnInit {
+export class MarketplacePage implements OnInit, OnDestroy {
   private readonly api = inject(ApiService);
   private readonly auth = inject(AuthService);
   readonly status = signal<MarketplaceStatus | null>(null);
@@ -479,6 +489,7 @@ export class MarketplacePage implements OnInit {
   readonly working = signal<{ id: string; kind: 'fiscal' | 'label' } | null>(null);
   readonly detail = signal<MarketplaceOrder | null>(null);
   readonly history = signal<MarketplaceOrderEvent[]>([]);
+  private progressTimer: number | null = null;
   readonly statusLabel = statusLabel;
   readonly trackingEventLabel = trackingEventLabel;
   canProcess() {
@@ -487,6 +498,9 @@ export class MarketplacePage implements OnInit {
   }
   ngOnInit() {
     this.load();
+  }
+  ngOnDestroy() {
+    if (this.progressTimer !== null) window.clearTimeout(this.progressTimer);
   }
   load() {
     this.api.marketplaceStatus().subscribe((v) => this.status.set(v));
@@ -591,8 +605,26 @@ export class MarketplacePage implements OnInit {
     );
   }
   fiscalActionLabel(order: MarketplaceOrder) {
-    if (this.isWorking(order.id, 'fiscal')) return 'Consultando…';
+    if (this.isWorking(order.id)) return 'Acompanhando…';
     return order.external_invoice_id ? 'Verificar NF-e' : 'Solicitar NF-e';
+  }
+  documentProgressText(order: MarketplaceOrder) {
+    const current = this.working();
+    if (!current || current.id !== order.id) return '';
+    if (current.kind === 'label') {
+      if (
+        order.fiscal_status === 'authorized' &&
+        !this.documentFor(order, 'pdf') &&
+        !this.documentFor(order, 'xml')
+      ) {
+        return 'NF-e emitida. Estamos sincronizando os arquivos fiscais e acompanhando a etiqueta…';
+      }
+      return 'Acompanhando a liberação da etiqueta e anexando o arquivo à fatura…';
+    }
+    if (order.fiscal_status === 'authorized') {
+      return 'NF-e emitida. Estamos sincronizando o documento e acompanhando a etiqueta…';
+    }
+    return 'Solicitação enviada. Aguardando o Mercado Livre processar a NF-e…';
   }
   canGetLabel(order: MarketplaceOrder) {
     return this.canProcess() && this.isLabelAvailable(order);
@@ -616,7 +648,9 @@ export class MarketplacePage implements OnInit {
       return 'Gerando no Mercado Livre';
     }
     if (this.isLabelAvailable(order)) return 'Pronta para obter';
-    if (['delivered', 'shipped', 'returned', 'not_delivered'].includes(order.shipping_status ?? '')) {
+    if (
+      ['delivered', 'shipped', 'returned', 'not_delivered'].includes(order.shipping_status ?? '')
+    ) {
       return 'Etapa de envio encerrada';
     }
     return this.automationLabel(order.label_status);
@@ -634,7 +668,9 @@ export class MarketplacePage implements OnInit {
     if (this.isLabelAvailable(order)) {
       return 'A etiqueta já está liberada. Ao obter, o PDF será anexado à fatura.';
     }
-    if (['delivered', 'shipped', 'returned', 'not_delivered'].includes(order.shipping_status ?? '')) {
+    if (
+      ['delivered', 'shipped', 'returned', 'not_delivered'].includes(order.shipping_status ?? '')
+    ) {
       return 'O pedido já passou da etapa de impressão da etiqueta.';
     }
     if (order.label_status === 'error') {
@@ -665,26 +701,18 @@ export class MarketplacePage implements OnInit {
         : this.api.retryMarketplaceLabel(order.id);
     request.subscribe({
       next: (updated) => {
-        this.orders.update((orders) =>
-          orders.map((item) => (item.id === updated.id ? updated : item)),
-        );
-        if (this.detail()?.id === updated.id) this.detail.set(updated);
-        if (kind === 'fiscal') {
+        this.applyOrderUpdate(updated);
+        if (this.shouldKeepChecking(updated, kind)) {
           this.showFeedback(
-            'success',
-            updated.fiscal_status === 'authorized'
-              ? 'NF-e encontrada e vinculada à fatura.'
-              : 'Solicitação enviada ao Mercado Livre; acompanhe o status neste pedido.',
+            'info',
+            kind === 'fiscal'
+              ? 'Pedido enviado. Vou acompanhar a NF-e e a etiqueta automaticamente.'
+              : 'Vou acompanhar a liberação da etiqueta automaticamente.',
           );
-        } else {
-          this.showFeedback(
-            updated.label_status === 'downloaded' ? 'success' : 'info',
-            updated.label_status === 'downloaded'
-              ? 'Etiqueta anexada à fatura. Você já pode abri-la nesta tela.'
-              : this.labelStatusHelp(updated),
-          );
+          this.checkOrderProgress(updated, kind, Date.now());
+          return;
         }
-        this.working.set(null);
+        this.finishOrderAction(updated, kind);
       },
       error: (error: unknown) => {
         const detail =
@@ -695,6 +723,99 @@ export class MarketplacePage implements OnInit {
         this.working.set(null);
       },
     });
+  }
+  private applyOrderUpdate(updated: MarketplaceOrder) {
+    this.orders.update((orders) => orders.map((item) => (item.id === updated.id ? updated : item)));
+    if (this.detail()?.id === updated.id) this.detail.set(updated);
+  }
+  private shouldKeepChecking(order: MarketplaceOrder, kind: 'fiscal' | 'label') {
+    if (kind === 'fiscal' && order.fiscal_status === 'error') return false;
+    if (kind === 'label' && order.label_status === 'error') return false;
+    if (kind === 'label') {
+      return (
+        !['downloaded', 'completed', 'not_applicable'].includes(order.label_status) &&
+        !['delivered', 'shipped', 'returned', 'not_delivered', 'cancelled', 'canceled'].includes(
+          order.shipping_status?.toLowerCase() ?? '',
+        )
+      );
+    }
+    if (order.fiscal_status !== 'authorized') return true;
+    if (order.label_status === 'error') return false;
+    const hasInvoiceFile = Boolean(
+      this.documentFor(order, 'pdf') || this.documentFor(order, 'xml'),
+    );
+    const labelReady =
+      ['downloaded', 'completed', 'not_applicable'].includes(order.label_status) ||
+      ['delivered', 'shipped', 'returned', 'not_delivered', 'cancelled', 'canceled'].includes(
+        order.shipping_status?.toLowerCase() ?? '',
+      );
+    return !hasInvoiceFile || !labelReady;
+  }
+  private checkOrderProgress(order: MarketplaceOrder, kind: 'fiscal' | 'label', startedAt: number) {
+    if (Date.now() - startedAt >= 180_000) {
+      this.working.set(null);
+      this.showFeedback(
+        'info',
+        'O Mercado Livre ainda está processando. O ERP continuará atualizando a NF-e e a etiqueta em segundo plano.',
+      );
+      return;
+    }
+    this.progressTimer = window.setTimeout(() => {
+      this.api.marketplaceOrder(order.id).subscribe({
+        next: (updated) => {
+          this.applyOrderUpdate(updated);
+          if (updated.fiscal_status === 'authorized' && kind === 'fiscal') {
+            this.working.set({ id: order.id, kind: 'label' });
+          }
+          if (this.shouldKeepChecking(updated, kind)) {
+            this.checkOrderProgress(updated, kind, startedAt);
+          } else {
+            this.finishOrderAction(updated, kind);
+          }
+        },
+        error: () => {
+          this.working.set(null);
+          this.showFeedback(
+            'info',
+            'Não consegui consultar o status agora. O ERP continuará sincronizando em segundo plano.',
+          );
+        },
+      });
+    }, 5_000);
+  }
+  private finishOrderAction(order: MarketplaceOrder, kind: 'fiscal' | 'label') {
+    if (order.fiscal_status === 'error' || order.label_status === 'error') {
+      this.showFeedback(
+        'error',
+        order.fiscal_error ||
+          order.label_error ||
+          'Não foi possível concluir a emissão dos documentos.',
+      );
+      this.working.set(null);
+      return;
+    }
+    if (kind === 'fiscal') {
+      const invoiceReady = Boolean(
+        this.documentFor(order, 'pdf') || this.documentFor(order, 'xml'),
+      );
+      const labelReady = Boolean(this.documentFor(order, 'label_pdf'));
+      this.showFeedback(
+        'success',
+        labelReady
+          ? 'NF-e emitida e etiqueta anexada à fatura.'
+          : invoiceReady
+            ? 'NF-e emitida e anexada à fatura. A etiqueta será atualizada automaticamente assim que o Mercado Livre liberar.'
+            : 'A etapa fiscal do pedido foi atualizada.',
+      );
+    } else {
+      this.showFeedback(
+        order.label_status === 'downloaded' ? 'success' : 'info',
+        order.label_status === 'downloaded'
+          ? 'Etiqueta anexada à fatura. Você já pode abri-la nesta tela.'
+          : this.labelStatusHelp(order),
+      );
+    }
+    this.working.set(null);
   }
   showFeedback(kind: 'success' | 'error' | 'info', message: string) {
     this.feedback.set({ kind, message });

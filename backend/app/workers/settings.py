@@ -1,6 +1,7 @@
 from datetime import datetime
 from typing import Any
 
+from arq import cron
 from arq.connections import RedisSettings
 from sqlalchemy import select
 
@@ -9,6 +10,7 @@ from app.db.session import SessionLocal
 from app.integrations.mercadolivre.client import MercadoLivreClient
 from app.integrations.mercadolivre.sync import (
     extract_invoice_order_ids,
+    retry_pending_automations,
     sync_all,
     sync_invoice_documents,
     sync_order,
@@ -150,12 +152,26 @@ async def process_shopee_notification(ctx: dict[str, Any], payload: dict[str, An
             sync_shopee_all(db, account)
 
 
+async def reconcile_pending_marketplace_documents(ctx: dict[str, Any]) -> int:
+    del ctx
+    with SessionLocal() as db:
+        return retry_pending_automations(db)
+
+
 class WorkerSettings:
     functions = [
         process_mercadolivre_notification,
         sync_mercadolivre_account,
         sync_shopee_account,
         process_shopee_notification,
+    ]
+    cron_jobs = [
+        cron(
+            reconcile_pending_marketplace_documents,
+            name="reconcile-pending-marketplace-documents",
+            minute=set(range(60)),
+            second=0,
+        )
     ]
     redis_settings = RedisSettings.from_dsn(get_settings().redis_url)
     max_jobs = 10

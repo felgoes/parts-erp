@@ -265,7 +265,7 @@ def request_order_fiscal_document(
     _: User = Depends(require_permission(Permission.MARKETPLACE_PROCESS)),
 ) -> MarketplaceOrder:
     """Request/reconcile the Mercado Livre invoice for an existing sale."""
-    from app.integrations.mercadolivre.sync import issue_and_sync_invoice
+    from app.integrations.mercadolivre.sync import issue_and_sync_invoice, sync_shipping_label
 
     order = db.get(MarketplaceOrder, order_id)
     if not order:
@@ -287,6 +287,14 @@ def request_order_fiscal_document(
         raise HTTPException(status_code=409, detail="Conta do Mercado Livre não conectada")
 
     issue_and_sync_invoice(db, order, account, force_issue=True)
+    config = db.scalar(select(MarketplaceConfig).limit(1))
+    auto_download_label = (
+        config.auto_download_label
+        if config
+        else getattr(get_settings(), "mercadolivre_auto_download_label", True)
+    )
+    if auto_download_label and not order.fiscal_error:
+        sync_shipping_label(db, order, account)
     order.automation_updated_at = datetime.now(UTC)
     db.commit()
     db.refresh(order)

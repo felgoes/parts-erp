@@ -3,6 +3,7 @@ from types import SimpleNamespace
 
 from sqlalchemy import select
 
+from app.api.routes.integrations import request_order_fiscal_document
 from app.core.security import encrypt_secret
 from app.integrations.mercadolivre import sync as sync_module
 from app.integrations.mercadolivre.client import MercadoLivreClient, MercadoLivreError
@@ -237,6 +238,38 @@ def test_manual_invoice_request_does_not_issue_after_non_404_lookup_error(db, mo
     assert "503" in order.fiscal_error
 
 
+def test_empty_follow_up_lookup_does_not_revert_authorized_invoice(db, monkeypatch):
+    account = marketplace_account(db)
+    invoice = SalesInvoice(number="VEN-TEST-AUTH", marketplace_order_id="126")
+    order = MarketplaceOrder(
+        external_order_id="126",
+        seller_id=account.seller_id,
+        status="paid",
+        payload={},
+        invoice=invoice,
+        external_invoice_id="nf-already-authorized",
+        fiscal_status="authorized",
+    )
+    db.add(order)
+    db.commit()
+    monkeypatch.setattr(
+        sync_module,
+        "_automation_config",
+        lambda _db: SimpleNamespace(auto_issue_invoice=False),
+    )
+    monkeypatch.setattr(MercadoLivreClient, "get", lambda *_args: [])
+    monkeypatch.setattr(
+        MercadoLivreClient,
+        "post",
+        lambda *_args: (_ for _ in ()).throw(AssertionError("não deve solicitar novamente")),
+    )
+
+    sync_module.issue_and_sync_invoice(db, order, account)
+
+    assert order.fiscal_status == "authorized"
+    assert order.external_invoice_id == "nf-already-authorized"
+
+
 def test_label_waits_until_mercado_livre_releases_printing_substatus(db, monkeypatch, tmp_path):
     account = marketplace_account(db)
     invoice = SalesInvoice(number="VEN-LABEL-001", marketplace_order_id="456")
@@ -274,14 +307,82 @@ def test_label_waits_until_mercado_livre_releases_printing_substatus(db, monkeyp
     assert order.shipping_substatus == "invoice_pending"
     assert order.label_status == "waiting"
     assert downloads == []
-    assert db.scalar(select(InvoiceDocument).where(InvoiceDocument.document_type == "label_pdf")) is None
+    label_doc = db.scalar(
+        select(InvoiceDocument).where(InvoiceDocument.document_type == "label_pdf")
+    )
+    assert label_doc is None
 
     shipment["substatus"] = "ready_to_print"
     sync_module.sync_shipping_label(db, order, account)
     assert order.shipping_substatus == "ready_to_print"
     assert order.label_status == "downloaded"
     assert downloads == ["/shipment_labels?shipment_ids=789&response_type=pdf"]
-    assert db.scalar(select(InvoiceDocument).where(InvoiceDocument.document_type == "label_pdf")) is not None
+    label_doc = db.scalar(
+        select(InvoiceDocument).where(InvoiceDocument.document_type == "label_pdf")
+    )
+    assert label_doc is not None
+
+
+def test_manual_invoice_request_immediately_refreshes_label(db, monkeypatch):
+    account = marketplace_account(db)
+    invoice = SalesInvoice(number="VEN-FISCAL-LABEL-001", marketplace_order_id="457")
+    order = MarketplaceOrder(
+        external_order_id="457",
+        seller_id=account.seller_id,
+        status="paid",
+        payload={},
+        shipment_id="790",
+        invoice=invoice,
+    )
+    db.add(order)
+    db.commit()
+    calls = []
+    monkeypatch.setattr(
+        sync_module,
+        "issue_and_sync_invoice",
+        lambda _db, _order, _account, **kwargs: calls.append(("invoice", kwargs)),
+    )
+    monkeypatch.setattr(
+        sync_module,
+        "sync_shipping_label",
+        lambda _db, _order, _account: calls.append(("label", {})),
+    )
+
+    updated = request_order_fiscal_document(order.id, db, None)
+
+    assert updated.id == order.id
+    assert calls == [("invoice", {"force_issue": True}), ("label", {})]
+
+
+def test_pending_document_automation_is_retryable_by_background_worker(db, monkeypatch):
+    from datetime import UTC, datetime, timedelta
+
+    account = marketplace_account(db)
+    invoice = SalesInvoice(number="VEN-AUTO-001", marketplace_order_id="458")
+    order = MarketplaceOrder(
+        external_order_id="458",
+        seller_id=account.seller_id,
+        status="paid",
+        payload={},
+        invoice=invoice,
+        fiscal_status="authorized",
+        label_status="waiting",
+        automation_updated_at=datetime.now(UTC) - timedelta(minutes=2),
+    )
+    db.add(order)
+    db.commit()
+    calls = []
+
+    def fake_automate(_db, candidate, connected_account=None):
+        calls.append((candidate.id, connected_account))
+        candidate.label_status = "downloaded"
+
+    monkeypatch.setattr(sync_module, "automate_order_documents", fake_automate)
+
+    retried = sync_module.retry_pending_automations(db)
+
+    assert retried == 1
+    assert calls == [(order.id, None)]
 
 
 def test_initial_sync_imports_products_and_orders(db, monkeypatch):

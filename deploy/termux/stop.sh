@@ -23,6 +23,7 @@ stop_pid() {
 }
 
 stop_pid nginx
+stop_pid cloudflared
 stop_pid monitor
 stop_pid worker
 stop_pid api

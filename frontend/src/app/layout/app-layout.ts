@@ -1,5 +1,5 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
-import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AppearanceService } from '../core/appearance.service';
 import { ErpBrandService } from '../core/erp-brand.service';
 import { AuthService } from '../core/auth.service';
@@ -15,13 +15,36 @@ import { canAccessPage, ROLE_LABELS } from '../core/user-access';
         <div><strong>{{ brand.shortName() }}</strong><small>{{ brand.suffix() }}</small></div>
       </div>
       <nav aria-label="Menu principal">
-        @for (item of nav; track item.path) {
-          <a [routerLink]="item.path" routerLinkActive="active" (click)="menuOpen.set(false)"
-            ><span class="nav-icon">{{ item.icon }}</span
-            ><span>{{ item.label }}</span></a
-          >
+        <a class="overview-link" routerLink="/dashboard" routerLinkActive="active" (click)="menuOpen.set(false)">
+          <span class="nav-icon">◫</span><span>Visão geral</span>
+        </a>
+        @for (section of navigationSections; track section.label) {
+          @if (section.items.length) {
+            <div class="nav-section">
+              <p class="nav-section-label">{{ section.label }}</p>
+              @for (item of section.items; track item.path) {
+                <a [routerLink]="item.path" routerLinkActive="active" (click)="menuOpen.set(false)">
+                  <span class="nav-icon">{{ item.icon }}</span><span>{{ item.label }}</span>
+                </a>
+              }
+            </div>
+          }
         }
-        @if (auth.user()?.role === 'admin') { <a routerLink="/settings" routerLinkActive="active" (click)="menuOpen.set(false)"><span class="nav-icon">⚙</span><span>Configurações</span></a> }
+        @if (auth.user()?.role === 'admin') {
+          <div class="nav-section configuration-section">
+            <button class="configuration-toggle" type="button" [class.active]="isConfigurationRoute()"
+              [attr.aria-expanded]="configurationOpen" (click)="settingsOpen.set(!settingsOpen())">
+              <span class="nav-icon">⚙</span><span>Configurações</span><span class="nav-chevron" aria-hidden="true">⌄</span>
+            </button>
+            @if (configurationOpen) {
+              <div class="nav-children">
+                <a routerLink="/settings" routerLinkActive="active" (click)="menuOpen.set(false)">Geral</a>
+                <a routerLink="/integrations" routerLinkActive="active" (click)="menuOpen.set(false)">Integrações</a>
+                <a routerLink="/users" routerLinkActive="active" (click)="menuOpen.set(false)">Usuários</a>
+              </div>
+            }
+          </div>
+        }
       </nav>
       <div class="sidebar-foot">
         <span class="avatar">{{ initials }}</span>
@@ -49,25 +72,46 @@ export class AppLayout implements OnInit {
   readonly auth = inject(AuthService);
   readonly brand = inject(ErpBrandService);
   readonly appearance = inject(AppearanceService);
+  private readonly router = inject(Router);
   readonly menuOpen = signal(false);
+  readonly settingsOpen = signal(false);
   ngOnInit(): void {
     this.brand.load();
   }
-  get nav() {
-    const items = [
-      { path: '/dashboard', label: 'Visão geral', icon: '◫' },
-      { path: '/monitoring', label: 'Monitoramento', icon: 'O' },
-      { path: '/products', label: 'Produtos e estoque', icon: '◇' },
-      { path: '/purchases', label: 'Compras', icon: '↙' },
-      { path: '/market-studies', label: 'Estudos de mercado', icon: '⌕' },
-      { path: '/finance', label: 'Financeiro', icon: '$' },
-      { path: '/invoices', label: 'Faturas de venda', icon: '▤' },
-      { path: '/customers', label: 'Clientes', icon: '○' },
-      { path: '/marketplace', label: 'Pedidos do ML', icon: 'M' },
-      { path: '/integrations', label: 'Integrações', icon: '⌁' },
+  get navigationSections() {
+    const role = this.auth.user()?.role;
+    const sections = [
+      {
+        label: 'Operação',
+        items: [
+          { path: '/marketplace', label: 'Pedidos do ML', icon: 'M' },
+          { path: '/invoices', label: 'Faturas de venda', icon: '▤' },
+          { path: '/products', label: 'Produtos e estoque', icon: '◇' },
+          { path: '/purchases', label: 'Compras', icon: '↙' },
+          { path: '/customers', label: 'Clientes', icon: '○' },
+        ],
+      },
+      {
+        label: 'Análise',
+        items: [
+          { path: '/monitoring', label: 'Monitoramento', icon: '◉' },
+          { path: '/finance', label: 'Financeiro', icon: '$' },
+          { path: '/market-studies', label: 'Estudos de mercado', icon: '⌕' },
+        ],
+      },
     ];
-    const allItems = [...items, { path: '/users', label: 'Usuários', icon: '♙' }];
-    return allItems.filter((item) => canAccessPage(this.auth.user()?.role, item.path));
+    return sections.map((section) => ({
+      ...section,
+      items: section.items.filter((item) => canAccessPage(role, item.path)),
+    }));
+  }
+  get configurationOpen(): boolean {
+    const route = this.router.url.split('?')[0].replace(/^\//, '');
+    return this.settingsOpen() || ['settings', 'integrations', 'users'].includes(route);
+  }
+  isConfigurationRoute(): boolean {
+    const route = this.router.url.split('?')[0].replace(/^\//, '');
+    return ['settings', 'integrations', 'users'].includes(route);
   }
   get initials(): string {
     return (this.auth.user()?.full_name ?? 'U')

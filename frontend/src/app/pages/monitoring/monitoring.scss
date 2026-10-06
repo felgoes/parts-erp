@@ -6,3 +6,17 @@
 .period-filter>div strong{font-size:14px}.apply-filter{flex:0 0 auto;white-space:nowrap}.event-bars{display:grid;gap:17px;margin-top:22px}.event-bar-row{display:grid;gap:7px}.event-bar-heading{display:flex;align-items:center;justify-content:space-between;gap:12px}.event-bar-heading span{color:#34443c;font-size:13px}.event-bar-heading strong{margin:0;font-size:15px}.event-bar-track{height:9px;overflow:hidden;border-radius:99px;background:#eff1ed}.event-bar-track span{display:block;height:100%;min-width:2px;border-radius:inherit;transition:width .25s ease}.event-bar-row small{font-size:11px}.breakdown-card>p{max-width:38rem}
 .period-filter>div strong{margin:0}.product-views-card td strong{display:inline;font-size:13px;margin:0;color:#18382c}
 @media(max-width:1100px){.monitor-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:600px){
+  .monitor-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+  .monitor-grid>.card{min-width:0;padding:13px}
+  .monitor-grid .card strong{font-size:clamp(20px,6vw,27px);overflow-wrap:anywhere}
+  .content-grid{grid-template-columns:minmax(0,1fr);gap:10px}
+  .period-filter{grid-template-columns:minmax(0,1fr);padding:14px}
+  .period-filter>div{grid-column:1/-1}
+  .period-filter label{min-width:0}
+  .period-filter input{min-width:0;width:100%;font-size:16px}
+  .apply-filter{grid-column:1/-1;min-height:44px}
+  .product-views-card{padding:14px}
+  .product-views-card .table-wrap{margin-inline:-14px;padding-inline:14px}
+}
+@media(max-width:360px){.monitor-grid>.card{padding:11px}.monitor-grid .card span{font-size:11px}}

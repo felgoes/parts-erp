@@ -34,3 +34,27 @@
   color: var(--danger);
   margin: 16px 0 0;
 }
+
+@media (max-width: 780px) {
+  .table-card { padding: 0; }
+  .table-card .table-wrap { padding: 0 14px; }
+  .table-card table { min-width: 0; }
+  .table-card thead { display: none; }
+  .table-card tbody, .table-card tbody tr, .table-card tbody td { display: block; }
+  .table-card tbody tr { padding: 14px 0; border-bottom: 1px solid var(--line); }
+  .table-card tbody td { display: grid; grid-template-columns: minmax(78px, .7fr) minmax(0, 1.3fr); gap: 10px; align-items: start; padding: 6px 0; border: 0; overflow-wrap: anywhere; }
+  .table-card tbody td::before { color: var(--muted); font-size: 10px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; }
+  .table-card tbody td:nth-child(1)::before { content: 'Usuário'; }
+  .table-card tbody td:nth-child(2)::before { content: 'E-mail'; }
+  .table-card tbody td:nth-child(3)::before { content: 'Perfil'; }
+  .table-card tbody td:nth-child(4)::before { content: 'Acesso'; }
+  .table-card tbody td:nth-child(5)::before { content: 'Ação'; }
+  .table-card tbody td:nth-child(5) { padding-top: 10px; }
+  .table-card tbody td:nth-child(5) button { min-height: 42px; }
+  .role-description { max-width: none; }
+}
+
+@media (max-width: 390px) {
+  .table-card .table-wrap { padding-inline: 12px; }
+  .table-card tbody td { grid-template-columns: 72px minmax(0, 1fr); gap: 8px; }
+}

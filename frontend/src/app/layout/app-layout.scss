@@ -229,12 +229,17 @@ main {
     transform: translateX(-105%);
     transition: transform 0.2s ease;
   }
+  .sidebar nav a, .configuration-toggle { min-height: 44px; }
   .menu-open .sidebar {
     transform: none;
   }
   .mobile-bar {
     display: flex;
+    position: sticky;
+    top: 0;
+    z-index: 14;
     height: 64px;
+    min-height: 64px;
     padding: 0 18px;
     align-items: center;
     justify-content: space-between;
@@ -257,7 +262,8 @@ main {
   }
   main {
     margin-left: 0;
-    padding: 24px 18px calc(48px + env(safe-area-inset-bottom));
+    width: 100%;
+    padding: 22px 18px calc(32px + env(safe-area-inset-bottom));
   }
 }
 

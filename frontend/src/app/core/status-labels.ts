@@ -31,7 +31,7 @@ const labels: Record<string, string> = {
   handling: 'Em preparação',
   ready_to_ship: 'Pronto para envio',
   shipped: 'Despachado',
-  delivered: 'Entregue · finalizado',
+  delivered: 'Entregue',
   not_delivered: 'Não entregue',
   delivery_failed: 'Falha na entrega',
   not_received: 'Não recebido',
@@ -124,7 +124,11 @@ export function statusLabel(value: string | null | undefined): string {
 }
 
 export function trackingEventLabel(status: string, detail?: string | null): string {
-  const translatedStatus = statusLabel(status);
+  const normalizedStatus = normalizeStatus(status);
+  const normalizedDetail = detail ? normalizeStatus(detail) : '';
+  const translatedStatus = normalizedStatus === 'shipped' && normalizedDetail === 'out_for_delivery'
+    ? 'Em trânsito'
+    : statusLabel(status);
   const translatedDetail = trackingDetailLabel(detail);
   return translatedDetail ? `${translatedStatus} · ${translatedDetail}` : translatedStatus;
 }

@@ -35,7 +35,7 @@
 .help-panel dl { border-top:1px solid var(--line); margin:22px 0 0; padding-top:15px; display:grid; gap:6px; font-size:12px; }
 .help-panel dt { color:var(--muted); }
 .help-panel dd { margin:0 0 9px; font-weight:700; }
-@media (max-width:850px) { .settings-layout { grid-template-columns:1fr; } }
+@media (max-width:1000px) { .settings-layout { grid-template-columns:1fr; } }
 
 .integration-groups { display:grid; gap:20px; }
 .group-label { color:var(--muted); font-size:11px; font-weight:850; letter-spacing:.14em; }
@@ -50,4 +50,18 @@
 .taxonomy-card h2 { margin:0 0 6px; font-size:15px; }
 .taxonomy-card p { margin:0; color:var(--muted); font-size:12px; line-height:1.55; }
 .taxonomy-icon { width:30px; height:30px; flex:0 0 30px; display:grid; place-items:center; background:#eef3e7; color:var(--forest); font-weight:900; }
-@media (max-width:850px) { .taxonomy-card { grid-template-columns:1fr; } }
+@media (max-width:1000px) { .taxonomy-card { grid-template-columns:1fr; } }
+
+@media (max-width: 600px) {
+  .settings-panel, .help-panel, .taxonomy-card { padding: 16px; }
+  .section-title { align-items: flex-start; flex-direction: column; gap: 10px; }
+  .section-title > * { min-width: 0; }
+  .status { align-self: flex-start; }
+  .form-grid { grid-template-columns: minmax(0, 1fr); }
+  .form-grid .span-2 { grid-column: auto; }
+  .form-actions { align-items: stretch; flex-direction: column; gap: 12px; }
+  .form-actions .primary, .form-actions .secondary { width: 100%; min-height: 44px; }
+  .rules { margin-top: 20px; }
+  .taxonomy-card { gap: 16px; }
+  .channel-help { min-height: 0; }
+}

@@ -5,19 +5,20 @@
 - Use the WSL Ubuntu checkout at `/home/underlocks/workspace/garagista/parts-erp-main` as the canonical working copy for this project.
 - Make source changes, builds, Git commits, and GitHub pushes from WSL. Do not develop in the Windows mirror and copy the result into WSL or production.
 - Keep the user's existing `/home/underlocks/workspace/garagista/parts-erp` checkout and its `fix/production-readiness` branch intact; it contains separate Termux/server work.
-- The dedicated local visual-QA account is `qa-admin@example.com`; its password is kept only in the ignored `.env.qa.local` file. Never commit that file or use this account against production.
+- The dedicated local visual-QA account is `qa-admin@example.com`; its password is kept only in the ignored `.env.qa.local` file. Use it only against local development/homologation, never production. Read credentials at runtime without printing, logging, screenshotting, or committing the password, access token, or `.env.qa.local` file.
 
 ## Required delivery order
 
 For application changes, complete these steps in order:
 
 1. Implement and build locally in WSL.
-2. Open the local ERP in a browser and manually inspect the changed flow. Use the dedicated local QA account and local-only data; do not ask the user to log in repeatedly or use production credentials. Check desktop and mobile layouts when the change affects UI. Do not claim visual verification unless the local screen was actually inspected.
-3. Fix any issues found and repeat the local build and browser review. Automated test suites are optional: use them when they materially help validate backend/business logic or prevent a concrete regression, but do not make E2E automation a routine gate for visual changes.
-4. Commit and push the verified change to GitHub.
-5. Only after the local build, browser review, and GitHub push succeed, deploy the matching commit to the Termux production server. Keep production data and configuration intact; use the repository's deployment scripts and verify service health after deployment.
+2. Open the local ERP in a browser, authenticate with the dedicated local QA account, and manually inspect the changed flow using local-only data. Do not substitute API-only checks, an unauthenticated login-page screenshot, or a production session for this browser review. Do not ask the user to log in repeatedly or use production credentials. Check desktop and mobile layouts when the change affects UI. Do not claim visual verification unless the authenticated local screen was actually inspected.
+3. For changed workflows, exercise the actual UI path through the relevant screen and object details, and verify the resulting state and feedback. Never trigger real external side effects (for example, issuing a Mercado Livre NF-e, printing/downloading a live label, publishing an item, or changing live stock) as part of QA; use a mock, sandbox, or isolated local test data. If the QA account or local browser session is unavailable, repair the local-only QA setup or use an approved local test-session mechanism; do not make production the test environment.
+4. Fix any issues found and repeat the local build and browser review. Automated test suites are optional: use them when they materially help validate backend/business logic or prevent a concrete regression, but do not make E2E automation a routine gate for visual changes.
+5. Commit and push the verified change to GitHub.
+6. Only after the local build, authenticated browser review, and GitHub push succeed, deploy the matching commit to the Termux production server. Keep production data and configuration intact; use the repository's deployment scripts and verify service health after deployment.
 
-Never use production as the first place to build or discover UI problems. Do not deploy a commit that differs from the one verified locally and pushed to GitHub. If local browser verification or GitHub push is blocked, stop before production deployment and report the blocker.
+Never use production as the first place to build or discover UI problems. Do not deploy a commit that differs from the one verified locally and pushed to GitHub. If authenticated local browser verification or GitHub push is blocked, stop before production deployment and report the blocker; do not ask the user to perform routine QA login for you.
 
 ## Project commands
 

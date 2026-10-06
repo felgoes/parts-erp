@@ -247,5 +247,9 @@ def download_document(
     )
     if not document:
         raise HTTPException(status_code=404, detail="Documento não encontrado")
-    media_type = "application/pdf" if document.document_type == "pdf" else "application/xml"
+    media_type = (
+        "application/pdf"
+        if document.document_type in {"pdf", "label_pdf"}
+        else "application/xml"
+    )
     return FileResponse(document.storage_path, media_type=media_type, filename=document.filename)

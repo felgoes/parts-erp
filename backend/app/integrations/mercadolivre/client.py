@@ -12,7 +12,9 @@ from app.models import MarketplaceAccount, MarketplaceConfig
 
 
 class MercadoLivreError(RuntimeError):
-    pass
+    def __init__(self, message: str, *, status_code: int | None = None) -> None:
+        super().__init__(message)
+        self.status_code = status_code
 
 
 class MercadoLivreClient:
@@ -34,7 +36,11 @@ class MercadoLivreClient:
         config = self._config()
         if config and config.encrypted_client_secret:
             return decrypt_secret(config.encrypted_client_secret)
-        return self.settings.mercadolivre_client_secret.get_secret_value() if self.settings.mercadolivre_client_secret else None
+        return (
+            self.settings.mercadolivre_client_secret.get_secret_value()
+            if self.settings.mercadolivre_client_secret
+            else None
+        )
 
     @property
     def api_url(self) -> str:
@@ -43,7 +49,9 @@ class MercadoLivreClient:
     @property
     def redirect_uri(self) -> str:
         config = self._config()
-        return (config.redirect_uri if config else None) or str(self.settings.mercadolivre_redirect_uri)
+        return (config.redirect_uri if config else None) or str(
+            self.settings.mercadolivre_redirect_uri
+        )
 
     def _client(self) -> httpx.Client:
         return httpx.Client(base_url=self.api_url, timeout=30.0)
@@ -114,9 +122,31 @@ class MercadoLivreClient:
         self._raise(response)
         return cast(dict[str, Any] | list[Any], response.json())
 
-    def put(self, path: str, payload: dict[str, Any]) -> dict[str, Any] | list[Any]:
+    def get_with_headers(self, path: str) -> tuple[dict[str, Any] | list[Any], dict[str, str]]:
         with self._client() as client:
-            response = client.put(
+            response = client.get(path, headers={"Authorization": f"Bearer {self.access_token()}"})
+        self._raise(response)
+        return cast(dict[str, Any] | list[Any], response.json()), dict(response.headers)
+
+    def put(
+        self,
+        path: str,
+        payload: dict[str, Any],
+        extra_headers: dict[str, str] | None = None,
+    ) -> dict[str, Any] | list[Any]:
+        headers = {"Authorization": f"Bearer {self.access_token()}"}
+        if extra_headers:
+            headers.update(extra_headers)
+        with self._client() as client:
+            response = client.put(path, json=payload, headers=headers)
+        self._raise(response)
+        if response.status_code == 204 or not response.content:
+            return {}
+        return cast(dict[str, Any] | list[Any], response.json())
+
+    def post(self, path: str, payload: dict[str, Any]) -> dict[str, Any] | list[Any]:
+        with self._client() as client:
+            response = client.post(
                 path,
                 json=payload,
                 headers={"Authorization": f"Bearer {self.access_token()}"},
@@ -124,10 +154,18 @@ class MercadoLivreClient:
         self._raise(response)
         return cast(dict[str, Any] | list[Any], response.json())
 
-    def download(self, path: str) -> bytes:
-        absolute = (
-            path if path.startswith("http") else urljoin(self.api_url, path)
+    def upload_picture(self, contents: bytes, filename: str) -> dict[str, Any]:
+        response = httpx.post(
+            f"{self.api_url}/pictures/items/upload",
+            headers={"Authorization": f"Bearer {self.access_token()}"},
+            files={"file": (filename, contents, "image/jpeg")},
+            timeout=60.0,
         )
+        self._raise(response)
+        return cast(dict[str, Any], response.json())
+
+    def download(self, path: str) -> bytes:
+        absolute = path if path.startswith("http") else urljoin(self.api_url, path)
         response = httpx.get(
             absolute,
             headers={"Authorization": f"Bearer {self.access_token()}"},
@@ -144,4 +182,7 @@ class MercadoLivreClient:
             detail = response.json().get("message", response.text)
         except ValueError:
             detail = response.text
-        raise MercadoLivreError(f"Mercado Livre respondeu {response.status_code}: {detail[:300]}")
+        raise MercadoLivreError(
+            f"Mercado Livre respondeu {response.status_code}: {detail[:300]}",
+            status_code=response.status_code,
+        )

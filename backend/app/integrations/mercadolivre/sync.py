@@ -25,6 +25,7 @@ from app.models import (
     SalesInvoice,
 )
 from app.schemas.common import InvoiceCreate, InvoiceItemCreate
+from app.services.after_sale import link_pending_after_sale_cases
 from app.services.sales import cancel_invoice, confirm_invoice, create_invoice
 
 ORDER_RESOURCE = re.compile(r"^/orders/(?P<id>\d+)$")
@@ -84,6 +85,46 @@ def is_paid(order: dict[str, Any]) -> bool:
 
 def is_cancelled(order: dict[str, Any]) -> bool:
     return str(order.get("status", "")).strip().lower() in {"cancelled", "canceled"}
+
+
+def order_shipment_id(
+    client: MercadoLivreClient, order_id: str, order: dict[str, Any]
+) -> str | None:
+    """Read shipment IDs from the current hosted Orders view, with legacy fallback."""
+    try:
+        result = client.get(f"/orders/{order_id}/shipments", extra_headers={"x-new-domain": "true"})
+        candidates = result if isinstance(result, list) else [result]
+        for candidate in candidates:
+            if isinstance(candidate, dict) and candidate.get("id"):
+                return str(candidate["id"])
+    except MercadoLivreError:
+        # Retain compatibility while an account/app migrates to the hosted view.
+        pass
+    shipping = order.get("shipping") or {}
+    shipment_id = shipping.get("id") if isinstance(shipping, dict) else None
+    return str(shipment_id) if shipment_id else None
+
+
+def sync_shipping_status(
+    db: Session, record: MarketplaceOrder, account: MarketplaceAccount
+) -> dict[str, Any] | None:
+    """Refresh shipment state and its Mercado Envios timeline, independent of label state."""
+    if not record.shipment_id:
+        return None
+    client = MercadoLivreClient(db, account)
+    try:
+        shipment = client.get(
+            f"/shipments/{record.shipment_id}", extra_headers={"x-format-new": "true"}
+        )
+        if not isinstance(shipment, dict):
+            return None
+        record.shipping_status = str(shipment.get("status") or record.shipping_status or "unknown")
+        record.shipping_substatus = str(shipment.get("substatus") or "") or None
+        sync_shipping_history(db, record, account)
+        return shipment
+    except MercadoLivreError:
+        # Shipping telemetry must never prevent an order/invoice from being synchronized.
+        return None
 
 
 def _account(db: Session, seller_id: str) -> MarketplaceAccount:
@@ -201,13 +242,19 @@ def sync_order(db: Session, seller_id: str, resource: str) -> MarketplaceOrder:
                 ),
             )
         )
-    shipping = order.get("shipping") or {}
-    shipment_id = shipping.get("id") if isinstance(shipping, dict) else None
-    record.shipment_id = str(shipment_id) if shipment_id else record.shipment_id
+    shipment_id = order_shipment_id(client, order_id, order)
+    record.shipment_id = shipment_id or record.shipment_id
     record.sync_status = "pending"
     record.sync_error = None
     db.commit()
     db.refresh(record)
+
+    # Shipping lifecycle notifications are separate from order/payment changes.
+    # Also refresh here so periodic imports repair missed webhooks after downtime.
+    if record.shipment_id:
+        sync_shipping_status(db, record, account)
+        db.commit()
+        db.refresh(record)
 
     config = _automation_config(db)
     import_orders = config.import_orders if config else True
@@ -300,6 +347,11 @@ def sync_order(db: Session, seller_id: str, resource: str) -> MarketplaceOrder:
             invoice = db.get(SalesInvoice, record.invoice_id)
             if invoice and invoice.status != InvoiceStatus.cancelled:
                 cancel_invoice(db, invoice)
+
+        if record.invoice_id:
+            linked_invoice = db.get(SalesInvoice, record.invoice_id)
+            if linked_invoice:
+                link_pending_after_sale_cases(db, record, linked_invoice)
 
         order_created_at = _parse_event_datetime(str(order.get("date_created") or ""))
         if record.invoice_id and order_created_at:
@@ -425,16 +477,21 @@ def sync_invoice_documents(
 
 
 def issue_and_sync_invoice(
-    db: Session, record: MarketplaceOrder, account: MarketplaceAccount
+    db: Session,
+    record: MarketplaceOrder,
+    account: MarketplaceAccount,
+    *,
+    force_issue: bool = False,
 ) -> None:
     if not record.invoice_id:
         return
     client = MercadoLivreClient(db, account)
     fiscal_entries: list[dict[str, Any]] = []
     config = _automation_config(db)
-    auto_issue = (
-        config.auto_issue_invoice if config else get_settings().mercadolivre_auto_issue_invoice
-    ) and record.status.lower() not in {"cancelled", "canceled"}
+    auto_issue = record.status.lower() not in {"cancelled", "canceled"} and (
+        force_issue
+        or (config.auto_issue_invoice if config else get_settings().mercadolivre_auto_issue_invoice)
+    )
     try:
         try:
             result = client.get(
@@ -445,7 +502,7 @@ def issue_and_sync_invoice(
             if exc.status_code != 404:
                 raise
 
-        if not fiscal_entries and auto_issue:
+        if not fiscal_entries and auto_issue and not record.external_invoice_id:
             record.fiscal_status = "requesting"
             db.commit()
             result = client.post(
@@ -463,6 +520,10 @@ def issue_and_sync_invoice(
             record.fiscal_status = "authorized"
         elif statuses:
             record.fiscal_status = sorted(statuses)[0]
+        elif record.external_invoice_id and record.fiscal_status == "authorized":
+            # Uma consulta temporariamente vazia não deve desfazer uma NF-e
+            # que já foi confirmada anteriormente pelo Mercado Livre.
+            record.fiscal_status = "authorized"
         else:
             record.fiscal_status = "pending"
         record.fiscal_error = None
@@ -480,13 +541,9 @@ def sync_shipping_label(db: Session, record: MarketplaceOrder, account: Marketpl
         return
     client = MercadoLivreClient(db, account)
     try:
-        shipment = client.get(
-            f"/shipments/{record.shipment_id}", extra_headers={"x-format-new": "true"}
-        )
-        if not isinstance(shipment, dict):
+        shipment = sync_shipping_status(db, record, account)
+        if shipment is None:
             raise MercadoLivreError("Resposta de envio inválida")
-        record.shipping_status = str(shipment.get("status") or "unknown")
-        sync_shipping_history(db, record, account)
 
         # Depois que o pedido já foi entregue/devolvido, a janela operacional
         # da etiqueta foi encerrada. Não devemos mostrar "Aguardando envio"
@@ -512,7 +569,7 @@ def sync_shipping_label(db: Session, record: MarketplaceOrder, account: Marketpl
             record.label_status = "not_applicable"
             record.label_error = None
             return
-        if record.shipping_status != "ready_to_ship" or str(shipment.get("substatus")) not in {
+        if record.shipping_status != "ready_to_ship" or record.shipping_substatus not in {
             "ready_to_print",
             "printed",
         }:
@@ -627,7 +684,9 @@ def automate_order_documents(
     issue_and_sync_invoice(db, record, connected_account)
     config = _automation_config(db)
     download_label = (
-        config.auto_download_label if config else get_settings().mercadolivre_auto_download_label
+        config.auto_download_label
+        if config
+        else getattr(get_settings(), "mercadolivre_auto_download_label", True)
     )
     if download_label:
         sync_shipping_label(db, record, connected_account)
@@ -638,7 +697,7 @@ def automate_order_documents(
 
 
 def retry_pending_automations(db: Session) -> int:
-    cutoff = datetime.now(UTC) - timedelta(minutes=2)
+    cutoff = datetime.now(UTC) - timedelta(seconds=45)
     orders = list(
         db.scalars(
             select(MarketplaceOrder)
@@ -768,12 +827,67 @@ def sync_product_stock(db: Session, product: Product) -> int:
         select(ProductMarketplaceListing).where(
             ProductMarketplaceListing.product_id == product.id,
             ProductMarketplaceListing.provider == "mercadolivre",
+            ProductMarketplaceListing.external_item_id.is_not(None),
         )
     ):
-        result = client.put(
-            f"/items/{listing.external_item_id}",
-            {"available_quantity": max(0, int(product.current_stock))},
-        )
+        external_id = str(listing.external_item_id or "")
+        if not external_id.startswith("ML") or not external_id[2:].isalnum():
+            raise MercadoLivreError("Identificador do anúncio inválido; estoque não alterado")
+        quantity = max(0, int(product.current_stock))
+        user_product_id = (listing.payload or {}).get("user_product_id")
+        result: dict | list
+        if user_product_id and str(user_product_id).startswith("ML"):
+            stock_data, stock_headers = client.get_with_headers(
+                f"/user-products/{user_product_id}/stock"
+            )
+            locations = stock_data.get("locations", []) if isinstance(stock_data, dict) else []
+            seller_warehouses = [
+                row
+                for row in locations
+                if isinstance(row, dict) and row.get("type") == "seller_warehouse"
+            ]
+            if len(seller_warehouses) > 1:
+                raise MercadoLivreError(
+                    "Este User Product usa vários depósitos. Configure a distribuição do estoque "
+                    "por depósito antes de sincronizar para não somar saldos incorretamente."
+                )
+            if len(seller_warehouses) == 1:
+                location = seller_warehouses[0]
+                version = stock_headers.get("x-version")
+                if (
+                    not version
+                    or not location.get("store_id")
+                    or not location.get("network_node_id")
+                ):
+                    raise MercadoLivreError(
+                        "A API não retornou versão ou depósito válido para atualizar o estoque"
+                    )
+                result = client.put(
+                    f"/user-products/{user_product_id}/stock/type/seller_warehouse",
+                    {
+                        "locations": [
+                            {
+                                "store_id": location["store_id"],
+                                "network_node_id": location["network_node_id"],
+                                "quantity": quantity,
+                            }
+                        ]
+                    },
+                    extra_headers={"x-version": version},
+                )
+            elif any(
+                isinstance(row, dict) and row.get("type") == "meli_facility" for row in locations
+            ) and not any(
+                isinstance(row, dict) and row.get("type") == "selling_address" for row in locations
+            ):
+                raise MercadoLivreError(
+                    "O estoque está em Full e é gerenciado pelo Mercado Livre; "
+                    "o ERP não pode alterá-lo"
+                )
+            else:
+                result = client.put(f"/items/{external_id}", {"available_quantity": quantity})
+        else:
+            result = client.put(f"/items/{external_id}", {"available_quantity": quantity})
         listing.available_quantity = product.current_stock
         listing.payload = result if isinstance(result, dict) else listing.payload
         listing.synchronized_at = datetime.now(UTC)

@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './core/auth.guard';
+import { accessGuard } from './core/access.guard';
 import { AppLayout } from './layout/app-layout';
 
 export const routes: Routes = [
@@ -11,19 +12,21 @@ export const routes: Routes = [
   {
     path: '',
     component: AppLayout,
-    canActivate: [authGuard],
+    canActivate: [authGuard, accessGuard],
     children: [
       { path: '', pathMatch: 'full', redirectTo: 'dashboard' },
       { path: 'monitoring', loadComponent: () => import('./pages/monitoring/monitoring').then((m) => m.MonitoringPage) },
       { path: 'dashboard', loadComponent: () => import('./pages/dashboard/dashboard').then((m) => m.DashboardPage) },
       { path: 'products', loadComponent: () => import('./pages/products/products').then((m) => m.ProductsPage) },
       { path: 'purchases', loadComponent: () => import('./pages/purchases/purchases').then((m) => m.PurchasesPage) },
+      { path: 'market-studies', loadComponent: () => import('./pages/market-studies/market-studies').then((m) => m.MarketStudiesPage) },
       { path: 'finance', loadComponent: () => import('./pages/finance/finance').then((m) => m.FinancePage) },
       { path: 'invoices', loadComponent: () => import('./pages/invoices/invoices').then((m) => m.InvoicesPage) },
       { path: 'customers', loadComponent: () => import('./pages/customers/customers').then((m) => m.CustomersPage) },
       { path: 'marketplace', loadComponent: () => import('./pages/marketplace/marketplace').then((m) => m.MarketplacePage) },
       { path: 'integrations', loadComponent: () => import('./pages/integrations/integrations').then((m) => m.IntegrationsPage) },
       { path: 'users', loadComponent: () => import('./pages/users/users').then((m) => m.UsersPage) },
+      { path: 'settings', loadComponent: () => import('./pages/settings/settings').then((m) => m.SettingsPage) },
     ],
   },
   { path: '**', redirectTo: '' },

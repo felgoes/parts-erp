@@ -211,6 +211,60 @@ code {
   color: #405147;
   font-size: 11px;
 }
+
+body[data-theme='dark'] {
+  --canvas: #101713;
+  --surface: #19231d;
+  --ink: #101713;
+  --forest: #9fc851;
+  --accent: #b9dc52;
+  --text: #e4ebe5;
+  --muted: #9eaaa1;
+  --line: #334139;
+  --danger: #f08c7c;
+  --warning: #e3b66d;
+  color: var(--text);
+  background: var(--canvas);
+}
+body[data-theme='dark'] app-root,
+body[data-theme='dark'] .app-shell,
+body[data-theme='dark'] main { background: var(--canvas); }
+body[data-theme='dark'] .card,
+body[data-theme='dark'] .table-card,
+body[data-theme='dark'] .table-wrap,
+body[data-theme='dark'] .settings-card,
+body[data-theme='dark'] .modal,
+body[data-theme='dark'] .modal-content,
+body[data-theme='dark'] .detail-modal,
+body[data-theme='dark'] .detail-panel,
+body[data-theme='dark'] .form-card,
+body[data-theme='dark'] .filter-panel,
+body[data-theme='dark'] .history-list,
+body[data-theme='dark'] .customer-list,
+body[data-theme='dark'] .invoice-list { color: var(--text); border-color: var(--line); background: var(--surface); }
+body[data-theme='dark'] input:not([type='checkbox']):not([type='radio']),
+body[data-theme='dark'] select,
+body[data-theme='dark'] textarea { color: var(--text); border-color: var(--line); background: #131c17; }
+body[data-theme='dark'] td,
+body[data-theme='dark'] th,
+body[data-theme='dark'] .clickable-row:hover,
+body[data-theme='dark'] .history-row:hover,
+body[data-theme='dark'] .history-row.is-selected { color: var(--text); border-color: var(--line); background-color: #1d2a22; }
+body[data-theme='dark'] .secondary,
+body[data-theme='dark'] .theme-option { color: var(--text); border-color: var(--line); background: #1b2820; }
+body[data-theme='dark'] .settings-message { color: #c8e8ce; background: #20392a; }
+body[data-theme='dark'] .settings-message.is-error { color: #ffc1b7; background: #452723; }
+body[data-theme='dark'] .logo-preview,
+body[data-theme='dark'] .market-metrics article,
+body[data-theme='dark'] .signal-grid article,
+body[data-theme='dark'] .ai-disabled,
+body[data-theme='dark'] .limitations-note { color: var(--text); border-color: var(--line); background: #202c24; }
+body[data-theme='dark'] .page-header h1,
+body[data-theme='dark'] h2,
+body[data-theme='dark'] h3,
+body[data-theme='dark'] strong,
+body[data-theme='dark'] label { color: var(--text); }
+body[data-theme='dark'] .primary { color: #17231a; background: #b9dc52; }
 .empty {
   padding: 40px 20px;
   text-align: center;

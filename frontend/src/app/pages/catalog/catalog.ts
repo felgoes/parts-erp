@@ -1,12 +1,13 @@
-import { CurrencyPipe } from '@angular/common';
+import { CurrencyPipe, KeyValuePipe } from '@angular/common';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { apiUrl } from '../../core/api-url';
 import { CatalogProduct } from '../../core/models';
 
 @Component({
   selector: 'app-catalog',
-  imports: [CurrencyPipe, FormsModule],
+  imports: [CurrencyPipe, FormsModule, KeyValuePipe],
   template: `
     <main class="catalog-shell">
       <header class="catalog-header">
@@ -65,7 +66,7 @@ import { CatalogProduct } from '../../core/models';
             @for (product of products(); track product.id) {
               <article class="product-card" tabindex="0" (click)="selected.set(product)" (keydown.enter)="selected.set(product)">
                 <div class="product-code">{{ product.sku }}</div>
-                @if (product.listings[0]?.thumbnail) { <img class="product-image" [src]="product.listings[0].thumbnail" [alt]="product.name" /> } @else { <div class="product-glyph">{{ glyph(product.name) }}</div> }
+                @if (product.images[0]?.url || product.listings[0]?.thumbnail) { <img class="product-image" [src]="product.images[0]?.url || product.listings[0].thumbnail" [alt]="product.name" loading="lazy" /> } @else { <div class="product-glyph">{{ glyph(product.name) }}</div> }
                 <div class="product-body">
                   <h3>{{ product.name }}</h3>
                   @if (product.description) { <p>{{ product.description }}</p> }
@@ -89,6 +90,9 @@ import { CatalogProduct } from '../../core/models';
             <button class="catalog-modal-close" type="button" aria-label="Fechar detalhes" (click)="selected.set(null)">×</button>
             <div class="catalog-modal-head"><div><p class="kicker">DETALHES DA PEÇA</p><h2>{{ product.name }}</h2><p class="modal-sku">SKU {{ product.sku }}</p></div><span [class.out]="!product.in_stock" class="modal-stock">{{ product.in_stock ? 'Disponível' : 'Consulte disponibilidade' }}</span></div>
             <p class="modal-description">{{ product.description || 'Fale com a equipe para confirmar aplicação, compatibilidade e disponibilidade antes de fechar o pedido.' }}</p>
+            @if (product.images.length) { <div class="master-photo-gallery" aria-label="Fotos da peça">@for (image of product.images; track image.id) { <img [src]="image.url" [alt]="product.name" loading="lazy" /> }</div> }
+            @if (product.brand || product.manufacturer_part_number || product.barcode || product.category) { <div class="attribute-list master-attributes">@if (product.brand) { <span><small>Marca</small><b>{{ product.brand }}</b></span> } @if (product.manufacturer_part_number) { <span><small>Código OEM</small><b>{{ product.manufacturer_part_number }}</b></span> } @if (product.barcode) { <span><small>EAN/GTIN</small><b>{{ product.barcode }}</b></span> } @if (product.category) { <span><small>Categoria</small><b>{{ product.category }}</b></span> } @for (entry of product.attributes | keyvalue; track entry.key) { <span><small>{{ entry.key }}</small><b>{{ entry.value }}</b></span> }</div> }
+            @if (product.fitments.length) { <section class="catalog-fitments"><p class="kicker">APLICAÇÃO VEICULAR</p><div>@for (fitment of product.fitments; track $index) { <article><strong>{{ fitment.make }} {{ fitment.model }}</strong><span>{{ fitment.year_from || '—' }}{{ fitment.year_to && fitment.year_to !== fitment.year_from ? '–' + fitment.year_to : '' }}{{ fitment.engine ? ' · ' + fitment.engine : '' }}{{ fitment.version ? ' · ' + fitment.version : '' }}</span></article> }</div><small>Confirme a aplicação pelo chassi com nossa equipe antes de comprar.</small></section> }
             @for (listing of product.listings; track listing.external_item_id) {
               <article class="catalog-listing"><div class="listing-media">@if (listing.thumbnail) { <img [src]="listing.thumbnail" [alt]="listing.title || product.name" /> } @else { <span>{{ glyph(product.name) }}</span> }</div><div class="listing-info"><div class="listing-top"><div><small>Anúncio no Mercado Livre · {{ listing.external_item_id }}</small><h3>{{ listing.title || product.name }}</h3></div><strong>{{ (listing.marketplace_price ?? product.sale_price) | currency:'BRL' }}</strong></div><div class="listing-stats"><span>Disponibilidade <b>{{ listing.available_quantity ?? '—' }}</b></span><span>Vendas no anúncio <b>{{ listing.sold_quantity ?? 0 }}</b></span><span>Visualizações <b>{{ listing.visits ?? 0 }}</b></span></div>@if (listing.attributes.length) { <div class="attribute-list">@for (attribute of listing.attributes; track attribute.name) { <span><small>{{ attribute.name }}</small><b>{{ attribute.value }}</b></span> }</div> }<div class="listing-actions"><a class="button button-red" [href]="whatsappUrl(product)" (click)="track('whatsapp_click', { sku: product.sku, placement: 'product_detail' })">Tenho interesse nesta peça</a>@if (listing.permalink) { <a class="button button-quiet listing-external" [href]="listing.permalink" target="_blank" rel="noopener">Abrir anúncio no Mercado Livre ↗</a> }</div></div></article>
             } @empty { <div class="catalog-state">Este produto ainda não possui um anúncio vinculado. Fale com a equipe para consultar alternativas.</div> }
@@ -162,7 +166,7 @@ export class CatalogPage implements OnInit {
     const key = 'goes_visitor';
     const anonymousId = localStorage.getItem(key) ?? crypto.randomUUID();
     localStorage.setItem(key, anonymousId);
-    void fetch('/api/v1/telemetry/events', {
+    void fetch(apiUrl('/telemetry/events'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name, anonymous_id: anonymousId, properties }),

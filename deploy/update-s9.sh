@@ -1,83 +1,56 @@
 #!/usr/bin/env bash
 set -euo pipefail
-
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-S9_HOST="${S9_HOST:-remote-host}"
-S9_USER="${S9_USER:-deploy-user}"
-S9_PORT="${S9_PORT:-8022}"
-S9_APP_DIR="${S9_APP_DIR:-/srv/parts-erp}"
-SSH_OPTS=(-p "$S9_PORT" -o BatchMode=yes)
-REMOTE="$S9_USER@$S9_HOST"
-
-if [[ -n "${S9_IDENTITY_FILE:-}" ]]; then
-  SSH_OPTS+=(-i "$S9_IDENTITY_FILE")
-fi
-
-if [[ -z "${S9_IDENTITY_FILE:-}" && -f "$HOME/.ssh/id_ed25519" ]]; then
-  SSH_OPTS+=(-i "$HOME/.ssh/id_ed25519")
-fi
-
-if [[ ! -x "$ROOT_DIR/frontend/node_modules/.bin/ng" ]]; then
-  echo "Dependências do frontend ausentes. Rode: (cd frontend && npm ci)" >&2
-  exit 1
-fi
-
-echo "Compilando frontend localmente..."
-(cd "$ROOT_DIR/frontend" && npm run build)
-
-# Versiona os assets no HTML para impedir que o navegador reutilize um index antigo.
-BUILD_VERSION="$(git -C "$ROOT_DIR" rev-parse --short HEAD)"
-BUILD_INDEX="$ROOT_DIR/frontend/dist/frontend/browser/index.html"
-BUILD_VERSION="$BUILD_VERSION" BUILD_INDEX="$BUILD_INDEX"   /home/fgoes/workspace/parts-erp/venv/bin/python - <<'PY'
-import os
-import re
-from pathlib import Path
-
-path = Path(os.environ["BUILD_INDEX"])
-version = os.environ["BUILD_VERSION"]
-html = path.read_text()
-html = re.sub(r'(\b(?:src|href)="[^"]+\.(?:js|css))(?:\?v=[^"]*)?"', rf'\1?v={version}"', html)
-html = re.sub(r' media="print" onload="this.media=.*?"', "", html)
-path.write_text(html)
-PY
-
-echo "Atualizando código no S9..."
-ssh "${SSH_OPTS[@]}" "$REMOTE" "cd '$S9_APP_DIR' && git pull --ff-only origin main"
-
-echo "Transferindo frontend já compilado..."
-tar -C "$ROOT_DIR/frontend/dist/frontend" -cf - . | \
-  ssh "${SSH_OPTS[@]}" "$REMOTE" "rm -rf '$S9_APP_DIR/frontend/dist/frontend' && mkdir -p '$S9_APP_DIR/frontend/dist/frontend' && tar -xf - -C '$S9_APP_DIR/frontend/dist/frontend'"
-
-echo "Aplicando migrações e reiniciando..."
-ssh "${SSH_OPTS[@]}" "$REMOTE" bash -s -- "$S9_APP_DIR" <<'REMOTE_SCRIPT'
+S9_HOST="${S9_HOST:-remote-host}"; S9_USER="${S9_USER:-deploy-user}"; S9_PORT="${S9_PORT:-8022}"; S9_APP_DIR="${S9_APP_DIR:-parts-erp}"
+SSH_OPTS=(-p "$S9_PORT" -o BatchMode=yes -o ConnectTimeout=10); [[ -z "${S9_IDENTITY_FILE:-}" ]] || SSH_OPTS+=(-i "$S9_IDENTITY_FILE"); REMOTE="$S9_USER@$S9_HOST"
+[[ -z "$(git -C "$ROOT_DIR" status --porcelain)" ]] || { echo "Deploy exige commit limpo." >&2; exit 1; }
+git -C "$ROOT_DIR" branch -r --contains HEAD | grep -q origin/ || { echo "Publique commit antes do deploy." >&2; exit 1; }
+[[ -x "$ROOT_DIR/frontend/node_modules/.bin/ng" ]] || { echo "Rode npm ci em frontend." >&2; exit 1; }
+VERSION="$(git -C "$ROOT_DIR" rev-parse --short HEAD)"; STAGE=".deploy-$VERSION"
+LOCAL_STAGE="$(mktemp -d "${TMPDIR:-/tmp}/parts-erp-$VERSION.XXXXXX")"
+trap 'rm -rf "$LOCAL_STAGE"' EXIT
+mkdir -p "$LOCAL_STAGE/source" "$LOCAL_STAGE/site"
+(cd "$ROOT_DIR/frontend" && npm run build -- --configuration production)
+cp -a "$ROOT_DIR/frontend/dist/frontend/browser/." "$LOCAL_STAGE/site/"
+git -C "$ROOT_DIR" archive --format=tar HEAD | tar -xf - -C "$LOCAL_STAGE/source"
+test -s "$LOCAL_STAGE/site/index.html" && test -f "$LOCAL_STAGE/source/backend/app/main.py"
+ssh "${SSH_OPTS[@]}" "$REMOTE" bash -s -- "$S9_APP_DIR" "$STAGE" <<\PREP
+set -euo pipefail; [[ "$2" =~ ^\.deploy-[a-f0-9]+$ ]]
+APP="$(realpath -m "$HOME/$1")"; [[ "$APP" == "$HOME"/* && "$APP" != "$HOME" ]]
+mkdir -p "$APP/data/$2"
+PREP
+tar -C "$LOCAL_STAGE" -cf - . | ssh "${SSH_OPTS[@]}" "$REMOTE" "tar -xf - -C \$HOME/$S9_APP_DIR/data/$STAGE"
+ssh "${SSH_OPTS[@]}" "$REMOTE" bash -s -- "$S9_APP_DIR" "$STAGE" "$VERSION" <<\DEPLOY
 set -euo pipefail
-APP_DIR="$1"
-cd "$APP_DIR"
-
-VENV="$APP_DIR/backend/.venv-termux"
-HASH_FILE="$APP_DIR/data/.backend-deps-hash"
-mkdir -p "$APP_DIR/data"
-
-deps_hash="$(sha256sum "$APP_DIR/backend/pyproject.toml" | awk '{print $1}')"
-old_hash="$(cat "$HASH_FILE" 2>/dev/null || true)"
-if [[ ! -x "$VENV/bin/python" ]]; then
-  echo "Venv ausente; instalando dependências Python..."
-  python -m venv --system-site-packages "$VENV"
-  "$VENV/bin/python" -m pip install --extra-index-url https://termux-user-repository.github.io/pypi/ ./backend
-elif [[ -n "$old_hash" && "$deps_hash" != "$old_hash" ]]; then
-  echo "Dependências Python alteradas; instalando no venv..."
-  "$VENV/bin/python" -m pip install --extra-index-url https://termux-user-repository.github.io/pypi/ ./backend
-else
-  echo "Venv já funcional; instalação Python ignorada."
+APP="$(realpath -m "$HOME/$1")"; STAGE="$2"; VERSION="$3"; [[ "$APP" == "$HOME"/* && "$APP" != "$HOME" ]]
+[[ "$STAGE" =~ ^\.deploy-[a-f0-9]+$ ]]; S="$APP/data/$STAGE/source"; WEB="$APP/data/$STAGE/site"
+[[ -s "$WEB/index.html" && -f "$S/backend/app/main.py" ]]
+cd "$APP"
+V="$APP/backend/.venv-termux"
+[[ -x "$V/bin/python" ]] || { echo "Virtualenv Termux não encontrado; abortando antes da parada." >&2; exit 1; }
+(cd "$APP/backend" && PYTHONPATH="$S/backend" "$V/bin/python" -c "import app.main")
+mkdir -p "$APP/data/backups"; NOW="$(date +%Y%m%d-%H%M%S)"
+tar -czf "$APP/data/backups/code-$NOW.tar.gz" -C "$APP" backend/app backend/alembic/versions backend/pyproject.toml frontend/dist/frontend deploy/termux; chmod 600 "$APP/data/backups/code-$NOW.tar.gz"
+if [[ -f "$APP/data/parts-erp.db" ]]; then
+  "$APP/backend/.venv-termux/bin/python" - "$APP/data/parts-erp.db" "$APP/data/backups/db-$NOW.sqlite" <<\BACKUP
+import os, sqlite3, sys
+s=sqlite3.connect("file:"+sys.argv[1]+"?mode=ro",uri=True); d=sqlite3.connect(sys.argv[2])
+try: s.backup(d)
+finally: d.close(); s.close()
+os.chmod(sys.argv[2],0o600)
+BACKUP
 fi
-printf '%s\n' "$deps_hash" > "$HASH_FILE"
-
-cd "$APP_DIR/backend"
-"$VENV/bin/alembic" upgrade heads
-cd "$APP_DIR"
-bash deploy/termux/start.sh
-curl --fail --silent http://127.0.0.1:8080/ >/dev/null
-echo "Parts ERP atualizado na porta 8080"
-REMOTE_SCRIPT
-
-echo "Atualização concluída."
+[[ ! -x "$APP/deploy/termux/stop.sh" ]] || PARTS_ERP_DIR="$APP" "$APP/deploy/termux/stop.sh"
+rm -rf "$APP/backend/app" "$APP/backend/alembic/versions"
+cp -a "$S/backend/app" "$APP/backend/app"; cp -a "$S/backend/alembic/versions" "$APP/backend/alembic/versions"; cp -a "$S/backend/pyproject.toml" "$APP/backend/pyproject.toml"
+mv "$APP/frontend/dist/frontend" "$APP/data/backups/frontend-pre-$NOW"
+mkdir -p "$APP/frontend/dist/frontend/browser"
+cp -a "$WEB/." "$APP/frontend/dist/frontend/browser/"
+cp -a "$S/deploy/." "$APP/deploy/"
+chmod 600 backend/.env
+if [[ -f deploy/termux/redis.conf.in ]]; then sed "s|__APP_DIR__|$APP|g" deploy/termux/redis.conf.in >deploy/termux/redis.conf; fi
+chmod +x deploy/termux/*.sh; (cd backend && "$V/bin/alembic" upgrade heads)
+PARTS_ERP_DIR="$APP" bash deploy/termux/start.sh
+[[ "$(curl --fail --silent http://127.0.0.1:8000/health)" == "{\"status\":\"ok\"}" ]]; curl --fail --silent http://127.0.0.1:8080/ >/dev/null
+rm -rf "$S"; echo "Deploy OK: $VERSION; backups preservados."
+DEPLOY

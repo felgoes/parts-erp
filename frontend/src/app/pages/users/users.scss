@@ -7,23 +7,30 @@
 }
 
 .table-card table {
-  min-width: 560px;
+  min-width: 760px;
+}
+
+.role-description {
+  display: block;
+  max-width: 360px;
+  margin-top: 5px;
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+
+.active-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.active-toggle input {
+  width: 18px;
+  height: 18px;
 }
 
 .form-message.error {
   color: var(--danger);
   margin: 16px 0 0;
-}
-
-@media (max-width: 600px) {
-  .table-card .table-wrap { scrollbar-width: thin; }
-  .table-card table { min-width: 0; }
-  .table-card table thead { display: none; }
-  .table-card table tbody, .table-card table tr, .table-card table td { display: block; }
-  .table-card table tr { padding: 13px 16px; border-bottom: 1px solid var(--line); }
-  .table-card table td { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 6px 0; border: 0; }
-  .table-card table td:not(:first-child)::before { flex: 0 0 96px; color: var(--muted); font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
-  .table-card table td:nth-child(2)::before { content: 'E-mail'; }
-  .table-card table td:nth-child(3)::before { content: 'Perfil'; }
-  .table-card table td:first-child::before { content: 'Nome'; flex: 0 0 96px; color: var(--muted); font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
 }

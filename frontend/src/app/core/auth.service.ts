@@ -2,7 +2,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { Observable, tap } from 'rxjs';
-import { AuthToken } from './models';
+import { AuthToken, User } from './models';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
@@ -27,6 +27,13 @@ export class AuthService {
           this.session.set(session);
         }),
       );
+  }
+  updateCurrentUser(user: User): void {
+    const current = this.session();
+    if (!current) return;
+    const updated = { ...current, user };
+    sessionStorage.setItem(this.storageKey, JSON.stringify(updated));
+    this.session.set(updated);
   }
   logout(): void {
     sessionStorage.removeItem(this.storageKey);

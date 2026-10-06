@@ -2,7 +2,9 @@ import { CurrencyPipe, DatePipe } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ApiService } from '../../core/api.service';
+import { AuthService } from '../../core/auth.service';
 import { Customer, CustomerDetail } from '../../core/models';
+import { canSell } from '../../core/user-access';
 import { statusLabel } from '../../core/status-labels';
 import { PageHeader } from '../../shared/page-header';
 
@@ -14,7 +16,7 @@ import { PageHeader } from '../../shared/page-header';
       eyebrow="Relacionamento"
       title="Clientes"
       subtitle="Dados essenciais para vendas e faturamento."
-      ><button class="primary" (click)="modal.set(true)">+ Novo cliente</button></app-page-header
+      >@if (canSell()) { <button class="primary" (click)="modal.set(true)">+ Novo cliente</button> }</app-page-header
     >
     <div class="toolbar">
       <div class="search">
@@ -91,6 +93,8 @@ import { PageHeader } from '../../shared/page-header';
 })
 export class CustomersPage implements OnInit {
   private readonly api = inject(ApiService);
+  private readonly auth = inject(AuthService);
+  canSell() { return canSell(this.auth.user()?.role); }
   private readonly fb = inject(FormBuilder);
   readonly customers = signal<Customer[]>([]);
   readonly search = signal('');

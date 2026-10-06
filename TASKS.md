@@ -2,4 +2,4 @@
 
 ## Pendentes
 
-- [ ] Configurar backups automáticos do banco de dados e dos documentos para o Google Drive: estabelecer a conexão segura com a conta Google, definir a frequência, remover automaticamente cópias com mais de 30 dias e validar a restauração. Confirmar que a solução escolhida permanece gratuita e não versionar credenciais nem tokens.
+- [ ] Concluir os backups automáticos para o Google Drive: a tela de Configurações já permite salvar a política (frequência e retenção de até 30 dias), mas ainda faltam autorização segura da conta Google, rotina/agendador no servidor, remoção automática das cópias vencidas e teste de restauração. Confirmar que a solução permanece gratuita e não versionar credenciais nem tokens.

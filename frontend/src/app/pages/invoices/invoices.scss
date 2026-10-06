@@ -86,11 +86,10 @@
   .table-card table { min-width: 0; }
   .table-card table thead { display: none; }
   .table-card table tbody, .table-card table tr, .table-card table td { display: block; }
-  .table-card table tr { padding: 13px 16px; border-bottom: 1px solid var(--line); }
+  .table-card table tr { padding: 13px 0; border-bottom: 1px solid var(--line); }
   .table-card table td { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 5px 0; border: 0; }
   .table-card table td:first-child { padding-top: 2px; }
   .table-card table td:not(:first-child)::before { color: var(--muted); content: 'Cliente'; font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
-  .table-card table td::before { flex: 0 0 96px; text-align: left; }
   .table-card table td:nth-child(3)::before { content: 'Origem'; }
   .table-card table td:nth-child(4)::before { content: 'Emissão'; }
   .table-card table td:nth-child(5)::before { content: 'Status'; }

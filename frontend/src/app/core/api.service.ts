@@ -1,5 +1,6 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
+import { apiUrl } from './api-url';
 import { Observable } from 'rxjs';
 import {
   Customer,
@@ -9,33 +10,45 @@ import {
   Invoice,
   MarketplaceOrder,
   MarketplaceOrderEvent,
+  MarketStudy,
+  MarketStudyConnector,
   MarketplaceStatus,
+  AfterSaleCase,
   MarketplaceConfig,
   ShopeeConfig,
   ShopeeStatus,
   Product,
   ProductDetail,
+  ProductChannelMetadata,
+  ProductChannelDraft,
   Purchase,
   CustomerDetail,
   User,
   TelemetrySummary,
+  ErpSettings,
 } from './models';
 
 @Injectable({ providedIn: 'root' })
 export class ApiService {
   private readonly http = inject(HttpClient);
-  private readonly base = this.apiBase();
-
-  private apiBase(): string {
-    return typeof window !== 'undefined' && window.location.protocol === 'capacitor:'
-      ? 'https://erp.goesautoparts.com.br/api/v1'
-      : '/api/v1';
+  private readonly base = apiUrl('');
+  erpSettings(): Observable<ErpSettings> {
+    return this.http.get<ErpSettings>(`${this.base}/settings`);
+  }
+  saveErpSettings(
+    settings: Omit<ErpSettings, 'backup_ready' | 'backup_status'>,
+  ): Observable<ErpSettings> {
+    return this.http.put<ErpSettings>(`${this.base}/settings`, settings);
   }
   dashboard(startDate: string, endDate: string): Observable<DashboardSummary> {
-    return this.http.get<DashboardSummary>(`${this.base}/dashboard/summary`, { params: { start_date: startDate, end_date: endDate } });
+    return this.http.get<DashboardSummary>(`${this.base}/dashboard/summary`, {
+      params: { start_date: startDate, end_date: endDate },
+    });
   }
   dashboardFinancial(startDate: string, endDate: string): Observable<DashboardFinancialMetrics> {
-    return this.http.get<DashboardFinancialMetrics>(`${this.base}/dashboard/financial`, { params: { start_date: startDate, end_date: endDate } });
+    return this.http.get<DashboardFinancialMetrics>(`${this.base}/dashboard/financial`, {
+      params: { start_date: startDate, end_date: endDate },
+    });
   }
   financeOverview(startDate: string, endDate: string): Observable<FinanceOverview> {
     return this.http.get<FinanceOverview>(`${this.base}/finance/overview`, {
@@ -49,7 +62,9 @@ export class ApiService {
     return this.http.get<Product[]>(`${this.base}/products`, { params });
   }
   productMovements(id: string): Observable<import('./models').StockMovement[]> {
-    return this.http.get<import('./models').StockMovement[]>(`${this.base}/products/${id}/movements`);
+    return this.http.get<import('./models').StockMovement[]>(
+      `${this.base}/products/${id}/movements`,
+    );
   }
   productDetail(id: string): Observable<ProductDetail> {
     return this.http.get<ProductDetail>(`${this.base}/products/${id}/detail`);
@@ -60,6 +75,49 @@ export class ApiService {
   createProduct(payload: Partial<Product>): Observable<Product> {
     return this.http.post<Product>(`${this.base}/products`, payload);
   }
+  updateProduct(id: string, payload: Partial<Product>): Observable<Product> {
+    return this.http.patch<Product>(`${this.base}/products/${id}`, payload);
+  }
+  uploadProductImages(id: string, files: File[]): Observable<Product> {
+    const form = new FormData();
+    files.forEach((file) => form.append('files', file, file.name));
+    return this.http.post<Product>(`${this.base}/products/${id}/images`, form);
+  }
+  deleteProductImage(id: string, imageId: string): Observable<Product> {
+    return this.http.delete<Product>(`${this.base}/products/${id}/images/${imageId}`);
+  }
+  productChannelMetadata(
+    provider: 'mercadolivre' | 'shopee',
+    query = '',
+    categoryId = '',
+  ): Observable<ProductChannelMetadata> {
+    let params = new HttpParams();
+    if (query) params = params.set('query', query);
+    if (categoryId) params = params.set('category_id', categoryId);
+    return this.http.get<ProductChannelMetadata>(
+      `${this.base}/products/channel-metadata/${provider}`,
+      { params },
+    );
+  }
+  saveProductChannelDraft(
+    id: string,
+    provider: 'mercadolivre' | 'shopee',
+    draft: ProductChannelDraft,
+  ): Observable<ProductDetail> {
+    return this.http.put<ProductDetail>(
+      `${this.base}/products/${id}/channels/${provider}/draft`,
+      draft,
+    );
+  }
+  publishProductChannel(
+    id: string,
+    provider: 'mercadolivre' | 'shopee',
+  ): Observable<ProductDetail> {
+    return this.http.post<ProductDetail>(
+      `${this.base}/products/${id}/channels/${provider}/publish`,
+      {},
+    );
+  }
   adjustStock(id: string, quantity: number, reason: string): Observable<Product> {
     return this.http.post<Product>(`${this.base}/products/${id}/adjust-stock`, {
       quantity,
@@ -68,6 +126,42 @@ export class ApiService {
   }
   purchases(): Observable<Purchase[]> {
     return this.http.get<Purchase[]>(`${this.base}/purchases`);
+  }
+  marketStudies(): Observable<MarketStudy[]> {
+    return this.http.get<MarketStudy[]>(`${this.base}/market-studies`);
+  }
+  createMarketStudy(payload: {
+    search_term: string;
+    sku?: string;
+    category_id?: string;
+    landed_cost: number;
+    target_margin_pct: number;
+    marketplace_fee_pct: number;
+    shipping_cost: number;
+  }): Observable<MarketStudy> {
+    return this.http.post<MarketStudy>(`${this.base}/market-studies`, payload);
+  }
+  marketStudyConnector(): Observable<MarketStudyConnector> {
+    return this.http.get<MarketStudyConnector>(`${this.base}/market-studies/connector`);
+  }
+  saveMarketStudyConnector(payload: {
+    provider: MarketStudyConnector['provider'];
+    model: string;
+    base_url?: string;
+    api_key?: string;
+    enabled: boolean;
+  }): Observable<MarketStudyConnector> {
+    return this.http.put<MarketStudyConnector>(`${this.base}/market-studies/connector`, payload);
+  }
+  createPurchaseFromMarketStudy(
+    studyId: string,
+    sku: string,
+    quantity: number,
+  ): Observable<Purchase> {
+    return this.http.post<Purchase>(`${this.base}/market-studies/${studyId}/purchase`, {
+      sku,
+      quantity,
+    });
   }
   createPurchase(payload: unknown): Observable<Purchase> {
     return this.http.post<Purchase>(`${this.base}/purchases`, payload);
@@ -99,23 +193,91 @@ export class ApiService {
   users(): Observable<User[]> {
     return this.http.get<User[]>(`${this.base}/users`);
   }
-  createUser(payload: { email: string; full_name: string; password: string; role: User['role'] }): Observable<User> {
+  createUser(payload: {
+    email: string;
+    full_name: string;
+    password: string;
+    role: User['role'];
+  }): Observable<User> {
     return this.http.post<User>(`${this.base}/users`, payload);
   }
   resetUserPassword(id: string, password: string): Observable<User> {
     return this.http.patch<User>(`${this.base}/users/${id}/password`, { password });
   }
-  updateUser(id: string, payload: { email?: string; full_name?: string; password?: string }): Observable<User> {
+  updateUser(
+    id: string,
+    payload: {
+      email?: string;
+      full_name?: string;
+      password?: string;
+      role?: User['role'];
+      active?: boolean;
+    },
+  ): Observable<User> {
     return this.http.patch<User>(`${this.base}/users/${id}`, payload);
   }
+  updateMyProfile(email: string): Observable<User> {
+    return this.http.patch<User>(`${this.base}/users/me/profile`, { email });
+  }
+  uploadMyAvatar(file: File): Observable<User> {
+    const body = new FormData();
+    body.append('image', file);
+    return this.http.post<User>(`${this.base}/users/me/avatar`, body);
+  }
+  myAvatar(): Observable<Blob> {
+    return this.http.get(`${this.base}/users/me/avatar`, { responseType: 'blob' });
+  }
   automateMarketplaceOrder(id: string): Observable<MarketplaceOrder> {
-    return this.http.post<MarketplaceOrder>(`${this.base}/integrations/mercadolivre/orders/${id}/automate`, {});
+    return this.http.post<MarketplaceOrder>(
+      `${this.base}/integrations/mercadolivre/orders/${id}/automate`,
+      {},
+    );
+  }
+  requestMarketplaceInvoice(id: string): Observable<MarketplaceOrder> {
+    return this.http.post<MarketplaceOrder>(
+      `${this.base}/integrations/mercadolivre/orders/${id}/fiscal`,
+      {},
+    );
+  }
+  retryMarketplaceLabel(id: string): Observable<MarketplaceOrder> {
+    return this.http.post<MarketplaceOrder>(
+      `${this.base}/integrations/mercadolivre/orders/${id}/label`,
+      {},
+    );
   }
   invoices(startDate: string, endDate: string): Observable<Invoice[]> {
-    return this.http.get<Invoice[]>(`${this.base}/invoices`, { params: { start_date: startDate, end_date: endDate } });
+    return this.http.get<Invoice[]>(`${this.base}/invoices`, {
+      params: { start_date: startDate, end_date: endDate },
+    });
   }
   invoice(id: string): Observable<Invoice> {
     return this.http.get<Invoice>(`${this.base}/invoices/${id}`);
+  }
+  receiveAfterSale(
+    caseId: string,
+    items: { item_id: string; received_quantity: number }[],
+    notes?: string,
+  ): Observable<AfterSaleCase> {
+    return this.http.post<AfterSaleCase>(`${this.base}/after-sales/${caseId}/receive`, {
+      items,
+      notes,
+    });
+  }
+  inspectAfterSale(
+    caseId: string,
+    items: {
+      item_id: string;
+      restock_quantity: number;
+      disposition: 'restock' | 'mixed' | 'damaged' | 'discarded';
+      notes?: string;
+    }[],
+  ): Observable<AfterSaleCase> {
+    return this.http.post<AfterSaleCase>(`${this.base}/after-sales/${caseId}/inspect`, { items });
+  }
+  closeAfterSaleWithoutStock(caseId: string, note: string): Observable<AfterSaleCase> {
+    return this.http.post<AfterSaleCase>(`${this.base}/after-sales/${caseId}/close-without-stock`, {
+      note,
+    });
   }
   createInvoice(payload: unknown): Observable<Invoice> {
     return this.http.post<Invoice>(`${this.base}/invoices`, payload);
@@ -138,7 +300,10 @@ export class ApiService {
     return this.http.get<MarketplaceConfig>(`${this.base}/integrations/mercadolivre/config`);
   }
   saveMarketplaceConfig(payload: Record<string, unknown>): Observable<MarketplaceConfig> {
-    return this.http.put<MarketplaceConfig>(`${this.base}/integrations/mercadolivre/config`, payload);
+    return this.http.put<MarketplaceConfig>(
+      `${this.base}/integrations/mercadolivre/config`,
+      payload,
+    );
   }
   marketplaceOrders(): Observable<MarketplaceOrder[]> {
     return this.http.get<MarketplaceOrder[]>(`${this.base}/integrations/mercadolivre/orders`);
@@ -147,11 +312,14 @@ export class ApiService {
     return this.http.get<MarketplaceOrder>(`${this.base}/integrations/mercadolivre/orders/${id}`);
   }
   marketplaceOrderHistory(id: string): Observable<MarketplaceOrderEvent[]> {
-    return this.http.get<MarketplaceOrderEvent[]>(`${this.base}/integrations/mercadolivre/orders/${id}/history`);
+    return this.http.get<MarketplaceOrderEvent[]>(
+      `${this.base}/integrations/mercadolivre/orders/${id}/history`,
+    );
   }
   syncMarketplace(): Observable<{ accepted: boolean; message: string }> {
     return this.http.post<{ accepted: boolean; message: string }>(
-      `${this.base}/integrations/mercadolivre/sync`, {},
+      `${this.base}/integrations/mercadolivre/sync`,
+      {},
     );
   }
   connectMarketplace(): Observable<{ authorization_url: string }> {
@@ -160,7 +328,7 @@ export class ApiService {
     );
   }
 
-shopeeStatus(): Observable<ShopeeStatus> {
+  shopeeStatus(): Observable<ShopeeStatus> {
     return this.http.get<ShopeeStatus>(this.base + '/integrations/shopee/status');
   }
   shopeeConfig(): Observable<ShopeeConfig> {

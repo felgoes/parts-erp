@@ -3,7 +3,8 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.api.deps import require_roles
+from app.api.deps import require_permission
+from app.core.permissions import Permission
 from app.core.security import hash_password
 from app.db.session import get_db
 from app.models import User, UserRole
@@ -15,7 +16,7 @@ router = APIRouter(prefix="/users", tags=["Usuários"])
 @router.get("", response_model=list[UserOut])
 def list_users(
     db: Session = Depends(get_db),
-    _: User = Depends(require_roles(UserRole.admin)),
+    _: User = Depends(require_permission(Permission.USERS_MANAGE)),
 ) -> list[User]:
     return list(db.scalars(select(User).order_by(User.full_name, User.email)))
 
@@ -24,7 +25,7 @@ def list_users(
 def create_user(
     payload: UserCreate,
     db: Session = Depends(get_db),
-    _: User = Depends(require_roles(UserRole.admin)),
+    _: User = Depends(require_permission(Permission.USERS_MANAGE)),
 ) -> User:
     user = User(
         email=payload.email.lower().strip(),
@@ -47,7 +48,7 @@ def reset_password(
     user_id: str,
     payload: UserPasswordUpdate,
     db: Session = Depends(get_db),
-    _: User = Depends(require_roles(UserRole.admin)),
+    _: User = Depends(require_permission(Permission.USERS_MANAGE)),
 ) -> User:
     user = db.get(User, user_id)
     if user is None:
@@ -63,12 +64,37 @@ def update_user(
     user_id: str,
     payload: UserUpdate,
     db: Session = Depends(get_db),
-    _: User = Depends(require_roles(UserRole.admin)),
+    actor: User = Depends(require_permission(Permission.USERS_MANAGE)),
 ) -> User:
     user = db.get(User, user_id)
     if user is None:
         raise HTTPException(status_code=404, detail="Usuário não encontrado")
-    data = payload.model_dump(exclude_unset=True)
+    data = payload.model_dump(exclude_unset=True, exclude_none=True)
+    next_role = data.get("role", user.role)
+    next_active = data.get("active", user.active)
+    if actor.id == user.id and (next_role != UserRole.admin or not next_active):
+        raise HTTPException(
+            status_code=409,
+            detail="Não é possível remover ou desativar seu próprio acesso de administrador",
+        )
+    is_removing_admin = (
+        user.active
+        and user.role == UserRole.admin
+        and (next_role != UserRole.admin or not next_active)
+    )
+    if is_removing_admin:
+        active_admin_ids = list(
+            db.scalars(
+                select(User.id)
+                .where(User.active.is_(True), User.role == UserRole.admin)
+                .order_by(User.id)
+                .with_for_update()
+            )
+        )
+        if user.id in active_admin_ids and len(active_admin_ids) <= 1:
+            raise HTTPException(
+                status_code=409, detail="Mantenha ao menos um administrador ativo no sistema"
+            )
     if not data:
         raise HTTPException(status_code=422, detail="Informe ao menos um campo")
     if "email" in data:
@@ -77,6 +103,10 @@ def update_user(
         user.full_name = data["full_name"].strip()
     if "password" in data:
         user.password_hash = hash_password(data["password"])
+    if "role" in data:
+        user.role = data["role"]
+    if "active" in data:
+        user.active = data["active"]
     try:
         db.commit()
     except IntegrityError as exc:

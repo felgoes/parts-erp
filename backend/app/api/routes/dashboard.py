@@ -5,7 +5,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
-from app.api.deps import get_current_user
+from app.api.deps import require_permission
+from app.core.permissions import Permission
 from app.db.session import get_db
 from app.models import InvoiceStatus, Product, SalesInvoice, User
 from app.schemas.common import (
@@ -16,6 +17,7 @@ from app.schemas.common import (
     InvoiceOut,
 )
 from app.services.after_sale import after_sales_for_invoices
+from app.services.invoice_tracking import attach_invoice_tracking
 
 router = APIRouter(prefix="/dashboard", tags=["Painel"])
 BRAZIL_TZ = timezone(timedelta(hours=-3))
@@ -41,7 +43,7 @@ def summary(
     start_date: date | None = Query(default=None),
     end_date: date | None = Query(default=None),
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
+    _: User = Depends(require_permission(Permission.DASHBOARD_READ)),
 ) -> DashboardSummary:
     _, _, since, until = _period(start_date, end_date)
     invoice_date = func.coalesce(SalesInvoice.issued_at, SalesInvoice.created_at)
@@ -89,6 +91,7 @@ def summary(
         output = InvoiceOut.model_validate(invoice)
         output.after_sale = after_sales.get(invoice.id)
         recent_outputs.append(output)
+    attach_invoice_tracking(db, recent_outputs)
     return DashboardSummary(
         revenue_month=Decimal(str(revenue or 0)),
         confirmed_sales=sales,
@@ -105,7 +108,7 @@ def financial_metrics(
     start_date: date | None = Query(default=None),
     end_date: date | None = Query(default=None),
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
+    _: User = Depends(require_permission(Permission.DASHBOARD_READ)),
 ) -> DashboardFinancialMetrics:
     start, end, since, until = _period(start_date, end_date)
     duration = until - since

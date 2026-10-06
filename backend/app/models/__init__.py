@@ -1,5 +1,9 @@
 from app.models.entities import (
+    AfterSaleCase,
+    AfterSaleCaseEvent,
+    AfterSaleCaseItem,
     Customer,
+    ErpSettings,
     HealthSnapshot,
     InvoiceDocument,
     InvoiceItem,
@@ -9,6 +13,8 @@ from app.models.entities import (
     MarketplaceConfig,
     MarketplaceOrder,
     MarketplaceOrderEvent,
+    MarketStudy,
+    MarketStudyConnectorConfig,
     MovementType,
     Product,
     ProductMarketplaceListing,
@@ -25,13 +31,19 @@ from app.models.entities import (
 )
 
 __all__ = [
+    "AfterSaleCase",
+    "AfterSaleCaseEvent",
+    "AfterSaleCaseItem",
     "HealthSnapshot",
     "TelemetryEvent",
     "Customer",
+    "ErpSettings",
     "InvoiceDocument",
     "InvoiceItem",
     "InvoiceSource",
     "InvoiceStatus",
+    "MarketStudy",
+    "MarketStudyConnectorConfig",
     "MarketplaceAccount",
     "MarketplaceConfig",
     "ShopeeConfig",

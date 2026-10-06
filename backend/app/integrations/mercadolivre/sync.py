@@ -497,6 +497,7 @@ def sync_shipping_label(db: Session, record: MarketplaceOrder, account: Marketpl
         if not isinstance(shipment, dict):
             raise MercadoLivreError("Resposta de envio inválida")
         record.shipping_status = str(shipment.get("status") or "unknown")
+        record.shipping_substatus = str(shipment.get("substatus") or "") or None
         sync_shipping_history(db, record, account)
 
         # Depois que o pedido já foi entregue/devolvido, a janela operacional
@@ -523,9 +524,8 @@ def sync_shipping_label(db: Session, record: MarketplaceOrder, account: Marketpl
             record.label_status = "not_applicable"
             record.label_error = None
             return
-        if record.shipping_status != "ready_to_ship" or str(shipment.get("substatus")) not in {
-            "ready_to_print",
-            "printed",
+        if record.shipping_status != "ready_to_ship" or record.shipping_substatus not in {
+            "ready_to_print", "printed"
         }:
             record.label_status = "waiting"
             record.label_error = None

@@ -60,11 +60,92 @@
   color: #a33b2c;
   margin-top: 5px;
 }
-.detail-actions {
+.fulfillment-panel {
+  margin: 0 0 20px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fbfcfa;
+}
+.fulfillment-heading {
   display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin: 0 0 18px;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 13px;
+}
+.fulfillment-heading .eyebrow {
+  margin: 0 0 4px;
+}
+.fulfillment-heading h3 {
+  margin: 0;
+  font-size: 17px;
+}
+.fulfillment-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.fulfillment-card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 166px;
+  padding: 15px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+}
+.fulfillment-card-heading {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+}
+.fulfillment-icon {
+  display: grid;
+  place-items: center;
+  flex: 0 0 38px;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 850;
+  letter-spacing: 0.02em;
+}
+.fiscal-icon {
+  background: #edf4e8;
+  color: #496d28;
+}
+.label-icon {
+  background: #eaf1f3;
+  color: #315b67;
+}
+.fulfillment-card-heading h4 {
+  margin: 0;
+  font-size: 14px;
+}
+.fulfillment-state {
+  display: block;
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 11px;
+}
+.fulfillment-help {
+  margin: 13px 0 16px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.fulfillment-control {
+  display: flex;
+  align-items: center;
+  min-height: 34px;
+  margin-top: auto;
+}
+.fulfillment-control .small {
+  min-height: 36px;
+}
+.fulfillment-unavailable {
+  font-size: 12px;
 }
 .toast-host {
   position: fixed;
@@ -92,6 +173,9 @@
 .toast-error {
   border-color: #efc6bd;
 }
+.toast-info {
+  border-color: #c8dce5;
+}
 .toast-indicator {
   width: 7px;
   height: 7px;
@@ -100,6 +184,9 @@
 }
 .toast-error .toast-indicator {
   background: #c44a39;
+}
+.toast-info .toast-indicator {
+  background: #4c8ca3;
 }
 .toast p {
   margin: 0;
@@ -416,12 +503,18 @@
     font-size: 11px;
   }
   .detail-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .fulfillment-panel {
+    padding: 14px;
+  }
+  .fulfillment-grid {
     grid-template-columns: 1fr;
   }
-  .detail-actions {
-    display: grid;
+  .fulfillment-card {
+    min-height: 0;
   }
-  .detail-actions button {
+  .fulfillment-control button {
     width: 100%;
   }
   .toast-host {

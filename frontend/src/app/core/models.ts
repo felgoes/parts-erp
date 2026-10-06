@@ -479,6 +479,7 @@ export interface MarketplaceOrder {
   invoice_id: string | null;
   shipment_id: string | null;
   shipping_status: string | null;
+  shipping_substatus: string | null;
   fiscal_status: string;
   fiscal_error: string | null;
   external_invoice_id: string | null;

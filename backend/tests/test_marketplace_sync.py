@@ -163,6 +163,53 @@ def test_manual_invoice_request_works_when_automatic_issuance_is_disabled(db, mo
     assert len(calls) == 1
 
 
+def test_label_waits_until_mercado_livre_releases_printing_substatus(db, monkeypatch, tmp_path):
+    account = marketplace_account(db)
+    invoice = SalesInvoice(number="VEN-LABEL-001", marketplace_order_id="456")
+    order = MarketplaceOrder(
+        external_order_id="456",
+        seller_id=account.seller_id,
+        status="paid",
+        payload={},
+        shipment_id="789",
+        invoice=invoice,
+    )
+    db.add(order)
+    db.commit()
+    shipment = {
+        "status": "ready_to_ship",
+        "substatus": "invoice_pending",
+        "mode": "me2",
+        "logistic_type": "drop_off",
+    }
+    downloads = []
+    monkeypatch.setattr(MercadoLivreClient, "get", lambda self, path, **kwargs: shipment)
+    monkeypatch.setattr(sync_module, "sync_shipping_history", lambda *args: None)
+    monkeypatch.setattr(
+        MercadoLivreClient,
+        "download",
+        lambda self, path: downloads.append(path) or b"label-pdf",
+    )
+    monkeypatch.setattr(
+        sync_module,
+        "get_settings",
+        lambda: SimpleNamespace(documents_dir=str(tmp_path), mercadolivre_label_format="pdf"),
+    )
+
+    sync_module.sync_shipping_label(db, order, account)
+    assert order.shipping_substatus == "invoice_pending"
+    assert order.label_status == "waiting"
+    assert downloads == []
+    assert db.scalar(select(InvoiceDocument).where(InvoiceDocument.document_type == "label_pdf")) is None
+
+    shipment["substatus"] = "ready_to_print"
+    sync_module.sync_shipping_label(db, order, account)
+    assert order.shipping_substatus == "ready_to_print"
+    assert order.label_status == "downloaded"
+    assert downloads == ["/shipment_labels?shipment_ids=789&response_type=pdf"]
+    assert db.scalar(select(InvoiceDocument).where(InvoiceDocument.document_type == "label_pdf")) is not None
+
+
 def test_initial_sync_imports_products_and_orders(db, monkeypatch):
     account = marketplace_account(db)
     calls = []

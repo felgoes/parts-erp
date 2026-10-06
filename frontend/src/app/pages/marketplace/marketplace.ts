@@ -31,6 +31,7 @@ import { PageHeader } from '../../shared/page-header';
         <div
           class="toast"
           [class.toast-error]="toast.kind === 'error'"
+          [class.toast-info]="toast.kind === 'info'"
           [attr.role]="toast.kind === 'error' ? 'alert' : 'status'"
         >
           <span class="toast-indicator" aria-hidden="true"></span>
@@ -154,7 +155,8 @@ import { PageHeader } from '../../shared/page-header';
                     class="badge"
                     [class.success]="o.label_status === 'downloaded'"
                     [class.cancelled]="o.label_status === 'error'"
-                    >{{ automationLabel(o.label_status) }}</span
+                    [class.warning]="o.label_status === 'waiting'"
+                    >{{ labelStatusLabel(o) }}</span
                   >
                   @if (o.label_error) {
                     <small class="error-text">{{ o.label_error }}</small>
@@ -169,13 +171,13 @@ import { PageHeader } from '../../shared/page-header';
                     >
                       Baixar etiqueta <span>↗</span>
                     </button>
-                  } @else if (canPrintLabel(o)) {
+                  } @else if (canGetLabel(o)) {
                     <button
                       class="secondary small"
                       [disabled]="isWorking(o.id)"
                       (click)="$event.stopPropagation(); retryLabel(o)"
                     >
-                      {{ isWorking(o.id, 'label') ? 'Preparando…' : 'Imprimir etiqueta' }}
+                      {{ isWorking(o.id, 'label') ? 'Preparando…' : 'Preparar etiqueta' }}
                     </button>
                   }
                 </td>
@@ -225,7 +227,7 @@ import { PageHeader } from '../../shared/page-header';
               <small>NF-e</small><strong>{{ automationLabel(order.fiscal_status) }}</strong>
             </div>
             <div>
-              <small>Etiqueta</small><strong>{{ automationLabel(order.label_status) }}</strong>
+              <small>Etiqueta</small><strong>{{ labelStatusLabel(order) }}</strong>
             </div>
             <div>
               <small>Fatura</small
@@ -233,47 +235,85 @@ import { PageHeader } from '../../shared/page-header';
             </div>
           </div>
           @if (canProcess()) {
-            <div class="detail-actions">
-              @if (documentFor(order, 'pdf'); as fiscalPdf) {
-                <button
-                  class="primary"
-                  (click)="download(order.invoice_id!, fiscalPdf.id, fiscalPdf.filename)"
-                >
-                  Abrir NF-e <span>↗</span>
-                </button>
-              } @else if (documentFor(order, 'xml'); as fiscalXml) {
-                <button
-                  class="primary"
-                  (click)="download(order.invoice_id!, fiscalXml.id, fiscalXml.filename)"
-                >
-                  Abrir XML <span>↗</span>
-                </button>
-              } @else if (canRequestInvoice(order)) {
-                <button
-                  class="primary"
-                  [disabled]="isWorking(order.id)"
-                  (click)="requestInvoice(order)"
-                >
-                  {{ isWorking(order.id, 'fiscal') ? 'Consultando…' : fiscalActionLabel(order) }}
-                </button>
-              }
-              @if (documentFor(order, 'label_pdf'); as labelPdf) {
-                <button
-                  class="secondary"
-                  (click)="download(order.invoice_id!, labelPdf.id, labelPdf.filename)"
-                >
-                  Baixar etiqueta <span>↗</span>
-                </button>
-              } @else if (canPrintLabel(order)) {
-                <button
-                  class="secondary"
-                  [disabled]="isWorking(order.id)"
-                  (click)="retryLabel(order)"
-                >
-                  {{ isWorking(order.id, 'label') ? 'Preparando etiqueta…' : 'Imprimir etiqueta' }}
-                </button>
-              }
-            </div>
+            <section class="fulfillment-panel" aria-label="Documentos e expedição do pedido">
+              <div class="fulfillment-heading">
+                <div>
+                  <p class="eyebrow">Próximas etapas</p>
+                  <h3>Documentos e expedição</h3>
+                </div>
+              </div>
+              <div class="fulfillment-grid">
+                <article class="fulfillment-card">
+                  <div class="fulfillment-card-heading">
+                    <span class="fulfillment-icon fiscal-icon" aria-hidden="true">NF</span>
+                    <div>
+                      <h4>Nota fiscal</h4>
+                      <span class="fulfillment-state">{{ automationLabel(order.fiscal_status) }}</span>
+                    </div>
+                  </div>
+                  <p class="fulfillment-help">
+                    Documento fiscal vinculado à venda e usado para liberar o envio quando exigido.
+                  </p>
+                  <div class="fulfillment-control">
+                    @if (documentFor(order, 'pdf'); as fiscalPdf) {
+                      <button
+                        class="primary small"
+                        (click)="download(order.invoice_id!, fiscalPdf.id, fiscalPdf.filename)"
+                      >
+                        Abrir NF-e <span>↗</span>
+                      </button>
+                    } @else if (documentFor(order, 'xml'); as fiscalXml) {
+                      <button
+                        class="primary small"
+                        (click)="download(order.invoice_id!, fiscalXml.id, fiscalXml.filename)"
+                      >
+                        Abrir XML <span>↗</span>
+                      </button>
+                    } @else if (canRequestInvoice(order)) {
+                      <button
+                        class="primary small"
+                        [disabled]="isWorking(order.id)"
+                        (click)="requestInvoice(order)"
+                      >
+                        {{ isWorking(order.id, 'fiscal') ? 'Consultando…' : fiscalActionLabel(order) }}
+                      </button>
+                    } @else {
+                      <span class="muted">Sem documento fiscal vinculado</span>
+                    }
+                  </div>
+                </article>
+                <article class="fulfillment-card">
+                  <div class="fulfillment-card-heading">
+                    <span class="fulfillment-icon label-icon" aria-hidden="true">ET</span>
+                    <div>
+                      <h4>Etiqueta de envio</h4>
+                      <span class="fulfillment-state">{{ labelStatusLabel(order) }}</span>
+                    </div>
+                  </div>
+                  <p class="fulfillment-help">{{ labelStatusHelp(order) }}</p>
+                  <div class="fulfillment-control">
+                    @if (documentFor(order, 'label_pdf'); as labelPdf) {
+                      <button
+                        class="secondary small"
+                        (click)="download(order.invoice_id!, labelPdf.id, labelPdf.filename)"
+                      >
+                        Abrir etiqueta <span>↗</span>
+                      </button>
+                    } @else if (canGetLabel(order)) {
+                      <button
+                        class="secondary small"
+                        [disabled]="isWorking(order.id)"
+                        (click)="retryLabel(order)"
+                      >
+                        {{ isWorking(order.id, 'label') ? 'Preparando…' : 'Obter etiqueta' }}
+                      </button>
+                    } @else {
+                      <span class="muted fulfillment-unavailable">Indisponível no momento</span>
+                    }
+                  </div>
+                </article>
+              </div>
+            </section>
           }
           @if (order.invoice; as invoice) {
             <section class="order-section">
@@ -435,7 +475,7 @@ export class MarketplacePage implements OnInit {
   readonly status = signal<MarketplaceStatus | null>(null);
   readonly orders = signal<MarketplaceOrder[]>([]);
   readonly syncing = signal(false);
-  readonly feedback = signal<{ kind: 'success' | 'error'; message: string } | null>(null);
+  readonly feedback = signal<{ kind: 'success' | 'error' | 'info'; message: string } | null>(null);
   readonly working = signal<{ id: string; kind: 'fiscal' | 'label' } | null>(null);
   readonly detail = signal<MarketplaceOrder | null>(null);
   readonly history = signal<MarketplaceOrderEvent[]>([]);
@@ -506,7 +546,7 @@ export class MarketplacePage implements OnInit {
           downloaded: 'Anexada',
           pending: 'Pendente',
           requesting: 'Solicitando',
-          waiting: 'Aguardando envio',
+          waiting: 'Aguardando liberação',
           waiting_shipment: 'Sem envio',
           completed: 'Etapa concluída',
           not_applicable: 'Não aplicável',
@@ -554,16 +594,54 @@ export class MarketplacePage implements OnInit {
     if (this.isWorking(order.id, 'fiscal')) return 'Consultando…';
     return order.external_invoice_id ? 'Verificar NF-e' : 'Solicitar NF-e';
   }
-  canPrintLabel(order: MarketplaceOrder) {
+  canGetLabel(order: MarketplaceOrder) {
+    return this.canProcess() && this.isLabelAvailable(order);
+  }
+  isLabelAvailable(order: MarketplaceOrder) {
     const terminalStatuses = ['delivered', 'shipped', 'cancelled', 'canceled'];
     const finishedLabels = ['downloaded', 'completed', 'not_applicable'];
     return (
-      this.canProcess() &&
       Boolean(order.invoice_id) &&
       !['cancelled', 'canceled'].includes(order.status.toLowerCase()) &&
       !terminalStatuses.includes(order.shipping_status?.toLowerCase() ?? '') &&
+      order.shipping_status === 'ready_to_ship' &&
+      ['ready_to_print', 'printed'].includes(order.shipping_substatus ?? '') &&
       !finishedLabels.includes(order.label_status)
     );
+  }
+  labelStatusLabel(order: MarketplaceOrder) {
+    if (this.documentFor(order, 'label_pdf')) return 'Anexada à fatura';
+    if (order.shipping_substatus === 'invoice_pending') return 'Aguardando NF-e/DC-e';
+    if (order.shipping_substatus === 'waiting_for_label_generation') {
+      return 'Gerando no Mercado Livre';
+    }
+    if (this.isLabelAvailable(order)) return 'Pronta para obter';
+    if (['delivered', 'shipped', 'returned', 'not_delivered'].includes(order.shipping_status ?? '')) {
+      return 'Etapa de envio encerrada';
+    }
+    return this.automationLabel(order.label_status);
+  }
+  labelStatusHelp(order: MarketplaceOrder) {
+    if (this.documentFor(order, 'label_pdf')) {
+      return 'Arquivo salvo na fatura. Abra por aqui quando precisar.';
+    }
+    if (order.shipping_substatus === 'invoice_pending') {
+      return 'O Mercado Livre libera a etiqueta depois que a NF-e ou DC-e for emitida/importada.';
+    }
+    if (order.shipping_substatus === 'waiting_for_label_generation') {
+      return 'O Mercado Livre ainda está preparando o arquivo. Atualize o pedido em instantes.';
+    }
+    if (this.isLabelAvailable(order)) {
+      return 'A etiqueta já está liberada. Ao obter, o PDF será anexado à fatura.';
+    }
+    if (['delivered', 'shipped', 'returned', 'not_delivered'].includes(order.shipping_status ?? '')) {
+      return 'O pedido já passou da etapa de impressão da etiqueta.';
+    }
+    if (order.label_status === 'error') {
+      return 'Não foi possível obter o arquivo. Confira o status no Mercado Livre e tente novamente.';
+    }
+    if (!order.shipment_id) return 'O Mercado Livre ainda não associou um envio a este pedido.';
+    return 'A etiqueta ainda não foi liberada pelo Mercado Livre.';
   }
   requestInvoice(order: MarketplaceOrder) {
     if (
@@ -600,10 +678,10 @@ export class MarketplacePage implements OnInit {
           );
         } else {
           this.showFeedback(
-            'success',
+            updated.label_status === 'downloaded' ? 'success' : 'info',
             updated.label_status === 'downloaded'
-              ? 'Etiqueta anexada ao pedido. O botão agora permite abri-la.'
-              : `Etapa da etiqueta atualizada: ${this.automationLabel(updated.label_status)}.`,
+              ? 'Etiqueta anexada à fatura. Você já pode abri-la nesta tela.'
+              : this.labelStatusHelp(updated),
           );
         }
         this.working.set(null);
@@ -618,7 +696,7 @@ export class MarketplacePage implements OnInit {
       },
     });
   }
-  showFeedback(kind: 'success' | 'error', message: string) {
+  showFeedback(kind: 'success' | 'error' | 'info', message: string) {
     this.feedback.set({ kind, message });
   }
   dismissFeedback() {

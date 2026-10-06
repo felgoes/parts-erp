@@ -702,6 +702,7 @@ class MarketplaceOrderOut(ORMModel):
     provider: str = "mercadolivre"
     shipment_id: str | None = None
     shipping_status: str | None = None
+    shipping_substatus: str | None = None
     fiscal_status: str = "pending"
     fiscal_error: str | None = None
     external_invoice_id: str | None = None

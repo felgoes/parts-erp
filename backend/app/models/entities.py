@@ -382,6 +382,7 @@ class MarketplaceOrder(TimestampMixin, Base):
     synchronized_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     shipment_id: Mapped[str | None] = mapped_column(String(80), index=True)
     shipping_status: Mapped[str | None] = mapped_column(String(60))
+    shipping_substatus: Mapped[str | None] = mapped_column(String(80))
     fiscal_status: Mapped[str] = mapped_column(String(30), default="pending")
     fiscal_error: Mapped[str | None] = mapped_column(Text)
     external_invoice_id: Mapped[str | None] = mapped_column(String(80), index=True)

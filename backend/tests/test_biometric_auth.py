@@ -1,11 +1,9 @@
-from datetime import UTC, datetime, timedelta
-
 import pytest
 from fastapi import HTTPException
 
 from app.api.routes.auth import biometric_login, create_biometric_credential
 from app.core.security import hash_password
-from app.models import BiometricCredential, User, UserRole
+from app.models import User, UserRole
 from app.schemas.common import BiometricCredentialCreate, BiometricCredentialLogin
 
 
@@ -25,7 +23,7 @@ def _user(db) -> User:
 def test_biometric_credential_creates_a_new_session(db) -> None:
     user = _user(db)
     enrollment = create_biometric_credential(
-        BiometricCredentialCreate(device_name="Galaxy S23"), user, db
+        BiometricCredentialCreate(device_name="Galaxy S23"), user
     )
 
     session = biometric_login(
@@ -34,18 +32,15 @@ def test_biometric_credential_creates_a_new_session(db) -> None:
 
     assert session.user.id == user.id
     assert session.access_token
-    stored = db.query(BiometricCredential).one()
-    assert stored.last_used_at is not None
-    assert stored.token_hash != enrollment.credential
+    assert enrollment.credential not in user.password_hash
 
 
-def test_expired_biometric_credential_is_rejected(db) -> None:
+def test_password_change_revokes_biometric_credential(db) -> None:
     user = _user(db)
     enrollment = create_biometric_credential(
-        BiometricCredentialCreate(device_name="Galaxy S23"), user, db
+        BiometricCredentialCreate(device_name="Galaxy S23"), user
     )
-    stored = db.query(BiometricCredential).one()
-    stored.expires_at = datetime.now(UTC) - timedelta(minutes=1)
+    user.password_hash = hash_password("uma-nova-senha-segura")
     db.commit()
 
     with pytest.raises(HTTPException) as error:

@@ -1,17 +1,21 @@
-import hashlib
-import secrets
-from datetime import UTC, datetime, timedelta
+import hmac
 
+import jwt
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
-from app.core.config import get_settings
-from app.core.security import create_access_token, verify_password
+from app.core.security import (
+    biometric_credential_version,
+    create_access_token,
+    create_biometric_token,
+    decode_token,
+    verify_password,
+)
 from app.db.session import get_db
-from app.models import BiometricCredential, User
+from app.models import User
 from app.schemas.common import (
     BiometricCredentialCreate,
     BiometricCredentialLogin,
@@ -39,57 +43,38 @@ def me(user: User = Depends(get_current_user)) -> User:
     return user
 
 
-def _credential_hash(value: str) -> str:
-    return hashlib.sha256(value.encode()).hexdigest()
-
-
 @router.post("/biometric/credentials", response_model=BiometricCredentialOut)
 def create_biometric_credential(
     body: BiometricCredentialCreate,
     user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
 ) -> BiometricCredentialOut:
-    raw_credential = secrets.token_urlsafe(48)
-    expires_at = datetime.now(UTC) + timedelta(
-        days=get_settings().biometric_credential_days
-    )
-    db.add(
-        BiometricCredential(
-            user_id=user.id,
-            token_hash=_credential_hash(raw_credential),
-            device_name=body.device_name.strip(),
-            expires_at=expires_at,
-        )
-    )
-    db.commit()
-    return BiometricCredentialOut(credential=raw_credential, expires_at=expires_at)
+    del body  # Reserved for device audit metadata without exposing it in the token.
+    credential, expires_at = create_biometric_token(user.id, user.password_hash)
+    return BiometricCredentialOut(credential=credential, expires_at=expires_at)
 
 
 @router.post("/biometric/login", response_model=Token)
 def biometric_login(body: BiometricCredentialLogin, db: Session = Depends(get_db)) -> Token:
-    credential = db.scalar(
-        select(BiometricCredential).where(
-            BiometricCredential.token_hash == _credential_hash(body.credential)
-        )
-    )
-    now = datetime.now(UTC)
-    expires_at = credential.expires_at if credential else None
-    if expires_at is not None and expires_at.tzinfo is None:
-        expires_at = expires_at.replace(tzinfo=UTC)
-    if (
-        not credential
-        or credential.revoked_at is not None
-        or expires_at is None
-        or expires_at <= now
-        or not credential.user.active
-    ):
+    try:
+        payload = decode_token(body.credential)
+    except jwt.PyJWTError as error:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Acesso biométrico expirado. Entre com e-mail e senha novamente.",
+        ) from error
+    if payload.get("type") != "biometric" or not payload.get("sub"):
+        raise HTTPException(status_code=401, detail="Credencial biométrica inválida")
+    user = db.get(User, str(payload["sub"]))
+    expected_version = biometric_credential_version(user.password_hash) if user else ""
+    if (
+        not user
+        or not user.active
+        or not hmac.compare_digest(str(payload.get("version", "")), expected_version)
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Acesso biométrico revogado. Entre com e-mail e senha novamente.",
         )
-    credential.last_used_at = now
-    db.commit()
-    user = credential.user
     return Token(
         access_token=create_access_token(user.id, user.role.value),
         user=UserOut.model_validate(user),

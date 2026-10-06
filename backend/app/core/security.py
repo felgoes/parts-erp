@@ -1,3 +1,5 @@
+import hashlib
+import hmac
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
@@ -29,6 +31,30 @@ def create_access_token(subject: str, role: str) -> str:
         "type": "access",
     }
     return jwt.encode(payload, settings.secret_key.get_secret_value(), algorithm="HS256")
+
+
+def biometric_credential_version(password_hash_value: str) -> str:
+    settings = get_settings()
+    return hmac.new(
+        settings.secret_key.get_secret_value().encode(),
+        password_hash_value.encode(),
+        hashlib.sha256,
+    ).hexdigest()
+
+
+def create_biometric_token(subject: str, password_hash_value: str) -> tuple[str, datetime]:
+    settings = get_settings()
+    now = datetime.now(UTC)
+    expires_at = now + timedelta(days=settings.biometric_credential_days)
+    payload = {
+        "sub": subject,
+        "iat": now,
+        "exp": expires_at,
+        "type": "biometric",
+        "version": biometric_credential_version(password_hash_value),
+    }
+    token = jwt.encode(payload, settings.secret_key.get_secret_value(), algorithm="HS256")
+    return token, expires_at
 
 
 def decode_token(token: str) -> dict[str, Any]:

@@ -1,5 +1,4 @@
 from app.models.entities import (
-    BiometricCredential,
     Customer,
     HealthSnapshot,
     InvoiceDocument,
@@ -26,7 +25,6 @@ from app.models.entities import (
 )
 
 __all__ = [
-    "BiometricCredential",
     "HealthSnapshot",
     "TelemetryEvent",
     "Customer",

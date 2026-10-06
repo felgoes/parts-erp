@@ -4,7 +4,7 @@ import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
 import { ApiService } from '../../core/api.service';
 import { AuthService } from '../../core/auth.service';
 import { MarketplaceOrder, MarketplaceOrderEvent, MarketplaceStatus } from '../../core/models';
-import { statusLabel, trackingEventLabel } from '../../core/status-labels';
+import { shippingStatusLabel, statusLabel, trackingEventLabel } from '../../core/status-labels';
 import { PageHeader } from '../../shared/page-header';
 
 @Component({
@@ -101,7 +101,7 @@ import { PageHeader } from '../../shared/page-header';
                 <td>
                   @if (o.shipping_status) {
                     <span class="badge" [class.success]="o.shipping_status === 'delivered'">
-                      {{ statusLabel(o.shipping_status) }}
+                      {{ shippingStatusLabel(o.shipping_status, o.shipping_substatus) }}
                     </span>
                     @if (o.shipping_substatus) {
                       <small class="block">{{ statusLabel(o.shipping_substatus) }}</small>
@@ -234,7 +234,7 @@ import { PageHeader } from '../../shared/page-header';
               <small>Sincronização</small><strong>{{ syncLabel(order.sync_status) }}</strong>
             </div>
             <div>
-              <small>Envio</small><strong>{{ statusLabel(order.shipping_status) }}</strong>
+              <small>Envio</small><strong>{{ shippingStatusLabel(order.shipping_status, order.shipping_substatus) }}</strong>
             </div>
             <div>
               <small>NF-e</small><strong>{{ automationLabel(order.fiscal_status) }}</strong>
@@ -402,7 +402,7 @@ import { PageHeader } from '../../shared/page-header';
                 <div>
                   <strong>Envio {{ order.payload?.['shipping']?.['id'] || '' }}</strong
                   ><span>{{
-                    statusLabel(order.payload?.['shipping']?.['status'] || order.shipping_status)
+                    shippingStatusLabel(order.shipping_status || order.payload?.['shipping']?.['status'], order.shipping_substatus)
                   }}</span>
                 </div>
               }
@@ -509,6 +509,7 @@ export class MarketplacePage implements OnInit, OnDestroy {
   private progressTimer: number | null = null;
   readonly statusLabel = statusLabel;
   readonly trackingEventLabel = trackingEventLabel;
+  readonly shippingStatusLabel = shippingStatusLabel;
   canProcess() {
     const role = this.auth.user()?.role;
     return role === 'admin' || role === 'manager';

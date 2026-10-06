@@ -52,6 +52,7 @@ const labels: Record<string, string> = {
   at_the_branch: 'Na agência',
   in_hub: 'No centro de distribuição',
   on_route: 'Em rota de entrega',
+  dropped_off: 'Postado no ponto de coleta',
   in_packing_list: 'Em lista de despacho',
   ready_to_pack: 'Pronto para embalar',
   packed: 'Pedido embalado',
@@ -126,6 +127,13 @@ export function statusLabel(value: string | null | undefined): string {
 export function trackingEventLabel(status: string, detail?: string | null): string {
   const normalizedStatus = normalizeStatus(status);
   const normalizedDetail = detail ? normalizeStatus(detail) : '';
+  if (
+    normalizedStatus === 'ready_to_ship' &&
+    ['dropped_off', 'in_hub', 'picked_up', 'shipped_to_carrier'].includes(normalizedDetail)
+  ) {
+    const location = statusLabel(detail);
+    return location === 'Status não mapeado' ? 'Despachado' : `Despachado · ${location}`;
+  }
   const translatedStatus = normalizedStatus === 'shipped' && normalizedDetail === 'out_for_delivery'
     ? 'Em trânsito'
     : statusLabel(status);
@@ -133,6 +141,25 @@ export function trackingEventLabel(status: string, detail?: string | null): stri
   return translatedDetail ? `${translatedStatus} · ${translatedDetail}` : translatedStatus;
 }
 
+export function shippingStatusLabel(
+  status: string | null | undefined,
+  substatus: string | null | undefined,
+  history: Array<{ status: string; detail: string | null; created_at: string }> = [],
+): string {
+  if (!status) return '—';
+  const normalizedStatus = normalizeStatus(status);
+  let latestSubstatus = substatus || '';
+  if (!latestSubstatus && history.length) {
+    const latest = history.reduce((current, event) =>
+      Date.parse(event.created_at) >= Date.parse(current.created_at) ? event : current,
+    );
+    latestSubstatus = latest.status === 'ready_to_ship' ? latest.detail || '' : '';
+  }
+  return normalizedStatus === 'ready_to_ship' &&
+    ['dropped_off', 'in_hub', 'picked_up', 'shipped_to_carrier'].includes(normalizeStatus(latestSubstatus))
+    ? 'Despachado'
+    : statusLabel(status);
+}
 function trackingDetailLabel(value: string | null | undefined): string | null {
   if (!value?.trim()) return null;
   const normalized = normalizeStatus(value);

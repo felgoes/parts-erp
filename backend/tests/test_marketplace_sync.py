@@ -6,7 +6,13 @@ from sqlalchemy import select
 from app.core.security import encrypt_secret
 from app.integrations.mercadolivre import sync as sync_module
 from app.integrations.mercadolivre.client import MercadoLivreClient
-from app.models import InvoiceDocument, MarketplaceAccount, Product
+from app.models import (
+    InvoiceDocument,
+    MarketplaceAccount,
+    MarketplaceOrder,
+    Product,
+    SalesInvoice,
+)
 
 
 def marketplace_account(db):
@@ -117,6 +123,44 @@ def test_invoice_documents_are_idempotent(db, monkeypatch, tmp_path):
     assert first == 2
     assert second == 0
     assert len(calls) == 2
+
+
+def test_manual_invoice_request_works_when_automatic_issuance_is_disabled(db, monkeypatch):
+    account = marketplace_account(db)
+    invoice = SalesInvoice(number="VEN-TEST-001", marketplace_order_id="123")
+    order = MarketplaceOrder(
+        external_order_id="123",
+        seller_id=account.seller_id,
+        status="paid",
+        payload={},
+        invoice=invoice,
+    )
+    db.add(order)
+    db.commit()
+    calls = []
+
+    monkeypatch.setattr(
+        sync_module,
+        "_automation_config",
+        lambda _db: SimpleNamespace(auto_issue_invoice=False),
+    )
+    monkeypatch.setattr(MercadoLivreClient, "get", lambda _self, _path: [])
+
+    def fake_post(_self, path, payload):
+        calls.append((path, payload))
+        return [{"id": "nf-manual-1", "status": "pending"}]
+
+    monkeypatch.setattr(MercadoLivreClient, "post", fake_post)
+
+    sync_module.issue_and_sync_invoice(db, order, account, force_issue=True)
+    assert calls == [
+        ("/users/77/invoices/orders", {"orders": [123]}),
+    ]
+    assert order.external_invoice_id == "nf-manual-1"
+
+    # Even if the follow-up lookup is briefly empty, don't issue a duplicate.
+    sync_module.issue_and_sync_invoice(db, order, account, force_issue=True)
+    assert len(calls) == 1
 
 
 def test_initial_sync_imports_products_and_orders(db, monkeypatch):

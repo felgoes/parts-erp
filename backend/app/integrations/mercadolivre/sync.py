@@ -431,16 +431,21 @@ def sync_invoice_documents(
 
 
 def issue_and_sync_invoice(
-    db: Session, record: MarketplaceOrder, account: MarketplaceAccount
+    db: Session,
+    record: MarketplaceOrder,
+    account: MarketplaceAccount,
+    *,
+    force_issue: bool = False,
 ) -> None:
     if not record.invoice_id:
         return
     client = MercadoLivreClient(db, account)
     fiscal_entries: list[dict[str, Any]] = []
     config = _automation_config(db)
-    auto_issue = (
-        config.auto_issue_invoice if config else get_settings().mercadolivre_auto_issue_invoice
-    ) and record.status.lower() not in {"cancelled", "canceled"}
+    auto_issue = record.status.lower() not in {"cancelled", "canceled"} and (
+        force_issue
+        or (config.auto_issue_invoice if config else get_settings().mercadolivre_auto_issue_invoice)
+    )
     try:
         try:
             result = client.get(
@@ -451,7 +456,7 @@ def issue_and_sync_invoice(
             if exc.status_code != 404:
                 raise
 
-        if not fiscal_entries and auto_issue:
+        if not fiscal_entries and auto_issue and not record.external_invoice_id:
             record.fiscal_status = "requesting"
             db.commit()
             result = client.post(

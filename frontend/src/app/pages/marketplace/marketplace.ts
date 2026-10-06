@@ -1,4 +1,5 @@
 import { DatePipe, DecimalPipe, JsonPipe, UpperCasePipe } from '@angular/common';
+import { HttpErrorResponse } from '@angular/common/http';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { ApiService } from '../../core/api.service';
 import { AuthService } from '../../core/auth.service';
@@ -30,6 +31,12 @@ import { PageHeader } from '../../shared/page-header';
     }
     @if (syncError()) {
       <p class="error-text" role="alert">{{ syncError() }}</p>
+    }
+    @if (actionNotice()) {
+      <p class="notice action-feedback" role="status">{{ actionNotice() }}</p>
+    }
+    @if (actionError()) {
+      <p class="error-text action-feedback" role="alert">{{ actionError() }}</p>
     }
     @if (status(); as s) {
       @if (!s.connected) {
@@ -119,13 +126,22 @@ import { PageHeader } from '../../shared/page-header';
                 </td>
                 <td>
                   @if (canProcess()) {
-                    <button
-                      class="secondary small"
-                      [disabled]="!o.invoice_id || retrying() === o.id"
-                      (click)="$event.stopPropagation(); retry(o)"
-                    >
-                      {{ retrying() === o.id ? 'Tentando…' : 'Tentar agora' }}
-                    </button>
+                    <div class="order-actions" (click)="$event.stopPropagation()">
+                      <button
+                        class="secondary small"
+                        [disabled]="!o.invoice_id || isWorking(o.id) || o.fiscal_status === 'authorized'"
+                        (click)="requestInvoice(o)"
+                      >
+                        {{ isWorking(o.id, 'fiscal') ? 'Solicitando…' : 'Solicitar NF-e' }}
+                      </button>
+                      <button
+                        class="secondary small"
+                        [disabled]="!o.invoice_id || isWorking(o.id)"
+                        (click)="retryLabel(o)"
+                      >
+                        {{ isWorking(o.id, 'label') ? 'Buscando…' : 'Tentar etiqueta' }}
+                      </button>
+                    </div>
                   }
                 </td>
               </tr>
@@ -181,6 +197,24 @@ import { PageHeader } from '../../shared/page-header';
               ><strong>{{ order.invoice_id ? 'Vinculada' : 'Não gerada' }}</strong>
             </div>
           </div>
+          @if (canProcess()) {
+            <div class="detail-actions">
+              <button
+                class="primary"
+                [disabled]="!order.invoice_id || isWorking(order.id) || order.fiscal_status === 'authorized' || order.status === 'cancelled'"
+                (click)="requestInvoice(order)"
+              >
+                {{ isWorking(order.id, 'fiscal') ? 'Solicitando NF-e…' : 'Solicitar NF-e ao Mercado Livre' }}
+              </button>
+              <button
+                class="secondary"
+                [disabled]="!order.invoice_id || isWorking(order.id)"
+                (click)="retryLabel(order)"
+              >
+                {{ isWorking(order.id, 'label') ? 'Buscando etiqueta…' : 'Tentar baixar etiqueta' }}
+              </button>
+            </div>
+          }
           @if (order.invoice; as invoice) {
             <section class="order-section">
               <div class="section-heading">
@@ -343,7 +377,9 @@ export class MarketplacePage implements OnInit {
   readonly syncing = signal(false);
   readonly syncMessage = signal<string | null>(null);
   readonly syncError = signal<string | null>(null);
-  readonly retrying = signal<string | null>(null);
+  readonly working = signal<{ id: string; kind: 'fiscal' | 'label' } | null>(null);
+  readonly actionNotice = signal<string | null>(null);
+  readonly actionError = signal<string | null>(null);
   readonly detail = signal<MarketplaceOrder | null>(null);
   readonly history = signal<MarketplaceOrderEvent[]>([]);
   readonly statusLabel = statusLabel;
@@ -439,16 +475,52 @@ export class MarketplacePage implements OnInit {
       ] ?? (requester ? this.cancelReason(requester) : 'Não informado')
     );
   }
-  retry(order: MarketplaceOrder) {
-    this.retrying.set(order.id);
-    this.api.automateMarketplaceOrder(order.id).subscribe({
+  isWorking(id: string, kind?: 'fiscal' | 'label') {
+    const current = this.working();
+    return current?.id === id && (!kind || current.kind === kind);
+  }
+  requestInvoice(order: MarketplaceOrder) {
+    if (
+      !window.confirm(
+        `Solicitar ao Mercado Livre a emissão da NF-e do pedido #${order.external_order_id}?`,
+      )
+    ) {
+      return;
+    }
+    this.runOrderAction(order, 'fiscal');
+  }
+  retryLabel(order: MarketplaceOrder) {
+    this.runOrderAction(order, 'label');
+  }
+  private runOrderAction(order: MarketplaceOrder, kind: 'fiscal' | 'label') {
+    this.working.set({ id: order.id, kind });
+    this.actionNotice.set(null);
+    this.actionError.set(null);
+    const request =
+      kind === 'fiscal'
+        ? this.api.requestMarketplaceInvoice(order.id)
+        : this.api.retryMarketplaceLabel(order.id);
+    request.subscribe({
       next: (updated) => {
         this.orders.update((orders) =>
           orders.map((item) => (item.id === updated.id ? updated : item)),
         );
-        this.retrying.set(null);
+        if (this.detail()?.id === updated.id) this.detail.set(updated);
+        this.actionNotice.set(
+          kind === 'fiscal'
+            ? 'Solicitação de NF-e concluída. Confira o status atualizado no pedido.'
+            : 'Tentativa de etiqueta concluída. Confira o status atualizado no pedido.',
+        );
+        this.working.set(null);
       },
-      error: () => this.retrying.set(null),
+      error: (error: unknown) => {
+        const detail =
+          error instanceof HttpErrorResponse
+            ? error.error?.detail || error.message
+            : 'Não foi possível concluir a ação. Tente novamente.';
+        this.actionError.set(String(detail));
+        this.working.set(null);
+      },
     });
   }
   openDetails(order: MarketplaceOrder) {

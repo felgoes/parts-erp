@@ -258,6 +258,75 @@ def automate_order(
     return automate_order_documents(db, order)
 
 
+@router.post("/orders/{order_id}/fiscal", response_model=MarketplaceOrderOut)
+def request_order_fiscal_document(
+    order_id: str,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_permission(Permission.MARKETPLACE_PROCESS)),
+) -> MarketplaceOrder:
+    """Request/reconcile the Mercado Livre invoice for an existing sale."""
+    from app.integrations.mercadolivre.sync import issue_and_sync_invoice
+
+    order = db.get(MarketplaceOrder, order_id)
+    if not order:
+        raise HTTPException(status_code=404, detail="Pedido não encontrado")
+    if not order.invoice_id:
+        raise HTTPException(status_code=409, detail="A venda ainda não está vinculada a uma fatura")
+    if order.status.lower() in {"cancelled", "canceled"}:
+        raise HTTPException(
+            status_code=409,
+            detail="Não é possível solicitar NF-e para pedido cancelado",
+        )
+    account = db.scalar(
+        select(MarketplaceAccount).where(
+            MarketplaceAccount.seller_id == order.seller_id,
+            MarketplaceAccount.active.is_(True),
+        )
+    )
+    if not account:
+        raise HTTPException(status_code=409, detail="Conta do Mercado Livre não conectada")
+
+    issue_and_sync_invoice(db, order, account, force_issue=True)
+    order.automation_updated_at = datetime.now(UTC)
+    db.commit()
+    db.refresh(order)
+    if order.fiscal_error:
+        raise HTTPException(status_code=502, detail=order.fiscal_error)
+    return order
+
+
+@router.post("/orders/{order_id}/label", response_model=MarketplaceOrderOut)
+def request_order_shipping_label(
+    order_id: str,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_permission(Permission.MARKETPLACE_PROCESS)),
+) -> MarketplaceOrder:
+    """Retry downloading the Mercado Envios label without requesting an invoice."""
+    from app.integrations.mercadolivre.sync import sync_shipping_label
+
+    order = db.get(MarketplaceOrder, order_id)
+    if not order:
+        raise HTTPException(status_code=404, detail="Pedido não encontrado")
+    if not order.invoice_id:
+        raise HTTPException(status_code=409, detail="A venda ainda não está vinculada a uma fatura")
+    account = db.scalar(
+        select(MarketplaceAccount).where(
+            MarketplaceAccount.seller_id == order.seller_id,
+            MarketplaceAccount.active.is_(True),
+        )
+    )
+    if not account:
+        raise HTTPException(status_code=409, detail="Conta do Mercado Livre não conectada")
+
+    sync_shipping_label(db, order, account)
+    order.automation_updated_at = datetime.now(UTC)
+    db.commit()
+    db.refresh(order)
+    if order.label_error:
+        raise HTTPException(status_code=502, detail=order.label_error)
+    return order
+
+
 @router.post("/sync", status_code=202)
 async def sync_now(
     db: Session = Depends(get_db),
@@ -277,9 +346,8 @@ async def sync_now(
     expires = account.token_expires_at
     if expires and expires.tzinfo is None:
         expires = expires.replace(tzinfo=UTC)
-    if (
-        not account.encrypted_refresh_token
-        and (not expires or expires <= datetime.now(UTC) + timedelta(minutes=2))
+    if not account.encrypted_refresh_token and (
+        not expires or expires <= datetime.now(UTC) + timedelta(minutes=2)
     ):
         raise HTTPException(
             status_code=409,

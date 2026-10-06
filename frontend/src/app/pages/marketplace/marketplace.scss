@@ -60,6 +60,9 @@
   color: #a33b2c;
   margin-top: 5px;
 }
+.order-actions { display: grid; gap: 6px; min-width: 130px; }
+.detail-actions { display: flex; flex-wrap: wrap; gap: 10px; margin: 0 0 18px; }
+.action-feedback { margin: 12px 0; }
 .link-button { border: 0; background: transparent; color: var(--forest); font: inherit; font-weight: 800; cursor: pointer; padding: 0; }
 .detail-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 18px 0; }
 .detail-grid div { display: grid; gap: 4px; padding: 12px; background: #f1f5f2; border-radius: 8px; }
@@ -111,6 +114,10 @@
   .timeline div { display: grid; gap: 5px; }
   .payload { font-size: 11px; }
   .detail-grid { grid-template-columns: 1fr; }
+  .order-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; min-width: 0; }
+  .order-actions button { min-height: 40px; }
+  .detail-actions { display: grid; }
+  .detail-actions button { width: 100%; }
 }
 @media (max-width: 600px) {
   .notice {

@@ -170,6 +170,12 @@ export class ApiService {
   automateMarketplaceOrder(id: string): Observable<MarketplaceOrder> {
     return this.http.post<MarketplaceOrder>(`${this.base}/integrations/mercadolivre/orders/${id}/automate`, {});
   }
+  requestMarketplaceInvoice(id: string): Observable<MarketplaceOrder> {
+    return this.http.post<MarketplaceOrder>(`${this.base}/integrations/mercadolivre/orders/${id}/fiscal`, {});
+  }
+  retryMarketplaceLabel(id: string): Observable<MarketplaceOrder> {
+    return this.http.post<MarketplaceOrder>(`${this.base}/integrations/mercadolivre/orders/${id}/label`, {});
+  }
   invoices(startDate: string, endDate: string): Observable<Invoice[]> {
     return this.http.get<Invoice[]>(`${this.base}/invoices`, { params: { start_date: startDate, end_date: endDate } });
   }

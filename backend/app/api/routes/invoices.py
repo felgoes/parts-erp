@@ -27,6 +27,7 @@ from app.schemas.common import (
     InvoiceTrackingOut,
 )
 from app.services.after_sale import after_sales_for_invoices, invoice_after_sale
+from app.services.invoice_tracking import attach_invoice_tracking
 from app.services.sales import cancel_invoice, confirm_invoice, create_invoice
 
 router = APIRouter(prefix="/invoices", tags=["Faturas de venda"])
@@ -82,6 +83,7 @@ def list_invoices(
         output = InvoiceOut.model_validate(invoice)
         output.after_sale = after_sales.get(invoice.id)
         outputs.append(output)
+    attach_invoice_tracking(db, outputs)
     return outputs
 
 
@@ -248,8 +250,6 @@ def download_document(
     if not document:
         raise HTTPException(status_code=404, detail="Documento não encontrado")
     media_type = (
-        "application/pdf"
-        if document.document_type in {"pdf", "label_pdf"}
-        else "application/xml"
+        "application/pdf" if document.document_type in {"pdf", "label_pdf"} else "application/xml"
     )
     return FileResponse(document.storage_path, media_type=media_type, filename=document.filename)

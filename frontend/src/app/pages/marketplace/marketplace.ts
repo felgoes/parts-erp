@@ -81,6 +81,7 @@ import { PageHeader } from '../../shared/page-header';
               <th>Pedido</th>
               <th>Recebido</th>
               <th>Status no ML</th>
+              <th>Envio</th>
               <th>Sincronização</th>
               <th>Fatura</th>
               <th>NF-e</th>
@@ -97,6 +98,18 @@ import { PageHeader } from '../../shared/page-header';
                 </td>
                 <td>{{ o.created_at | date: 'dd/MM/yyyy HH:mm' }}</td>
                 <td>{{ statusLabel(o.status) }}</td>
+                <td>
+                  @if (o.shipping_status) {
+                    <span class="badge" [class.success]="o.shipping_status === 'delivered'">
+                      {{ statusLabel(o.shipping_status) }}
+                    </span>
+                    @if (o.shipping_substatus) {
+                      <small class="block">{{ statusLabel(o.shipping_substatus) }}</small>
+                    }
+                  } @else {
+                    <span class="muted">Aguardando envio</span>
+                  }
+                </td>
                 <td>
                   <span
                     class="badge"

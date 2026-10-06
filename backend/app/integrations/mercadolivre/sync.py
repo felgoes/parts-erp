@@ -87,6 +87,46 @@ def is_cancelled(order: dict[str, Any]) -> bool:
     return str(order.get("status", "")).strip().lower() in {"cancelled", "canceled"}
 
 
+def order_shipment_id(
+    client: MercadoLivreClient, order_id: str, order: dict[str, Any]
+) -> str | None:
+    """Read shipment IDs from the current hosted Orders view, with legacy fallback."""
+    try:
+        result = client.get(f"/orders/{order_id}/shipments", extra_headers={"x-new-domain": "true"})
+        candidates = result if isinstance(result, list) else [result]
+        for candidate in candidates:
+            if isinstance(candidate, dict) and candidate.get("id"):
+                return str(candidate["id"])
+    except MercadoLivreError:
+        # Retain compatibility while an account/app migrates to the hosted view.
+        pass
+    shipping = order.get("shipping") or {}
+    shipment_id = shipping.get("id") if isinstance(shipping, dict) else None
+    return str(shipment_id) if shipment_id else None
+
+
+def sync_shipping_status(
+    db: Session, record: MarketplaceOrder, account: MarketplaceAccount
+) -> dict[str, Any] | None:
+    """Refresh shipment state and its Mercado Envios timeline, independent of label state."""
+    if not record.shipment_id:
+        return None
+    client = MercadoLivreClient(db, account)
+    try:
+        shipment = client.get(
+            f"/shipments/{record.shipment_id}", extra_headers={"x-format-new": "true"}
+        )
+        if not isinstance(shipment, dict):
+            return None
+        record.shipping_status = str(shipment.get("status") or record.shipping_status or "unknown")
+        record.shipping_substatus = str(shipment.get("substatus") or "") or None
+        sync_shipping_history(db, record, account)
+        return shipment
+    except MercadoLivreError:
+        # Shipping telemetry must never prevent an order/invoice from being synchronized.
+        return None
+
+
 def _account(db: Session, seller_id: str) -> MarketplaceAccount:
     account = db.scalar(
         select(MarketplaceAccount).where(
@@ -202,13 +242,19 @@ def sync_order(db: Session, seller_id: str, resource: str) -> MarketplaceOrder:
                 ),
             )
         )
-    shipping = order.get("shipping") or {}
-    shipment_id = shipping.get("id") if isinstance(shipping, dict) else None
-    record.shipment_id = str(shipment_id) if shipment_id else record.shipment_id
+    shipment_id = order_shipment_id(client, order_id, order)
+    record.shipment_id = shipment_id or record.shipment_id
     record.sync_status = "pending"
     record.sync_error = None
     db.commit()
     db.refresh(record)
+
+    # Shipping lifecycle notifications are separate from order/payment changes.
+    # Also refresh here so periodic imports repair missed webhooks after downtime.
+    if record.shipment_id:
+        sync_shipping_status(db, record, account)
+        db.commit()
+        db.refresh(record)
 
     config = _automation_config(db)
     import_orders = config.import_orders if config else True
@@ -495,14 +541,9 @@ def sync_shipping_label(db: Session, record: MarketplaceOrder, account: Marketpl
         return
     client = MercadoLivreClient(db, account)
     try:
-        shipment = client.get(
-            f"/shipments/{record.shipment_id}", extra_headers={"x-format-new": "true"}
-        )
-        if not isinstance(shipment, dict):
+        shipment = sync_shipping_status(db, record, account)
+        if shipment is None:
             raise MercadoLivreError("Resposta de envio inválida")
-        record.shipping_status = str(shipment.get("status") or "unknown")
-        record.shipping_substatus = str(shipment.get("substatus") or "") or None
-        sync_shipping_history(db, record, account)
 
         # Depois que o pedido já foi entregue/devolvido, a janela operacional
         # da etiqueta foi encerrada. Não devemos mostrar "Aguardando envio"
@@ -529,7 +570,8 @@ def sync_shipping_label(db: Session, record: MarketplaceOrder, account: Marketpl
             record.label_error = None
             return
         if record.shipping_status != "ready_to_ship" or record.shipping_substatus not in {
-            "ready_to_print", "printed"
+            "ready_to_print",
+            "printed",
         }:
             record.label_status = "waiting"
             record.label_error = None

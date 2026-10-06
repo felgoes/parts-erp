@@ -17,6 +17,7 @@ from app.schemas.common import (
     InvoiceOut,
 )
 from app.services.after_sale import after_sales_for_invoices
+from app.services.invoice_tracking import attach_invoice_tracking
 
 router = APIRouter(prefix="/dashboard", tags=["Painel"])
 BRAZIL_TZ = timezone(timedelta(hours=-3))
@@ -90,6 +91,7 @@ def summary(
         output = InvoiceOut.model_validate(invoice)
         output.after_sale = after_sales.get(invoice.id)
         recent_outputs.append(output)
+    attach_invoice_tracking(db, recent_outputs)
     return DashboardSummary(
         revenue_month=Decimal(str(revenue or 0)),
         confirmed_sales=sales,

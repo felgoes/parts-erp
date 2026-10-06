@@ -64,6 +64,11 @@ import { AfterSaleWorkflow } from '../../shared/after-sale-workflow';
                 <td>{{ i.issued_at || i.created_at | date: 'dd/MM/yyyy HH:mm' }}</td>
                 <td>
                   <span class="badge" [class]="i.status">{{ label(i.status) }}</span>
+                  @if (i.tracking?.shipping_status) {
+                    <small class="post-sale-summary">
+                      Envio · {{ statusLabel(i.tracking?.shipping_status) }}
+                    </small>
+                  }
                   @if (i.after_sale) { <small class="post-sale-summary">{{ afterSaleLabel(i) }}</small> }
                 </td>
                 <td>

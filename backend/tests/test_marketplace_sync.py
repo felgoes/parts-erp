@@ -53,9 +53,15 @@ def test_order_webhook_creates_invoice_and_documents(db, monkeypatch, tmp_path):
         "shipping": {"id": 555},
     }
 
-    def fake_get(self, path):
+    def fake_get(self, path, **_kwargs):
         if path == "/orders/123":
             return order
+        if path == "/orders/123/shipments":
+            return [{"id": 555}]
+        if path == "/shipments/555":
+            return {"id": 555, "status": "ready_to_ship", "substatus": "ready_to_print"}
+        if path == "/shipments/555/history":
+            return []
         if path.startswith("/users/77/invoices/orders/123"):
             return [
                 {
@@ -91,6 +97,54 @@ def test_order_webhook_creates_invoice_and_documents(db, monkeypatch, tmp_path):
     docs = list(db.scalars(select(InvoiceDocument)))
     assert {doc.document_type for doc in docs} == {"xml", "pdf"}
     assert len(downloads) == 2
+
+
+def test_order_sync_captures_dispatched_and_delivered_webhook_state(db, monkeypatch):
+    account = marketplace_account(db)
+    order = {
+        "id": 124,
+        "seller": {"id": 77},
+        "status": "confirmed",
+        "shipping": {"id": 556},
+        "order_items": [],
+    }
+    current_shipping = {"status": "shipped", "substatus": "in_transit"}
+
+    def fake_get(self, path, **_kwargs):
+        if path == "/orders/124":
+            return order
+        if path == "/orders/124/shipments":
+            return [{"id": 556}]
+        if path == "/shipments/556":
+            return {"id": 556, **current_shipping}
+        if path == "/shipments/556/history":
+            return [
+                {"status": "ready_to_ship", "date": "2026-10-05T12:00:00Z"},
+                {
+                    "status": current_shipping["status"],
+                    "substatus": current_shipping["substatus"],
+                    "date": "2026-10-05T13:00:00Z",
+                },
+            ]
+        raise AssertionError(path)
+
+    monkeypatch.setattr(MercadoLivreClient, "get", fake_get)
+    record = sync_module.sync_order(db, account.seller_id, "/orders/124")
+    assert record.shipping_status == "shipped"
+    assert record.shipping_substatus == "in_transit"
+
+    current_shipping.update(status="delivered", substatus="delivered")
+    record = sync_module.sync_order(db, account.seller_id, "/orders/124")
+    assert record.shipping_status == "delivered"
+    history = list(
+        db.scalars(
+            select(sync_module.MarketplaceOrderEvent).where(
+                sync_module.MarketplaceOrderEvent.order_id == record.id,
+                sync_module.MarketplaceOrderEvent.event_type == "shipment_status",
+            )
+        )
+    )
+    assert {event.status for event in history} == {"ready_to_ship", "shipped", "delivered"}
 
 
 def test_invoice_documents_are_idempotent(db, monkeypatch, tmp_path):
@@ -445,7 +499,11 @@ def test_marketplace_cancellation_keeps_invoice_and_restores_stock_once(db, monk
         "buyer": {"id": 19, "first_name": "João", "last_name": "Cliente"},
         "order_items": [{"item": {"seller_sku": "CANCEL-001"}, "quantity": 1, "unit_price": 80}],
     }
-    monkeypatch.setattr(MercadoLivreClient, "get", lambda self, path: order)
+    monkeypatch.setattr(
+        MercadoLivreClient,
+        "get",
+        lambda self, path, **_kwargs: [] if path.endswith("/shipments") else order,
+    )
     monkeypatch.setattr(
         sync_module,
         "_automation_config",

@@ -7,7 +7,7 @@ from sqlalchemy import select
 
 from app.core.config import get_settings
 from app.db.session import SessionLocal
-from app.integrations.mercadolivre.client import MercadoLivreClient
+from app.integrations.mercadolivre.client import MercadoLivreClient, MercadoLivreError
 from app.integrations.mercadolivre.sync import (
     extract_invoice_order_ids,
     retry_pending_automations,
@@ -17,7 +17,7 @@ from app.integrations.mercadolivre.sync import (
 )
 from app.integrations.shopee.sync import sync_all as sync_shopee_all
 from app.integrations.shopee.sync import sync_order as sync_shopee_order
-from app.models import MarketplaceAccount, MarketplaceOrderEvent
+from app.models import MarketplaceAccount, MarketplaceOrder, MarketplaceOrderEvent
 from app.services.after_sale import after_sale_notification, upsert_after_sale_case
 
 
@@ -54,6 +54,38 @@ async def process_mercadolivre_notification(
                 raw = entity.get("id")
                 if raw:
                     order_ids.add(str(raw).rsplit("/", 1)[-1])
+        # Shipment webhooks identify the shipment, not always its sale. Resolve
+        # the shipment against our persisted link so dispatch/delivery events
+        # update the same order and invoice as the original sale webhook.
+        if topic == "shipments":
+            shipment_id = str(data.get("id") or resource.rsplit("/", 1)[-1])
+            linked_orders = db.scalars(
+                select(MarketplaceOrder).where(
+                    MarketplaceOrder.provider == "mercadolivre",
+                    MarketplaceOrder.seller_id == seller_id,
+                    MarketplaceOrder.shipment_id == shipment_id,
+                )
+            )
+            linked_orders = list(linked_orders)
+            order_ids.update(order.external_order_id for order in linked_orders)
+            if not linked_orders:
+                # The current Shipments contract no longer returns order_id.
+                # Resolve associations through the official shipment-orders endpoint.
+                try:
+                    related = MercadoLivreClient(db, account).get(
+                        f"/shipments/{shipment_id}/orders",
+                        extra_headers={"x-new-domain": "true"},
+                    )
+                except MercadoLivreError:
+                    related = []
+                related_rows = (
+                    related
+                    if isinstance(related, list)
+                    else (related.get("results", []) if isinstance(related, dict) else [])
+                )
+                for row in related_rows:
+                    if isinstance(row, dict) and row.get("order_id"):
+                        order_ids.add(str(row["order_id"]))
         for raw_order_id in order_ids:
             order_id = str(raw_order_id or "")
             if not order_id:
@@ -63,9 +95,7 @@ async def process_mercadolivre_notification(
             order = sync_order(db, seller_id, f"/orders/{order_id}")
             if topic in {"claims", "returns"} and order:
                 event_data = after_sale_notification(topic, data)
-                case_id = str(
-                    event_data.get("id") or resource.rsplit("/", 1)[-1]
-                )[:100]
+                case_id = str(event_data.get("id") or resource.rsplit("/", 1)[-1])[:100]
                 saved_events = (order.payload or {}).get("_erp_after_sale_events", [])
                 if not isinstance(saved_events, list):
                     saved_events = []

@@ -34,3 +34,23 @@
   color: var(--danger);
   margin: 16px 0 0;
 }
+
+@media (max-width: 600px) {
+  .table-card .table-wrap { padding: 0; scrollbar-width: thin; }
+  .table-card table { min-width: 0; }
+  .table-card table thead { display: none; }
+  .table-card table tbody, .table-card table tr, .table-card table td { display: block; }
+  .table-card table tr { padding: 13px 16px; border-bottom: 1px solid var(--line); }
+  .table-card table td { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; min-width: 0; padding: 6px 0; border: 0; text-align: right; }
+  .table-card table td::before { flex: 0 0 96px; color: var(--muted); font-size: 10px; font-weight: 800; letter-spacing: .08em; text-align: left; text-transform: uppercase; }
+  .table-card table td:first-child::before { content: 'Nome'; }
+  .table-card table td:nth-child(2)::before { content: 'E-mail'; }
+  .table-card table td:nth-child(3)::before { content: 'Perfil'; }
+  .table-card table td:nth-child(4)::before { content: 'Situação'; }
+  .table-card table td:nth-child(5)::before { content: 'Ações'; }
+  .table-card table td > * { min-width: 0; }
+  .table-card table td:nth-child(3) { display: grid; grid-template-columns: 96px minmax(0, 1fr); align-items: start; }
+  .table-card table td:nth-child(3)::before { grid-row: 1 / span 2; }
+  .table-card table td:nth-child(3) > * { justify-self: end; }
+  .table-card .role-description { max-width: 210px; text-align: right; }
+}

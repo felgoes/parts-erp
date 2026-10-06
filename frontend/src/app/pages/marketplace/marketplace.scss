@@ -448,7 +448,7 @@
     display: block;
   }
   .table-card table tr {
-    padding: 13px 0;
+    padding: 13px 16px;
     border-bottom: 1px solid var(--line);
   }
   .table-card table td {
@@ -460,11 +460,13 @@
     border: 0;
   }
   .table-card table td:not(:first-child)::before {
+    flex: 0 0 96px;
     color: var(--muted);
     content: 'Recebido';
     font-size: 10px;
     font-weight: 800;
     letter-spacing: 0.08em;
+    text-align: left;
     text-transform: uppercase;
   }
   .table-card table td:nth-child(3)::before {
@@ -484,6 +486,12 @@
   }
   .table-card table td:nth-child(8)::before {
     content: '';
+  }
+  .table-card table td:nth-child(8) {
+    justify-content: flex-start;
+  }
+  .order-actions {
+    justify-content: flex-end;
   }
   .table-card table td:first-child::before {
     display: none;

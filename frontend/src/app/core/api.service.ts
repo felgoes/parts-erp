@@ -181,6 +181,9 @@ export class ApiService {
   cancelPurchase(id: string): Observable<Purchase> {
     return this.http.post<Purchase>(`${this.base}/purchases/${id}/cancel`, {});
   }
+  updatePurchaseItem(id: string, itemId: string, payload: unknown): Observable<Purchase> {
+    return this.http.patch<Purchase>(`${this.base}/purchases/${id}/items/${itemId}`, payload);
+  }
   uploadPurchaseAttachments(id: string, files: File[]): Observable<Purchase> {
     const form = new FormData();
     files.forEach((file) => form.append('files', file, file.name));

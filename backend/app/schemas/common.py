@@ -336,6 +336,17 @@ class PurchaseItemCreate(BaseModel):
     description: str = Field(min_length=2, max_length=200)
     quantity: Decimal = Field(gt=0)
     unit_cost: Decimal = Field(default=Decimal("0"), ge=0)
+    freight_amount: Decimal = Field(default=Decimal("0"), ge=0)
+    tax_amount: Decimal = Field(default=Decimal("0"), ge=0)
+    discount_amount: Decimal = Field(default=Decimal("0"), ge=0)
+
+
+class PurchaseItemUpdate(BaseModel):
+    quantity: Decimal | None = Field(default=None, gt=0)
+    base_unit_cost: Decimal | None = Field(default=None, ge=0)
+    freight_amount: Decimal | None = Field(default=None, ge=0)
+    tax_amount: Decimal | None = Field(default=None, ge=0)
+    discount_amount: Decimal | None = Field(default=None, ge=0)
 
 
 class PurchaseCreate(BaseModel):
@@ -396,7 +407,11 @@ class PurchaseItemOut(ORMModel):
     description: str
     quantity: Decimal
     received_quantity: Decimal
+    base_unit_cost: Decimal | None = None
     unit_cost: Decimal | None = None
+    freight_amount: Decimal | None = Decimal("0")
+    tax_amount: Decimal | None = Decimal("0")
+    discount_amount: Decimal | None = Decimal("0")
 
 
 class PurchaseQuoteOut(ORMModel):

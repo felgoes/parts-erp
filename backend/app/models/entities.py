@@ -314,7 +314,11 @@ class PurchaseItem(Base):
     description: Mapped[str] = mapped_column(String(200))
     quantity: Mapped[Decimal] = mapped_column(Numeric(14, 3))
     received_quantity: Mapped[Decimal] = mapped_column(Numeric(14, 3), default=0)
+    base_unit_cost: Mapped[Decimal] = mapped_column(Numeric(14, 2), default=0)
     unit_cost: Mapped[Decimal] = mapped_column(Numeric(14, 2), default=0)
+    freight_amount: Mapped[Decimal] = mapped_column(Numeric(14, 2), default=0)
+    tax_amount: Mapped[Decimal] = mapped_column(Numeric(14, 2), default=0)
+    discount_amount: Mapped[Decimal] = mapped_column(Numeric(14, 2), default=0)
     purchase: Mapped[PurchaseCase] = relationship(back_populates="items")
     product: Mapped[Product | None] = relationship()
 

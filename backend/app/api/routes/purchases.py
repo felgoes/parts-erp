@@ -23,7 +23,13 @@ from app.models import (
     User,
     UserRole,
 )
-from app.schemas.common import PurchaseCreate, PurchaseOut, PurchaseQuoteCreate, PurchaseReceive
+from app.schemas.common import (
+    PurchaseCreate,
+    PurchaseItemUpdate,
+    PurchaseOut,
+    PurchaseQuoteCreate,
+    PurchaseReceive,
+)
 from app.services.stock import move_stock
 from app.core.config import get_settings
 
@@ -36,7 +42,18 @@ def _present(purchase: PurchaseCase, user: User) -> PurchaseOut:
     result = PurchaseOut.model_validate(purchase)
     return result.model_copy(
         update={
-            "items": [item.model_copy(update={"unit_cost": None}) for item in result.items],
+            "items": [
+                item.model_copy(
+                    update={
+                        "base_unit_cost": None,
+                        "unit_cost": None,
+                        "freight_amount": None,
+                        "tax_amount": None,
+                        "discount_amount": None,
+                    }
+                )
+                for item in result.items
+            ],
             "quotes": [
                 quote.model_copy(
                     update={
@@ -61,6 +78,31 @@ def _present(purchase: PurchaseCase, user: User) -> PurchaseOut:
 
 def _event(db: Session, purchase: PurchaseCase, event_type: str, detail: str) -> None:
     db.add(PurchaseEvent(purchase_id=purchase.id, event_type=event_type, detail=detail))
+
+
+def _line_adjustment(item: PurchaseItem) -> Decimal:
+    return item.freight_amount + item.tax_amount - item.discount_amount
+
+
+def _recompute_purchase_costs(purchase: PurchaseCase, quote: PurchaseQuote | None = None) -> None:
+    if not quote:
+        for item in purchase.items:
+            item.unit_cost = (item.base_unit_cost + _line_adjustment(item) / item.quantity).quantize(Decimal("0.01"))
+        return
+    adjustment = quote.freight_amount + quote.tax_amount - quote.discount_amount
+    subtotal = sum(Decimal(quote.item_costs[item.id]) * item.quantity for item in purchase.items)
+    total_quantity = sum(item.quantity for item in purchase.items)
+    for item in purchase.items:
+        base_cost = Decimal(quote.item_costs[item.id])
+        if quote.allocation_method == "quantity" or subtotal <= 0:
+            allocated = adjustment * item.quantity / total_quantity
+        else:
+            allocated = adjustment * (base_cost * item.quantity) / subtotal
+        landed_unit_cost = base_cost + (_line_adjustment(item) + allocated) / item.quantity
+        if landed_unit_cost < 0:
+            raise HTTPException(status_code=422, detail="Os descontos deixam o custo de alguma peça negativo.")
+        item.base_unit_cost = base_cost
+        item.unit_cost = landed_unit_cost.quantize(Decimal("0.01"))
 
 
 def _load(db: Session, purchase_id: str, *, for_update: bool = False) -> PurchaseCase:
@@ -122,7 +164,13 @@ def create_purchase(
         supplier_name=payload.supplier_name,
         needed_by=payload.needed_by,
         notes=payload.notes,
-        items=[PurchaseItem(**item.model_dump()) for item in payload.items],
+        items=[
+            PurchaseItem(
+                **item.model_dump(),
+                base_unit_cost=item.unit_cost,
+            )
+            for item in payload.items
+        ],
     )
     db.add(purchase)
     db.flush()
@@ -195,6 +243,34 @@ def get_purchase(
     return _present(_load(db, purchase_id), user)
 
 
+@router.patch("/{purchase_id}/items/{item_id}", response_model=PurchaseOut)
+def update_purchase_item(
+    purchase_id: str,
+    item_id: str,
+    payload: PurchaseItemUpdate,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_permission(Permission.PURCHASE_MANAGE)),
+) -> PurchaseOut:
+    purchase = _load(db, purchase_id)
+    if purchase.purchase_type != "parts" or purchase.status in {"received", "cancelled"}:
+        raise HTTPException(status_code=409, detail="Os custos só podem ser alterados antes da conclusão da compra.")
+    item = next((entry for entry in purchase.items if entry.id == item_id), None)
+    if not item:
+        raise HTTPException(status_code=404, detail="Peça não encontrada nesta compra.")
+    if payload.quantity is not None and payload.quantity < item.received_quantity:
+        raise HTTPException(status_code=422, detail="A quantidade não pode ser menor que o já recebido.")
+    for field, value in payload.model_dump(exclude_unset=True).items():
+        if field == "base_unit_cost":
+            item.base_unit_cost = value
+        elif value is not None:
+            setattr(item, field, value)
+    selected = next((quote for quote in purchase.quotes if quote.id == purchase.selected_quote_id), None)
+    _recompute_purchase_costs(purchase, selected)
+    _event(db, purchase, "item_cost_updated", f"Custos de {item.description} atualizados por {user.full_name}.")
+    db.commit()
+    return _present(_load(db, purchase.id), user)
+
+
 @router.post("/{purchase_id}/quotes", response_model=PurchaseOut)
 def add_quote(
     purchase_id: str,
@@ -247,24 +323,7 @@ def select_quote(
         raise HTTPException(status_code=404, detail="Cotação não encontrada nesta compra.")
     purchase.selected_quote_id = quote.id
     purchase.status = "approved"
-    adjustment = quote.freight_amount + quote.tax_amount - quote.discount_amount
-    subtotal = sum(
-        Decimal(quote.item_costs[item.id]) * item.quantity for item in purchase.items
-    )
-    total_quantity = sum(item.quantity for item in purchase.items)
-    for item in purchase.items:
-        base_cost = Decimal(quote.item_costs[item.id])
-        if quote.allocation_method == "quantity" or subtotal <= 0:
-            allocated = adjustment * item.quantity / total_quantity
-        else:
-            allocated = adjustment * (base_cost * item.quantity) / subtotal
-        landed_unit_cost = base_cost + allocated / item.quantity
-        if landed_unit_cost < 0:
-            raise HTTPException(
-                status_code=422,
-                detail="O desconto distribuído deixaria o custo de alguma peça negativo.",
-            )
-        item.unit_cost = landed_unit_cost.quantize(Decimal("0.01"))
+    _recompute_purchase_costs(purchase, quote)
     _event(
         db,
         purchase,

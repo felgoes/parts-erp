@@ -176,7 +176,11 @@ export interface PurchaseItem {
   description: string;
   quantity: number;
   received_quantity: number;
+  base_unit_cost: number | null;
   unit_cost: number | null;
+  freight_amount: number | null;
+  tax_amount: number | null;
+  discount_amount: number | null;
 }
 export interface PurchaseQuote {
   id: string;

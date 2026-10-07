@@ -54,7 +54,7 @@
 .purchase-form-section .section-heading { margin-bottom: 13px; }
 .purchase-form-section .section-heading h3 { margin: 0; font-size: 18px; }
 .purchase-line-list { display: grid; gap: 9px; }
-.purchase-line-form { position: relative; display: grid; grid-template-columns: 1.1fr .75fr 1.5fr .65fr .8fr; gap: 10px; padding: 12px; border: 1px solid var(--line); border-radius: 11px; background: #fbfcfa; }
+.purchase-line-form { position: relative; display: grid; grid-template-columns: 1.1fr .75fr 1.5fr .65fr .8fr .8fr .8fr .8fr; gap: 10px; padding: 12px; border: 1px solid var(--line); border-radius: 11px; background: #fbfcfa; }
 .purchase-line-form .remove-line { position: absolute; top: -8px; right: -7px; width: 24px; height: 24px; border: 1px solid var(--line); border-radius: 50%; background: #fff; color: #97524a; cursor: pointer; }
 .purchase-form-actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-top: 18px; }
 .purchase-form-actions .muted { font-size: 11px; }
@@ -79,6 +79,9 @@
 .item-title > div > small { color: var(--muted); font-size: 11px; }
 .item-title > strong { white-space: nowrap; font-size: 14px; }
 .item-title > strong small { color: var(--muted); font-size: 10px; font-weight: 500; }
+.item-cost-breakdown { display: flex; flex-wrap: wrap; gap: 8px 14px; margin-top: 10px; color: var(--muted); font-size: 11px; }
+.item-cost-editor { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)) auto; align-items: end; gap: 8px; margin-top: 13px; padding-top: 12px; border-top: 1px solid var(--line); }
+.item-cost-editor button { min-height: 40px; }
 .receipt-progress { display: grid; gap: 7px; margin-top: 14px; color: var(--muted); font-size: 11px; }
 .receipt-progress b { color: var(--text); }
 .receipt-progress > div { height: 6px; overflow: hidden; border-radius: 20px; background: #edf0ec; }
@@ -157,6 +160,8 @@
   .purchase-form-meta { grid-template-columns: 1fr; }
   .purchase-line-form { grid-template-columns: 1fr 1fr; gap: 9px; }
   .purchase-line-form > label:first-child, .purchase-line-form .line-description { grid-column: 1 / -1; }
+  .item-cost-editor { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .item-cost-editor button { grid-column: 1 / -1; }
   .purchase-form-actions { align-items: stretch; flex-direction: column; }
   .purchase-form-actions .primary { width: 100%; }
   .purchase-steps { gap: 4px; }

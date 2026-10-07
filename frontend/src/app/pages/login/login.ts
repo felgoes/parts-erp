@@ -83,6 +83,9 @@ export class LoginPage implements OnInit {
     this.biometricAvailable.set(status.available);
     this.biometricConfigured.set(status.configured);
     this.biometricEmail.set(status.email);
+    if (status.available && status.configured) {
+      await this.loginWithBiometric();
+    }
   }
   toggleBiometric(event: Event): void {
     this.enableBiometric.set((event.target as HTMLInputElement).checked);

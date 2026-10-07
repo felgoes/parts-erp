@@ -26,6 +26,16 @@ Never use production as the first place to build or discover UI problems. Do not
 - Backend syntax check: `cd backend && python -m compileall -q app`
 - Read deployment and server constraints in `deploy/termux/` before changing production deployment behavior.
 
+## Production server connection
+
+- The production host is the user's Android/Termux server, available through the SSH alias `parts-erp-server`.
+- Use the configured SSH key/alias from the machine; never put passwords, private keys, Cloudflare tokens, Firebase keys, or other secrets in this file or in Git.
+- Connection parameters are: SSH host alias `parts-erp-server`, port `8022`, application directory `~/parts-erp` (absolute path on Termux: `/data/data/com.termux/files/home/parts-erp`).
+- Read-only connectivity check: `ssh -o BatchMode=yes -o ConnectTimeout=8 parts-erp-server "echo ssh-ok"`.
+- Production health check: `ssh parts-erp-server "curl -fsS http://127.0.0.1:8080/health"`.
+- Deploy only through `deploy/update-s9.sh`; it requires a clean checkout exactly matching `origin/main`, builds the frontend, validates required modules, uploads a staged release, runs migrations, restarts Termux services, and checks health.
+- Do not use ad-hoc `scp`/manual overwrites for normal releases. If emergency access is required, preserve a backup and document the reason in the task before changing production.
+
 ## Shared period filters
 
 - Use `frontend/src/app/shared/period-filter.ts` for date-range filtering in dashboard, invoices, monitoring, and future pages. Do not create page-specific copies of quick presets, custom date inputs, or range validation.

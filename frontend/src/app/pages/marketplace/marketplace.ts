@@ -1,4 +1,4 @@
-import { DatePipe, DecimalPipe, JsonPipe, UpperCasePipe } from '@angular/common';
+import { DatePipe, DecimalPipe, JsonPipe } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, DestroyRef, OnInit, inject, signal } from '@angular/core';
 import { ApiService } from '../../core/api.service';
@@ -9,11 +9,12 @@ import { AuthService } from '../../core/auth.service';
 import { MarketplaceOrder, MarketplaceOrderEvent, MarketplaceStatus } from '../../core/models';
 import { statusLabel, trackingEventLabel } from '../../core/status-labels';
 import { saleStageForOrder, saleStageLabel } from '../../core/sale-stage';
+import { documentLabel } from '../../core/document-labels';
 import { PageHeader } from '../../shared/page-header';
 
 @Component({
   selector: 'app-marketplace',
-  imports: [DatePipe, DecimalPipe, JsonPipe, UpperCasePipe, PageHeader],
+  imports: [DatePipe, DecimalPipe, JsonPipe, PageHeader],
   template: `
     <app-page-header
       eyebrow="Marketplace"
@@ -353,7 +354,7 @@ import { PageHeader } from '../../shared/page-header';
                 <span class="documents-label">Arquivos do pedido</span>
                 @for (doc of invoice.documents; track doc.id) {
                   <button class="doc" (click)="download(order.invoice_id!, doc.id, doc.filename)">
-                    <span>{{ doc.document_type | uppercase }}</span
+                    <span>{{ documentLabel(doc.document_type) }}</span
                     >{{ doc.filename }}<b>↗</b>
                   </button>
                 } @empty {
@@ -495,6 +496,7 @@ export class MarketplacePage implements OnInit {
   readonly trackingEventLabel = trackingEventLabel;
   readonly saleStageForOrder = saleStageForOrder;
   readonly saleStageLabel = saleStageLabel;
+  readonly documentLabel = documentLabel;
   platformCreatedAt(order: MarketplaceOrder): string | number | null {
     const payload = order.payload || {};
     const value = payload['date_created'] ?? payload['create_time'];

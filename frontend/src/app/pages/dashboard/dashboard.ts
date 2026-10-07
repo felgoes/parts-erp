@@ -1,4 +1,4 @@
-import { CurrencyPipe, DatePipe, DecimalPipe, UpperCasePipe } from '@angular/common';
+import { CurrencyPipe, DatePipe, DecimalPipe } from '@angular/common';
 import { Component, DestroyRef, OnInit, inject, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -10,13 +10,14 @@ import { DashboardFinancialMetrics, DashboardSummary, Invoice } from '../../core
 import { canAdjustStock, canManageCatalog, canSell } from '../../core/user-access';
 import { statusLabel, trackingEventLabel } from '../../core/status-labels';
 import { saleStageForInvoice, saleStageLabel } from '../../core/sale-stage';
+import { documentLabel } from '../../core/document-labels';
 import { PageHeader } from '../../shared/page-header';
 import { PeriodFilter } from '../../shared/period-filter';
 import { AfterSaleWorkflow } from '../../shared/after-sale-workflow';
 
 @Component({
   selector: 'app-dashboard',
-  imports: [CurrencyPipe, DatePipe, DecimalPipe, UpperCasePipe, RouterLink, PageHeader, PeriodFilter, AfterSaleWorkflow],
+  imports: [CurrencyPipe, DatePipe, DecimalPipe, RouterLink, PageHeader, PeriodFilter, AfterSaleWorkflow],
   template: `
     <app-page-header
       eyebrow="Centro de controle"
@@ -77,7 +78,7 @@ import { AfterSaleWorkflow } from '../../shared/after-sale-workflow';
                       <td>{{ invoice.source === 'mercadolivre' ? 'Mercado Livre' : 'Balcão' }}</td>
                       <td>{{ invoice.issued_at || invoice.created_at | date: 'dd/MM/yyyy HH:mm' }}</td>
                       <td><span class="badge" [class]="invoice.status">{{ saleStageLabel(saleStageForInvoice(invoice)) }}</span>@if (invoice.after_sale) { <small class="post-sale-summary">{{ afterSaleLabel(invoice) }}</small> }</td>
-                      <td>@if (invoice.documents.length) { @for (doc of invoice.documents; track doc.id) { <a class="doc" href="#" (click)="$event.preventDefault(); $event.stopPropagation(); openDocument(invoice.id, doc.id)">{{ doc.document_type | uppercase }}</a> } } @else { <span class="muted">—</span> }</td>
+                      <td>@if (invoice.documents.length) { @for (doc of invoice.documents; track doc.id) { <a class="doc" href="#" (click)="$event.preventDefault(); $event.stopPropagation(); openDocument(invoice.id, doc.id)">{{ documentLabel(doc.document_type) }}</a> } } @else { <span class="muted">—</span> }</td>
                       <td class="right"><strong>{{ invoice.total | currency: 'BRL' }}</strong></td>
                     </tr>
                   }
@@ -155,6 +156,7 @@ export class DashboardPage implements OnInit {
   readonly trackingEventLabel = trackingEventLabel;
   readonly saleStageForInvoice = saleStageForInvoice;
   readonly saleStageLabel = saleStageLabel;
+  readonly documentLabel = documentLabel;
   afterSaleLabel(invoice: Invoice) {
     if (!invoice.after_sale) return '';
     const kind = invoice.after_sale.kind === 'return' ? 'Devolução' : invoice.after_sale.kind === 'claim' ? 'Reclamação' : 'Cancelamento';

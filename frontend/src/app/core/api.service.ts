@@ -36,7 +36,7 @@ export class ApiService {
     return this.http.get<ErpSettings>(`${this.base}/settings`);
   }
   saveErpSettings(
-    settings: Pick<ErpSettings, 'company_name' | 'company_short_name' | 'logo_data_url' | 'backup_enabled' | 'backup_frequency' | 'backup_retention_days' | 'backup_destination'> & { drive_client_id?: string | null; drive_client_secret?: string; drive_folder_id?: string | null },
+    settings: Pick<ErpSettings, 'company_name' | 'company_short_name' | 'logo_data_url' | 'backup_enabled' | 'backup_frequency' | 'backup_time' | 'backup_retention_days' | 'backup_destination'> & { drive_client_id?: string | null; drive_client_secret?: string; drive_folder_id?: string | null },
   ): Observable<ErpSettings> {
     return this.http.put<ErpSettings>(`${this.base}/settings`, settings);
   }

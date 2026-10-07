@@ -262,6 +262,12 @@ def _run_scheduled_backup() -> str | None:
         if not settings or not settings.backup_enabled or not settings.encrypted_drive_refresh_token:
             return None
         now = datetime.now()
+        try:
+            target_hour, target_minute = (int(part) for part in settings.backup_time.split(":", 1))
+        except (AttributeError, ValueError):
+            target_hour, target_minute = 2, 0
+        if (now.hour, now.minute) != (target_hour, target_minute):
+            return None
         if settings.backup_last_at:
             elapsed = now - settings.backup_last_at.replace(tzinfo=None)
             minimum = 7 * 24 * 3600 if settings.backup_frequency == "weekly" else 24 * 3600
@@ -310,7 +316,7 @@ class WorkerSettings:
         cron(
             scheduled_google_drive_backup,
             name="scheduled-google-drive-backup",
-            minute={0},
+            minute=set(range(60)),
             hour=set(range(24)),
             second=45,
         ),

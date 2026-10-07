@@ -43,6 +43,7 @@
       <div class="backup-grid">
         <label class="backup-enable"><input type="checkbox" name="backup_enabled" [(ngModel)]="draft.backup_enabled" /><span><strong>Quero ativar os backups</strong><small>Fica como preferência até o serviço estar conectado e operacional.</small></span></label>
         <label>Frequência<select name="backup_frequency" [(ngModel)]="draft.backup_frequency"><option value="daily">Todos os dias</option><option value="weekly">Toda semana</option></select><small>O agendamento só começa após a configuração do serviço.</small></label>
+        <label>Horário do backup<input type="time" name="backup_time" [(ngModel)]="draft.backup_time" /><small>Horário local do servidor.</small></label>
         <label>Manter cópias por<select name="backup_retention_days" [(ngModel)]="draft.backup_retention_days"><option [ngValue]="7">7 dias</option><option [ngValue]="14">14 dias</option><option [ngValue]="30">30 dias</option></select><small>Cópias mais antigas que 30 dias serão removidas quando a rotina estiver ativa.</small></label>
         <div class="destination-field"><span>Destino</span><strong class="drive-destination"><span aria-hidden="true">▣</span> Google Drive</strong><small>Sem custo de armazenamento além do espaço gratuito disponível na sua conta Google.</small></div>
       </div>

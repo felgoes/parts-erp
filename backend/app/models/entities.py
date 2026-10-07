@@ -115,6 +115,7 @@ class ErpSettings(TimestampMixin, Base):
     logo_data_url: Mapped[str | None] = mapped_column(Text)
     backup_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
     backup_frequency: Mapped[str] = mapped_column(String(20), default="daily")
+    backup_time: Mapped[str] = mapped_column(String(5), default="02:00")
     backup_retention_days: Mapped[int] = mapped_column(default=30)
     backup_destination: Mapped[str] = mapped_column(String(30), default="google_drive")
     drive_client_id: Mapped[str | None] = mapped_column(String(255))

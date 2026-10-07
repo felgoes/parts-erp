@@ -11,6 +11,7 @@ export interface ErpSettings {
   logo_data_url: string | null;
   backup_enabled: boolean;
   backup_frequency: 'daily' | 'weekly';
+  backup_time: string;
   backup_retention_days: number;
   backup_destination: 'google_drive';
   backup_ready: boolean;

@@ -35,6 +35,7 @@ class ErpSettingsOut(BaseModel):
     logo_data_url: str | None
     backup_enabled: bool
     backup_frequency: Literal["daily", "weekly"]
+    backup_time: str
     backup_retention_days: int
     backup_destination: Literal["google_drive"]
     backup_ready: bool = False
@@ -54,6 +55,7 @@ class ErpSettingsUpdate(BaseModel):
     logo_data_url: str | None = Field(default=None, max_length=3_000_000)
     backup_enabled: bool = False
     backup_frequency: Literal["daily", "weekly"] = "daily"
+    backup_time: str = Field(default="02:00", pattern=r"^(?:[01]\d|2[0-3]):[0-5]\d$")
     backup_retention_days: int = Field(default=30, ge=1, le=30)
     backup_destination: Literal["google_drive"] = "google_drive"
     drive_client_id: str | None = Field(default=None, max_length=255)

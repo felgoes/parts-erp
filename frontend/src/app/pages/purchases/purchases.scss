@@ -104,7 +104,7 @@
 .quote-item-costs > strong { grid-column: 1 / -1; font-size: 11px; }
 .quote-item-costs > label { padding: 9px; border-radius: 8px; background: #fff; }
 .quote-form > button { align-self: end; min-height: 40px; }
-.quote-cost-hint { grid-column: 1 / -1; color: var(--muted); font-size: 11px; }
+.quote-cost-hint { grid-column: 1 / -1; color: var(--muted); }
 .purchase-aside { display: grid; gap: 12px; padding-top: 22px; }
 .purchase-aside-card { display: grid; gap: 12px; }
 .purchase-aside-card > .eyebrow { margin: 0; }

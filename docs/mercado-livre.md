@@ -15,9 +15,9 @@ Todas as operações usam IDs externos únicos e chaves de idempotência. Uma no
 
 ## Configuração do webhook
 
-Cadastre a URL pública `https://api.goesautoparts.com.br/api/v1/integrations/mercadolivre/webhook` no painel de desenvolvedores do Mercado Livre e habilite `orders_v2`, `shipments` e `invoices`. O tópico `shipments` carrega as mudanças de despacho, entrega e devolução; sem ele, essas mudanças só aparecem quando outra sincronização do pedido acontece.
+Cadastre a URL pública `https://erp.goesautoparts.com.br/api/v1/integrations/mercadolivre/webhook` no painel de desenvolvedores do Mercado Livre e habilite `orders_v2`, `shipments` e `invoices`. O tópico `shipments` carrega as mudanças de despacho, entrega e devolução; sem ele, essas mudanças só aparecem quando outra sincronização do pedido acontece.
 
-O hostname `api.goesautoparts.com.br` deve existir no DNS público e encaminhar para o Nginx/API do ERP. A infraestrutura separa esse host público do painel `erp.goesautoparts.com.br`.
+O host público `erp.goesautoparts.com.br` encaminha `/api/` para a API do ERP. A rota `/api/v1/integrations/mercadolivre/notifications` também é aceita para cadastros existentes.
 
 ## Decisões e limites
 

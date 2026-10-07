@@ -1,8 +1,11 @@
 import { CurrencyPipe, DatePipe, DecimalPipe } from '@angular/common';
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { finalize } from 'rxjs';
+import { debounceTime, finalize } from 'rxjs';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+
 import { ApiService } from '../../core/api.service';
+import { LiveUpdatesService } from '../../core/live-updates.service';
 import { AuthService } from '../../core/auth.service';
 import { Product, ProductChannelDraft, ProductChannelMetadata, ProductDetail, ProductFitment, ProductImage, StockMovement } from '../../core/models';
 import { canAdjustStock, canManageCatalog, canReadCosts } from '../../core/user-access';
@@ -223,6 +226,8 @@ import { PageHeader } from '../../shared/page-header';
 })
 export class ProductsPage implements OnInit {
   private readonly api = inject(ApiService);
+  private readonly live = inject(LiveUpdatesService);
+  private readonly destroyRef = inject(DestroyRef);
   private readonly auth = inject(AuthService);
   private readonly fb = inject(FormBuilder);
   readonly products = signal<Product[]>([]);
@@ -278,9 +283,19 @@ export class ProductsPage implements OnInit {
   });
   ngOnInit() {
     this.load();
+    this.live.changes$.pipe(debounceTime(250), takeUntilDestroyed(this.destroyRef)).subscribe(() => this.load());
   }
   load() {
     this.api.products().subscribe((v) => this.products.set(v));
+    const detailId = this.detail()?.id;
+    if (detailId) {
+      this.api.productDetail(detailId).subscribe((full) => {
+        if (this.detail()?.id === detailId) this.detail.set(full);
+      });
+      this.api.productMovements(detailId).subscribe((movements) => {
+        if (this.detail()?.id === detailId) this.movements.set(movements);
+      });
+    }
   }
   openNew() {
     this.adjusting.set(null);

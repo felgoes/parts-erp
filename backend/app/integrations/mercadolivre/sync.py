@@ -27,6 +27,10 @@ from app.models import (
 )
 from app.schemas.common import InvoiceCreate, InvoiceItemCreate
 from app.services.after_sale import link_pending_after_sale_cases
+from app.services.push_notifications import (
+    enqueue_order_status_notification,
+    enqueue_sale_notification,
+)
 from app.services.sales import cancel_invoice, confirm_invoice, create_invoice
 
 ORDER_RESOURCE = re.compile(r"^/orders/(?P<id>\d+)$")
@@ -159,6 +163,9 @@ def sync_order(db: Session, seller_id: str, resource: str) -> MarketplaceOrder:
         )
     )
     previous_status = record.status if record else None
+    previous_shipping_status = record.shipping_status if record else None
+    previous_shipping_substatus = record.shipping_substatus if record else None
+    previous_invoice_id = record.invoice_id if record else None
     if not record:
         record = MarketplaceOrder(
             provider="mercadolivre",
@@ -390,6 +397,11 @@ def sync_order(db: Session, seller_id: str, resource: str) -> MarketplaceOrder:
         raise
 
     db.refresh(record)
+    enqueue_order_status_notification(
+        db, record, previous_status, previous_shipping_status, previous_shipping_substatus
+    )
+    if record.invoice_id and not previous_invoice_id:
+        enqueue_sale_notification(db, record)
     sync_documents = config.sync_documents if config else True
     if record.invoice_id and sync_documents:
         return automate_order_documents(db, record, account)

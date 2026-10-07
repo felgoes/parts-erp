@@ -1,6 +1,9 @@
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { debounceTime } from 'rxjs';
 import { DatePipe, DecimalPipe } from '@angular/common';
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, DestroyRef, OnInit, inject, signal } from '@angular/core';
 import { ApiService } from '../../core/api.service';
+import { LiveUpdatesService } from '../../core/live-updates.service';
 import { TelemetryHealth, TelemetrySummary } from '../../core/models';
 import { DateRange, quickDateRange } from '../../core/quick-date-ranges';
 import { PageHeader } from '../../shared/page-header';
@@ -70,6 +73,8 @@ import { PeriodFilter } from '../../shared/period-filter';
 })
 export class MonitoringPage implements OnInit {
   private readonly api = inject(ApiService);
+  private readonly live = inject(LiveUpdatesService);
+  private readonly destroyRef = inject(DestroyRef);
   readonly data = signal<TelemetrySummary | null>(null);
   readonly loading = signal(false);
   readonly error = signal(false);
@@ -77,7 +82,7 @@ export class MonitoringPage implements OnInit {
   private readonly initialRange = quickDateRange('last30');
   readonly startDate = signal(this.initialRange.startDate);
   readonly endDate = signal(this.initialRange.endDate);
-  ngOnInit() { this.load(); }
+  ngOnInit() { this.load(); this.live.changes$.pipe(debounceTime(2000), takeUntilDestroyed(this.destroyRef)).subscribe(() => this.load()); }
   applyPeriod(range: DateRange) {
     this.startDate.set(range.startDate);
     this.endDate.set(range.endDate);

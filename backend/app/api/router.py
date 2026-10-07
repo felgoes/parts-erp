@@ -9,6 +9,7 @@ from app.api.routes import (
     finance,
     integrations,
     invoices,
+    live_updates,
     market_studies,
     products,
     push,
@@ -32,6 +33,7 @@ api_router.include_router(catalog.router)
 api_router.include_router(telemetry.router)
 api_router.include_router(customers.router)
 api_router.include_router(invoices.router)
+api_router.include_router(live_updates.router)
 api_router.include_router(market_studies.router)
 api_router.include_router(integrations.router)
 api_router.include_router(integrations.shopee_router)

@@ -1,7 +1,10 @@
 import { DatePipe, DecimalPipe, JsonPipe, UpperCasePipe } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, DestroyRef, OnInit, inject, signal } from '@angular/core';
 import { ApiService } from '../../core/api.service';
+import { LiveUpdatesService } from '../../core/live-updates.service';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { debounceTime } from 'rxjs';
 import { AuthService } from '../../core/auth.service';
 import { MarketplaceOrder, MarketplaceOrderEvent, MarketplaceStatus } from '../../core/models';
 import { statusLabel, trackingEventLabel } from '../../core/status-labels';
@@ -96,7 +99,12 @@ import { PageHeader } from '../../shared/page-header';
                   </button>
                 </td>
                 <td>{{ o.created_at | date: 'dd/MM/yyyy HH:mm' }}</td>
-                <td>{{ statusLabel(o.status) }}</td>
+                <td>
+                  {{ statusLabel(o.status) }}
+                  @if (o.shipping_status) {
+                    <small class="block">{{ trackingEventLabel(o.shipping_status, o.shipping_substatus) }}</small>
+                  }
+                </td>
                 <td>
                   <span
                     class="badge"
@@ -221,7 +229,7 @@ import { PageHeader } from '../../shared/page-header';
               <small>Sincronização</small><strong>{{ syncLabel(order.sync_status) }}</strong>
             </div>
             <div>
-              <small>Envio</small><strong>{{ statusLabel(order.shipping_status) }}</strong>
+              <small>Envio</small><strong>{{ trackingEventLabel(order.shipping_status || 'unknown', order.shipping_substatus) }}</strong>
             </div>
             <div>
               <small>NF-e</small><strong>{{ automationLabel(order.fiscal_status) }}</strong>
@@ -368,19 +376,17 @@ import { PageHeader } from '../../shared/page-header';
                 ><span>{{ order.created_at | date: 'dd/MM/yyyy HH:mm' }}</span>
               </div>
               <div>
-                <strong>Status atual: {{ statusLabel(order.status) }}</strong
+                <strong>Status do pedido: {{ statusLabel(order.status) }}</strong
                 ><span>{{
                   order.synchronized_at
                     ? (order.synchronized_at | date: 'dd/MM/yyyy HH:mm')
                     : 'Ainda não sincronizado'
                 }}</span>
               </div>
-              @if (order.payload?.['shipping']) {
+              @if (order.shipment_id) {
                 <div>
-                  <strong>Envio {{ order.payload?.['shipping']?.['id'] || '' }}</strong
-                  ><span>{{
-                    statusLabel(order.payload?.['shipping']?.['status'] || order.shipping_status)
-                  }}</span>
+                  <strong>Envio {{ order.shipment_id }}</strong
+                  ><span>{{ trackingEventLabel(order.shipping_status || 'unknown', order.shipping_substatus) }}</span>
                 </div>
               }
             </div>
@@ -471,6 +477,8 @@ import { PageHeader } from '../../shared/page-header';
 })
 export class MarketplacePage implements OnInit {
   private readonly api = inject(ApiService);
+  private readonly live = inject(LiveUpdatesService);
+  private readonly destroyRef = inject(DestroyRef);
   private readonly auth = inject(AuthService);
   readonly status = signal<MarketplaceStatus | null>(null);
   readonly orders = signal<MarketplaceOrder[]>([]);
@@ -487,6 +495,7 @@ export class MarketplacePage implements OnInit {
   }
   ngOnInit() {
     this.load();
+    this.live.changes$.pipe(debounceTime(250), takeUntilDestroyed(this.destroyRef)).subscribe(() => this.load());
   }
   load() {
     this.api.marketplaceStatus().subscribe((v) => this.status.set(v));
@@ -495,6 +504,15 @@ export class MarketplacePage implements OnInit {
       error: () =>
         this.showFeedback('error', 'Não foi possível carregar os pedidos do Mercado Livre.'),
     });
+    const openOrderId = this.detail()?.id;
+    if (openOrderId) {
+      this.api.marketplaceOrder(openOrderId).subscribe((full) => {
+        if (this.detail()?.id === openOrderId) this.detail.set(full);
+      });
+      this.api.marketplaceOrderHistory(openOrderId).subscribe((events) => {
+        if (this.detail()?.id === openOrderId) this.history.set(events);
+      });
+    }
   }
   syncNow() {
     this.syncing.set(true);

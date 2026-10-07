@@ -1,8 +1,11 @@
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { debounceTime } from 'rxjs';
 import { CurrencyPipe, DatePipe, DecimalPipe } from '@angular/common';
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 import { FormArray, FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { finalize } from 'rxjs';
 import { ApiService } from '../../core/api.service';
+import { LiveUpdatesService } from '../../core/live-updates.service';
 import { AuthService } from '../../core/auth.service';
 import { Product, Purchase, PurchaseItem, PurchaseStatus } from '../../core/models';
 import { canAdjustStock, canManagePurchases, canReadCosts } from '../../core/user-access';
@@ -86,6 +89,8 @@ import { PeriodFilter } from '../../shared/period-filter';
 })
 export class PurchasesPage implements OnInit {
   private readonly api = inject(ApiService);
+  private readonly live = inject(LiveUpdatesService);
+  private readonly destroyRef = inject(DestroyRef);
   private readonly auth = inject(AuthService);
   private readonly fb = inject(FormBuilder);
   readonly purchases = signal<Purchase[]>([]);
@@ -146,7 +151,8 @@ export class PurchasesPage implements OnInit {
     return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
   }
 
-  ngOnInit() { this.load(); this.api.products().subscribe({ next: (items) => this.products.set(items), error: () => undefined }); }
+  ngOnInit() { this.load(); this.refreshProducts(); this.live.changes$.pipe(debounceTime(250), takeUntilDestroyed(this.destroyRef)).subscribe(() => { this.load(); this.refreshProducts(); }); }
+  private refreshProducts() { this.api.products().subscribe({ next: (items) => this.products.set(items), error: () => undefined }); }
   private newLine() { return this.fb.group({ product_id: [''], sku: ['', Validators.required], description: ['', Validators.required], quantity: [1, [Validators.required, Validators.min(0.001)]] }); }
   load() { this.api.purchases().subscribe({ next: (items) => this.purchases.set(items), error: () => this.error.set('Não foi possível carregar as compras. Tente novamente.') }); }
   applyPeriod(range: DateRange) { this.startDate.set(range.startDate); this.endDate.set(range.endDate); }

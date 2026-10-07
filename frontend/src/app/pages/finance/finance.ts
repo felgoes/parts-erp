@@ -1,8 +1,11 @@
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { debounceTime } from 'rxjs';
 import { CurrencyPipe, DecimalPipe, registerLocaleData } from '@angular/common';
 import localePtBr from '@angular/common/locales/pt';
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 import { finalize } from 'rxjs';
 import { ApiService } from '../../core/api.service';
+import { LiveUpdatesService } from '../../core/live-updates.service';
 import { FinanceDailyMetric, FinanceOverview } from '../../core/models';
 import { DateRange, quickDateRange } from '../../core/quick-date-ranges';
 import { PageHeader } from '../../shared/page-header';
@@ -70,6 +73,8 @@ registerLocaleData(localePtBr);
 })
 export class FinancePage implements OnInit {
   private readonly api = inject(ApiService);
+  private readonly live = inject(LiveUpdatesService);
+  private readonly destroyRef = inject(DestroyRef);
   private readonly initialRange = quickDateRange('last30');
   readonly startDate = signal(this.initialRange.startDate);
   readonly endDate = signal(this.initialRange.endDate);
@@ -83,7 +88,7 @@ export class FinancePage implements OnInit {
   private readonly chartMax = computed(() => Math.max(1, ...this.chartDays().flatMap((day) => [day.inbound_value, day.outbound_value])));
   readonly hasChartData = computed(() => this.chartDays().some((day) => day.inbound_value > 0 || day.outbound_value > 0));
 
-  ngOnInit() { this.load(); }
+  ngOnInit() { this.load(); this.live.changes$.pipe(debounceTime(500), takeUntilDestroyed(this.destroyRef)).subscribe(() => this.load()); }
   applyPeriod(range: DateRange) { this.startDate.set(range.startDate); this.endDate.set(range.endDate); this.load(); }
   load() {
     this.loading.set(true); this.error.set('');

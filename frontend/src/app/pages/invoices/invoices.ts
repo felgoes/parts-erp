@@ -1,8 +1,11 @@
 import { CurrencyPipe, DatePipe, UpperCasePipe } from '@angular/common';
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { forkJoin } from 'rxjs';
+import { debounceTime, forkJoin } from 'rxjs';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+
 import { ApiService } from '../../core/api.service';
+import { LiveUpdatesService } from '../../core/live-updates.service';
 import { AuthService } from '../../core/auth.service';
 import { Customer, Invoice, Product } from '../../core/models';
 import { canSell } from '../../core/user-access';
@@ -169,6 +172,8 @@ import { AfterSaleWorkflow } from '../../shared/after-sale-workflow';
 })
 export class InvoicesPage implements OnInit {
   private readonly api = inject(ApiService);
+  private readonly live = inject(LiveUpdatesService);
+  private readonly destroyRef = inject(DestroyRef);
   private readonly auth = inject(AuthService);
   canSell() { return canSell(this.auth.user()?.role); }
   readonly invoices = signal<Invoice[]>([]);
@@ -222,10 +227,15 @@ export class InvoicesPage implements OnInit {
   endDate = this.today();
   ngOnInit() {
     this.load();
+    this.live.changes$.pipe(debounceTime(250), takeUntilDestroyed(this.destroyRef)).subscribe(() => this.load());
   }
   load() {
     if (!this.validRange()) return;
     this.api.invoices(this.startDate, this.endDate).subscribe((v) => this.invoices.set(v));
+    const detailId = this.detail()?.id;
+    if (detailId) this.api.invoice(detailId).subscribe((full) => {
+      if (this.detail()?.id === detailId) this.detail.set(full);
+    });
   }
   applyDateFilter(range: { startDate: string; endDate: string }) {
     this.startDate = range.startDate;

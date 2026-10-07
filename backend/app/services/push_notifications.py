@@ -7,6 +7,7 @@ alerts when a marketplace retries the same webhook.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 import time
@@ -16,7 +17,6 @@ from typing import Any
 
 import httpx
 import jwt
-
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -42,7 +42,9 @@ def _firebase_credentials() -> dict[str, Any] | None:
         return None
     try:
         credentials = json.loads(path.read_text(encoding="utf-8"))
-        if not all(credentials.get(field) for field in ("client_email", "private_key", "project_id")):
+        if not all(
+            credentials.get(field) for field in ("client_email", "private_key", "project_id")
+        ):
             raise ValueError("service account incompleta")
         return credentials
     except Exception:  # noqa: BLE001 - notification transport must not halt sales sync
@@ -78,23 +80,33 @@ def _firebase_access_token(credentials: dict[str, Any]) -> str:
     return _access_token
 
 
-def _sale_copy(order: MarketplaceOrder, invoice: SalesInvoice | None) -> tuple[str, str, dict[str, str]]:
+def _sale_copy(
+    order: MarketplaceOrder, invoice: SalesInvoice | None
+) -> tuple[str, str, dict[str, str]]:
     provider = "Mercado Livre" if order.provider == "mercadolivre" else "Shopee"
     order_number = order.external_order_id
     customer_name = invoice.customer.name if invoice and invoice.customer else "Cliente"
-    total = f"R${float(invoice.total):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".") if invoice else ""
+    total = (
+        f"R${float(invoice.total):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+        if invoice
+        else ""
+    )
     body = f"Pedido #{order_number}"
     if customer_name:
         body += f" · {customer_name}"
     if total:
         body += f" · {total}"
-    return f"Nova venda no {provider}", body[:500], {
-        "type": "sale",
-        "provider": order.provider,
-        "order_id": order.external_order_id,
-        "invoice_id": order.invoice_id or "",
-        "route": "/marketplace",
-    }
+    return (
+        f"Nova venda no {provider}",
+        body[:500],
+        {
+            "type": "sale",
+            "provider": order.provider,
+            "order_id": order.external_order_id,
+            "invoice_id": order.invoice_id or "",
+            "route": "/marketplace",
+        },
+    )
 
 
 def enqueue_sale_notification(db: Session, order: MarketplaceOrder) -> PushNotification | None:
@@ -108,6 +120,86 @@ def enqueue_sale_notification(db: Session, order: MarketplaceOrder) -> PushNotif
     invoice = db.get(SalesInvoice, order.invoice_id)
     title, body, data = _sale_copy(order, invoice)
     notification = PushNotification(dedupe_key=dedupe_key, title=title, body=body, data=data)
+    db.add(notification)
+    db.commit()
+    db.refresh(notification)
+    deliver_pending_notifications(db, only_id=notification.id)
+    return notification
+
+
+_ORDER_STATUS_LABELS = {
+    "paid": "Pagamento aprovado",
+    "cancelled": "Pedido cancelado",
+    "canceled": "Pedido cancelado",
+    "ready_to_ship": "Pronto para envio",
+    "shipped": "Em trânsito",
+    "delivered": "Entregue",
+    "returned": "Devolvido",
+    "not_delivered": "Não entregue",
+    "dropped_off": "Postado",
+    "in_hub": "No centro de distribuição",
+    "out_for_delivery": "Saiu para entrega",
+    "delayed": "Entrega atrasada",
+    "unpaid": "Pagamento pendente",
+    "to_ship": "Aguardando envio",
+    "to_receive": "Aguardando entrega",
+    "completed": "Concluído",
+    "in_cancel": "Cancelamento em andamento",
+    "to_return": "Devolução em andamento",
+    "reclined": "Em revisão",
+}
+
+
+def enqueue_order_status_notification(
+    db: Session,
+    order: MarketplaceOrder,
+    previous_status: str | None,
+    previous_shipping_status: str | None,
+    previous_shipping_substatus: str | None,
+) -> PushNotification | None:
+    """Notify once when a known order changes payment or delivery state."""
+    if previous_status is None:
+        return None
+    order_changed = previous_status != order.status
+    shipping_changed = (
+        previous_shipping_status != order.shipping_status
+        or previous_shipping_substatus != order.shipping_substatus
+    )
+    if not order_changed and not shipping_changed:
+        return None
+    state = (order.status, order.shipping_status, order.shipping_substatus)
+    fingerprint = hashlib.sha256(repr(state).encode()).hexdigest()[:20]
+    dedupe_key = (
+        f"order-status:{order.provider}:{order.seller_id}:{order.external_order_id}:{fingerprint}"
+    )
+    existing = db.scalar(select(PushNotification).where(PushNotification.dedupe_key == dedupe_key))
+    if existing is not None:
+        return existing
+    provider = "Mercado Livre" if order.provider == "mercadolivre" else "Shopee"
+    if shipping_changed and order.shipping_status:
+        status = _ORDER_STATUS_LABELS.get(order.shipping_status.lower(), "Envio atualizado")
+        if order.shipping_substatus:
+            detail = _ORDER_STATUS_LABELS.get(order.shipping_substatus.lower())
+            if detail:
+                status = f"{status} · {detail}"
+        title = f"Rastreio atualizado no {provider}"
+    else:
+        status = _ORDER_STATUS_LABELS.get(order.status.lower(), "Status do pedido atualizado")
+        title = f"Pedido atualizado no {provider}"
+    notification = PushNotification(
+        dedupe_key=dedupe_key,
+        title=title,
+        body=f"Pedido #{order.external_order_id}: {status}"[:500],
+        data={
+            "type": "order_status",
+            "provider": order.provider,
+            "order_id": order.external_order_id,
+            "status": order.status,
+            "shipping_status": order.shipping_status or "",
+            "shipping_substatus": order.shipping_substatus or "",
+            "route": "/marketplace",
+        },
+    )
     db.add(notification)
     db.commit()
     db.refresh(notification)
@@ -130,10 +222,10 @@ def deliver_pending_notifications(db: Session, only_id: str | None = None) -> in
     devices = list(db.scalars(select(PushDevice).where(PushDevice.active.is_(True))))
     now = datetime.now(UTC)
     for notification in notifications:
-        notification.attempts += 1
         if not devices:
             notification.error = "Nenhum celular autorizado para receber notificações"
             continue
+        notification.attempts += 1
         try:
             _deliver(credentials, devices, notification)
             notification.status = "sent"

@@ -1,7 +1,10 @@
 import { CurrencyPipe, DatePipe, DecimalPipe, UpperCasePipe } from '@angular/common';
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, DestroyRef, OnInit, inject, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { debounceTime } from 'rxjs';
 import { ApiService } from '../../core/api.service';
+import { LiveUpdatesService } from '../../core/live-updates.service';
 import { AuthService } from '../../core/auth.service';
 import { DashboardFinancialMetrics, DashboardSummary, Invoice } from '../../core/models';
 import { canAdjustStock, canManageCatalog, canSell } from '../../core/user-access';
@@ -134,6 +137,8 @@ import { AfterSaleWorkflow } from '../../shared/after-sale-workflow';
 })
 export class DashboardPage implements OnInit {
   private readonly api = inject(ApiService);
+  private readonly live = inject(LiveUpdatesService);
+  private readonly destroyRef = inject(DestroyRef);
   private readonly auth = inject(AuthService);
   canSell() { return canSell(this.auth.user()?.role); }
   canManageCatalog() { return canManageCatalog(this.auth.user()?.role); }
@@ -161,8 +166,16 @@ export class DashboardPage implements OnInit {
   }
   ngOnInit() {
     this.load();
+    this.live.changes$.pipe(debounceTime(250), takeUntilDestroyed(this.destroyRef)).subscribe(() => this.load());
   }
-  load() { if (this.validRange()) this.api.dashboard(this.startDate, this.endDate).subscribe((v) => this.data.set(v)); }
+  load() {
+    if (!this.validRange()) return;
+    this.api.dashboard(this.startDate, this.endDate).subscribe((v) => this.data.set(v));
+    const detailId = this.detail()?.id;
+    if (detailId) this.api.invoice(detailId).subscribe((full) => {
+      if (this.detail()?.id === detailId) this.detail.set(full);
+    });
+  }
   applyDateFilter(range: { startDate: string; endDate: string }) {
     this.startDate = range.startDate;
     this.endDate = range.endDate;

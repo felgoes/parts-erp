@@ -1,7 +1,10 @@
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { debounceTime } from 'rxjs';
 import { CurrencyPipe, DatePipe } from '@angular/common';
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ApiService } from '../../core/api.service';
+import { LiveUpdatesService } from '../../core/live-updates.service';
 import { AuthService } from '../../core/auth.service';
 import { Customer, CustomerDetail } from '../../core/models';
 import { canSell } from '../../core/user-access';
@@ -93,6 +96,8 @@ import { PageHeader } from '../../shared/page-header';
 })
 export class CustomersPage implements OnInit {
   private readonly api = inject(ApiService);
+  private readonly live = inject(LiveUpdatesService);
+  private readonly destroyRef = inject(DestroyRef);
   private readonly auth = inject(AuthService);
   canSell() { return canSell(this.auth.user()?.role); }
   private readonly fb = inject(FormBuilder);
@@ -115,6 +120,11 @@ export class CustomersPage implements OnInit {
   });
   ngOnInit() {
     this.load();
+    this.live.changes$.pipe(debounceTime(250), takeUntilDestroyed(this.destroyRef)).subscribe(() => {
+      this.load();
+      const id = this.detail()?.id;
+      if (id) this.api.customerDetail(id).subscribe((value) => { if (this.detail()?.id === id) this.detail.set(value); });
+    });
   }
   load() {
     this.api.customers().subscribe((v) => this.customers.set(v));

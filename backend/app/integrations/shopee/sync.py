@@ -17,6 +17,10 @@ from app.models import (
     Product,
 )
 from app.schemas.common import InvoiceCreate, InvoiceItemCreate
+from app.services.push_notifications import (
+    enqueue_order_status_notification,
+    enqueue_sale_notification,
+)
 from app.services.sales import confirm_invoice, create_invoice
 
 
@@ -78,9 +82,7 @@ def sync_products(db: Session, account: MarketplaceAccount) -> int:
 
 def _sku(line: dict[str, Any]) -> str:
     return str(
-        line.get("model_sku")
-        or line.get("item_sku")
-        or f"SH-{line.get('item_id', 'unknown')}"
+        line.get("model_sku") or line.get("item_sku") or f"SH-{line.get('item_id', 'unknown')}"
     )[:80]
 
 
@@ -88,7 +90,10 @@ def sync_order(db: Session, account: MarketplaceAccount, order_sn: str) -> Marke
     client = client_for(account)
     data = client.get(
         "/api/v2/order/get_order_detail",
-        {"order_sn_list": [order_sn], "response_optional_fields": "buyer_user_id,item_list,pay_time"},
+        {
+            "order_sn_list": [order_sn],
+            "response_optional_fields": "buyer_user_id,item_list,pay_time",
+        },
     )
     order = (data.get("order_list") or [None])[0]
     if not isinstance(order, dict):
@@ -100,6 +105,8 @@ def sync_order(db: Session, account: MarketplaceAccount, order_sn: str) -> Marke
         )
     )
     status = str(order.get("order_status", "UNKNOWN"))
+    previous_status = record.status if record else None
+    previous_invoice_id = record.invoice_id if record else None
     if not record:
         record = MarketplaceOrder(
             provider="shopee",
@@ -114,7 +121,10 @@ def sync_order(db: Session, account: MarketplaceAccount, order_sn: str) -> Marke
         record.status = status
         record.payload = order
 
-    if status not in {"UNPAID", "CANCELLED", "IN_CANCEL", "TO_RETURN", "RECLINED"} and not record.invoice_id:
+    if (
+        status not in {"UNPAID", "CANCELLED", "IN_CANCEL", "TO_RETURN", "RECLINED"}
+        and not record.invoice_id
+    ):
         inputs: list[InvoiceItemCreate] = []
         for line in order.get("item_list", []):
             sku = _sku(line)
@@ -123,11 +133,19 @@ def sync_order(db: Session, account: MarketplaceAccount, order_sn: str) -> Marke
                 product = Product(sku=sku, name=str(line.get("item_name") or sku)[:200])
                 db.add(product)
                 db.flush()
-            quantity = Decimal(str(line.get("model_quantity_purchased") or line.get("quantity_purchased") or 1))
+            quantity = Decimal(
+                str(line.get("model_quantity_purchased") or line.get("quantity_purchased") or 1)
+            )
             price = Decimal(str(line.get("model_discounted_price") or line.get("item_price") or 0))
-            inputs.append(InvoiceItemCreate(product_id=product.id, quantity=quantity, unit_price=price))
+            inputs.append(
+                InvoiceItemCreate(product_id=product.id, quantity=quantity, unit_price=price)
+            )
         buyer_id = str(order.get("buyer_user_id") or "") or None
-        customer = db.scalar(select(Customer).where(Customer.marketplace_buyer_id == buyer_id)) if buyer_id else None
+        customer = (
+            db.scalar(select(Customer).where(Customer.marketplace_buyer_id == buyer_id))
+            if buyer_id
+            else None
+        )
         if not customer:
             customer = Customer(
                 name=normalize_customer_name(f"Cliente Shopee {buyer_id or order_sn}"),
@@ -138,7 +156,9 @@ def sync_order(db: Session, account: MarketplaceAccount, order_sn: str) -> Marke
         if inputs:
             invoice = create_invoice(
                 db,
-                InvoiceCreate(customer_id=customer.id, items=inputs, notes=f"Pedido Shopee #{order_sn}"),
+                InvoiceCreate(
+                    customer_id=customer.id, items=inputs, notes=f"Pedido Shopee #{order_sn}"
+                ),
                 source=InvoiceSource.shopee,
                 marketplace_order_id=f"shopee:{order_sn}",
             )
@@ -149,6 +169,9 @@ def sync_order(db: Session, account: MarketplaceAccount, order_sn: str) -> Marke
     record.synchronized_at = datetime.now(UTC)
     db.commit()
     db.refresh(record)
+    enqueue_order_status_notification(db, record, previous_status, None, None)
+    if record.invoice_id and not previous_invoice_id:
+        enqueue_sale_notification(db, record)
     return record
 
 

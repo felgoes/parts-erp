@@ -1,1 +1,2 @@
 *.sh text eol=lf
+deploy/termux/boot-parts-erp text eol=lf

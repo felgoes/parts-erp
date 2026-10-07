@@ -204,3 +204,7 @@
 .purchase-detail.no-receiving .receive-controls {
   display: none;
 }
+.purchase-detail.costs-pending .item-title > strong,
+.purchase-detail.costs-pending .item-cost-breakdown,
+.purchase-detail.costs-pending .item-cost-editor { display: none; }
+.purchase-detail.costs-pending .item-title::after { align-self: center; color: var(--muted); font-size: 12px; font-weight: 700; content: 'Aguardando cotação'; }

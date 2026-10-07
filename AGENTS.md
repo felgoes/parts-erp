@@ -5,6 +5,7 @@
 - Use the WSL Ubuntu checkout of `parts-erp-main` as the canonical working copy. On the current Windows host it is `/home/fgoes/workspace/garagista/parts-erp-main`; locate the equivalent checkout on other hosts.
 - Make source changes, builds, Git commits, and GitHub pushes from WSL. Do not develop in the Windows mirror and copy the result into WSL or production.
 - Project checkout location: the local repository is inside WSL at `/home/fgoes/workspace/garagista/parts-erp-main`. Treat the Windows folder `C:\\Users\\Usuario\\Documents\\ChatGPT\\parts erp` as an artifact area, not as the source checkout.
+- Prepare the local Python environment with a mounted/created `venv` inside that WSL checkout and run backend commands through it; do not use Docker for local development. Production keeps using the server's `backend/.venv-termux` environment.
 - Keep any separate parts-erp checkout and its branches intact; they may contain independent Termux/server work.
 - The dedicated local visual-QA account is `qa-admin@example.com`; its password is kept only in the ignored `.env.qa.local` file. Never commit that file or use this account against production.
 

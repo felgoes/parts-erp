@@ -27,7 +27,7 @@ from app.schemas.common import (
     InvoiceTrackingOut,
 )
 from app.services.after_sale import after_sales_for_invoices, invoice_after_sale
-from app.services.invoice_tracking import attach_invoice_tracking
+from app.services.invoice_tracking import attach_invoice_tracking, tracking_last_update
 from app.services.sales import cancel_invoice, confirm_invoice, create_invoice
 
 router = APIRouter(prefix="/invoices", tags=["Faturas de venda"])
@@ -185,19 +185,22 @@ def get_invoice(
                 .where(MarketplaceOrderEvent.event_type == "shipment_status")
                 .order_by(MarketplaceOrderEvent.created_at.asc())
             )
+            event_list = list(events)
+            last_update, last_update_source = tracking_last_update(order, event_list)
             result.tracking = InvoiceTrackingOut(
                 shipment_id=order.shipment_id,
                 status=order.status,
                 shipping_status=order.shipping_status,
                 label_status=order.label_status,
-                last_update=order.synchronized_at or order.updated_at,
+                last_update=last_update,
+                last_update_source=last_update_source,
                 history=[
                     InvoiceTrackingEventOut(
                         status=event.status,
                         detail=event.detail,
                         created_at=event.created_at,
                     )
-                    for event in events
+                    for event in event_list
                 ],
             )
     return result

@@ -442,6 +442,7 @@ export interface InvoiceTracking {
   shipping_status: string | null;
   label_status: string | null;
   last_update: string | null;
+  last_update_source: 'platform' | 'erp';
   history: InvoiceTrackingEvent[];
 }
 export interface DashboardSummary {

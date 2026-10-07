@@ -570,6 +570,7 @@ class InvoiceTrackingOut(UtcModel):
     shipping_status: str | None
     label_status: str | None
     last_update: datetime | None
+    last_update_source: Literal["platform", "erp"] = "erp"
     history: list[InvoiceTrackingEventOut]
 
 

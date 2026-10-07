@@ -4,6 +4,7 @@ if command -v termux-wake-lock >/dev/null 2>&1; then
   termux-wake-lock >/dev/null 2>&1 || true
 fi
 
+sshd
 sleep 10
 exec /data/data/com.termux/files/home/parts-erp/deploy/termux/start.sh \
   >>/data/data/com.termux/files/home/parts-erp/data/logs/boot.log 2>&1

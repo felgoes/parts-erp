@@ -2,9 +2,9 @@
 
 ## Canonical development environment
 
-- Use the WSL Ubuntu checkout at `/home/underlocks/workspace/garagista/parts-erp-main` as the canonical working copy for this project.
+- Use the WSL Ubuntu checkout of `parts-erp-main` as the canonical working copy. On the current Windows host it is `/home/fgoes/workspace/garagista/parts-erp-main`; locate the equivalent checkout on other hosts.
 - Make source changes, builds, Git commits, and GitHub pushes from WSL. Do not develop in the Windows mirror and copy the result into WSL or production.
-- Keep the user's existing `/home/underlocks/workspace/garagista/parts-erp` checkout and its `fix/production-readiness` branch intact; it contains separate Termux/server work.
+- Keep any separate parts-erp checkout and its branches intact; they may contain independent Termux/server work.
 - The dedicated local visual-QA account is `qa-admin@example.com`; its password is kept only in the ignored `.env.qa.local` file. Never commit that file or use this account against production.
 
 ## Required delivery order
@@ -43,3 +43,9 @@ Never use production as the first place to build or discover UI problems. Do not
 - Use `frontend/src/app/shared/period-filter.ts` for date-range filtering in dashboard, invoices, monitoring, and future pages. Do not create page-specific copies of quick presets, custom date inputs, or range validation.
 - The shared component owns the preset list and date-input behavior; pages provide labels/default ranges and handle the emitted range. Pass status options only when that page needs an additional status filter (as invoices do).
 - Keep the shared component responsive and validate it in browser at desktop and mobile widths whenever its markup or styles change.
+
+## Android APK releases
+
+- The current, versioned Android installers live on the Termux server in `~/parts-erp/data/apks/`. This directory survives normal deployments. `latest.apk` and `latest.json` point to the newest published build. The same files are served at `https://erp.goesautoparts.com.br/downloads/apk/`.
+- After building and signing a new APK, commit and push its source and deploy that exact commit. Then run `deploy/publish-apk-s9.sh /absolute/path/to/signed.apk` with the same `S9_*` SSH variables as `deploy/update-s9.sh`. The publisher verifies package, version, signature, SHA-256, and exact Git commit before publishing atomically. Confirm both the public APK and manifest URLs and their hash.
+- Keep `frontend/android/app/google-services.json`, the Android signing keystore and its password out of Git and off the public server. The Firebase config and signing key must be obtained securely on each build machine. An APK signed with a different key cannot update an installed APK with the same package name.

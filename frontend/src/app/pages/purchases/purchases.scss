@@ -57,10 +57,9 @@
 .purchase-line-form { position: relative; display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); align-items: start; gap: 10px; padding: 12px; border: 1px solid var(--line); border-radius: 11px; background: #fbfcfa; }
 .purchase-line-form > label:nth-child(1) { grid-column: span 3; }
 .purchase-line-form > label:nth-child(2) { grid-column: span 2; }
-.purchase-line-form > label:nth-child(3) { grid-column: span 4; }
-.purchase-line-form > label:nth-child(4) { grid-column: span 1; }
-.purchase-line-form > label:nth-child(5) { grid-column: span 2; }
-.purchase-line-form > label:nth-child(n + 6):nth-child(-n + 8) { grid-column: span 3; }
+.purchase-line-form > label:nth-child(3) { grid-column: span 5; }
+.purchase-line-form > label:nth-child(4) { grid-column: span 2; }
+.purchase-flow-hint { margin: -3px 0 12px; color: var(--muted); font-size: 12px; line-height: 1.45; }
 .purchase-line-form input, .purchase-line-form select { min-width: 0; }
 .purchase-line-form .remove-line { position: absolute; top: -8px; right: -7px; width: 24px; height: 24px; border: 1px solid var(--line); border-radius: 50%; background: #fff; color: #97524a; cursor: pointer; }
 .purchase-form-actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-top: 18px; }

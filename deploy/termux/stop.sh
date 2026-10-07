@@ -23,8 +23,7 @@ stop_pid() {
 }
 
 stop_all_cloudflared() {
-  local cloudflared_bin="$HOME/cloudflared"
-  for pid in $(ps -ef | awk -v bin="$cloudflared_bin" '$0 ~ bin " tunnel" {print $2}'); do
+  for pid in $(ps -ef | awk '$0 ~ /cloudflared tunnel/ {print $2}'); do
     kill "$pid" 2>/dev/null || true
   done
 }

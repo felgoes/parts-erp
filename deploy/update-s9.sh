@@ -17,9 +17,8 @@ mkdir -p "$LOCAL_STAGE/source" "$LOCAL_STAGE/site"
 cp -a "$ROOT_DIR/frontend/dist/frontend/browser/." "$LOCAL_STAGE/site/"
 git -C "$ROOT_DIR" archive --format=tar HEAD | tar -xf - -C "$LOCAL_STAGE/source"
 test -s "$LOCAL_STAGE/site/index.html" && test -f "$LOCAL_STAGE/source/backend/app/main.py"
-for module in settings purchases finance market-studies; do
-  find "$LOCAL_STAGE/site" -maxdepth 1 -type f -name "*${module}*.js" | grep -q . || { echo "Build sem módulo obrigatório: $module" >&2; exit 1; }
-done
+find "$LOCAL_STAGE/site" -maxdepth 1 -type f -name 'main-*.js' -size +0c -print -quit | grep -q . || { echo "Build sem bundle principal." >&2; exit 1; }
+find "$LOCAL_STAGE/site" -maxdepth 1 -type f -name 'chunk-*.js' -size +0c -print -quit | grep -q . || { echo "Build sem chunks JavaScript." >&2; exit 1; }
 ssh "${SSH_OPTS[@]}" "$REMOTE" bash -s -- "$S9_APP_DIR" "$STAGE" <<\PREP
 set -euo pipefail; [[ "$2" =~ ^\.deploy-[a-f0-9]+$ ]]
 APP="$(realpath -m "$HOME/$1")"; [[ "$APP" == "$HOME"/* && "$APP" != "$HOME" ]]

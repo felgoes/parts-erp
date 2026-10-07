@@ -9,6 +9,8 @@
 
 ## Required delivery order
 
+The default expectation for every completed application change is production delivery. Do not stop at a local build or GitHub push unless the user explicitly says not to deploy. After verification and push, deploy the exact pushed commit to production and report the public health result. If deployment is blocked by an external failure, keep the change documented and report the blocker clearly instead of silently treating the task as complete.
+
 For application changes, complete these steps in order:
 
 1. Implement and build locally in WSL.

@@ -53,6 +53,9 @@ mv "$APP/frontend/dist/frontend" "$APP/data/backups/frontend-pre-$NOW"
 mkdir -p "$APP/frontend/dist/frontend/browser"
 cp -a "$WEB/." "$APP/frontend/dist/frontend/browser/"
 cp -a "$S/deploy/." "$APP/deploy/"
+mkdir -p "$HOME/.termux/boot"
+cp "$APP/deploy/termux/boot-parts-erp" "$HOME/.termux/boot/parts-erp"
+chmod +x "$HOME/.termux/boot/parts-erp"
 chmod 600 backend/.env
 if [[ -f deploy/termux/redis.conf.in ]]; then sed "s|__APP_DIR__|$APP|g" deploy/termux/redis.conf.in >deploy/termux/redis.conf; fi
 chmod +x deploy/termux/*.sh; (cd backend && "$V/bin/alembic" upgrade heads)

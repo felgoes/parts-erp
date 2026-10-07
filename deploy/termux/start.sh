@@ -48,18 +48,13 @@ if ! is_running "$RUN_DIR/nginx.pid"; then
   nginx -c "$APP_DIR/deploy/termux/nginx.conf"
 fi
 
-# Android does not expose /etc/resolv.conf to Termux. cloudflared is a Go
-# binary and otherwise falls back to an unavailable ::1 resolver after a
-# reboot, producing Cloudflare 1033. Bind the Termux resolver into a small
-# proot namespace and keep the tunnel alongside the ERP services.
 CLOUDFLARED_BIN="${CLOUDFLARED_BIN:-$HOME/cloudflared}"
 CLOUDFLARED_TOKEN_FILE="${CLOUDFLARED_TOKEN_FILE:-$HOME/cloudflared-token}"
 if [[ -x "$CLOUDFLARED_BIN" && -s "$CLOUDFLARED_TOKEN_FILE" ]] \
   && ! is_running "$RUN_DIR/cloudflared.pid"; then
   rm -f "$RUN_DIR/cloudflared.pid"
-  nohup proot -b "$PREFIX/etc/resolv.conf:/etc/resolv.conf" env GODEBUG=netdns=go \
-    "$CLOUDFLARED_BIN" tunnel --no-autoupdate --protocol http2 run \
-    --token-file "$CLOUDFLARED_TOKEN_FILE" >>"$LOG_DIR/cloudflared.log" 2>&1 </dev/null &
+  nohup "$APP_DIR/deploy/termux/cloudflared-supervisor.sh" \
+    >>"$LOG_DIR/cloudflared-supervisor.log" 2>&1 </dev/null &
   echo $! >"$RUN_DIR/cloudflared.pid"
 fi
 

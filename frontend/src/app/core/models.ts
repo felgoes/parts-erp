@@ -440,6 +440,7 @@ export interface InvoiceTracking {
   shipment_id: string | null;
   status: string | null;
   shipping_status: string | null;
+  shipping_substatus: string | null;
   label_status: string | null;
   last_update: string | null;
   last_update_source: 'platform' | 'erp';

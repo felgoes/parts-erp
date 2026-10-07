@@ -124,9 +124,20 @@ export function statusLabel(value: string | null | undefined): string {
 }
 
 export function trackingEventLabel(status: string, detail?: string | null): string {
+  const normalizedStatus = normalizeStatus(status);
+  const normalizedDetail = normalizeStatus(detail || '');
+  const detailLabel = trackingDetailLabel(detail);
+  const laterStage =
+    ['picked_up', 'shipped_to_carrier', 'dropped_off'].includes(normalizedDetail)
+      ? 'Despachado'
+      : ['in_transit', 'in_hub', 'on_route', 'out_for_delivery', 'at_the_branch'].includes(normalizedDetail)
+        ? 'Em trânsito'
+        : null;
+  if (laterStage && ['ready_to_ship', 'handling'].includes(normalizedStatus)) {
+    return detailLabel ? `${laterStage} · ${detailLabel}` : laterStage;
+  }
   const translatedStatus = statusLabel(status);
-  const translatedDetail = trackingDetailLabel(detail);
-  return translatedDetail ? `${translatedStatus} · ${translatedDetail}` : translatedStatus;
+  return detailLabel ? `${translatedStatus} · ${detailLabel}` : translatedStatus;
 }
 
 function trackingDetailLabel(value: string | null | undefined): string | null {

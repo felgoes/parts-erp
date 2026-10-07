@@ -86,6 +86,7 @@ def attach_invoice_tracking(db: Session, invoices: list[InvoiceOut]) -> None:
             shipment_id=order.shipment_id,
             status=order.status,
             shipping_status=order.shipping_status,
+            shipping_substatus=order.shipping_substatus,
             label_status=order.label_status,
             last_update=last_update,
             last_update_source=last_update_source,

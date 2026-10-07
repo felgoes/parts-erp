@@ -36,11 +36,14 @@ export function saleStageLabel(value: SaleStageCode): string {
 export function saleStageForOrder(order: MarketplaceOrder): SaleStageCode {
   const status = String(order.status || '').toLowerCase();
   const shipping = String(order.shipping_status || '').toLowerCase();
+  const shippingSubstatus = String(order.shipping_substatus || '').toLowerCase();
   const label = String(order.label_status || '').toLowerCase();
   const fiscal = String(order.fiscal_status || '').toLowerCase();
   if (['cancelled', 'canceled', 'in_cancel'].includes(status)) return 'cancelled';
   if (['unpaid', 'pending', 'payment_required', 'payment_pending'].includes(status)) return 'payment_pending';
   if (['returned', 'returning_to_sender', 'returned_to_sender'].includes(shipping)) return 'returned';
+  if (['picked_up', 'shipped_to_carrier', 'dropped_off'].includes(shippingSubstatus)) return 'dispatched';
+  if (['in_transit', 'in_hub', 'on_route', 'out_for_delivery', 'at_the_branch'].includes(shippingSubstatus)) return 'in_transit';
   if (shipping === 'delivered') return 'finalized';
   if (['shipped', 'shipped_to_carrier', 'dropped_off'].includes(shipping)) return 'dispatched';
   if (['in_transit', 'in_hub', 'on_route', 'out_for_delivery'].includes(shipping)) return 'in_transit';
@@ -57,6 +60,9 @@ export function saleStageForInvoice(invoice: Invoice): SaleStageCode {
   if (invoice.status === 'cancelled') return 'cancelled';
   if (invoice.after_sale?.kind === 'return') return 'returned';
   const shipping = String(invoice.tracking?.shipping_status || '').toLowerCase();
+  const shippingSubstatus = String(invoice.tracking?.shipping_substatus || '').toLowerCase();
+  if (['picked_up', 'shipped_to_carrier', 'dropped_off'].includes(shippingSubstatus)) return 'dispatched';
+  if (['in_transit', 'in_hub', 'on_route', 'out_for_delivery', 'at_the_branch'].includes(shippingSubstatus)) return 'in_transit';
   if (shipping === 'delivered') return 'finalized';
   if (['shipped', 'shipped_to_carrier', 'dropped_off'].includes(shipping)) return 'dispatched';
   if (['in_transit', 'in_hub', 'on_route', 'out_for_delivery'].includes(shipping)) return 'in_transit';

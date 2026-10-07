@@ -10,3 +10,5 @@
 - [x] [P1] CONCLUÍDO — Usar em todos os objetos sincronizados do Mercado Livre e Shopee os timestamps fornecidos pelas plataformas, sem substituir por horário local do ERP.
 - [x] [P2] CONCLUÍDO — Confirmar se os webhooks chegam e são processados imediatamente, medindo recebimento, fila, processamento e atualização no banco.
 - [x] [P3] CONCLUÍDO — Documentar como funciona o horário de atualização do rastreio exibido no pedido, visão geral, faturas e pedidos do Mercado Livre.
+
+- [ ] [P5] Melhorar a esteira de status de venda em todos os objetos e telas, separando pedido, pagamento, fiscal, etiqueta, expedição e entrega. Status sugeridos: Pedido recebido → Pagamento aprovado → Aguardando NF → NF emitida → Aguardando etiqueta → Etiqueta disponível → Pronto para envio → Despachado → Em trânsito → Saiu para entrega → Entregue → Finalizado, com ramificações para pagamento pendente, revisão, cancelado, devolvido e falha na entrega.

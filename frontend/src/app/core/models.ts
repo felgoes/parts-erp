@@ -183,6 +183,10 @@ export interface PurchaseQuote {
   supplier_name: string;
   supplier_contact: string | null;
   total: number | null;
+  freight_amount: number;
+  tax_amount: number;
+  discount_amount: number;
+  allocation_method: 'proportional' | 'quantity';
   item_costs: Record<string, number> | null;
   delivery_days: number | null;
   payment_terms: string | null;

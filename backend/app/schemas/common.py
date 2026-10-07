@@ -360,6 +360,10 @@ class PurchaseQuoteCreate(BaseModel):
     supplier_name: str = Field(min_length=2, max_length=200)
     supplier_contact: str | None = Field(default=None, max_length=200)
     total: Decimal = Field(ge=0)
+    freight_amount: Decimal = Field(default=Decimal("0"), ge=0)
+    tax_amount: Decimal = Field(default=Decimal("0"), ge=0)
+    discount_amount: Decimal = Field(default=Decimal("0"), ge=0)
+    allocation_method: Literal["proportional", "quantity"] = "proportional"
     item_costs: dict[str, Decimal] = Field(min_length=1)
     delivery_days: int | None = Field(default=None, ge=0, le=3650)
     payment_terms: str | None = Field(default=None, max_length=200)
@@ -400,6 +404,10 @@ class PurchaseQuoteOut(ORMModel):
     supplier_name: str
     supplier_contact: str | None
     total: Decimal | None = None
+    freight_amount: Decimal = Decimal("0")
+    tax_amount: Decimal = Decimal("0")
+    discount_amount: Decimal = Decimal("0")
+    allocation_method: str = "proportional"
     item_costs: dict[str, Decimal] | None = None
     delivery_days: int | None
     payment_terms: str | None

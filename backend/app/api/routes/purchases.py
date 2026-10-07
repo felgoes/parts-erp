@@ -38,7 +38,15 @@ def _present(purchase: PurchaseCase, user: User) -> PurchaseOut:
         update={
             "items": [item.model_copy(update={"unit_cost": None}) for item in result.items],
             "quotes": [
-                quote.model_copy(update={"total": None, "item_costs": {}})
+                quote.model_copy(
+                    update={
+                        "total": None,
+                        "item_costs": {},
+                        "freight_amount": Decimal("0"),
+                        "tax_amount": Decimal("0"),
+                        "discount_amount": Decimal("0"),
+                    }
+                )
                 for quote in result.quotes
             ],
             "events": [
@@ -239,8 +247,24 @@ def select_quote(
         raise HTTPException(status_code=404, detail="Cotação não encontrada nesta compra.")
     purchase.selected_quote_id = quote.id
     purchase.status = "approved"
+    adjustment = quote.freight_amount + quote.tax_amount - quote.discount_amount
+    subtotal = sum(
+        Decimal(quote.item_costs[item.id]) * item.quantity for item in purchase.items
+    )
+    total_quantity = sum(item.quantity for item in purchase.items)
     for item in purchase.items:
-        item.unit_cost = Decimal(quote.item_costs[item.id])
+        base_cost = Decimal(quote.item_costs[item.id])
+        if quote.allocation_method == "quantity" or subtotal <= 0:
+            allocated = adjustment * item.quantity / total_quantity
+        else:
+            allocated = adjustment * (base_cost * item.quantity) / subtotal
+        landed_unit_cost = base_cost + allocated / item.quantity
+        if landed_unit_cost < 0:
+            raise HTTPException(
+                status_code=422,
+                detail="O desconto distribuído deixaria o custo de alguma peça negativo.",
+            )
+        item.unit_cost = landed_unit_cost.quantize(Decimal("0.01"))
     _event(
         db,
         purchase,

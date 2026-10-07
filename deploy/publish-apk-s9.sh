@@ -11,7 +11,7 @@ git -C "$ROOT_DIR" fetch --quiet origin main
 AAPT="${AAPT:-$(command -v aapt || true)}"
 APKSIGNER="${APKSIGNER:-$(command -v apksigner || true)}"
 [[ -x "$AAPT" && -x "$APKSIGNER" ]] || { echo "Defina AAPT e APKSIGNER com as ferramentas do Android SDK." >&2; exit 1; }
-BADGING="$("$AAPT" dump badging "$APK" | head -n 1)"
+BADGING="$("$AAPT" dump badging "$APK" | sed -n "1p")"
 PACKAGE="$(printf '%s\n' "$BADGING" | sed -nE "s/^package: name='([^']+)'.*/\1/p")"
 VERSION="$(printf '%s\n' "$BADGING" | sed -nE "s/.*versionName='([^']+)'.*/\1/p")"
 VERSION_CODE="$(printf '%s\n' "$BADGING" | sed -nE "s/.*versionCode='([^']+)'.*/\1/p")"

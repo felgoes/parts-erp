@@ -1,4 +1,6 @@
 import asyncio
+import logging
+import time
 from datetime import datetime
 from typing import Any
 
@@ -24,10 +26,14 @@ from app.services.after_sale import after_sale_notification, upsert_after_sale_c
 from app.services.google_drive_backup import run_backup
 from app.services.push_notifications import deliver_pending_notifications, enqueue_sale_notification
 
+logger = logging.getLogger(__name__)
+
 
 def _process_mercadolivre_notification(
     topic: str, resource: str, seller_id: str
 ) -> None:
+    started_at = time.monotonic()
+    logger.info("webhook processing provider=mercadolivre topic=%s resource=%s seller_id=%s", topic, resource, seller_id)
     with SessionLocal() as db:
         account = db.scalar(
             select(MarketplaceAccount).where(MarketplaceAccount.seller_id == seller_id)
@@ -104,6 +110,10 @@ def _process_mercadolivre_notification(
             # Always refresh the order before processing its webhook. Existing
             # invoices must also receive cancellations, refunds and returns.
             order = sync_order(db, seller_id, f"/orders/{order_id}")
+            if order and order.sync_status == "error":
+                # sync_order persists the error for the UI, but the worker must
+                # raise so ARQ retries the webhook instead of marking it done.
+                raise RuntimeError(order.sync_error or "Falha ao processar pedido do Mercado Livre")
             # A sale alert is emitted exactly once, only when this webhook first
             # turns a marketplace order into a linked ERP invoice.
             if order and order.invoice_id and not previous_invoice_id:
@@ -148,13 +158,18 @@ def _process_mercadolivre_notification(
                 db.commit()
             if order.invoice_id and topic == "invoices":
                 sync_invoice_documents(db, account, order_id, order.invoice_id)
+    logger.info("webhook processed provider=mercadolivre topic=%s resource=%s elapsed_ms=%.1f", topic, resource, (time.monotonic() - started_at) * 1000)
 
 
 async def process_mercadolivre_notification(
     ctx: dict[str, Any], topic: str, resource: str, seller_id: str
 ) -> None:
     del ctx
-    await asyncio.to_thread(_process_mercadolivre_notification, topic, resource, seller_id)
+    try:
+        await asyncio.to_thread(_process_mercadolivre_notification, topic, resource, seller_id)
+    except Exception:
+        logger.exception("webhook failed provider=mercadolivre topic=%s resource=%s", topic, resource)
+        raise
 
 
 def _sync_mercadolivre_account(seller_id: str) -> None:
@@ -193,7 +208,9 @@ async def sync_shopee_account(ctx: dict[str, Any], shop_id: str) -> None:
 
 
 def _process_shopee_notification(payload: dict[str, Any]) -> None:
+    started_at = time.monotonic()
     shop_id = str(payload.get("shop_id") or payload.get("shopid") or "")
+    logger.info("webhook processing provider=shopee shop_id=%s", shop_id)
     order_sn = str((payload.get("data") or {}).get("ordersn") or payload.get("ordersn") or "")
     with SessionLocal() as db:
         account = db.scalar(
@@ -223,7 +240,11 @@ def _process_shopee_notification(payload: dict[str, Any]) -> None:
 
 async def process_shopee_notification(ctx: dict[str, Any], payload: dict[str, Any]) -> None:
     del ctx
-    await asyncio.to_thread(_process_shopee_notification, payload)
+    try:
+        await asyncio.to_thread(_process_shopee_notification, payload)
+    except Exception:
+        logger.exception("webhook failed provider=shopee shop_id=%s", payload.get("shop_id") or payload.get("shopid"))
+        raise
 
 
 def _reconcile_pending_marketplace_documents() -> int:

@@ -1,5 +1,6 @@
 import logging
 import re
+import time
 from datetime import UTC, datetime, timedelta
 from urllib.parse import urlencode
 
@@ -404,9 +405,20 @@ async def webhook(request: Request) -> dict[str, bool]:
     )
     if not valid_resource:
         raise HTTPException(status_code=400, detail="Recurso de notificação inválido")
+    received_at = time.monotonic()
     redis = await create_pool(RedisSettings.from_dsn(get_settings().redis_url))
-    await redis.enqueue_job("process_mercadolivre_notification", topic, resource, seller_id)
-    await redis.close()
+    try:
+        job = await redis.enqueue_job("process_mercadolivre_notification", topic, resource, seller_id)
+    finally:
+        await redis.close()
+    logger.info(
+        "webhook accepted provider=mercadolivre topic=%s resource=%s seller_id=%s queue_ms=%.1f job_id=%s",
+        topic,
+        resource,
+        seller_id,
+        (time.monotonic() - received_at) * 1000,
+        getattr(job, "job_id", "unknown"),
+    )
     return {"accepted": True}
 
 
@@ -585,7 +597,17 @@ async def shopee_webhook(request: Request) -> dict[str, bool]:
     shop_id = str(payload.get("shop_id") or payload.get("shopid") or "")
     if not shop_id:
         raise HTTPException(status_code=400, detail="Loja Shopee ausente")
+    received_at = time.monotonic()
     redis = await create_pool(RedisSettings.from_dsn(get_settings().redis_url))
-    await redis.enqueue_job("process_shopee_notification", payload)
-    await redis.close()
+    try:
+        job = await redis.enqueue_job("process_shopee_notification", payload)
+    finally:
+        await redis.close()
+    logger.info(
+        "webhook accepted provider=shopee shop_id=%s order_sn=%s queue_ms=%.1f job_id=%s",
+        shop_id,
+        str((payload.get("data") or {}).get("ordersn") or payload.get("ordersn") or ""),
+        (time.monotonic() - received_at) * 1000,
+        getattr(job, "job_id", "unknown"),
+    )
     return {"accepted": True}

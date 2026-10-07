@@ -119,21 +119,32 @@ export class PurchasesPage implements OnInit {
   });
   readonly quoteForm = this.fb.nonNullable.group({ supplier_name: ['', Validators.required], supplier_contact: [''], freight_amount: [0, [Validators.required, Validators.min(0)]], tax_amount: [0, [Validators.required, Validators.min(0)]], discount_amount: [0, [Validators.required, Validators.min(0)]], allocation_method: ['proportional' as 'proportional' | 'quantity'], delivery_days: [null as number | null], payment_terms: [''], notes: [''] });
   readonly lines = this.form.controls.items as FormArray;
+  readonly periodPurchases = computed(() => {
+    const startDate = this.startDate();
+    const endDate = this.endDate();
+    return this.purchases().filter((purchase) => {
+      const date = this.purchaseLocalDate(purchase);
+      return (!startDate || date >= startDate) && (!endDate || date <= endDate);
+    });
+  });
   readonly filtered = computed(() => {
     const term = this.search().trim().toLocaleLowerCase('pt-BR');
-    return this.purchases().filter((purchase) => {
-      const date = new Date(purchase.created_at).toISOString().slice(0, 10);
-      const matchPeriod = (!this.startDate() || date >= this.startDate()) && (!this.endDate() || date <= this.endDate());
+    return this.periodPurchases().filter((purchase) => {
       const matchStatus = this.statusFilter() === 'all' || purchase.status === this.statusFilter();
       const haystack = [purchase.number, ...purchase.items.flatMap((item) => [item.sku, item.description]), ...purchase.quotes.map((quote) => quote.supplier_name)].join(' ').toLocaleLowerCase('pt-BR');
-      return matchPeriod && matchStatus && (!term || haystack.includes(term));
+      return matchStatus && (!term || haystack.includes(term));
     });
   });
   readonly summary = computed(() => [
-    { status: 'negotiating', label: 'Em negociação', count: this.purchases().filter((p) => p.status === 'negotiating').length, note: 'Aguardando propostas' },
-    { status: 'ordered', label: 'Pedidos em aberto', count: this.purchases().filter((p) => ['ordered', 'partially_received'].includes(p.status)).length, note: 'Aguardando recebimento' },
-    { status: 'received', label: 'Recebidas', count: this.purchases().filter((p) => p.status === 'received').length, note: 'Estoque atualizado' },
+    { status: 'negotiating', label: 'Em negociação', count: this.periodPurchases().filter((p) => p.status === 'negotiating').length, note: 'Aguardando propostas' },
+    { status: 'ordered', label: 'Pedidos em aberto', count: this.periodPurchases().filter((p) => ['ordered', 'partially_received'].includes(p.status)).length, note: 'Aguardando recebimento' },
+    { status: 'received', label: 'Recebidas', count: this.periodPurchases().filter((p) => p.status === 'received').length, note: 'Estoque atualizado' },
   ]);
+
+  private purchaseLocalDate(purchase: Purchase) {
+    const date = new Date(purchase.created_at);
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+  }
 
   ngOnInit() { this.load(); this.api.products().subscribe({ next: (items) => this.products.set(items), error: () => undefined }); }
   private newLine() { return this.fb.group({ product_id: [''], sku: ['', Validators.required], description: ['', Validators.required], quantity: [1, [Validators.required, Validators.min(0.001)]] }); }

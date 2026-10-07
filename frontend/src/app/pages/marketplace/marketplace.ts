@@ -8,6 +8,7 @@ import { debounceTime } from 'rxjs';
 import { AuthService } from '../../core/auth.service';
 import { MarketplaceOrder, MarketplaceOrderEvent, MarketplaceStatus } from '../../core/models';
 import { statusLabel, trackingEventLabel } from '../../core/status-labels';
+import { saleStageForOrder, saleStageLabel } from '../../core/sale-stage';
 import { PageHeader } from '../../shared/page-header';
 
 @Component({
@@ -100,7 +101,7 @@ import { PageHeader } from '../../shared/page-header';
                 </td>
                 <td>{{ (platformCreatedAt(o) || o.created_at) | date: 'dd/MM/yyyy HH:mm' }}</td>
                 <td>
-                  {{ statusLabel(o.status) }}
+                  {{ saleStageLabel(saleStageForOrder(o)) }}
                   @if (o.shipping_status) {
                     <small class="block">{{ trackingEventLabel(o.shipping_status, o.shipping_substatus) }}</small>
                   }
@@ -214,14 +215,17 @@ import { PageHeader } from '../../shared/page-header';
               <span
                 class="badge"
                 [class.cancelled]="order.status === 'cancelled'"
-                [class.success]="order.status === 'paid'"
-                >{{ statusLabel(order.status) }}</span
+                [class.success]="saleStageForOrder(order) === 'finalized'"
+                >{{ saleStageLabel(saleStageForOrder(order)) }}</span
               ><button class="close" aria-label="Fechar pedido" (click)="detail.set(null)">
                 ×
               </button>
             </div>
           </div>
           <div class="detail-grid">
+            <div>
+              <small>Etapa da venda</small><strong>{{ saleStageLabel(saleStageForOrder(order)) }}</strong>
+            </div>
             <div>
               <small>Status no ML</small><strong>{{ statusLabel(order.status) }}</strong>
             </div>
@@ -489,6 +493,8 @@ export class MarketplacePage implements OnInit {
   readonly history = signal<MarketplaceOrderEvent[]>([]);
   readonly statusLabel = statusLabel;
   readonly trackingEventLabel = trackingEventLabel;
+  readonly saleStageForOrder = saleStageForOrder;
+  readonly saleStageLabel = saleStageLabel;
   platformCreatedAt(order: MarketplaceOrder): string | number | null {
     const payload = order.payload || {};
     const value = payload['date_created'] ?? payload['create_time'];

@@ -10,6 +10,7 @@ import { AuthService } from '../../core/auth.service';
 import { Customer, Invoice, Product } from '../../core/models';
 import { canSell } from '../../core/user-access';
 import { statusLabel, trackingEventLabel } from '../../core/status-labels';
+import { saleStageForInvoice, saleStageLabel } from '../../core/sale-stage';
 import { PageHeader } from '../../shared/page-header';
 import { PeriodFilter, PeriodFilterStatusOption } from '../../shared/period-filter';
 import { AfterSaleWorkflow } from '../../shared/after-sale-workflow';
@@ -66,7 +67,7 @@ import { AfterSaleWorkflow } from '../../shared/after-sale-workflow';
                 <td>{{ i.source === 'mercadolivre' ? 'Mercado Livre' : 'Manual' }}</td>
                 <td>{{ i.issued_at || i.created_at | date: 'dd/MM/yyyy HH:mm' }}</td>
                 <td>
-                  <span class="badge" [class]="i.status">{{ label(i.status) }}</span>
+                  <span class="badge" [class]="i.status">{{ saleStageLabel(saleStageForInvoice(i)) }}</span>
                   @if (i.after_sale) { <small class="post-sale-summary">{{ afterSaleLabel(i) }}</small> }
                 </td>
                 <td>
@@ -190,6 +191,8 @@ export class InvoicesPage implements OnInit {
   ]);
   readonly statusLabel = statusLabel;
   readonly trackingEventLabel = trackingEventLabel;
+  readonly saleStageForInvoice = saleStageForInvoice;
+  readonly saleStageLabel = saleStageLabel;
   visibleInvoices() {
     const invoices = this.invoices();
     if (this.statusFilter === 'open') {

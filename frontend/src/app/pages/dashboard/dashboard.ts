@@ -9,6 +9,7 @@ import { AuthService } from '../../core/auth.service';
 import { DashboardFinancialMetrics, DashboardSummary, Invoice } from '../../core/models';
 import { canAdjustStock, canManageCatalog, canSell } from '../../core/user-access';
 import { statusLabel, trackingEventLabel } from '../../core/status-labels';
+import { saleStageForInvoice, saleStageLabel } from '../../core/sale-stage';
 import { PageHeader } from '../../shared/page-header';
 import { PeriodFilter } from '../../shared/period-filter';
 import { AfterSaleWorkflow } from '../../shared/after-sale-workflow';
@@ -75,7 +76,7 @@ import { AfterSaleWorkflow } from '../../shared/after-sale-workflow';
                       <td class="dashboard-customer"><strong>{{ invoice.customer?.name || 'Consumidor não identificado' }}</strong><small>{{ invoice.customer?.document || invoice.customer?.email || 'Sem cadastro vinculado' }}</small></td>
                       <td>{{ invoice.source === 'mercadolivre' ? 'Mercado Livre' : 'Balcão' }}</td>
                       <td>{{ invoice.issued_at || invoice.created_at | date: 'dd/MM/yyyy HH:mm' }}</td>
-                      <td><span class="badge" [class]="invoice.status">{{ status(invoice.status) }}</span>@if (invoice.after_sale) { <small class="post-sale-summary">{{ afterSaleLabel(invoice) }}</small> }</td>
+                      <td><span class="badge" [class]="invoice.status">{{ saleStageLabel(saleStageForInvoice(invoice)) }}</span>@if (invoice.after_sale) { <small class="post-sale-summary">{{ afterSaleLabel(invoice) }}</small> }</td>
                       <td>@if (invoice.documents.length) { @for (doc of invoice.documents; track doc.id) { <a class="doc" href="#" (click)="$event.preventDefault(); $event.stopPropagation(); openDocument(invoice.id, doc.id)">{{ doc.document_type | uppercase }}</a> } } @else { <span class="muted">—</span> }</td>
                       <td class="right"><strong>{{ invoice.total | currency: 'BRL' }}</strong></td>
                     </tr>
@@ -119,7 +120,7 @@ import { AfterSaleWorkflow } from '../../shared/after-sale-workflow';
       @if (detail(); as invoice) {
         <div class="modal-backdrop" (click)="detail.set(null)">
           <section class="modal wide object-modal" (click)="$event.stopPropagation()">
-            <div class="modal-head detail-hero"><div><p class="eyebrow">Venda {{ invoice.source === 'mercadolivre' ? 'Mercado Livre' : 'manual' }}</p><h2>{{ invoice.number }}</h2><p class="detail-subtitle">Criada em {{ invoice.created_at | date:'dd/MM/yyyy HH:mm' }}{{ invoice.issued_at ? ' · emitida em ' + (invoice.issued_at | date:'dd/MM/yyyy HH:mm') : '' }}</p></div><div class="hero-actions"><span class="badge" [class]="invoice.status">{{ status(invoice.status) }}</span><button class="close" aria-label="Fechar detalhe" (click)="detail.set(null)">×</button></div></div>
+            <div class="modal-head detail-hero"><div><p class="eyebrow">Venda {{ invoice.source === 'mercadolivre' ? 'Mercado Livre' : 'manual' }}</p><h2>{{ invoice.number }}</h2><p class="detail-subtitle">Criada em {{ invoice.created_at | date:'dd/MM/yyyy HH:mm' }}{{ invoice.issued_at ? ' · emitida em ' + (invoice.issued_at | date:'dd/MM/yyyy HH:mm') : '' }}</p></div><div class="hero-actions"><span class="badge" [class]="invoice.status">{{ saleStageLabel(saleStageForInvoice(invoice)) }}</span><button class="close" aria-label="Fechar detalhe" (click)="detail.set(null)">×</button></div></div>
             <div class="detail-summary"><div><span>Cliente</span><strong>{{ invoice.customer?.name || 'Consumidor não identificado' }}</strong><small>{{ invoice.customer?.document || invoice.customer?.email || 'Sem cadastro vinculado' }}</small></div><div><span>Pedido relacionado</span><strong>{{ invoice.marketplace_order_id ? '#' + invoice.marketplace_order_id : 'Venda local' }}</strong><small>{{ invoice.items.length }} item(ns) · {{ invoice.total | currency:'BRL' }}</small></div></div>
             <nav class="detail-tabs" aria-label="Detalhes da venda"><button [class.active]="invoiceTab() === 'items'" (click)="invoiceTab.set('items')">Itens <small>{{ invoice.items.length }}</small></button><button [class.active]="invoiceTab() === 'tracking'" (click)="invoiceTab.set('tracking')">Rastreio</button><button [class.active]="invoiceTab() === 'documents'" (click)="invoiceTab.set('documents')">Documentos <small>{{ invoice.documents.length }}</small></button>@if (invoice.after_sale) { <button [class.active]="invoiceTab() === 'aftersale'" (click)="invoiceTab.set('aftersale')">Pós-venda</button> }</nav>
             @if (invoiceTab() === 'items') { <section class="detail-section"><div class="section-heading"><div><p class="eyebrow">Composição</p><h3>Itens vendidos</h3></div><strong>{{ invoice.total | currency:'BRL' }}</strong></div><div class="invoice-detail-lines">@for (item of invoice.items; track item.id) { <div><span class="item-main"><strong>{{ item.description }}</strong><small>SKU {{ item.sku }} · {{ item.quantity }} unidade(s) · {{ item.unit_price | currency:'BRL' }} cada</small></span><strong>{{ item.total | currency:'BRL' }}</strong></div> }</div></section> }
@@ -152,6 +153,8 @@ export class DashboardPage implements OnInit {
   endDate = this.today();
   readonly statusLabel = statusLabel;
   readonly trackingEventLabel = trackingEventLabel;
+  readonly saleStageForInvoice = saleStageForInvoice;
+  readonly saleStageLabel = saleStageLabel;
   afterSaleLabel(invoice: Invoice) {
     if (!invoice.after_sale) return '';
     const kind = invoice.after_sale.kind === 'return' ? 'Devolução' : invoice.after_sale.kind === 'claim' ? 'Reclamação' : 'Cancelamento';

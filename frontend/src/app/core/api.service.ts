@@ -36,9 +36,15 @@ export class ApiService {
     return this.http.get<ErpSettings>(`${this.base}/settings`);
   }
   saveErpSettings(
-    settings: Omit<ErpSettings, 'backup_ready' | 'backup_status'>,
+    settings: Pick<ErpSettings, 'company_name' | 'company_short_name' | 'logo_data_url' | 'backup_enabled' | 'backup_frequency' | 'backup_retention_days' | 'backup_destination'> & { drive_client_id?: string | null; drive_client_secret?: string; drive_folder_id?: string | null },
   ): Observable<ErpSettings> {
     return this.http.put<ErpSettings>(`${this.base}/settings`, settings);
+  }
+  connectGoogleDrive(): Observable<{ authorization_url: string; redirect_uri: string }> {
+    return this.http.get<{ authorization_url: string; redirect_uri: string }>(`${this.base}/settings/backup/google-drive/connect`);
+  }
+  runGoogleDriveBackup(): Observable<{ filename: string; message: string }> {
+    return this.http.post<{ filename: string; message: string }>(`${this.base}/settings/backup/run`, {});
   }
   dashboard(startDate: string, endDate: string): Observable<DashboardSummary> {
     return this.http.get<DashboardSummary>(`${this.base}/dashboard/summary`, {

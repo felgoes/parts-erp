@@ -127,6 +127,25 @@ def enqueue_sale_notification(db: Session, order: MarketplaceOrder) -> PushNotif
     return notification
 
 
+def enqueue_backup_notification(db: Session, filename: str) -> PushNotification | None:
+    """Notify once after a backup has been uploaded successfully."""
+    dedupe_key = f"backup:{filename}"
+    existing = db.scalar(select(PushNotification).where(PushNotification.dedupe_key == dedupe_key))
+    if existing is not None:
+        return existing
+    notification = PushNotification(
+        dedupe_key=dedupe_key,
+        title="Backup concluído",
+        body=f"Cópia do Parts ERP enviada ao Google Drive: {filename}"[:500],
+        data={"type": "backup_completed", "filename": filename, "route": "/settings"},
+    )
+    db.add(notification)
+    db.commit()
+    db.refresh(notification)
+    deliver_pending_notifications(db, only_id=notification.id)
+    return notification
+
+
 _ORDER_STATUS_LABELS = {
     "paid": "Pagamento aprovado",
     "cancelled": "Pedido cancelado",

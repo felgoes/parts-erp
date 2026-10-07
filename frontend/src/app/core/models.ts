@@ -15,6 +15,13 @@ export interface ErpSettings {
   backup_destination: 'google_drive';
   backup_ready: boolean;
   backup_status: 'setup_required' | 'ready';
+  drive_client_id: string | null;
+  drive_client_secret_configured: boolean;
+  drive_folder_id: string | null;
+  drive_connected: boolean;
+  backup_last_at: string | null;
+  backup_last_status: string;
+  backup_last_error: string | null;
 }
 export interface AuthToken {
   access_token: string;

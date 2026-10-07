@@ -39,6 +39,13 @@ class ErpSettingsOut(BaseModel):
     backup_destination: Literal["google_drive"]
     backup_ready: bool = False
     backup_status: str = "setup_required"
+    drive_client_id: str | None = None
+    drive_client_secret_configured: bool = False
+    drive_folder_id: str | None = None
+    drive_connected: bool = False
+    backup_last_at: datetime | None = None
+    backup_last_status: str = "setup_required"
+    backup_last_error: str | None = None
 
 
 class ErpSettingsUpdate(BaseModel):
@@ -49,6 +56,9 @@ class ErpSettingsUpdate(BaseModel):
     backup_frequency: Literal["daily", "weekly"] = "daily"
     backup_retention_days: int = Field(default=30, ge=1, le=30)
     backup_destination: Literal["google_drive"] = "google_drive"
+    drive_client_id: str | None = Field(default=None, max_length=255)
+    drive_client_secret: str | None = Field(default=None, max_length=4096)
+    drive_folder_id: str | None = Field(default=None, max_length=255)
 
 
 class UserOut(ORMModel):

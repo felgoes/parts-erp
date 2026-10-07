@@ -19,8 +19,9 @@ from app.integrations.mercadolivre.sync import (
 )
 from app.integrations.shopee.sync import sync_all as sync_shopee_all
 from app.integrations.shopee.sync import sync_order as sync_shopee_order
-from app.models import MarketplaceAccount, MarketplaceOrder, MarketplaceOrderEvent
+from app.models import ErpSettings, MarketplaceAccount, MarketplaceOrder, MarketplaceOrderEvent
 from app.services.after_sale import after_sale_notification, upsert_after_sale_case
+from app.services.google_drive_backup import run_backup
 from app.services.push_notifications import deliver_pending_notifications, enqueue_sale_notification
 
 
@@ -255,6 +256,28 @@ async def retry_pending_push_notifications(ctx: dict[str, Any]) -> int:
     return await asyncio.to_thread(_retry_pending_push_notifications)
 
 
+def _run_scheduled_backup() -> str | None:
+    with SessionLocal() as db:
+        settings = db.scalar(select(ErpSettings).where(ErpSettings.id == "global"))
+        if not settings or not settings.backup_enabled or not settings.encrypted_drive_refresh_token:
+            return None
+        now = datetime.now()
+        if settings.backup_last_at:
+            elapsed = now - settings.backup_last_at.replace(tzinfo=None)
+            minimum = 7 * 24 * 3600 if settings.backup_frequency == "weekly" else 24 * 3600
+            if elapsed.total_seconds() < minimum:
+                return None
+        try:
+            return run_backup(db)
+        except Exception:
+            return None
+
+
+async def scheduled_google_drive_backup(ctx: dict[str, Any]) -> str | None:
+    del ctx
+    return await asyncio.to_thread(_run_scheduled_backup)
+
+
 class WorkerSettings:
     functions = [
         process_mercadolivre_notification,
@@ -263,6 +286,7 @@ class WorkerSettings:
         process_shopee_notification,
         retry_due_mercadolivre_orders,
         retry_pending_push_notifications,
+        scheduled_google_drive_backup,
     ]
     cron_jobs = [
         cron(
@@ -282,6 +306,13 @@ class WorkerSettings:
             name="retry-pending-push-notifications",
             minute=set(range(60)),
             second=30,
+        ),
+        cron(
+            scheduled_google_drive_backup,
+            name="scheduled-google-drive-backup",
+            minute={0},
+            hour=set(range(24)),
+            second=45,
         ),
     ]
     redis_settings = RedisSettings.from_dsn(get_settings().redis_url)

@@ -1,4 +1,5 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
+import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { finalize } from 'rxjs';
 import { ApiService } from '../../core/api.service';
@@ -9,7 +10,7 @@ import { PageHeader } from '../../shared/page-header';
 
 @Component({
   selector: 'app-settings',
-  imports: [FormsModule, PageHeader],
+  imports: [FormsModule, PageHeader, DatePipe],
   templateUrl: './settings.html',
   styleUrl: './settings.scss',
 })
@@ -19,6 +20,8 @@ export class SettingsPage implements OnInit {
   private readonly brand = inject(ErpBrandService);
   readonly loading = signal(true);
   readonly saving = signal(false);
+  readonly driveConnecting = signal(false);
+  readonly backupRunning = signal(false);
   readonly message = signal('');
   readonly error = signal('');
   readonly logoError = signal('');
@@ -32,6 +35,13 @@ export class SettingsPage implements OnInit {
     backup_destination: 'google_drive',
     backup_ready: false,
     backup_status: 'setup_required',
+    drive_client_id: null,
+    drive_client_secret_configured: false,
+    drive_folder_id: null,
+    drive_connected: false,
+    backup_last_at: null,
+    backup_last_status: 'setup_required',
+    backup_last_error: null,
   });
   readonly draft = {
     company_name: 'Parts ERP',
@@ -41,9 +51,16 @@ export class SettingsPage implements OnInit {
     backup_frequency: 'daily' as 'daily' | 'weekly',
     backup_retention_days: 30,
     backup_destination: 'google_drive' as const,
+    drive_client_id: '',
+    drive_client_secret: '',
+    drive_folder_id: '',
   };
 
   ngOnInit(): void {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('drive_connected') === 'true') this.message.set('Google Drive conectado. Salve a política de backup para ativá-la.');
+    if (params.get('drive_error')) this.error.set('Não foi possível autorizar o Google Drive. Confira o Client ID, o segredo e o redirect URI.');
+    if (params.has('drive_connected') || params.has('drive_error')) window.history.replaceState({}, '', window.location.pathname);
     this.api.erpSettings().pipe(finalize(() => this.loading.set(false))).subscribe({
       next: (settings) => this.applySettings(settings),
       error: () => this.error.set('Não foi possível carregar as configurações. Tente novamente.'),
@@ -90,6 +107,24 @@ export class SettingsPage implements OnInit {
     });
   }
 
+  connectGoogleDrive(): void {
+    this.driveConnecting.set(true);
+    this.api.connectGoogleDrive().subscribe({
+      next: ({ authorization_url }) => window.location.assign(authorization_url),
+      error: (err) => { this.error.set(err?.error?.detail || 'Informe as credenciais OAuth do Google Drive e salve primeiro.'); this.driveConnecting.set(false); },
+    });
+  }
+
+  runBackup(): void {
+    this.backupRunning.set(true);
+    this.message.set('');
+    this.error.set('');
+    this.api.runGoogleDriveBackup().subscribe({
+      next: (result) => { this.message.set(result.message); this.backupRunning.set(false); this.api.erpSettings().subscribe((settings) => this.applySettings(settings)); },
+      error: (err) => { this.error.set(err?.error?.detail || 'Não foi possível concluir o backup.'); this.backupRunning.set(false); },
+    });
+  }
+
   private applySettings(settings: ErpSettings): void {
     this.settings.set(settings);
     Object.assign(this.draft, {
@@ -100,6 +135,9 @@ export class SettingsPage implements OnInit {
       backup_frequency: settings.backup_frequency,
       backup_retention_days: settings.backup_retention_days,
       backup_destination: settings.backup_destination,
+      drive_client_id: settings.drive_client_id || '',
+      drive_client_secret: '',
+      drive_folder_id: settings.drive_folder_id || '',
     });
   }
 }

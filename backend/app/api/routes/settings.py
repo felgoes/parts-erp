@@ -4,14 +4,18 @@ import io
 import re
 
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import RedirectResponse
 from PIL import Image, UnidentifiedImageError
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, require_permission
+from app.core.config import get_settings
 from app.core.permissions import Permission
+from app.core.security import decrypt_secret, encrypt_secret
 from app.db.session import get_db
 from app.models import ErpSettings, User
 from app.schemas.common import ErpSettingsOut, ErpSettingsUpdate
+from app.services.google_drive_backup import authorization_url, callback_url, exchange_code, run_backup
 
 router = APIRouter(prefix="/settings", tags=["Configurações"])
 LOGO_MAX_BYTES = 2 * 1024 * 1024
@@ -32,6 +36,7 @@ def _default_settings() -> ErpSettings:
         backup_frequency="daily",
         backup_retention_days=30,
         backup_destination="google_drive",
+        backup_last_status="setup_required",
     )
 
 
@@ -63,7 +68,28 @@ def read_settings(
     _: User = Depends(get_current_user),
 ) -> ErpSettingsOut:
     current = _get_settings(db)
-    return ErpSettingsOut.model_validate(current, from_attributes=True)
+    return _settings_out(current)
+
+
+def _settings_out(current: ErpSettings) -> ErpSettingsOut:
+    return ErpSettingsOut(
+        company_name=current.company_name,
+        company_short_name=current.company_short_name,
+        logo_data_url=current.logo_data_url,
+        backup_enabled=current.backup_enabled,
+        backup_frequency=current.backup_frequency,
+        backup_retention_days=current.backup_retention_days,
+        backup_destination=current.backup_destination,
+        backup_ready=bool(current.encrypted_drive_refresh_token),
+        backup_status="ready" if current.encrypted_drive_refresh_token else "setup_required",
+        drive_client_id=current.drive_client_id,
+        drive_client_secret_configured=bool(current.encrypted_drive_client_secret),
+        drive_folder_id=current.drive_folder_id,
+        drive_connected=bool(current.encrypted_drive_refresh_token),
+        backup_last_at=current.backup_last_at,
+        backup_last_status=current.backup_last_status,
+        backup_last_error=current.backup_last_error,
+    )
 
 
 @router.put("", response_model=ErpSettingsOut)
@@ -72,7 +98,8 @@ def update_settings(
     db: Session = Depends(get_db),
     _: User = Depends(require_permission(Permission.SETTINGS_MANAGE)),
 ) -> ErpSettingsOut:
-    values = payload.model_dump()
+    values = payload.model_dump(exclude={"drive_client_secret"})
+    drive_secret = payload.drive_client_secret.strip() if payload.drive_client_secret else ""
     values["logo_data_url"] = _validated_logo(values["logo_data_url"])
     current = db.get(ErpSettings, "global")
     if current is None:
@@ -80,6 +107,56 @@ def update_settings(
         db.add(current)
     for key, value in values.items():
         setattr(current, key, value)
+    if drive_secret:
+        current.encrypted_drive_client_secret = encrypt_secret(drive_secret)
+    if current.drive_client_id and current.encrypted_drive_client_secret:
+        current.backup_last_status = "setup_required"
     db.commit()
     db.refresh(current)
-    return ErpSettingsOut.model_validate(current, from_attributes=True)
+    return _settings_out(current)
+
+
+@router.get("/backup/google-drive/connect")
+def connect_google_drive(
+    db: Session = Depends(get_db),
+    _: User = Depends(require_permission(Permission.SETTINGS_MANAGE)),
+) -> dict[str, str]:
+    current = db.get(ErpSettings, "global")
+    if not current or not current.drive_client_id or not current.encrypted_drive_client_secret:
+        raise HTTPException(status_code=400, detail="Informe o Client ID e o segredo OAuth do Google Drive primeiro")
+    return {"authorization_url": authorization_url(current), "redirect_uri": callback_url()}
+
+
+@router.get("/backup/google-drive/callback")
+def google_drive_callback(
+    code: str | None = None,
+    error: str | None = None,
+    state: str | None = None,
+    db: Session = Depends(get_db),
+) -> RedirectResponse:
+    destination = f"{str(get_settings().frontend_url).rstrip('/')}/settings"
+    if error or not code or not state:
+        return RedirectResponse(f"{destination}?drive_error=cancelled")
+    try:
+        decrypt_secret(state)
+        current = db.get(ErpSettings, "global")
+        if not current:
+            raise ValueError("configuração ausente")
+        exchange_code(current, code)
+        db.commit()
+        return RedirectResponse(f"{destination}?drive_connected=true")
+    except Exception:
+        db.rollback()
+        return RedirectResponse(f"{destination}?drive_error=oauth")
+
+
+@router.post("/backup/run")
+def run_google_drive_backup(
+    db: Session = Depends(get_db),
+    _: User = Depends(require_permission(Permission.SETTINGS_MANAGE)),
+) -> dict[str, str]:
+    try:
+        filename = run_backup(db)
+        return {"filename": filename, "message": "Backup concluído e enviado ao Google Drive."}
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc

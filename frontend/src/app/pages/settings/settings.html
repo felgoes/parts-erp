@@ -33,14 +33,20 @@
 
     <section class="settings-card backup-card">
       <div class="settings-heading"><span class="section-icon">↻</span><div><p class="eyebrow">Proteção de dados</p><h2>Backups</h2><p>Defina sua política de cópias e retenção.</p></div><span class="status-pill" [class.is-ready]="settings().backup_ready">{{ settings().backup_ready ? 'Em execução' : 'Configuração pendente' }}</span></div>
-      <div class="backup-notice"><strong>A conexão com o Google Drive ainda não está configurada.</strong><span>Esta tela salva sua política, mas o servidor ainda não tem uma rotina que gere e envie cópias. Portanto, nenhum backup será executado até concluirmos a conexão segura com o Drive e o agendador no servidor.</span></div>
+      <div class="backup-notice"><strong>{{ settings().drive_connected ? 'Google Drive conectado.' : 'Configure a conexão com o Google Drive.' }}</strong><span>O Client ID, o segredo OAuth e a pasta de destino ficam protegidos no servidor. A autorização acontece na sua conta Google e não exige chave dentro do APK.</span></div>
+      <div class="backup-grid">
+        <label>Client ID OAuth<input name="drive_client_id" [(ngModel)]="draft.drive_client_id" placeholder="...apps.googleusercontent.com" /></label>
+        <label>Segredo OAuth<input name="drive_client_secret" type="password" [(ngModel)]="draft.drive_client_secret" placeholder="{{ settings().drive_client_secret_configured ? 'Já configurado; deixe vazio para manter' : 'Cole o segredo do cliente' }}" /></label>
+        <label>ID da pasta no Drive (opcional)<input name="drive_folder_id" [(ngModel)]="draft.drive_folder_id" placeholder="Destino padrão se ficar vazio" /></label>
+        <div class="destination-field"><span>Conexão</span><strong class="drive-destination">{{ settings().drive_connected ? 'Autorizada' : 'Pendente' }}</strong><button class="secondary" type="button" [disabled]="driveConnecting()" (click)="connectGoogleDrive()">{{ driveConnecting() ? 'Abrindo Google…' : 'Autorizar Google Drive' }}</button></div>
+      </div>
       <div class="backup-grid">
         <label class="backup-enable"><input type="checkbox" name="backup_enabled" [(ngModel)]="draft.backup_enabled" /><span><strong>Quero ativar os backups</strong><small>Fica como preferência até o serviço estar conectado e operacional.</small></span></label>
         <label>Frequência<select name="backup_frequency" [(ngModel)]="draft.backup_frequency"><option value="daily">Todos os dias</option><option value="weekly">Toda semana</option></select><small>O agendamento só começa após a configuração do serviço.</small></label>
         <label>Manter cópias por<select name="backup_retention_days" [(ngModel)]="draft.backup_retention_days"><option [ngValue]="7">7 dias</option><option [ngValue]="14">14 dias</option><option [ngValue]="30">30 dias</option></select><small>Cópias mais antigas que 30 dias serão removidas quando a rotina estiver ativa.</small></label>
         <div class="destination-field"><span>Destino</span><strong class="drive-destination"><span aria-hidden="true">▣</span> Google Drive</strong><small>Sem custo de armazenamento além do espaço gratuito disponível na sua conta Google.</small></div>
       </div>
-      <div class="backup-footer"><span>Último backup <strong>{{ settings().backup_ready ? '—' : 'Ainda não realizado' }}</strong></span><span>Conexão com o Drive <strong>{{ settings().backup_ready ? 'Conectado' : 'Pendente' }}</strong></span></div>
+      <div class="backup-footer"><span>Último backup <strong>{{ settings().backup_last_at ? (settings().backup_last_at | date:'dd/MM/yyyy HH:mm') : 'Ainda não realizado' }}</strong></span><span>Status <strong>{{ settings().backup_last_status }}</strong></span><button class="secondary" type="button" [disabled]="backupRunning() || !settings().drive_connected" (click)="runBackup()">{{ backupRunning() ? 'Enviando…' : 'Executar backup agora' }}</button></div>
     </section>
 
     <div class="settings-actions"><p>As alterações de identidade são compartilhadas com todos os usuários do ERP.</p><button class="primary" type="submit" [disabled]="saving()">{{ saving() ? 'Salvando…' : 'Salvar configurações' }}</button></div>

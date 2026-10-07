@@ -117,6 +117,13 @@ class ErpSettings(TimestampMixin, Base):
     backup_frequency: Mapped[str] = mapped_column(String(20), default="daily")
     backup_retention_days: Mapped[int] = mapped_column(default=30)
     backup_destination: Mapped[str] = mapped_column(String(30), default="google_drive")
+    drive_client_id: Mapped[str | None] = mapped_column(String(255))
+    encrypted_drive_client_secret: Mapped[str | None] = mapped_column(Text)
+    encrypted_drive_refresh_token: Mapped[str | None] = mapped_column(Text)
+    drive_folder_id: Mapped[str | None] = mapped_column(String(255))
+    backup_last_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    backup_last_status: Mapped[str] = mapped_column(String(30), default="setup_required")
+    backup_last_error: Mapped[str | None] = mapped_column(Text)
 
 
 class Product(TimestampMixin, Base):

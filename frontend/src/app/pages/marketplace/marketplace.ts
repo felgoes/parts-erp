@@ -98,7 +98,7 @@ import { PageHeader } from '../../shared/page-header';
                     #{{ o.external_order_id }}
                   </button>
                 </td>
-                <td>{{ o.created_at | date: 'dd/MM/yyyy HH:mm' }}</td>
+                <td>{{ (platformCreatedAt(o) || o.created_at) | date: 'dd/MM/yyyy HH:mm' }}</td>
                 <td>
                   {{ statusLabel(o.status) }}
                   @if (o.shipping_status) {
@@ -207,7 +207,7 @@ import { PageHeader } from '../../shared/page-header';
               <p class="eyebrow">Marketplace · Pedido Mercado Livre</p>
               <h2>#{{ order.external_order_id }}</h2>
               <p class="detail-subtitle">
-                Recebido em {{ order.created_at | date: 'dd/MM/yyyy HH:mm' }}
+                Recebido em {{ (platformCreatedAt(order) || order.created_at) | date: 'dd/MM/yyyy HH:mm' }}
               </p>
             </div>
             <div class="object-hero-actions">
@@ -365,8 +365,8 @@ import { PageHeader } from '../../shared/page-header';
                 <h3>Rastreamento e etapas</h3>
               </div>
               <span class="muted">{{
-                order.synchronized_at
-                  ? 'Atualizado ' + (order.synchronized_at | date: 'dd/MM/yyyy HH:mm')
+                (platformUpdatedAt(order) || order.synchronized_at)
+                  ? 'Atualizado ' + ((platformUpdatedAt(order) || order.synchronized_at) | date: 'dd/MM/yyyy HH:mm')
                   : 'Aguardando sincronização'
               }}</span>
             </div>
@@ -378,8 +378,8 @@ import { PageHeader } from '../../shared/page-header';
               <div>
                 <strong>Status do pedido: {{ statusLabel(order.status) }}</strong
                 ><span>{{
-                  order.synchronized_at
-                    ? (order.synchronized_at | date: 'dd/MM/yyyy HH:mm')
+                  (platformUpdatedAt(order) || order.synchronized_at)
+                    ? ((platformUpdatedAt(order) || order.synchronized_at) | date: 'dd/MM/yyyy HH:mm')
                     : 'Ainda não sincronizado'
                 }}</span>
               </div>
@@ -489,6 +489,20 @@ export class MarketplacePage implements OnInit {
   readonly history = signal<MarketplaceOrderEvent[]>([]);
   readonly statusLabel = statusLabel;
   readonly trackingEventLabel = trackingEventLabel;
+  platformCreatedAt(order: MarketplaceOrder): string | number | null {
+    const payload = order.payload || {};
+    const value = payload['date_created'] ?? payload['create_time'];
+    if (value === undefined || value === null || value === '') return null;
+    if (order.provider === 'shopee' && /^\d+$/.test(String(value))) return Number(value) * 1000;
+    return String(value);
+  }
+  platformUpdatedAt(order: MarketplaceOrder): string | number | null {
+    const payload = order.payload || {};
+    const value = payload['last_updated'] ?? payload['update_time'] ?? payload['_erp_source_updated_at'];
+    if (value === undefined || value === null || value === '') return null;
+    if (order.provider === 'shopee' && /^\d+$/.test(String(value))) return Number(value) * 1000;
+    return String(value);
+  }
   canProcess() {
     const role = this.auth.user()?.role;
     return role === 'admin' || role === 'manager';

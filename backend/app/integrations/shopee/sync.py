@@ -14,7 +14,9 @@ from app.models import (
     InvoiceSource,
     MarketplaceAccount,
     MarketplaceOrder,
+    MarketplaceOrderEvent,
     Product,
+    SalesInvoice,
 )
 from app.schemas.common import InvoiceCreate, InvoiceItemCreate
 from app.services.push_notifications import (
@@ -39,6 +41,14 @@ def account_for(db: Session, shop_id: str) -> MarketplaceAccount:
 
 def client_for(account: MarketplaceAccount) -> ShopeeClient:
     return ShopeeClient.from_account(account)
+
+
+def _platform_datetime(value: Any) -> datetime | None:
+    try:
+        timestamp = int(value or 0)
+    except (TypeError, ValueError):
+        return None
+    return datetime.fromtimestamp(timestamp, UTC) if timestamp > 0 else None
 
 
 def sync_product_page(db: Session, client: ShopeeClient, item_ids: list[int]) -> int:
@@ -105,6 +115,8 @@ def sync_order(db: Session, account: MarketplaceAccount, order_sn: str) -> Marke
         )
     )
     status = str(order.get("order_status", "UNKNOWN"))
+    source_created_at = _platform_datetime(order.get("create_time"))
+    source_updated_at = _platform_datetime(order.get("update_time"))
     previous_status = record.status if record else None
     previous_invoice_id = record.invoice_id if record else None
     if not record:
@@ -120,6 +132,27 @@ def sync_order(db: Session, account: MarketplaceAccount, order_sn: str) -> Marke
     else:
         record.status = status
         record.payload = order
+
+    if source_created_at:
+        record.created_at = source_created_at
+    if source_updated_at:
+        record.payload = {
+            **(record.payload or {}),
+            "_erp_source_updated_at": source_updated_at.isoformat(),
+        }
+    if previous_status != status:
+        db.add(
+            MarketplaceOrderEvent(
+                order_id=record.id,
+                event_type="order_status",
+                status=status,
+                payload={
+                    "status": status,
+                    "source_updated_at": source_updated_at.isoformat() if source_updated_at else None,
+                },
+                created_at=source_updated_at or source_created_at or datetime.now(UTC),
+            )
+        )
 
     if (
         status not in {"UNPAID", "CANCELLED", "IN_CANCEL", "TO_RETURN", "RECLINED"}
@@ -164,6 +197,10 @@ def sync_order(db: Session, account: MarketplaceAccount, order_sn: str) -> Marke
             )
             confirm_invoice(db, invoice)
             record.invoice_id = invoice.id
+    if record.invoice_id and source_created_at:
+        invoice = db.get(SalesInvoice, record.invoice_id)
+        if invoice:
+            invoice.issued_at = source_created_at
     record.sync_status = "synced"
     record.sync_error = None
     record.synchronized_at = datetime.now(UTC)

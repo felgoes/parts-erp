@@ -156,6 +156,11 @@ def sync_order(db: Session, seller_id: str, resource: str) -> MarketplaceOrder:
     if not isinstance(order, dict) or str(order.get("seller", {}).get("id")) != seller_id:
         raise MercadoLivreError("Pedido não pertence à conta conectada")
 
+    # Horários da plataforma são a fonte de verdade do pedido. O horário de
+    # sincronização do ERP continua separado em synchronized_at.
+    source_created_at = _parse_event_datetime(str(order.get("date_created") or ""))
+    source_updated_at = _parse_event_datetime(str(order.get("last_updated") or ""))
+
     record = db.scalar(
         select(MarketplaceOrder).where(
             MarketplaceOrder.provider == "mercadolivre",
@@ -191,6 +196,13 @@ def sync_order(db: Session, seller_id: str, resource: str) -> MarketplaceOrder:
                 else {}
             ),
         }
+    if source_created_at:
+        record.created_at = source_created_at
+    if source_updated_at:
+        record.payload = {
+            **(record.payload or {}),
+            "_erp_source_updated_at": source_updated_at.isoformat(),
+        }
     has_event = db.scalar(
         select(MarketplaceOrderEvent.id).where(MarketplaceOrderEvent.order_id == record.id).limit(1)
     )
@@ -206,7 +218,9 @@ def sync_order(db: Session, seller_id: str, resource: str) -> MarketplaceOrder:
                     "status_detail": order.get("status_detail"),
                     "cancel_detail": order.get("cancel_detail"),
                     "order_request": order.get("order_request"),
+                    "source_updated_at": source_updated_at.isoformat() if source_updated_at else None,
                 },
+                created_at=source_updated_at or source_created_at or datetime.now(UTC),
             )
         )
     has_after_sale_event = db.scalar(

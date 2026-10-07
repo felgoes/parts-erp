@@ -1,3 +1,4 @@
+import asyncio
 from datetime import datetime
 from typing import Any
 
@@ -10,6 +11,7 @@ from app.db.session import SessionLocal
 from app.integrations.mercadolivre.client import MercadoLivreClient, MercadoLivreError
 from app.integrations.mercadolivre.sync import (
     extract_invoice_order_ids,
+    retry_due_orders,
     retry_pending_automations,
     sync_all,
     sync_invoice_documents,
@@ -22,10 +24,9 @@ from app.services.after_sale import after_sale_notification, upsert_after_sale_c
 from app.services.push_notifications import deliver_pending_notifications, enqueue_sale_notification
 
 
-async def process_mercadolivre_notification(
-    ctx: dict[str, Any], topic: str, resource: str, seller_id: str
+def _process_mercadolivre_notification(
+    topic: str, resource: str, seller_id: str
 ) -> None:
-    del ctx
     with SessionLocal() as db:
         account = db.scalar(
             select(MarketplaceAccount).where(MarketplaceAccount.seller_id == seller_id)
@@ -148,8 +149,14 @@ async def process_mercadolivre_notification(
                 sync_invoice_documents(db, account, order_id, order.invoice_id)
 
 
-async def sync_mercadolivre_account(ctx: dict[str, Any], seller_id: str) -> None:
+async def process_mercadolivre_notification(
+    ctx: dict[str, Any], topic: str, resource: str, seller_id: str
+) -> None:
     del ctx
+    await asyncio.to_thread(_process_mercadolivre_notification, topic, resource, seller_id)
+
+
+def _sync_mercadolivre_account(seller_id: str) -> None:
     with SessionLocal() as db:
         account = db.scalar(
             select(MarketplaceAccount).where(
@@ -161,8 +168,12 @@ async def sync_mercadolivre_account(ctx: dict[str, Any], seller_id: str) -> None
             sync_all(db, account)
 
 
-async def sync_shopee_account(ctx: dict[str, Any], shop_id: str) -> None:
+async def sync_mercadolivre_account(ctx: dict[str, Any], seller_id: str) -> None:
     del ctx
+    await asyncio.to_thread(_sync_mercadolivre_account, seller_id)
+
+
+def _sync_shopee_account(shop_id: str) -> None:
     with SessionLocal() as db:
         account = db.scalar(
             select(MarketplaceAccount).where(
@@ -175,8 +186,12 @@ async def sync_shopee_account(ctx: dict[str, Any], shop_id: str) -> None:
             sync_shopee_all(db, account)
 
 
-async def process_shopee_notification(ctx: dict[str, Any], payload: dict[str, Any]) -> None:
+async def sync_shopee_account(ctx: dict[str, Any], shop_id: str) -> None:
     del ctx
+    await asyncio.to_thread(_sync_shopee_account, shop_id)
+
+
+def _process_shopee_notification(payload: dict[str, Any]) -> None:
     shop_id = str(payload.get("shop_id") or payload.get("shopid") or "")
     order_sn = str((payload.get("data") or {}).get("ordersn") or payload.get("ordersn") or "")
     with SessionLocal() as db:
@@ -205,16 +220,39 @@ async def process_shopee_notification(ctx: dict[str, Any], payload: dict[str, An
             sync_shopee_all(db, account)
 
 
-async def reconcile_pending_marketplace_documents(ctx: dict[str, Any]) -> int:
+async def process_shopee_notification(ctx: dict[str, Any], payload: dict[str, Any]) -> None:
     del ctx
+    await asyncio.to_thread(_process_shopee_notification, payload)
+
+
+def _reconcile_pending_marketplace_documents() -> int:
     with SessionLocal() as db:
         return retry_pending_automations(db)
 
 
-async def retry_pending_push_notifications(ctx: dict[str, Any]) -> int:
+async def reconcile_pending_marketplace_documents(ctx: dict[str, Any]) -> int:
     del ctx
+    return await asyncio.to_thread(_reconcile_pending_marketplace_documents)
+
+
+def _retry_due_mercadolivre_orders() -> int:
+    with SessionLocal() as db:
+        return retry_due_orders(db)
+
+
+async def retry_due_mercadolivre_orders(ctx: dict[str, Any]) -> int:
+    del ctx
+    return await asyncio.to_thread(_retry_due_mercadolivre_orders)
+
+
+def _retry_pending_push_notifications() -> int:
     with SessionLocal() as db:
         return deliver_pending_notifications(db)
+
+
+async def retry_pending_push_notifications(ctx: dict[str, Any]) -> int:
+    del ctx
+    return await asyncio.to_thread(_retry_pending_push_notifications)
 
 
 class WorkerSettings:
@@ -223,6 +261,7 @@ class WorkerSettings:
         sync_mercadolivre_account,
         sync_shopee_account,
         process_shopee_notification,
+        retry_due_mercadolivre_orders,
         retry_pending_push_notifications,
     ]
     cron_jobs = [
@@ -232,7 +271,18 @@ class WorkerSettings:
             minute=set(range(60)),
             second=0,
         ),
-        cron(retry_pending_push_notifications, name="retry-pending-push-notifications", minute=set(range(60)), second=30),
+        cron(
+            retry_due_mercadolivre_orders,
+            name="retry-failed-mercadolivre-orders",
+            minute=set(range(60)),
+            second=15,
+        ),
+        cron(
+            retry_pending_push_notifications,
+            name="retry-pending-push-notifications",
+            minute=set(range(60)),
+            second=30,
+        ),
     ]
     redis_settings = RedisSettings.from_dsn(get_settings().redis_url)
     max_jobs = 10

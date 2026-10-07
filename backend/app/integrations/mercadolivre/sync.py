@@ -5,6 +5,7 @@ from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
+import httpx
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
@@ -112,19 +113,15 @@ def sync_shipping_status(
     if not record.shipment_id:
         return None
     client = MercadoLivreClient(db, account)
-    try:
-        shipment = client.get(
-            f"/shipments/{record.shipment_id}", extra_headers={"x-format-new": "true"}
-        )
-        if not isinstance(shipment, dict):
-            return None
-        record.shipping_status = str(shipment.get("status") or record.shipping_status or "unknown")
-        record.shipping_substatus = str(shipment.get("substatus") or "") or None
-        sync_shipping_history(db, record, account)
-        return shipment
-    except MercadoLivreError:
-        # Shipping telemetry must never prevent an order/invoice from being synchronized.
-        return None
+    shipment = client.get(
+        f"/shipments/{record.shipment_id}", extra_headers={"x-format-new": "true"}
+    )
+    if not isinstance(shipment, dict):
+        raise MercadoLivreError("Resposta de envio inválida")
+    record.shipping_status = str(shipment.get("status") or record.shipping_status or "unknown")
+    record.shipping_substatus = str(shipment.get("substatus") or "") or None
+    sync_shipping_history(db, record, account)
+    return shipment
 
 
 def _account(db: Session, seller_id: str) -> MarketplaceAccount:
@@ -252,7 +249,14 @@ def sync_order(db: Session, seller_id: str, resource: str) -> MarketplaceOrder:
     # Shipping lifecycle notifications are separate from order/payment changes.
     # Also refresh here so periodic imports repair missed webhooks after downtime.
     if record.shipment_id:
-        sync_shipping_status(db, record, account)
+        try:
+            sync_shipping_status(db, record, account)
+        except Exception as exc:
+            record.sync_status = "error"
+            record.sync_error = f"Falha ao atualizar rastreio: {exc}"[:1000]
+            record.synchronized_at = datetime.now(UTC)
+            db.commit()
+            raise
         db.commit()
         db.refresh(record)
 
@@ -944,9 +948,13 @@ def retry_due_orders(db: Session) -> int:
                 MarketplaceOrder.sync_status == "error",
                 MarketplaceOrder.updated_at <= cutoff,
             )
-            .limit(50)
+            .limit(10)
         )
     )
     for order in orders:
-        sync_order(db, order.seller_id, f"/orders/{order.external_order_id}")
+        try:
+            sync_order(db, order.seller_id, f"/orders/{order.external_order_id}")
+        except (MercadoLivreError, httpx.RequestError):
+            # One unavailable marketplace order must not block retries for the rest.
+            continue
     return len(orders)

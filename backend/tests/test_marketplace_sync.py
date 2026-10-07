@@ -1,11 +1,12 @@
 from decimal import Decimal
 from types import SimpleNamespace
 
+import pytest
 from sqlalchemy import select
 
 from app.core.security import encrypt_secret
 from app.integrations.mercadolivre import sync as sync_module
-from app.integrations.mercadolivre.client import MercadoLivreClient
+from app.integrations.mercadolivre.client import MercadoLivreClient, MercadoLivreError
 from app.models import (
     InvoiceDocument,
     MarketplaceAccount,
@@ -91,6 +92,36 @@ def test_order_webhook_creates_invoice_and_documents(db, monkeypatch, tmp_path):
     docs = list(db.scalars(select(InvoiceDocument)))
     assert {doc.document_type for doc in docs} == {"xml", "pdf"}
     assert len(downloads) == 2
+
+
+def test_shipment_api_failure_marks_order_for_retry(db, monkeypatch):
+    account = marketplace_account(db)
+    order = {
+        "id": 123,
+        "seller": {"id": 77},
+        "status": "paid",
+        "shipping": {"id": 555},
+    }
+
+    def fake_get(self, path, **kwargs):
+        if path == "/orders/123":
+            return order
+        if path == "/orders/123/shipments":
+            return [{"id": 555}]
+        if path == "/shipments/555":
+            raise MercadoLivreError("Mercado Livre temporariamente indisponível", status_code=503)
+        raise AssertionError(path)
+
+    monkeypatch.setattr(MercadoLivreClient, "get", fake_get)
+    with pytest.raises(MercadoLivreError, match="temporariamente indisponível"):
+        sync_module.sync_order(db, account.seller_id, "/orders/123")
+
+    record = db.scalar(
+        select(MarketplaceOrder).where(MarketplaceOrder.external_order_id == "123")
+    )
+    assert record is not None
+    assert record.sync_status == "error"
+    assert "rastreio" in (record.sync_error or "")
 
 
 def test_invoice_documents_are_idempotent(db, monkeypatch, tmp_path):
@@ -206,14 +237,20 @@ def test_label_waits_until_mercado_livre_releases_printing_substatus(db, monkeyp
     assert order.shipping_substatus == "invoice_pending"
     assert order.label_status == "waiting"
     assert downloads == []
-    assert db.scalar(select(InvoiceDocument).where(InvoiceDocument.document_type == "label_pdf")) is None
+    assert (
+        db.scalar(select(InvoiceDocument).where(InvoiceDocument.document_type == "label_pdf"))
+        is None
+    )
 
     shipment["substatus"] = "ready_to_print"
     sync_module.sync_shipping_label(db, order, account)
     assert order.shipping_substatus == "ready_to_print"
     assert order.label_status == "downloaded"
     assert downloads == ["/shipment_labels?shipment_ids=789&response_type=pdf"]
-    assert db.scalar(select(InvoiceDocument).where(InvoiceDocument.document_type == "label_pdf")) is not None
+    assert (
+        db.scalar(select(InvoiceDocument).where(InvoiceDocument.document_type == "label_pdf"))
+        is not None
+    )
 
 
 def test_initial_sync_imports_products_and_orders(db, monkeypatch):

@@ -17,7 +17,7 @@
       <div class="form-actions"><button class="primary" [disabled]="mlSaving()">{{ mlSaving() ? 'Salvando…' : 'Salvar Mercado Livre' }}</button><button type="button" class="text-button" (click)="connectMercadoLivre()" [disabled]="!mlStatus()?.configured || mlConnecting()">{{ mlConnecting() ? 'Abrindo…' : 'Conectar conta' }}</button><button type="button" class="text-button" (click)="syncMercadoLivre()" [disabled]="!mlStatus()?.connected || mlSyncing()">{{ mlSyncing() ? 'Sincronizando…' : 'Sincronizar agora' }}</button></div>
       @if (mlMessage()) { <p class="form-message">{{ mlMessage() }}</p> }
     </form>
-    <aside class="help-panel channel-help ml-help"><div class="channel-icon">M</div><h2>Conta do canal</h2><p>{{ mlStatus()?.connected ? 'Conta autorizada e pronta para sincronizar.' : 'Salve a configuração e autorize a conta principal do vendedor.' }}</p><dl><dt>Conta</dt><dd>{{ mlStatus()?.connected ? 'Conectada' : 'Ainda não conectada' }}</dd><dt>Seller</dt><dd>{{ mlStatus()?.nickname || '—' }}</dd></dl></aside>
+    <aside class="help-panel channel-help ml-help"><div class="channel-icon">M</div><h2>Conta do canal</h2><p>{{ mlStatus()?.connected ? 'Conta autorizada e pronta para sincronizar.' : 'Salve a configuração e autorize a conta principal do vendedor.' }}</p><dl><dt>Conta</dt><dd>{{ mlStatus()?.connected ? 'Conectada' : 'Ainda não conectada' }}</dd><dt>Seller</dt><dd>{{ mlStatus()?.nickname || '—' }}</dd></dl><p>Webhook público: <code>/api/v1/integrations/mercadolivre/webhook</code>. Habilite <code>orders_v2</code>, <code>shipments</code> e <code>invoices</code>; <code>shipments</code> mantém o rastreio atualizado.</p></aside>
   </section>
 
   <section class="settings-layout">

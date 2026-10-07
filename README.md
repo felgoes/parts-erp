@@ -39,7 +39,7 @@ Para alterações de interface, abra `http://localhost:4200` com a API local em 
 
 ## Mercado Livre
 
-Crie uma aplicação no painel de desenvolvedores, configure a URL de redirecionamento e preencha as variáveis `MERCADOLIVRE_*`. No ERP, abra **Integrações**, conecte a conta vendedora e cadastre a URL pública `/api/v1/integrations/mercadolivre/webhook` nas notificações de `orders_v2` e `invoices`.
+Crie uma aplicação no painel de desenvolvedores, configure a URL de redirecionamento e preencha as variáveis `MERCADOLIVRE_*`. No ERP, abra **Integrações**, conecte a conta vendedora e cadastre `https://api.goesautoparts.com.br/api/v1/integrations/mercadolivre/webhook` como URL pública. Habilite os tópicos `orders_v2`, `shipments` e `invoices`; `shipments` é necessário para atualizar o rastreio à medida que o envio avança. O hostname público deve resolver no DNS e encaminhar ao backend do ERP.
 
 O SKU do anúncio/variação precisa ser igual ao SKU do produto no ERP. Pedidos pagos geram uma fatura confirmada e baixam o estoque uma única vez. Notificações repetidas são seguras.
 

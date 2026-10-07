@@ -8,5 +8,5 @@
 
 - [x] [P0] CANCELADO — Preparar um APK de teste para Apple iPhone (iOS), definindo o fluxo de distribuição e os requisitos de assinatura da Apple.
 - [x] [P1] CONCLUÍDO — Usar em todos os objetos sincronizados do Mercado Livre e Shopee os timestamps fornecidos pelas plataformas, sem substituir por horário local do ERP.
-- [ ] [P2] EM ANDAMENTO — Confirmar se os webhooks chegam e são processados imediatamente, medindo recebimento, fila, processamento e atualização no banco.
-- [ ] [P3] Documentar como funciona o horário de atualização do rastreio exibido no pedido, visão geral, faturas e pedidos do Mercado Livre.
+- [x] [P2] CONCLUÍDO — Confirmar se os webhooks chegam e são processados imediatamente, medindo recebimento, fila, processamento e atualização no banco.
+- [ ] [P3] EM ANDAMENTO — Documentar como funciona o horário de atualização do rastreio exibido no pedido, visão geral, faturas e pedidos do Mercado Livre.

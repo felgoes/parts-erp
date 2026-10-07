@@ -199,6 +199,10 @@ export interface Purchase {
   id: string;
   number: string;
   status: PurchaseStatus;
+  purchase_type: 'parts' | 'expense';
+  expense_category: string | null;
+  expense_amount: number | null;
+  supplier_name: string | null;
   selected_quote_id: string | null;
   needed_by: string | null;
   ordered_at: string | null;
@@ -208,6 +212,14 @@ export interface Purchase {
   items: PurchaseItem[];
   quotes: PurchaseQuote[];
   events: PurchaseEvent[];
+  attachments: PurchaseAttachment[];
+}
+export interface PurchaseAttachment {
+  id: string;
+  filename: string;
+  content_type: string;
+  size_bytes: number;
+  created_at: string;
 }
 export interface MarketStudyConnector {
   provider: 'openai_responses' | 'openai_compatible';

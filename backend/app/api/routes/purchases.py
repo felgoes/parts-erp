@@ -1,8 +1,10 @@
 from datetime import UTC, datetime
 from decimal import Decimal
+from pathlib import Path
 from uuid import uuid4
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi.responses import FileResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
@@ -13,6 +15,7 @@ from app.models import (
     MovementType,
     Product,
     PurchaseCase,
+    PurchaseAttachment,
     PurchaseEvent,
     PurchaseItem,
     PurchaseQuote,
@@ -22,6 +25,7 @@ from app.models import (
 )
 from app.schemas.common import PurchaseCreate, PurchaseOut, PurchaseQuoteCreate, PurchaseReceive
 from app.services.stock import move_stock
+from app.core.config import get_settings
 
 router = APIRouter(prefix="/purchases", tags=["Compras"])
 
@@ -59,6 +63,7 @@ def _load(db: Session, purchase_id: str, *, for_update: bool = False) -> Purchas
             selectinload(PurchaseCase.items),
             selectinload(PurchaseCase.quotes),
             selectinload(PurchaseCase.events),
+            selectinload(PurchaseCase.attachments),
         )
         .execution_options(populate_existing=True)
     )
@@ -82,6 +87,7 @@ def list_purchases(
                 selectinload(PurchaseCase.items),
                 selectinload(PurchaseCase.quotes),
                 selectinload(PurchaseCase.events),
+                selectinload(PurchaseCase.attachments),
             )
             .order_by(PurchaseCase.created_at.desc())
             .limit(500)
@@ -101,7 +107,11 @@ def create_purchase(
             raise HTTPException(status_code=404, detail=f"Produto não encontrado: {item.sku}")
     purchase = PurchaseCase(
         number=f"COM-{datetime.now(UTC):%Y}-{uuid4().hex[:6].upper()}",
-        status="negotiating",
+        status="received" if payload.purchase_type == "expense" else "negotiating",
+        purchase_type=payload.purchase_type,
+        expense_category=payload.expense_category,
+        expense_amount=payload.expense_amount,
+        supplier_name=payload.supplier_name,
         needed_by=payload.needed_by,
         notes=payload.notes,
         items=[PurchaseItem(**item.model_dump()) for item in payload.items],
@@ -111,6 +121,61 @@ def create_purchase(
     _event(db, purchase, "created", f"Negociação criada por {user.full_name}.")
     db.commit()
     return _present(_load(db, purchase.id), user)
+
+
+@router.post("/{purchase_id}/attachments", response_model=PurchaseOut)
+def upload_purchase_attachments(
+    purchase_id: str,
+    files: list[UploadFile] = File(...),
+    db: Session = Depends(get_db),
+    user: User = Depends(require_permission(Permission.PURCHASE_MANAGE)),
+) -> PurchaseOut:
+    purchase = _load(db, purchase_id)
+    if not files or len(files) > 10:
+        raise HTTPException(status_code=422, detail="Envie de 1 a 10 documentos por vez.")
+    existing_size = sum(item.size_bytes for item in purchase.attachments)
+    base_dir = Path(get_settings().documents_dir).resolve() / "purchases" / purchase.id
+    base_dir.mkdir(parents=True, exist_ok=True)
+    saved: list[Path] = []
+    try:
+        for upload in files:
+            content = upload.file.read(15 * 1024 * 1024 + 1)
+            if not content or len(content) > 15 * 1024 * 1024:
+                raise HTTPException(status_code=422, detail="Cada documento deve ter até 15 MB.")
+            filename = Path(upload.filename or "documento").name[:255]
+            path = (base_dir / f"{uuid4().hex}_{filename}").resolve()
+            if base_dir not in path.parents:
+                raise HTTPException(status_code=422, detail="Nome de arquivo inválido.")
+            path.write_bytes(content)
+            saved.append(path)
+            db.add(PurchaseAttachment(purchase_id=purchase.id, filename=filename, content_type=upload.content_type or "application/octet-stream", size_bytes=len(content), storage_path=str(path)))
+            existing_size += len(content)
+        if existing_size > 100 * 1024 * 1024:
+            raise HTTPException(status_code=422, detail="O limite total de documentos desta compra é 100 MB.")
+        _event(db, purchase, "attachment_added", f"{len(files)} documento(s) anexado(s) por {user.full_name}.")
+        db.commit()
+    except Exception:
+        for path in saved:
+            path.unlink(missing_ok=True)
+        db.rollback()
+        raise
+    finally:
+        for upload in files:
+            upload.file.close()
+    return _present(_load(db, purchase.id), user)
+
+
+@router.get("/{purchase_id}/attachments/{attachment_id}")
+def download_purchase_attachment(
+    purchase_id: str,
+    attachment_id: str,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_permission(Permission.PURCHASE_READ)),
+) -> FileResponse:
+    attachment = db.scalar(select(PurchaseAttachment).where(PurchaseAttachment.id == attachment_id, PurchaseAttachment.purchase_id == purchase_id))
+    if not attachment:
+        raise HTTPException(status_code=404, detail="Documento não encontrado")
+    return FileResponse(attachment.storage_path, media_type=attachment.content_type, filename=attachment.filename)
 
 
 @router.get("/{purchase_id}", response_model=PurchaseOut)

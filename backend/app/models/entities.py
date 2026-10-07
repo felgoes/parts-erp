@@ -145,6 +145,21 @@ class Product(TimestampMixin, Base):
     cost_price: Mapped[Decimal] = mapped_column(Numeric(14, 2), default=0)
     current_stock: Mapped[Decimal] = mapped_column(Numeric(14, 3), default=0)
     minimum_stock: Mapped[Decimal] = mapped_column(Numeric(14, 3), default=0)
+    brand: Mapped[str | None] = mapped_column(String(120))
+    manufacturer: Mapped[str | None] = mapped_column(String(120))
+    mpn: Mapped[str | None] = mapped_column(String(120))
+    barcode: Mapped[str | None] = mapped_column(String(32))
+    category_id: Mapped[str | None] = mapped_column(String(80))
+    condition: Mapped[str] = mapped_column(String(20), default="new")
+    warranty: Mapped[str | None] = mapped_column(String(160))
+    origin: Mapped[str | None] = mapped_column(String(80))
+    weight_g: Mapped[int | None] = mapped_column()
+    package_length_cm: Mapped[Decimal | None] = mapped_column(Numeric(8, 2))
+    package_width_cm: Mapped[Decimal | None] = mapped_column(Numeric(8, 2))
+    package_height_cm: Mapped[Decimal | None] = mapped_column(Numeric(8, 2))
+    attributes: Mapped[list[dict[str, Any]]] = mapped_column(JSON, default=list)
+    fitments: Mapped[list[dict[str, Any]]] = mapped_column(JSON, default=list)
+    images: Mapped[list[str]] = mapped_column(JSON, default=list)
     active: Mapped[bool] = mapped_column(Boolean, default=True)
     listings: Mapped[list["ProductMarketplaceListing"]] = relationship(
         cascade="all, delete-orphan", back_populates="product", lazy="selectin"
@@ -177,6 +192,10 @@ class ProductMarketplaceListing(TimestampMixin, Base):
     channel_data: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
     payload: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
     synchronized_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    category_id: Mapped[str | None] = mapped_column(String(80))
+    sync_status: Mapped[str] = mapped_column(String(30), default="published")
+    sync_error: Mapped[str | None] = mapped_column(Text)
+    channel_data: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
 
     product: Mapped[Product] = relationship(back_populates="listings")
 
@@ -259,6 +278,10 @@ class PurchaseCase(TimestampMixin, Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
     number: Mapped[str] = mapped_column(String(30), unique=True, index=True)
     status: Mapped[str] = mapped_column(String(30), default="negotiating", index=True)
+    purchase_type: Mapped[str] = mapped_column(String(30), default="parts", index=True)
+    expense_category: Mapped[str | None] = mapped_column(String(80))
+    expense_amount: Mapped[Decimal | None] = mapped_column(Numeric(14, 2))
+    supplier_name: Mapped[str | None] = mapped_column(String(200))
     selected_quote_id: Mapped[str | None] = mapped_column(String(36))
     needed_by: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     ordered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
@@ -273,6 +296,9 @@ class PurchaseCase(TimestampMixin, Base):
         foreign_keys="PurchaseQuote.purchase_id",
     )
     events: Mapped[list["PurchaseEvent"]] = relationship(
+        cascade="all, delete-orphan", back_populates="purchase", lazy="selectin"
+    )
+    attachments: Mapped[list["PurchaseAttachment"]] = relationship(
         cascade="all, delete-orphan", back_populates="purchase", lazy="selectin"
     )
 
@@ -320,6 +346,18 @@ class PurchaseEvent(Base):
     detail: Mapped[str] = mapped_column(String(500))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc)
     purchase: Mapped[PurchaseCase] = relationship(back_populates="events")
+
+
+class PurchaseAttachment(Base):
+    __tablename__ = "purchase_attachments"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    purchase_id: Mapped[str] = mapped_column(ForeignKey("purchase_cases.id", ondelete="CASCADE"), index=True)
+    filename: Mapped[str] = mapped_column(String(255))
+    content_type: Mapped[str] = mapped_column(String(120), default="application/octet-stream")
+    size_bytes: Mapped[int] = mapped_column()
+    storage_path: Mapped[str] = mapped_column(String(500))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc)
+    purchase: Mapped[PurchaseCase] = relationship(back_populates="attachments")
 
 
 class MarketStudyConnectorConfig(TimestampMixin, Base):

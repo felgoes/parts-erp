@@ -35,6 +35,17 @@
 .purchase-modal { max-height: min(88vh, 900px); overflow-y: auto; }
 .purchase-modal .modal-head { align-items: flex-start; }
 .purchase-modal .modal-head h2 { margin-bottom: 0; }
+.attachment-picker { margin-top: 16px; padding: 12px; border: 1px dashed #b9c9b5; border-radius: 10px; background: #f7faf5; }
+.attachment-picker input { min-height: auto !important; padding: 0 !important; border: 0 !important; background: transparent !important; }
+.attachment-picker small { color: var(--muted); font-size: 11px; font-weight: 500; }
+.attachment-inline { display: inline-flex !important; align-items: center; gap: 6px; color: var(--forest) !important; cursor: pointer; }
+.attachment-inline input { display: none; }
+.attachment-list { display: grid; gap: 7px; }
+.attachment-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: #fff; color: var(--text); text-align: left; cursor: pointer; }
+.attachment-row:hover { border-color: var(--forest); background: #f8faf7; }
+.attachment-row small { color: var(--muted); }
+.expense-banner { display: flex; justify-content: space-between; gap: 12px; margin: 20px 0 4px; padding: 14px 16px; border: 1px solid #dce8d8; border-radius: 10px; background: #f3f8f0; }
+.expense-banner span { color: var(--muted); }
 .modal-intro { margin: 8px 0 0; color: var(--muted); font-size: 13px; line-height: 1.5; }
 .purchase-form-meta { display: grid; grid-template-columns: minmax(190px, .7fr) minmax(0, 1.8fr); gap: 14px; margin: 20px 0; }
 .purchase-modal label { display: grid; align-content: start; gap: 6px; min-width: 0; color: #59665e; font-size: 11px; font-weight: 750; }

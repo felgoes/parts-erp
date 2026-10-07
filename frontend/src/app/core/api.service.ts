@@ -181,6 +181,18 @@ export class ApiService {
   cancelPurchase(id: string): Observable<Purchase> {
     return this.http.post<Purchase>(`${this.base}/purchases/${id}/cancel`, {});
   }
+  uploadPurchaseAttachments(id: string, files: File[]): Observable<Purchase> {
+    const form = new FormData();
+    files.forEach((file) => form.append('files', file, file.name));
+    return this.http.post<Purchase>(`${this.base}/purchases/${id}/attachments`, form);
+  }
+  downloadPurchaseAttachment(id: string, attachmentId: string, filename: string): void {
+    this.http.get(`${this.base}/purchases/${id}/attachments/${attachmentId}`, { responseType: 'blob' }).subscribe((blob) => {
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a'); link.href = url; link.download = filename; link.click();
+      URL.revokeObjectURL(url);
+    });
+  }
   customers(): Observable<Customer[]> {
     return this.http.get<Customer[]>(`${this.base}/customers`);
   }

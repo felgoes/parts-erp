@@ -339,9 +339,21 @@ class PurchaseItemCreate(BaseModel):
 
 
 class PurchaseCreate(BaseModel):
+    purchase_type: Literal["parts", "expense"] = "parts"
+    expense_category: str | None = Field(default=None, max_length=80)
+    expense_amount: Decimal | None = Field(default=None, ge=0)
+    supplier_name: str | None = Field(default=None, max_length=200)
     needed_by: datetime | None = None
     notes: str | None = Field(default=None, max_length=4000)
-    items: list[PurchaseItemCreate] = Field(min_length=1, max_length=100)
+    items: list[PurchaseItemCreate] = Field(default_factory=list, max_length=100)
+
+    @model_validator(mode="after")
+    def validate_kind(self) -> "PurchaseCreate":
+        if self.purchase_type == "parts" and not self.items:
+            raise ValueError("Informe pelo menos uma peça")
+        if self.purchase_type == "expense" and (not self.expense_category or self.expense_amount is None):
+            raise ValueError("Informe a categoria e o valor da despesa")
+        return self
 
 
 class PurchaseQuoteCreate(BaseModel):
@@ -402,10 +414,22 @@ class PurchaseEventOut(ORMModel):
     created_at: datetime
 
 
+class PurchaseAttachmentOut(ORMModel):
+    id: str
+    filename: str
+    content_type: str
+    size_bytes: int
+    created_at: datetime
+
+
 class PurchaseOut(ORMModel):
     id: str
     number: str
     status: str
+    purchase_type: str
+    expense_category: str | None
+    expense_amount: Decimal | None
+    supplier_name: str | None
     selected_quote_id: str | None
     needed_by: datetime | None
     ordered_at: datetime | None
@@ -415,6 +439,7 @@ class PurchaseOut(ORMModel):
     items: list[PurchaseItemOut]
     quotes: list[PurchaseQuoteOut]
     events: list[PurchaseEventOut]
+    attachments: list[PurchaseAttachmentOut]
 
 
 class CustomerCreate(BaseModel):

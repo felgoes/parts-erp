@@ -28,6 +28,7 @@ from app.models import (
 from app.schemas.common import InvoiceCreate, InvoiceItemCreate
 from app.services.after_sale import link_pending_after_sale_cases
 from app.services.push_notifications import (
+    enqueue_document_notification,
     enqueue_order_status_notification,
     enqueue_sale_notification,
 )
@@ -454,6 +455,14 @@ def _store_document(
             sha256=hashlib.sha256(content).hexdigest(),
         )
     )
+    db.flush()
+    order = db.scalar(
+        select(MarketplaceOrder).where(MarketplaceOrder.invoice_id == invoice_id)
+    )
+    if order and document_type in {"xml", "pdf", "label_pdf"}:
+        enqueue_document_notification(
+            db, order, "label" if document_type == "label_pdf" else "invoice"
+        )
     return True
 
 
@@ -533,6 +542,12 @@ def issue_and_sync_invoice(
                 raise
 
         if not fiscal_entries and auto_issue and not record.external_invoice_id:
+            if record.shipment_id:
+                sync_shipping_status(db, record, account)
+                if record.shipping_status not in {"ready_to_ship", "shipped", "delivered"}:
+                    record.fiscal_status = "waiting_release"
+                    record.fiscal_error = None
+                    return
             record.fiscal_status = "requesting"
             db.commit()
             result = client.post(
@@ -558,8 +573,14 @@ def issue_and_sync_invoice(
             record.fiscal_status = "pending"
         record.fiscal_error = None
     except MercadoLivreError as exc:
-        record.fiscal_status = "error"
-        record.fiscal_error = str(exc)[:1000]
+        # The shipment can change between GET and issuance; this specific
+        # rejection is an expected wait, unlike other fiscal validation errors.
+        if exc.status_code == 400 and "shipment status is not ready_to_ship" in str(exc).lower():
+            record.fiscal_status = "waiting_release"
+            record.fiscal_error = None
+        else:
+            record.fiscal_status = "error"
+            record.fiscal_error = str(exc)[:1000]
 
 
 def sync_shipping_label(db: Session, record: MarketplaceOrder, account: MarketplaceAccount) -> None:
@@ -568,6 +589,13 @@ def sync_shipping_label(db: Session, record: MarketplaceOrder, account: Marketpl
     if not record.shipment_id:
         record.label_status = "waiting_shipment"
         record.label_error = None
+        return
+    if record.label_status == "downloaded" and db.scalar(
+        select(InvoiceDocument.id).where(
+            InvoiceDocument.invoice_id == record.invoice_id,
+            InvoiceDocument.document_type == "label_pdf",
+        )
+    ):
         return
     client = MercadoLivreClient(db, account)
     try:
@@ -728,7 +756,10 @@ def automate_order_documents(
 
 
 def retry_pending_automations(db: Session) -> int:
-    cutoff = datetime.now(UTC) - timedelta(seconds=45)
+    now = datetime.now(UTC)
+    recent_order = now - timedelta(minutes=10)
+    fast_cutoff = now - timedelta(minutes=2)
+    slow_cutoff = now - timedelta(minutes=5)
     orders = list(
         db.scalars(
             select(MarketplaceOrder)
@@ -737,13 +768,17 @@ def retry_pending_automations(db: Session) -> int:
                 MarketplaceOrder.invoice_id.is_not(None),
                 or_(
                     MarketplaceOrder.automation_updated_at.is_(None),
-                    MarketplaceOrder.automation_updated_at <= cutoff,
+                    (MarketplaceOrder.created_at >= recent_order)
+                    & (MarketplaceOrder.automation_updated_at <= fast_cutoff),
+                    MarketplaceOrder.automation_updated_at <= slow_cutoff,
                 ),
+                MarketplaceOrder.status.not_in({"cancelled", "canceled"}),
                 (
                     MarketplaceOrder.fiscal_status.not_in(FINISHED_FISCAL_STATUSES)
                     | MarketplaceOrder.label_status.not_in(FINISHED_LABEL_STATUSES)
                 ),
             )
+            .order_by(MarketplaceOrder.automation_updated_at.asc(), MarketplaceOrder.id)
             .limit(20)
         )
     )

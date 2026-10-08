@@ -12,6 +12,7 @@ from app.models import (
     MarketplaceAccount,
     MarketplaceOrder,
     Product,
+    PushNotification,
     SalesInvoice,
 )
 
@@ -92,6 +93,11 @@ def test_order_webhook_creates_invoice_and_documents(db, monkeypatch, tmp_path):
     docs = list(db.scalars(select(InvoiceDocument)))
     assert {doc.document_type for doc in docs} == {"xml", "pdf"}
     assert len(downloads) == 2
+    alerts = list(db.scalars(select(PushNotification).where(PushNotification.category == "fiscal")))
+    assert len(alerts) == 1  # XML and DANFE are one NF-e notification.
+    assert alerts[0].data["type"] == "invoice_ready"
+    sync_module.sync_order(db, "77", "/orders/123")
+    assert len(list(db.scalars(select(PushNotification).where(PushNotification.category == "fiscal")))) == 1
 
 
 def test_shipment_api_failure_marks_order_for_retry(db, monkeypatch):
@@ -236,6 +242,7 @@ def test_label_waits_until_mercado_livre_releases_printing_substatus(db, monkeyp
     sync_module.sync_shipping_label(db, order, account)
     assert order.shipping_substatus == "invoice_pending"
     assert order.label_status == "waiting"
+    assert list(db.scalars(select(PushNotification))) == []
     assert downloads == []
     assert (
         db.scalar(select(InvoiceDocument).where(InvoiceDocument.document_type == "label_pdf"))
@@ -247,6 +254,14 @@ def test_label_waits_until_mercado_livre_releases_printing_substatus(db, monkeyp
     assert order.shipping_substatus == "ready_to_print"
     assert order.label_status == "downloaded"
     assert downloads == ["/shipment_labels?shipment_ids=789&response_type=pdf"]
+    db.commit()
+    alerts = list(db.scalars(select(PushNotification)))
+    assert len(alerts) == 1
+    assert alerts[0].category == "fiscal"
+    assert alerts[0].data["type"] == "label_ready"
+    sync_module.sync_shipping_label(db, order, account)
+    assert len(downloads) == 1
+    assert len(list(db.scalars(select(PushNotification)))) == 1
     assert (
         db.scalar(select(InvoiceDocument).where(InvoiceDocument.document_type == "label_pdf"))
         is not None
@@ -384,3 +399,81 @@ def test_marketplace_cancellation_keeps_invoice_and_restores_stock_once(db, monk
     sync_module.sync_order(db, "77", "/orders/321")
     assert product.current_stock == Decimal("3")
     assert invoice.status.value == "cancelled"
+
+
+def test_invoice_waits_for_fresh_shipping_state_even_on_manual_request(db, monkeypatch):
+    account = marketplace_account(db)
+    order = MarketplaceOrder(
+        external_order_id="123", seller_id="77", status="paid", payload={},
+        shipment_id="555", shipping_status="ready_to_ship",
+        invoice=SalesInvoice(number="WAIT-1"),
+    )
+    db.add(order)
+    db.commit()
+    state = {"status": "pending"}
+    posts = []
+    def get(self, path, **kwargs):
+        if "/invoices/orders/" in path:
+            return []
+        if path == "/shipments/555":
+            return state
+        if path.endswith("/history"):
+            return []
+        raise AssertionError(path)
+    monkeypatch.setattr(MercadoLivreClient, "get", get)
+    monkeypatch.setattr(MercadoLivreClient, "post",
+                        lambda self, path, data: posts.append(data) or [{"id": "nf1", "status": "pending"}])
+    sync_module.issue_and_sync_invoice(db, order, account, force_issue=True)
+    assert order.fiscal_status == "waiting_release"
+    assert order.fiscal_error is None
+    assert posts == []
+    state["status"] = "ready_to_ship"
+    sync_module.issue_and_sync_invoice(db, order, account, force_issue=True)
+    assert posts == [{"orders": [123]}]
+    assert order.external_invoice_id == "nf1"
+
+
+@pytest.mark.parametrize("message,expected", [
+    ("shipment status is not ready_to_ship, shipped or delivered", "waiting_release"),
+    ("Invalid fiscal configuration", "error"),
+])
+def test_only_shipping_release_rejection_is_an_expected_wait(db, monkeypatch, message, expected):
+    account = marketplace_account(db)
+    order = MarketplaceOrder(
+        external_order_id="123", seller_id="77", status="paid", payload={},
+        invoice=SalesInvoice(number="REJECTION-1"),
+    )
+    db.add(order)
+    db.commit()
+    monkeypatch.setattr(MercadoLivreClient, "get", lambda *args: [])
+    def reject(*args):
+        raise MercadoLivreError(message, status_code=400)
+    monkeypatch.setattr(MercadoLivreClient, "post", reject)
+    sync_module.issue_and_sync_invoice(db, order, account, force_issue=True)
+    assert order.fiscal_status == expected
+    assert bool(order.fiscal_error) == (expected == "error")
+
+
+def test_polling_backoff_and_fair_ordering(db, monkeypatch):
+    from datetime import UTC, datetime, timedelta
+    now = datetime.now(UTC)
+    cases = [
+        ("new-due", 5, 2.1, "paid"),
+        ("new-wait", 5, 1, "paid"),
+        ("old-due", 30, 5.1, "paid"),
+        ("old-wait", 30, 3, "paid"),
+        ("cancelled", 30, 6, "cancelled"),
+    ]
+    for name, age, elapsed, status in cases:
+        db.add(MarketplaceOrder(
+            external_order_id=name, seller_id="77", status=status, payload={},
+            invoice=SalesInvoice(number=name), fiscal_status="waiting_release",
+            created_at=now-timedelta(minutes=age),
+            automation_updated_at=now-timedelta(minutes=elapsed),
+        ))
+    db.commit()
+    processed = []
+    monkeypatch.setattr(sync_module, "automate_order_documents",
+                        lambda db, order: processed.append(order.external_order_id))
+    assert sync_module.retry_pending_automations(db) == 2
+    assert processed == ["old-due", "new-due"]

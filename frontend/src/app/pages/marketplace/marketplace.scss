@@ -478,8 +478,20 @@
   .table-card table td:nth-child(5)::before {
     content: 'Fatura';
   }
+  .table-card table td:nth-child(6) {
+    display: grid;
+    grid-template-columns: 96px minmax(0, 1fr);
+    gap: 6px 12px;
+  }
   .table-card table td:nth-child(6)::before {
     content: 'NF-e';
+    grid-column: 1;
+    grid-row: 1 / span 3;
+  }
+  .table-card table td:nth-child(6) > * {
+    grid-column: 2;
+    justify-self: end;
+    max-width: 100%;
   }
   .table-card table td:nth-child(7)::before {
     content: 'Etiqueta';

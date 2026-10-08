@@ -125,6 +125,7 @@ import { PageHeader } from '../../shared/page-header';
                     class="badge"
                     [class.success]="o.fiscal_status === 'authorized'"
                     [class.cancelled]="o.fiscal_status === 'error'"
+                    [class.warning]="o.fiscal_status === 'waiting_release'"
                     >{{ automationLabel(o.fiscal_status) }}</span
                   >
                   @if (o.fiscal_error) {
@@ -587,6 +588,7 @@ export class MarketplacePage implements OnInit {
           pending: 'Pendente',
           requesting: 'Solicitando',
           waiting: 'Aguardando liberação',
+          waiting_release: 'Aguardando liberação do Mercado Livre',
           waiting_shipment: 'Sem envio',
           completed: 'Etapa concluída',
           not_applicable: 'Não aplicável',
@@ -632,6 +634,7 @@ export class MarketplacePage implements OnInit {
   }
   fiscalActionLabel(order: MarketplaceOrder) {
     if (this.isWorking(order.id, 'fiscal')) return 'Consultando…';
+    if (order.fiscal_status === 'waiting_release') return 'Verificar liberação';
     return order.external_invoice_id ? 'Verificar NF-e' : 'Solicitar NF-e';
   }
   canGetLabel(order: MarketplaceOrder) {

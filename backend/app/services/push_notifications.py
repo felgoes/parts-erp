@@ -19,6 +19,7 @@ import httpx
 import jwt
 from sqlalchemy import select
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 
 from app.core.config import get_settings
 from app.models import MarketplaceOrder, PushDevice, PushNotification, PushPreference, SalesInvoice
@@ -124,6 +125,43 @@ def enqueue_sale_notification(db: Session, order: MarketplaceOrder) -> PushNotif
     db.commit()
     db.refresh(notification)
     deliver_pending_notifications(db, only_id=notification.id)
+    return notification
+
+
+def enqueue_document_notification(
+    db: Session, order: MarketplaceOrder, kind: str
+) -> PushNotification | None:
+    """Queue in the document transaction; the worker delivers after commit."""
+    if not order.invoice_id or kind not in {"invoice", "label"}:
+        return None
+    dedupe_key = f"document:{order.provider}:{order.seller_id}:{order.external_order_id}:{kind}"
+    existing = db.scalar(select(PushNotification).where(PushNotification.dedupe_key == dedupe_key))
+    if existing is not None:
+        return existing
+    name = "NF-e" if kind == "invoice" else "Etiqueta"
+    notification = PushNotification(
+        dedupe_key=dedupe_key,
+        category="fiscal",
+        title=f"{name} liberada no Mercado Livre",
+        body=f"Pedido #{order.external_order_id}: {name} disponível para abrir no ERP.",
+        data={
+            "type": f"{kind}_ready",
+            "provider": order.provider,
+            "order_id": order.external_order_id,
+            "invoice_id": order.invoice_id,
+            "route": "/marketplace",
+        },
+    )
+    try:
+        with db.begin_nested():
+            db.add(notification)
+            db.flush()
+    except IntegrityError:
+        # A simultaneous invoice/shipment webhook may already have queued it.
+        existing = db.scalar(select(PushNotification).where(PushNotification.dedupe_key == dedupe_key))
+        if existing is None:
+            raise
+        return existing
     return notification
 
 

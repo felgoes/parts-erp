@@ -22,6 +22,7 @@
     "@angular/platform-browser": "^21.2.25",
     "@angular/router": "^21.2.25",
     "@capacitor/android": "^7.6.9",
+    "@capacitor/browser": "^7.0.5",
     "@capacitor/core": "^7.6.9",
     "@capacitor/ios": "^7.6.9",
     "rxjs": "~7.8.0",

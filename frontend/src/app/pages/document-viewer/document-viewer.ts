@@ -2,6 +2,7 @@ import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { Capacitor, registerPlugin } from '@capacitor/core';
+import { Browser } from '@capacitor/browser';
 import { firstValueFrom } from 'rxjs';
 import { ApiService } from '../../core/api.service';
 
@@ -90,7 +91,12 @@ export class DocumentViewerPage implements OnInit, OnDestroy {
     try {
       const response = await firstValueFrom(this.api.invoiceDocumentBrowserUrl(invoiceId, documentId));
       if (!response.url) throw new Error('Link do documento não foi gerado.');
-      await documentOpener.openUrl({ url: `https://erp.goesautoparts.com.br${response.url}` });
+      const url = `https://erp.goesautoparts.com.br${response.url}`;
+      if (Capacitor.isNativePlatform()) {
+        await Browser.open({ url, presentationStyle: 'popover' });
+      } else {
+        window.open(url, '_blank', 'noopener,noreferrer');
+      }
     } catch (error) {
       this.nativeError.set(error instanceof Error ? error.message : 'Não foi possível abrir o navegador.');
     }

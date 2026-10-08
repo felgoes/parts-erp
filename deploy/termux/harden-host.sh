@@ -40,7 +40,7 @@ if ! grep -q 'server_tokens off;' "$NGINX"; then
 fi
 # Both virtual hosts proxy /api/: enforce the same login limit on both hosts.
 if ! grep -q 'zone=auth_shared:' "$NGINX"; then
-  sed -i '/^http {/a\  map $uri $auth_limit_key { default ""; /api/v1/auth/login $http_cf_connecting_ip; }\n  limit_req_zone $auth_limit_key zone=auth_shared:1m rate=5r/m;\n  limit_req zone=auth_shared burst=5 nodelay;\n  limit_req_status 429;' "$NGINX"
+  sed -i '/^http {/a\  map_hash_bucket_size 128;\n  map $uri $auth_limit_key { default ""; /api/v1/auth/login $http_cf_connecting_ip; }\n  limit_req_zone $auth_limit_key zone=auth_shared:1m rate=5r/m;\n  limit_req zone=auth_shared burst=5 nodelay;\n  limit_req_status 429;' "$NGINX"
 fi
 if ! nginx -t -c "$NGINX"; then
   cp "$BACKUP/termux/nginx.conf" "$NGINX"

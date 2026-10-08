@@ -47,7 +47,23 @@ if ! nginx -t -c "$NGINX"; then
   cp "$BACKUP/sshd_config" "$PREFIX/etc/ssh/sshd_config"
   exit 1
 fi
-nginx -s reload -c "$NGINX"
+# Changing a wildcard listener to loopback cannot use a graceful reload on
+# this kernel (the old wildcard socket still owns the port).
+(
+  exec 9>"$APP_DIR/data/run/start.lock"
+  flock -w 95 9
+  old_nginx_pid="$(cat "$APP_DIR/data/run/nginx.pid")"
+  nginx -s quit -c "$NGINX"
+  for attempt in {1..20}; do
+    kill -0 "$old_nginx_pid" 2>/dev/null || break
+    sleep 1
+  done
+  if kill -0 "$old_nginx_pid" 2>/dev/null; then
+    echo 'Nginx is still draining connections; no forced termination.' >&2
+    exit 1
+  fi
+  nginx -c "$NGINX" 9>&-
+)
 
 mkdir -p "$SVDIR/parts-erp-watchdog/log" "$PREFIX/var/log/sv/parts-erp-watchdog"
 cat >"$SVDIR/parts-erp-watchdog/run" <<'RUN'

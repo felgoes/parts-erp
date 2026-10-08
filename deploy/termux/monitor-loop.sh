@@ -21,7 +21,14 @@ ensure_cloudflared() {
   printf '%s cloudflared supervisor relaunched by monitor\n' "$(date -Iseconds)" >>"$LOG_DIR/cloudflared-supervisor.log"
 }
 
+ensure_core_services() {
+  # start.sh is idempotent and restarts components whose PID disappeared.
+  PARTS_ERP_DIR="$APP_DIR" "$APP_DIR/deploy/termux/start.sh" \
+    >>"$LOG_DIR/watchdog-start.log" 2>&1 || true
+}
+
 while true; do
+  ensure_core_services
   ensure_cloudflared
   (cd "$APP_DIR/backend" && "$VENV/bin/python" -m app.monitor) >>"$LOG_DIR/monitor.log" 2>&1 || true
   sleep 60

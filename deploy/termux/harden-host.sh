@@ -72,7 +72,7 @@ termux-wake-lock >/dev/null 2>&1 || true
 BOOT
 chmod 700 "$HOME/.termux/boot/parts-erp"
 sv-enable sshd
-service-daemon start
+service-daemon start || pgrep -x runsvdir >/dev/null
 sv-enable parts-erp-watchdog
 sleep 3
 sv up parts-erp-watchdog

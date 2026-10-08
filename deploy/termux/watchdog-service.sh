@@ -10,5 +10,5 @@ while true; do
   if [[ ! -f "$PARTS_ERP_DIR/data/run/maintenance" ]]; then
     PARTS_ERP_WATCHDOG=1 timeout 90 bash "$PARTS_ERP_DIR/deploy/termux/start.sh" 8>&- || true
   fi
-  sleep 30
+  sleep 30 8>&-
 done

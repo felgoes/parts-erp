@@ -37,6 +37,20 @@ Run it again after a release that regenerates Nginx configuration.
   a shared login limiter to both domain virtual hosts.
 - Watchdog supervisor logs rotated by svlogd (1 MB, five archives).
 
+## Validation on production
+
+- Watchdog terminated deliberately; runit replaced PID 17173 with 17191.
+- Two concurrent start commands completed with one API, worker, monitor and
+  Cloudflare supervisor; application processes were not restarted for this test.
+- Nginx wildcard-to-loopback change required a controlled listener restart:
+  reload alone left the old listener active (bind error). Installer now handles it.
+- Empty login requests on the site host returned six 422 responses followed by
+  429 responses, proving rate limiting without trying real user credentials.
+- New authenticated SSH session succeeded after config reload.
+- API returned status ok; public ERP and public site both returned HTTP 200.
+- Host configuration backups are stored in data/backups/hardening-* (mode 700
+  directory via umask 077); no application data was deleted.
+
 ## Limits / remaining work
 
 - No guarantee against all failures, intrusions or DDoS. No destructive traffic

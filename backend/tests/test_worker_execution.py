@@ -67,3 +67,26 @@ def test_marketplace_webhook_work_runs_outside_worker_event_loop(monkeypatch):
 
     assert execution_threads
     assert execution_threads[0] != event_loop_thread
+
+
+def test_order_webhook_reaches_sync_with_runtime_clock(db, monkeypatch):
+    from contextlib import nullcontext
+    from types import SimpleNamespace
+    from app.models import MarketplaceAccount
+
+    db.add(MarketplaceAccount(provider="mercadolivre", seller_id="77", active=True, encrypted_access_token="mock"))
+    db.commit()
+    synced = []
+    monkeypatch.setattr(worker_settings, "SessionLocal", lambda: nullcontext(db))
+    monkeypatch.setattr(
+        worker_settings.MercadoLivreClient, "get", lambda self, resource: {"id": "123"}
+    )
+    monkeypatch.setattr(
+        worker_settings, "sync_order",
+        lambda db, seller, resource: (
+            synced.append((seller, resource))
+            or SimpleNamespace(invoice_id=None, sync_status="synced")
+        ),
+    )
+    worker_settings._process_mercadolivre_notification("orders_v2", "/orders/123", "77")
+    assert synced == [("77", "/orders/123")]

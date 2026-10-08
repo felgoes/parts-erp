@@ -47,3 +47,34 @@ def test_status_push_is_deduplicated_and_waits_for_a_device(db, monkeypatch):
     assert first.status == "pending"
     assert first.attempts == 0
     assert len(list(db.scalars(select(PushNotification)))) == 1
+
+
+def test_push_batch_respects_each_category_without_losing_recipients(db, monkeypatch):
+    from app.models import PushDevice, PushPreference, User
+
+    user = User(email="push-qa@example.com", full_name="QA", password_hash="unused")
+    db.add(user)
+    db.flush()
+    device = PushDevice(user_id=user.id, token="mock-device")
+    db.add_all([
+        device,
+        PushPreference(user_id=user.id, category="sales", enabled=False),
+    ])
+    muted = PushNotification(dedupe_key="qa-muted", title="Sale", body="QA", category="sales")
+    allowed = PushNotification(dedupe_key="qa-allowed", title="System", body="QA", category="system")
+    db.add_all([muted, allowed])
+    db.commit()
+    delivered = []
+    monkeypatch.setattr(push_notifications, "_firebase_credentials", lambda: {"project_id": "qa"})
+    monkeypatch.setattr(
+        push_notifications, "_deliver",
+        lambda credentials, devices, notification: delivered.append(
+            (notification.dedupe_key, [device.id for device in devices])
+        ),
+    )
+    assert push_notifications.deliver_pending_notifications(db) == 2
+    assert delivered == [("qa-allowed", [device.id])]
+    assert muted.status == "pending"
+    assert muted.attempts == 0
+    assert allowed.status == "sent"
+    assert allowed.sent_at is not None

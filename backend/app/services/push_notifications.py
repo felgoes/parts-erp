@@ -241,16 +241,26 @@ def deliver_pending_notifications(db: Session, only_id: str | None = None) -> in
     if credentials is None:
         return 0
     devices = list(db.scalars(select(PushDevice).where(PushDevice.active.is_(True))))
-    disabled_users = set(db.scalars(select(PushPreference.user_id).where(PushPreference.category == notification.category, PushPreference.enabled.is_(False))))
-    devices = [device for device in devices if device.user_id not in disabled_users]
     now = datetime.now(UTC)
     for notification in notifications:
-        if not devices:
+        disabled_users = set(
+            db.scalars(
+                select(PushPreference.user_id).where(
+                    PushPreference.category == notification.category,
+                    PushPreference.enabled.is_(False),
+                )
+            )
+        )
+        recipients = [
+            device for device in devices
+            if device.active and device.user_id not in disabled_users
+        ]
+        if not recipients:
             notification.error = "Nenhum celular autorizado para receber notificações"
             continue
         notification.attempts += 1
         try:
-            _deliver(credentials, devices, notification)
+            _deliver(credentials, recipients, notification)
             notification.status = "sent"
             notification.error = None
             notification.sent_at = now

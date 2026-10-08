@@ -1,6 +1,6 @@
 import asyncio
 import logging
-import time
+import time as clock
 from datetime import UTC, datetime, time, timedelta, timezone
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from typing import Any
@@ -40,7 +40,7 @@ except ZoneInfoNotFoundError:
 def _process_mercadolivre_notification(
     topic: str, resource: str, seller_id: str
 ) -> None:
-    started_at = time.monotonic()
+    started_at = clock.monotonic()
     logger.info("webhook processing provider=mercadolivre topic=%s resource=%s seller_id=%s", topic, resource, seller_id)
     with SessionLocal() as db:
         account = db.scalar(
@@ -166,7 +166,7 @@ def _process_mercadolivre_notification(
                 db.commit()
             if order.invoice_id and topic == "invoices":
                 sync_invoice_documents(db, account, order_id, order.invoice_id)
-    logger.info("webhook processed provider=mercadolivre topic=%s resource=%s elapsed_ms=%.1f", topic, resource, (time.monotonic() - started_at) * 1000)
+    logger.info("webhook processed provider=mercadolivre topic=%s resource=%s elapsed_ms=%.1f", topic, resource, (clock.monotonic() - started_at) * 1000)
 
 
 async def process_mercadolivre_notification(
@@ -216,7 +216,7 @@ async def sync_shopee_account(ctx: dict[str, Any], shop_id: str) -> None:
 
 
 def _process_shopee_notification(payload: dict[str, Any]) -> None:
-    started_at = time.monotonic()
+    started_at = clock.monotonic()
     shop_id = str(payload.get("shop_id") or payload.get("shopid") or "")
     logger.info("webhook processing provider=shopee shop_id=%s", shop_id)
     order_sn = str((payload.get("data") or {}).get("ordersn") or payload.get("ordersn") or "")

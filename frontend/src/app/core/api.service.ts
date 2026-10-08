@@ -314,6 +314,11 @@ export class ApiService {
       responseType: 'blob',
     });
   }
+  invoiceDocumentBrowserUrl(invoiceId: string, documentId: string): Observable<{ url: string }> {
+    return this.http.get<{ url: string }>(`${this.base}/invoices/documents/browser-url`, {
+      params: { invoice_id: invoiceId, document_id: documentId },
+    });
+  }
   marketplaceStatus(): Observable<MarketplaceStatus> {
     return this.http.get<MarketplaceStatus>(`${this.base}/integrations/mercadolivre/status`);
   }

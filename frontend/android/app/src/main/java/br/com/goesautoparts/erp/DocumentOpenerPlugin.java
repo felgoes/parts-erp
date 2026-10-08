@@ -18,6 +18,23 @@ import java.io.FileOutputStream;
 @CapacitorPlugin(name = "DocumentOpener")
 public class DocumentOpenerPlugin extends Plugin {
     @PluginMethod
+    public void openUrl(PluginCall call) {
+        String url = call.getString("url");
+        if (url == null || !(url.startsWith("https://") || url.startsWith("http://"))) {
+            call.reject("Link de documento inválido");
+            return;
+        }
+        Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        if (intent.resolveActivity(getContext().getPackageManager()) == null) {
+            call.reject("Nenhum navegador encontrado no celular");
+            return;
+        }
+        getContext().startActivity(intent);
+        call.resolve();
+    }
+
+    @PluginMethod
     public void open(PluginCall call) {
         String encoded = call.getString("base64");
         String mimeType = call.getString("mimeType", "application/octet-stream");

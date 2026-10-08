@@ -2,9 +2,10 @@ import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { Capacitor, registerPlugin } from '@capacitor/core';
+import { firstValueFrom } from 'rxjs';
 import { ApiService } from '../../core/api.service';
 
-type DocumentOpenerPlugin = { open(options: { base64: string; mimeType: string; fileName: string }): Promise<{ saved?: boolean; fileName?: string }> };
+type DocumentOpenerPlugin = { openUrl(options: { url: string }): Promise<void>; open(options: { base64: string; mimeType: string; fileName: string }): Promise<{ saved?: boolean; fileName?: string }> };
 const documentOpener = registerPlugin<DocumentOpenerPlugin>('DocumentOpener');
 
 @Component({
@@ -63,6 +64,7 @@ export class DocumentViewerPage implements OnInit, OnDestroy {
             this.nativeBase64 = await this.toBase64(blob);
             this.nativeFileName = `documento-${documentId}.pdf`;
             this.nativeReady.set(true);
+            void this.openBrowserDocument(invoiceId, documentId);
           } else {
             this.pdfUrl.set(this.sanitizer.bypassSecurityTrustResourceUrl(this.objectUrl));
           }
@@ -81,6 +83,16 @@ export class DocumentViewerPage implements OnInit, OnDestroy {
       if (result?.saved) this.nativeError.set(`Arquivo salvo em Downloads/Parts ERP: ${result.fileName ?? this.nativeFileName}`);
     } catch (error) {
       this.nativeError.set(error instanceof Error ? error.message : 'Não foi possível abrir o documento.');
+    }
+  }
+  private async openBrowserDocument(invoiceId: string, documentId: string) {
+    this.nativeError.set(null);
+    try {
+      const response = await firstValueFrom(this.api.invoiceDocumentBrowserUrl(invoiceId, documentId));
+      if (!response.url) throw new Error('Link do documento não foi gerado.');
+      await documentOpener.openUrl({ url: `https://erp.goesautoparts.com.br${response.url}` });
+    } catch (error) {
+      this.nativeError.set(error instanceof Error ? error.message : 'Não foi possível abrir o navegador.');
     }
   }
   private toBase64(blob: Blob): Promise<string> {

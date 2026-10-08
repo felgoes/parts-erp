@@ -8,15 +8,15 @@
 
   <form class="settings-form" (ngSubmit)="save()">
     <section class="settings-card">
-      <div class="settings-heading"><span class="section-icon">✳</span><div><p class="eyebrow">Identidade</p><h2>Sua empresa no ERP</h2><p>O nome e o símbolo aparecem no menu para toda a equipe.</p></div></div>
+      <div class="settings-heading"><span class="section-icon">✳</span><div><p class="eyebrow">Identidade</p><h2>Sua empresa no ERP</h2><p>O nome e o símbolo aparecem no menu para toda a equipe. Se apagar os campos, o ERP volta para a identidade padrão.</p></div></div>
       <div class="identity-layout">
         <div class="logo-preview" aria-label="Prévia do logotipo">
           @if (draft.logo_data_url) { <img [src]="draft.logo_data_url" alt="Prévia do logotipo da empresa" /> }
           @else { <span>{{ draft.company_short_name.slice(0, 1).toUpperCase() || 'P' }}</span> }
         </div>
         <div class="identity-fields">
-          <label>Nome da empresa<input name="company_name" [(ngModel)]="draft.company_name" maxlength="120" required placeholder="Ex.: Goes Auto Parts" /></label>
-          <label>Nome curto no menu<input name="company_short_name" [(ngModel)]="draft.company_short_name" maxlength="40" required placeholder="Ex.: Goes" /></label>
+          <label>Nome da empresa<input name="company_name" [(ngModel)]="draft.company_name" maxlength="120" placeholder="Parts ERP" /></label>
+          <label>Nome curto no menu<input name="company_short_name" [(ngModel)]="draft.company_short_name" maxlength="40" placeholder="Parts" /></label>
           <div class="logo-controls"><label class="secondary upload-button">{{ draft.logo_data_url ? 'Trocar logotipo' : 'Enviar logotipo' }}<input type="file" accept="image/png,image/jpeg,image/webp" (change)="selectLogo($event)" /></label>@if (draft.logo_data_url) { <button class="quiet-button" type="button" (click)="removeLogo()">Remover</button> }<small>PNG, JPEG ou WebP · até 2 MB</small></div>
           @if (logoError()) { <small class="field-error" role="alert">{{ logoError() }}</small> }
         </div>

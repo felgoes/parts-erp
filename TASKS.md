@@ -2,6 +2,8 @@
 
 ## Pendentes
 
+- [ ] Implementar alertas push de segurança e disponibilidade pelo Firebase: tentativas de login e acessos negados anormais, mudanças de usuários/permissões e arquivos críticos, queda/reinício de serviços, fila parada e recursos esgotando. Usar gravidade, deduplicação e intervalo entre alertas; incluir monitor externo para detectar queda total do aparelho/internet. Solicitado em 07/10/2026, após a auditoria de segurança das APIs e do código.
+
 - [ ] Concluir os backups automáticos para o Google Drive: a tela de Configurações já permite salvar a política (frequência e retenção de até 30 dias), mas ainda faltam autorização segura da conta Google, rotina/agendador no servidor, remoção automática das cópias vencidas e teste de restauração. Confirmar que a solução permanece gratuita e não versionar credenciais nem tokens.
 
 ## Fila solicitada — 07/10/2026

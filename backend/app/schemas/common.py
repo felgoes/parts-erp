@@ -62,6 +62,20 @@ class ErpSettingsUpdate(BaseModel):
     drive_client_secret: str | None = Field(default=None, max_length=4096)
     drive_folder_id: str | None = Field(default=None, max_length=255)
 
+    @model_validator(mode="before")
+    @classmethod
+    def restore_default_brand_when_empty(cls, data: Any) -> Any:
+        if not isinstance(data, dict):
+            return data
+        normalized = dict(data)
+        if not str(normalized.get("company_name") or "").strip():
+            normalized["company_name"] = "Parts ERP"
+        if not str(normalized.get("company_short_name") or "").strip():
+            normalized["company_short_name"] = "Parts"
+        if not str(normalized.get("logo_data_url") or "").strip():
+            normalized["logo_data_url"] = None
+        return normalized
+
 
 class UserOut(ORMModel):
     id: str

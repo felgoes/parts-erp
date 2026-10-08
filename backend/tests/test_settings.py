@@ -54,6 +54,37 @@ def test_company_brand_and_backup_policy_are_persisted(db) -> None:
     assert read_settings(db, admin).company_short_name == "Goes"
 
 
+def test_empty_brand_fields_restore_erp_defaults(db) -> None:
+    admin = User(id="admin-settings", email="settings@example.com", role=UserRole.admin)
+    update_settings(
+        ErpSettingsUpdate(
+            company_name="Goes Auto Parts",
+            company_short_name="Goes",
+            logo_data_url=_png_data_url(),
+        ),
+        db,
+        admin,
+    )
+
+    result = update_settings(
+        ErpSettingsUpdate(
+            company_name="  ",
+            company_short_name="",
+            logo_data_url="",
+        ),
+        db,
+        admin,
+    )
+
+    assert result.company_name == "Parts ERP"
+    assert result.company_short_name == "Parts"
+    assert result.logo_data_url is None
+    stored = read_settings(db, admin)
+    assert stored.company_name == "Parts ERP"
+    assert stored.company_short_name == "Parts"
+    assert stored.logo_data_url is None
+
+
 def test_logo_must_be_a_real_supported_image(db) -> None:
     admin = User(id="admin-settings", email="settings@example.com", role=UserRole.admin)
     payload = ErpSettingsUpdate(

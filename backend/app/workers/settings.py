@@ -2,8 +2,7 @@ import asyncio
 import logging
 import time
 from datetime import UTC, datetime, time, timedelta, timezone
-from zoneinfo import ZoneInfo
-from zoneinfo._common import ZoneInfoNotFoundError
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from typing import Any
 
 from arq import cron

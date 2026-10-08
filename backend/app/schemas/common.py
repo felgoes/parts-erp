@@ -143,7 +143,7 @@ class PushPreferenceOut(BaseModel):
     enabled: bool
 
 
-class PushNotificationOut(BaseModel):
+class PushNotificationOut(UtcModel):
     model_config = ConfigDict(from_attributes=True)
     id: str
     category: str

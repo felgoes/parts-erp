@@ -1,3 +1,4 @@
+import { DatePipe } from '@angular/common';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
@@ -7,10 +8,11 @@ import { ErpBrandService } from '../core/erp-brand.service';
 import { AuthService } from '../core/auth.service';
 import { ApiService } from '../core/api.service';
 import { canAccessPage, ROLE_LABELS } from '../core/user-access';
+import { PushNotification } from '../core/models';
 
 @Component({
   selector: 'app-layout',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, ReactiveFormsModule],
+  imports: [DatePipe, RouterOutlet, RouterLink, RouterLinkActive, ReactiveFormsModule],
   template: ` <div class="app-shell" [class.menu-open]="menuOpen()">
     <aside class="sidebar">
       <div class="brand">
@@ -58,6 +60,22 @@ import { canAccessPage, ROLE_LABELS } from '../core/user-access';
         <button class="icon-button" title="Sair" aria-label="Sair" (click)="auth.logout()">↗</button>
       </div>
     </aside>
+    <div class="notification-area">
+      <button class="notification-trigger" type="button" aria-label="Abrir notificações" [attr.aria-expanded]="notificationsOpen()" (click)="toggleNotifications()">
+        <svg class="bell-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4" /></svg>
+        @if (notificationCount() > 0) { <span class="notification-badge">{{ notificationCount() > 9 ? '9+' : notificationCount() }}</span> }
+      </button>
+      @if (notificationsOpen()) {
+        <section class="notification-popover" aria-label="Notificações recentes">
+          <div class="notification-popover-head"><div><strong>Notificações</strong><small>Atividade recente do ERP</small></div><button type="button" (click)="notificationsOpen.set(false)" aria-label="Fechar notificações">×</button></div>
+          @if (notificationLoading()) { <p class="notification-empty">Carregando…</p> }
+          @for (item of notificationPreview(); track item.id) {
+            <article class="notification-preview"><span class="notification-dot" [class.failed]="item.status === 'failed'"></span><div><strong>{{ item.title }}</strong><p>{{ item.body }}</p><small>{{ item.created_at | date:'dd/MM HH:mm' }}</small></div></article>
+          } @empty { @if (!notificationLoading()) { <p class="notification-empty">Nenhuma notificação recente.</p> } }
+          <a class="notification-history-link" routerLink="/notifications" (click)="notificationsOpen.set(false)">Ver histórico completo <span aria-hidden="true">→</span></a>
+        </section>
+      }
+    </div>
     <div class="mobile-bar">
       <button class="icon-button" aria-label="Abrir menu" (click)="menuOpen.set(!menuOpen())">
         ☰
@@ -100,18 +118,55 @@ export class AppLayout implements OnInit {
   readonly profileMessage = signal('');
   readonly profileSaving = signal(false);
   readonly avatarSaving = signal(false);
+  readonly notificationsOpen = signal(false);
+  readonly notificationLoading = signal(false);
+  readonly notificationHistory = signal<PushNotification[]>([]);
+  readonly notificationCount = signal(0);
   private readonly api = inject(ApiService);
   private readonly fb = inject(FormBuilder);
   readonly profileForm = this.fb.nonNullable.group({ email: ['', [Validators.required, Validators.email]] });
   ngOnInit(): void {
     this.brand.load();
     this.loadAvatar();
+    this.loadNotifications();
     this.settingsOpen.set(this.isConfigurationRoute());
     this.router.events.pipe(filter((event): event is NavigationEnd => event instanceof NavigationEnd))
       .subscribe((event) => {
         const route = event.urlAfterRedirects.split('?')[0].replace(/^\//, '');
         this.settingsOpen.set(['settings', 'integrations', 'users'].includes(route));
+        this.notificationsOpen.set(false);
       });
+  }
+  notificationPreview(): PushNotification[] { return this.notificationHistory().slice(0, 4); }
+  toggleNotifications(): void {
+    const open = !this.notificationsOpen();
+    this.notificationsOpen.set(open);
+    if (open) {
+      this.loadNotifications();
+      this.markNotificationsSeen();
+    }
+  }
+  private loadNotifications(): void {
+    this.notificationLoading.set(true);
+    this.api.pushHistory().subscribe({
+      next: (items) => {
+        this.notificationHistory.set(items);
+        const seenAt = this.notificationsSeenAt();
+        this.notificationCount.set(items.filter((item) => !seenAt || item.created_at > seenAt).length);
+      },
+      error: () => this.notificationHistory.set([]),
+      complete: () => this.notificationLoading.set(false),
+    });
+  }
+  private notificationsSeenAt(): string | null {
+    const userId = this.auth.user()?.id;
+    return userId ? localStorage.getItem(`parts-erp.notifications.seen.${userId}`) : null;
+  }
+  private markNotificationsSeen(): void {
+    const userId = this.auth.user()?.id;
+    const latest = this.notificationHistory()[0]?.created_at;
+    if (userId && latest) localStorage.setItem(`parts-erp.notifications.seen.${userId}`, latest);
+    this.notificationCount.set(0);
   }
   get navigationSections() {
     const role = this.auth.user()?.role;
@@ -130,7 +185,6 @@ export class AppLayout implements OnInit {
         label: 'Análise',
         items: [
           { path: '/monitoring', label: 'Monitoramento', icon: '◉' },
-          { path: '/notifications', label: 'Notificações', icon: '♢' },
           { path: '/finance', label: 'Financeiro', icon: '$' },
           { path: '/market-studies', label: 'Estudos de mercado', icon: '⌕' },
         ],

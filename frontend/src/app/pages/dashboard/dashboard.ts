@@ -220,15 +220,8 @@ export class DashboardPage implements OnInit {
     return total ? Math.max(4, (value / total) * 100) : 0;
   }
   openDocument(invoiceId: string, documentId: string) {
-    const preview = window.open('about:blank', '_blank');
-    this.api.downloadInvoiceDocument(invoiceId, documentId).subscribe((blob) => {
-      const url = URL.createObjectURL(blob);
-      if (preview) {
-        preview.opener = null;
-        preview.location.href = url;
-      }
-      window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
-    });
+    // Popup + blob falha no WebView Android e resulta em about:blank.
+    this.router.navigate(['/document-viewer', invoiceId, documentId]);
   }
   documentViewerUrl(invoiceId: string, documentId: string) { return `/document-viewer/${invoiceId}/${documentId}`; }
 }

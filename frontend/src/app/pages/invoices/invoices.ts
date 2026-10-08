@@ -1,4 +1,5 @@
 import { CurrencyPipe, DatePipe } from '@angular/common';
+import { Router } from '@angular/router';
 import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { debounceTime, forkJoin } from 'rxjs';
@@ -174,6 +175,7 @@ import { AfterSaleWorkflow } from '../../shared/after-sale-workflow';
 })
 export class InvoicesPage implements OnInit {
   private readonly api = inject(ApiService);
+  private readonly router = inject(Router);
   private readonly live = inject(LiveUpdatesService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly auth = inject(AuthService);
@@ -296,15 +298,8 @@ export class InvoicesPage implements OnInit {
     this.api.invoice(i.id).subscribe((full) => this.detail.set(full));
   }
   openDocument(invoiceId: string, documentId: string) {
-    const preview = window.open('about:blank', '_blank');
-    this.api.downloadInvoiceDocument(invoiceId, documentId).subscribe((blob) => {
-      const url = URL.createObjectURL(blob);
-      if (preview) {
-        preview.opener = null;
-        preview.location.href = url;
-      }
-      window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
-    });
+    // Popup + blob falha no WebView Android e resulta em about:blank.
+    this.router.navigate(['/document-viewer', invoiceId, documentId]);
   }
   documentViewerUrl(invoiceId: string, documentId: string) { return `/document-viewer/${invoiceId}/${documentId}`; }
   label(s: string) {

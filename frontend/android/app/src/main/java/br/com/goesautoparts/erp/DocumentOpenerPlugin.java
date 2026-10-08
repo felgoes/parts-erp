@@ -44,6 +44,21 @@ public class DocumentOpenerPlugin extends Plugin {
                 call.resolve();
                 return;
             }
+            // Chrome e Samsung Internet conseguem exibir PDF, mas nem sempre
+            // declaram o MIME application/pdf no filtro genérico do Android.
+            // Tente explicitamente os navegadores instalados antes de salvar.
+            String[] browsers = {"com.android.chrome", "com.sec.android.app.sbrowser"};
+            for (String browser : browsers) {
+                Intent browserIntent = new Intent(Intent.ACTION_VIEW);
+                browserIntent.setDataAndType(uri, mimeType);
+                browserIntent.setPackage(browser);
+                browserIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_ACTIVITY_NEW_TASK);
+                if (browserIntent.resolveActivity(getContext().getPackageManager()) != null) {
+                    getContext().startActivity(browserIntent);
+                    call.resolve();
+                    return;
+                }
+            }
             saveToDownloads(bytes, safeName, mimeType);
             com.getcapacitor.JSObject result = new com.getcapacitor.JSObject();
             result.put("saved", true);

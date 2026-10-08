@@ -6,7 +6,7 @@ import sqlalchemy as sa
 from alembic import op
 
 revision: str = "48_push_preferences_categories"
-down_revision: str | None = "47_normalize_marketplace_tracking_times"
+down_revision: str | None = "47_normalize_ml_tracking_times"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | None = None
 

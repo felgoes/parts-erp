@@ -3,6 +3,10 @@ set -euo pipefail
 
 APP_DIR="${PARTS_ERP_DIR:-$HOME/parts-erp}"
 RUN_DIR="$APP_DIR/data/run"
+mkdir -p "$RUN_DIR"
+exec 9>"$RUN_DIR/start.lock"
+flock -w 95 9 || exit 1
+touch "$RUN_DIR/maintenance"
 
 stop_pid() {
   local name="$1"
@@ -28,10 +32,10 @@ stop_all_cloudflared() {
   done
 }
 
+stop_pid monitor
 stop_pid nginx
 stop_pid cloudflared
 stop_all_cloudflared
-stop_pid monitor
 stop_pid worker
 stop_pid api
 stop_pid redis

@@ -23,13 +23,13 @@ ensure_cloudflared() {
 
 ensure_core_services() {
   # start.sh is idempotent and restarts components whose PID disappeared.
-  PARTS_ERP_DIR="$APP_DIR" "$APP_DIR/deploy/termux/start.sh" \
+  PARTS_ERP_WATCHDOG=1 PARTS_ERP_DIR="$APP_DIR" "$APP_DIR/deploy/termux/start.sh" \
     >>"$LOG_DIR/watchdog-start.log" 2>&1 || true
 }
 
 while true; do
+  if [[ -f "$RUN_DIR/maintenance" ]]; then sleep 30; continue; fi
   ensure_core_services
-  ensure_cloudflared
-  (cd "$APP_DIR/backend" && "$VENV/bin/python" -m app.monitor) >>"$LOG_DIR/monitor.log" 2>&1 || true
+  (cd "$APP_DIR/backend" && timeout 45 "$VENV/bin/python" -m app.monitor) >>"$LOG_DIR/monitor.log" 2>&1 || true
   sleep 60
 done

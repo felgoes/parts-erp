@@ -9,6 +9,14 @@ export PYTHONPATH="$APP_DIR/backend${PYTHONPATH:+:$PYTHONPATH}"
 
 mkdir -p "$RUN_DIR" "$LOG_DIR" "$APP_DIR/data/redis" "$APP_DIR/data/documents"
 
+exec 9>"$RUN_DIR/start.lock"
+flock -w 30 9 || exit 1
+if [[ "${PARTS_ERP_WATCHDOG:-0}" == 1 ]]; then
+  [[ ! -f "$RUN_DIR/maintenance" ]] || exit 0
+else
+  rm -f "$RUN_DIR/maintenance"
+fi
+
 is_running() {
   local pid_file="$1"
   [[ -f "$pid_file" ]] && kill -0 "$(cat "$pid_file")" 2>/dev/null
@@ -16,7 +24,7 @@ is_running() {
 
 if ! is_running "$RUN_DIR/redis.pid"; then
   rm -f "$RUN_DIR/redis.pid"
-  redis-server "$APP_DIR/deploy/termux/redis.conf"
+  redis-server "$APP_DIR/deploy/termux/redis.conf" 9>&-
 fi
 
 if ! is_running "$RUN_DIR/api.pid"; then
@@ -24,7 +32,7 @@ if ! is_running "$RUN_DIR/api.pid"; then
   (
     cd "$APP_DIR/backend"
     exec nohup "$VENV/bin/python" -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --workers 1
-  ) >>"$LOG_DIR/api.log" 2>&1 &
+  ) >>"$LOG_DIR/api.log" 2>&1 9>&- &
   echo $! >"$RUN_DIR/api.pid"
 fi
 
@@ -33,19 +41,19 @@ if ! is_running "$RUN_DIR/worker.pid"; then
   (
     cd "$APP_DIR/backend"
     exec nohup "$VENV/bin/python" -m arq app.workers.settings.WorkerSettings
-  ) >>"$LOG_DIR/worker.log" 2>&1 &
+  ) >>"$LOG_DIR/worker.log" 2>&1 9>&- &
   echo $! >"$RUN_DIR/worker.pid"
 fi
 
 if ! is_running "$RUN_DIR/monitor.pid"; then
   rm -f "$RUN_DIR/monitor.pid"
-  nohup "$APP_DIR/deploy/termux/monitor-loop.sh" >>"$LOG_DIR/monitor-loop.log" 2>&1 </dev/null &
+  nohup "$APP_DIR/deploy/termux/monitor-loop.sh" >>"$LOG_DIR/monitor-loop.log" 2>&1 </dev/null 9>&- &
   echo $! >"$RUN_DIR/monitor.pid"
 fi
 
 if ! is_running "$RUN_DIR/nginx.pid"; then
   rm -f "$RUN_DIR/nginx.pid"
-  nginx -c "$APP_DIR/deploy/termux/nginx.conf"
+  nginx -c "$APP_DIR/deploy/termux/nginx.conf" 9>&-
 fi
 
 CLOUDFLARED_BIN="${CLOUDFLARED_BIN:-$HOME/cloudflared}"
@@ -54,12 +62,12 @@ if [[ -x "$CLOUDFLARED_BIN" && -s "$CLOUDFLARED_TOKEN_FILE" ]] \
   && ! is_running "$RUN_DIR/cloudflared.pid"; then
   rm -f "$RUN_DIR/cloudflared.pid"
   nohup "$APP_DIR/deploy/termux/cloudflared-supervisor.sh" \
-    >>"$LOG_DIR/cloudflared-supervisor.log" 2>&1 </dev/null &
+    >>"$LOG_DIR/cloudflared-supervisor.log" 2>&1 </dev/null 9>&- &
   echo $! >"$RUN_DIR/cloudflared.pid"
 fi
 
 for _attempt in {1..20}; do
-  if curl --fail --silent http://127.0.0.1:8000/health >/dev/null; then
+  if curl --fail --silent --max-time 3 http://127.0.0.1:8000/health >/dev/null; then
     printf 'Parts ERP iniciado em http://127.0.0.1:8080\n'
     exit 0
   fi

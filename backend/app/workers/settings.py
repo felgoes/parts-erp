@@ -1,8 +1,9 @@
 import asyncio
 import logging
 import time
-from datetime import UTC, datetime, time
+from datetime import UTC, datetime, time, timedelta, timezone
 from zoneinfo import ZoneInfo
+from zoneinfo._common import ZoneInfoNotFoundError
 from typing import Any
 
 from arq import cron
@@ -28,7 +29,13 @@ from app.services.google_drive_backup import run_backup
 from app.services.push_notifications import deliver_pending_notifications, enqueue_sale_notification
 
 logger = logging.getLogger(__name__)
-BACKUP_TIMEZONE = ZoneInfo("America/Sao_Paulo")
+try:
+    BACKUP_TIMEZONE = ZoneInfo("America/Sao_Paulo")
+except ZoneInfoNotFoundError:
+    # Termux deployments may not include the optional tzdata package. São
+    # Paulo has used UTC-03:00 year-round since 2019, so this keeps the worker
+    # operational there while desktop/server environments use the IANA zone.
+    BACKUP_TIMEZONE = timezone(timedelta(hours=-3), name="America/Sao_Paulo")
 
 
 def _process_mercadolivre_notification(

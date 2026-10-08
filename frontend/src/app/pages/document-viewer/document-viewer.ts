@@ -4,7 +4,7 @@ import { ActivatedRoute } from '@angular/router';
 import { Capacitor, registerPlugin } from '@capacitor/core';
 import { ApiService } from '../../core/api.service';
 
-type DocumentOpenerPlugin = { open(options: { base64: string; mimeType: string; fileName: string }): Promise<void> };
+type DocumentOpenerPlugin = { open(options: { base64: string; mimeType: string; fileName: string }): Promise<{ saved?: boolean; fileName?: string }> };
 const documentOpener = registerPlugin<DocumentOpenerPlugin>('DocumentOpener');
 
 @Component({
@@ -14,7 +14,7 @@ const documentOpener = registerPlugin<DocumentOpenerPlugin>('DocumentOpener');
       <header><a href="/dashboard" aria-label="Voltar ao Parts ERP"><span> P </span><strong>Parts ERP</strong></a><small>Visualização de documento</small></header>
       @if (loading()) { <section class="viewer-state">Abrindo documento…</section> }
       @if (error()) { <section class="viewer-state error">Não foi possível abrir este documento.</section> }
-      @if (nativeReady()) { <section class="viewer-state native-ready"><strong>Documento pronto</strong><span>Abra o arquivo no visualizador do celular.</span><button type="button" (click)="openNativeDocument()">Abrir documento</button>@if (nativeError()) { <small class="error-text">{{ nativeError() }}</small> }</section> }
+      @if (nativeReady()) { <section class="viewer-state native-ready"><strong>Documento pronto</strong><span>Abra o arquivo ou salve em Downloads.</span><button type="button" (click)="openNativeDocument()">Abrir documento</button>@if (nativeError()) { <small class="error-text">{{ nativeError() }}</small> }</section> }
       @if (pdfUrl(); as url) { <iframe [src]="url" title="Documento fiscal em PDF"></iframe> }
       @if (xml(); as content) { <pre>{{ content }}</pre> }
     </main>
@@ -77,7 +77,8 @@ export class DocumentViewerPage implements OnInit, OnDestroy {
   async openNativeDocument() {
     this.nativeError.set(null);
     try {
-      await documentOpener.open({ base64: this.nativeBase64, mimeType: 'application/pdf', fileName: this.nativeFileName });
+      const result = await documentOpener.open({ base64: this.nativeBase64, mimeType: 'application/pdf', fileName: this.nativeFileName });
+      if (result?.saved) this.nativeError.set(`Arquivo salvo em Downloads/Parts ERP: ${result.fileName ?? this.nativeFileName}`);
     } catch (error) {
       this.nativeError.set(error instanceof Error ? error.message : 'Não foi possível abrir o documento.');
     }

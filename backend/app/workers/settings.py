@@ -1,7 +1,8 @@
 import asyncio
 import logging
 import time
-from datetime import datetime
+from datetime import UTC, datetime, time
+from zoneinfo import ZoneInfo
 from typing import Any
 
 from arq import cron
@@ -27,6 +28,7 @@ from app.services.google_drive_backup import run_backup
 from app.services.push_notifications import deliver_pending_notifications, enqueue_sale_notification
 
 logger = logging.getLogger(__name__)
+BACKUP_TIMEZONE = ZoneInfo("America/Sao_Paulo")
 
 
 def _process_mercadolivre_notification(
@@ -277,26 +279,52 @@ async def retry_pending_push_notifications(ctx: dict[str, Any]) -> int:
     return await asyncio.to_thread(_retry_pending_push_notifications)
 
 
+def _scheduled_backup_is_due(settings: ErpSettings, now_utc: datetime | None = None) -> bool:
+    """Return whether the configured backup window has been reached.
+
+    ``backup_time`` is a local São Paulo time. The worker runs every minute,
+    so this intentionally uses a catch-up window (after the target time) and
+    records the last run by local calendar date instead of requiring an exact
+    ``HH:MM`` match.
+    """
+    now = now_utc or datetime.now(UTC)
+    if now.tzinfo is None:
+        now = now.replace(tzinfo=UTC)
+    now = now.astimezone(UTC)
+    local_now = now.astimezone(BACKUP_TIMEZONE)
+    try:
+        target_hour, target_minute = (int(part) for part in settings.backup_time.split(":", 1))
+        target = time(target_hour, target_minute)
+    except (AttributeError, TypeError, ValueError):
+        target = time(2, 0)
+    if local_now.time() < target:
+        return False
+
+    if not settings.backup_last_at:
+        return True
+    last = settings.backup_last_at
+    if last.tzinfo is None:
+        # Older rows may have been saved without an offset. They were written
+        # by the worker in server local time, which is America/Sao_Paulo.
+        last = last.replace(tzinfo=BACKUP_TIMEZONE)
+    last_local = last.astimezone(BACKUP_TIMEZONE)
+    elapsed_days = (local_now.date() - last_local.date()).days
+    if settings.backup_frequency == "weekly":
+        return elapsed_days >= 7
+    return elapsed_days >= 1
+
+
 def _run_scheduled_backup() -> str | None:
     with SessionLocal() as db:
         settings = db.scalar(select(ErpSettings).where(ErpSettings.id == "global"))
         if not settings or not settings.backup_enabled or not settings.encrypted_drive_refresh_token:
             return None
-        now = datetime.now()
-        try:
-            target_hour, target_minute = (int(part) for part in settings.backup_time.split(":", 1))
-        except (AttributeError, ValueError):
-            target_hour, target_minute = 2, 0
-        if (now.hour, now.minute) != (target_hour, target_minute):
+        if not _scheduled_backup_is_due(settings):
             return None
-        if settings.backup_last_at:
-            elapsed = now - settings.backup_last_at.replace(tzinfo=None)
-            minimum = 7 * 24 * 3600 if settings.backup_frequency == "weekly" else 24 * 3600
-            if elapsed.total_seconds() < minimum:
-                return None
         try:
             return run_backup(db)
         except Exception:
+            logger.exception("scheduled Google Drive backup failed")
             return None
 
 

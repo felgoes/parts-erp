@@ -1,7 +1,11 @@
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
+import { Capacitor, registerPlugin } from '@capacitor/core';
 import { ApiService } from '../../core/api.service';
+
+type DocumentOpenerPlugin = { open(options: { base64: string; mimeType: string; fileName: string }): Promise<void> };
+const documentOpener = registerPlugin<DocumentOpenerPlugin>('DocumentOpener');
 
 @Component({
   selector: 'app-document-viewer',
@@ -43,13 +47,36 @@ export class DocumentViewerPage implements OnInit, OnDestroy {
     const documentId = this.route.snapshot.paramMap.get('documentId');
     if (!invoiceId || !documentId) { this.loading.set(false); this.error.set(true); return; }
     this.api.downloadInvoiceDocument(invoiceId, documentId).subscribe({
-      next: (blob) => {
+      next: async (blob) => {
         this.objectUrl = URL.createObjectURL(blob);
-        if (blob.type.includes('pdf')) this.pdfUrl.set(this.sanitizer.bypassSecurityTrustResourceUrl(this.objectUrl));
-        else blob.text().then((value) => this.xml.set(value));
+        if (blob.type.includes('pdf')) {
+          if (Capacitor.isNativePlatform()) {
+            try {
+              await documentOpener.open({
+                base64: await this.toBase64(blob),
+                mimeType: 'application/pdf',
+                fileName: `documento-${documentId}.pdf`,
+              });
+            } catch {
+              this.pdfUrl.set(this.sanitizer.bypassSecurityTrustResourceUrl(this.objectUrl));
+            }
+          } else {
+            this.pdfUrl.set(this.sanitizer.bypassSecurityTrustResourceUrl(this.objectUrl));
+          }
+        } else {
+          this.xml.set(await blob.text());
+        }
         this.loading.set(false);
       },
       error: () => { this.loading.set(false); this.error.set(true); },
+    });
+  }
+  private toBase64(blob: Blob): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result).split(',', 2)[1] ?? '');
+      reader.onerror = () => reject(reader.error);
+      reader.readAsDataURL(blob);
     });
   }
   ngOnDestroy() { if (this.objectUrl) URL.revokeObjectURL(this.objectUrl); }

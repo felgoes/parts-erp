@@ -26,6 +26,8 @@ import {
   User,
   TelemetrySummary,
   ErpSettings,
+  PushPreference,
+  PushNotification,
 } from './models';
 
 @Injectable({ providedIn: 'root' })
@@ -40,6 +42,9 @@ export class ApiService {
   ): Observable<ErpSettings> {
     return this.http.put<ErpSettings>(`${this.base}/settings`, settings);
   }
+  pushPreferences(): Observable<PushPreference[]> { return this.http.get<PushPreference[]>(`${this.base}/push/preferences`); }
+  updatePushPreference(category: string, enabled: boolean): Observable<PushPreference> { return this.http.put<PushPreference>(`${this.base}/push/preferences/${category}`, { enabled }); }
+  pushHistory(): Observable<PushNotification[]> { return this.http.get<PushNotification[]>(`${this.base}/push/history`); }
   connectGoogleDrive(): Observable<{ authorization_url: string; redirect_uri: string }> {
     return this.http.get<{ authorization_url: string; redirect_uri: string }>(`${this.base}/settings/backup/google-drive/connect`);
   }

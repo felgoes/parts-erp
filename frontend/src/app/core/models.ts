@@ -609,3 +609,21 @@ export interface TelemetrySummary {
   product_views: TelemetryProductViews[];
   health: TelemetryHealth[];
 }
+
+export interface PushPreference {
+  category: string;
+  label: string;
+  description: string;
+  enabled: boolean;
+}
+
+export interface PushNotification {
+  id: string;
+  category: string;
+  title: string;
+  body: string;
+  status: string;
+  created_at: string;
+  sent_at: string | null;
+  data: Record<string, string>;
+}

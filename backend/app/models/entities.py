@@ -90,6 +90,17 @@ class PushDevice(TimestampMixin, Base):
     user: Mapped[User] = relationship()
 
 
+class PushPreference(TimestampMixin, Base):
+    __tablename__ = "push_preferences"
+    __table_args__ = (UniqueConstraint("user_id", "category", name="uq_push_preferences_user_category"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    category: Mapped[str] = mapped_column(String(40), index=True)
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    user: Mapped[User] = relationship()
+
+
 class PushNotification(TimestampMixin, Base):
     __tablename__ = "push_notifications"
 
@@ -97,6 +108,7 @@ class PushNotification(TimestampMixin, Base):
     dedupe_key: Mapped[str] = mapped_column(String(180), unique=True, index=True)
     title: Mapped[str] = mapped_column(String(160))
     body: Mapped[str] = mapped_column(String(500))
+    category: Mapped[str] = mapped_column(String(40), default="system", index=True)
     data: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
     status: Mapped[str] = mapped_column(String(30), default="pending")
     attempts: Mapped[int] = mapped_column(default=0)

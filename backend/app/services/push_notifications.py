@@ -21,7 +21,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
-from app.models import MarketplaceOrder, PushDevice, PushNotification, SalesInvoice
+from app.models import MarketplaceOrder, PushDevice, PushNotification, PushPreference, SalesInvoice
 
 logger = logging.getLogger(__name__)
 MAX_ATTEMPTS = 5
@@ -119,7 +119,7 @@ def enqueue_sale_notification(db: Session, order: MarketplaceOrder) -> PushNotif
         return existing
     invoice = db.get(SalesInvoice, order.invoice_id)
     title, body, data = _sale_copy(order, invoice)
-    notification = PushNotification(dedupe_key=dedupe_key, title=title, body=body, data=data)
+    notification = PushNotification(dedupe_key=dedupe_key, category="sales", title=title, body=body, data=data)
     db.add(notification)
     db.commit()
     db.refresh(notification)
@@ -135,6 +135,7 @@ def enqueue_backup_notification(db: Session, filename: str) -> PushNotification 
         return existing
     notification = PushNotification(
         dedupe_key=dedupe_key,
+        category="backup",
         title="Backup concluído",
         body=f"Cópia do Parts ERP enviada ao Google Drive: {filename}"[:500],
         data={"type": "backup_completed", "filename": filename, "route": "/settings"},
@@ -207,6 +208,7 @@ def enqueue_order_status_notification(
         title = f"Pedido atualizado no {provider}"
     notification = PushNotification(
         dedupe_key=dedupe_key,
+        category="order_status",
         title=title,
         body=f"Pedido #{order.external_order_id}: {status}"[:500],
         data={
@@ -239,6 +241,8 @@ def deliver_pending_notifications(db: Session, only_id: str | None = None) -> in
     if credentials is None:
         return 0
     devices = list(db.scalars(select(PushDevice).where(PushDevice.active.is_(True))))
+    disabled_users = set(db.scalars(select(PushPreference.user_id).where(PushPreference.category == notification.category, PushPreference.enabled.is_(False))))
+    devices = [device for device in devices if device.user_id not in disabled_users]
     now = datetime.now(UTC)
     for notification in notifications:
         if not devices:

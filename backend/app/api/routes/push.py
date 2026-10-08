@@ -6,10 +6,45 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
 from app.db.session import get_db
-from app.models import PushDevice, User
-from app.schemas.common import PushDeviceRegistration
+from app.models import PushDevice, PushNotification, PushPreference, User
+from app.schemas.common import PushDeviceRegistration, PushNotificationOut, PushPreferenceOut, PushPreferenceUpdate
 
 router = APIRouter(prefix="/push", tags=["Notificações"])
+
+CATEGORIES = {
+    "sales": ("Novas vendas", "Receba um aviso quando uma venda entrar pelas plataformas."),
+    "order_status": ("Status dos pedidos", "Pagamento, despacho, entrega, cancelamento e devolução."),
+    "fiscal": ("Notas e etiquetas", "Emissão ou falha de nota fiscal e etiqueta de envio."),
+    "backup": ("Backups", "Conclusão ou falha no backup do ERP."),
+    "system": ("Sistema", "Alertas técnicos e avisos importantes do ERP."),
+}
+
+
+@router.get("/preferences", response_model=list[PushPreferenceOut])
+def list_preferences(db: Session = Depends(get_db), user: User = Depends(get_current_user)) -> list[PushPreferenceOut]:
+    saved = {p.category: p.enabled for p in db.scalars(select(PushPreference).where(PushPreference.user_id == user.id))}
+    return [PushPreferenceOut(category=key, label=label, description=description, enabled=saved.get(key, True)) for key, (label, description) in CATEGORIES.items()]
+
+
+@router.put("/preferences/{category}", response_model=PushPreferenceOut)
+def update_preference(category: str, payload: PushPreferenceUpdate, db: Session = Depends(get_db), user: User = Depends(get_current_user)) -> PushPreferenceOut:
+    if category not in CATEGORIES:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=422, detail="Categoria de notificação inválida")
+    preference = db.scalar(select(PushPreference).where(PushPreference.user_id == user.id, PushPreference.category == category))
+    if preference is None:
+        preference = PushPreference(user_id=user.id, category=category, enabled=payload.enabled)
+        db.add(preference)
+    else:
+        preference.enabled = payload.enabled
+    db.commit()
+    return PushPreferenceOut(category=category, label=CATEGORIES[category][0], description=CATEGORIES[category][1], enabled=payload.enabled)
+
+
+@router.get("/history", response_model=list[PushNotificationOut])
+def notification_history(limit: int = 50, db: Session = Depends(get_db), _: User = Depends(get_current_user)) -> list[PushNotificationOut]:
+    rows = list(db.scalars(select(PushNotification).order_by(PushNotification.created_at.desc()).limit(max(1, min(limit, 100)))))
+    return [PushNotificationOut.model_validate(row, from_attributes=True) for row in rows]
 
 
 @router.post("/devices", status_code=204)

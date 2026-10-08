@@ -16,6 +16,7 @@ export const routes: Routes = [
     children: [
       { path: '', pathMatch: 'full', redirectTo: 'dashboard' },
       { path: 'monitoring', loadComponent: () => import('./pages/monitoring/monitoring').then((m) => m.MonitoringPage) },
+      { path: 'notifications', loadComponent: () => import('./pages/notifications/notifications').then((m) => m.NotificationsPage) },
       { path: 'dashboard', loadComponent: () => import('./pages/dashboard/dashboard').then((m) => m.DashboardPage) },
       { path: 'products', loadComponent: () => import('./pages/products/products').then((m) => m.ProductsPage) },
       { path: 'purchases', loadComponent: () => import('./pages/purchases/purchases').then((m) => m.PurchasesPage) },

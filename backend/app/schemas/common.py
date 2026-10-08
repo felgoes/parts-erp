@@ -132,6 +132,29 @@ class PushDeviceRegistration(BaseModel):
     platform: Literal["android"] = "android"
 
 
+class PushPreferenceUpdate(BaseModel):
+    enabled: bool
+
+
+class PushPreferenceOut(BaseModel):
+    category: str
+    label: str
+    description: str
+    enabled: bool
+
+
+class PushNotificationOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: str
+    category: str
+    title: str
+    body: str
+    status: str
+    created_at: datetime
+    sent_at: datetime | None = None
+    data: dict[str, Any] = Field(default_factory=dict)
+
+
 class ProductCreate(BaseModel):
     sku: str = Field(min_length=1, max_length=80)
     name: str = Field(min_length=2, max_length=200)

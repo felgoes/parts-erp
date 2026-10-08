@@ -23,6 +23,7 @@ export const ROLE_DESCRIPTIONS: Record<UserRole, string> = {
 const PAGE_ROLES: Record<string, UserRole[]> = {
   dashboard: ['admin', 'manager', 'operator', 'stock', 'finance', 'viewer'],
   monitoring: ['admin', 'manager', 'viewer'],
+  notifications: ['admin', 'manager', 'viewer'],
   products: ['admin', 'manager', 'operator', 'stock', 'finance', 'viewer'],
   purchases: ['admin', 'manager', 'stock', 'finance', 'viewer'],
   'market-studies': ['admin', 'manager', 'finance', 'viewer'],

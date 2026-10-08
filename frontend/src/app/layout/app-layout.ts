@@ -130,6 +130,7 @@ export class AppLayout implements OnInit {
         label: 'Análise',
         items: [
           { path: '/monitoring', label: 'Monitoramento', icon: '◉' },
+          { path: '/notifications', label: 'Notificações', icon: '♢' },
           { path: '/finance', label: 'Financeiro', icon: '$' },
           { path: '/market-studies', label: 'Estudos de mercado', icon: '⌕' },
         ],

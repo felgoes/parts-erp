@@ -252,6 +252,7 @@ main {
     transform: none;
   }
   .mobile-bar {
+    position: relative;
     display: flex;
     height: 64px;
     padding: 0 18px;
@@ -265,6 +266,8 @@ main {
   .notification-trigger { width: 38px; height: 38px; border-color: #ffffff33; background: #ffffff12; color: #fff; box-shadow: none; }
   .notification-trigger:hover, .notification-trigger[aria-expanded="true"] { border-color: #b9dc52; background: #ffffff1f; }
   .notification-badge { border-color: #17271f; }
+  .mobile-bar > .brand { position: absolute; right: 62px; max-width: calc(100% - 112px); min-width: 0; overflow: hidden; }
+  .mobile-bar > .brand strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .mobile-bar .brand {
     padding: 0;
   }
@@ -286,6 +289,7 @@ main {
 
 @media (max-width: 420px) {
   .mobile-bar { height: 58px; padding-inline: 14px; }
+  .mobile-bar > .brand { right: 58px; max-width: calc(100% - 102px); }
   .mobile-bar .brand strong { font-size: 16px; }
   .mobile-bar .brand-mark { width: 34px; height: 34px; }
   .mobile-bar .brand-logo { width: 34px; height: 34px; flex-basis: 34px; }

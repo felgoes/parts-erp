@@ -253,6 +253,42 @@ def test_label_waits_until_mercado_livre_releases_printing_substatus(db, monkeyp
     )
 
 
+def test_shipping_history_times_are_normalized_to_utc(db, monkeypatch):
+    account = marketplace_account(db)
+    order = MarketplaceOrder(
+        external_order_id="789",
+        seller_id=account.seller_id,
+        status="paid",
+        payload={},
+        shipment_id="555",
+    )
+    db.add(order)
+    db.commit()
+    monkeypatch.setattr(
+        MercadoLivreClient,
+        "get",
+        lambda self, path, **kwargs: [
+            {
+                "status": "ready_to_ship",
+                "substatus": "dropped_off",
+                "date": "2026-10-06T08:49:55.058-04:00",
+            }
+        ],
+    )
+
+    sync_module.sync_shipping_history(db, order, account)
+
+    event = db.scalar(
+        select(sync_module.MarketplaceOrderEvent).where(
+            sync_module.MarketplaceOrderEvent.order_id == order.id,
+            sync_module.MarketplaceOrderEvent.event_type == "shipment_status",
+        )
+    )
+    assert event is not None
+    assert event.created_at.isoformat().startswith("2026-10-06T12:49:55.058")
+    assert event.payload["source_date"] == "2026-10-06T08:49:55.058-04:00"
+
+
 def test_initial_sync_imports_products_and_orders(db, monkeypatch):
     account = marketplace_account(db)
     calls = []

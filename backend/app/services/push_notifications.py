@@ -26,6 +26,8 @@ from app.models import MarketplaceOrder, PushDevice, PushNotification, PushPrefe
 
 logger = logging.getLogger(__name__)
 MAX_ATTEMPTS = 5
+SOUND_CATEGORIES = {"sales", "order_status", "fiscal", "backup", "system"}
+SOUND_OPTIONS = {"system", "bell", "chime", "soft", "silent"}
 
 
 _access_token = ""
@@ -281,14 +283,20 @@ def deliver_pending_notifications(db: Session, only_id: str | None = None) -> in
     devices = list(db.scalars(select(PushDevice).where(PushDevice.active.is_(True))))
     now = datetime.now(UTC)
     for notification in notifications:
-        disabled_users = set(
-            db.scalars(
-                select(PushPreference.user_id).where(
-                    PushPreference.category == notification.category,
-                    PushPreference.enabled.is_(False),
-                )
+        user_ids = {device.user_id for device in devices if device.active}
+        category_preferences = list(db.scalars(
+            select(PushPreference).where(
+                PushPreference.user_id.in_(user_ids),
+                PushPreference.category == notification.category,
             )
-        )
+        ))
+        preferences_by_user = {preference.user_id: preference for preference in category_preferences}
+        disabled_users = {
+            user_id for user_id, preference in preferences_by_user.items() if not preference.enabled
+        }
+        sound_by_user = {
+            user_id: preference.sound for user_id, preference in preferences_by_user.items()
+        }
         recipients = [
             device for device in devices
             if device.active and device.user_id not in disabled_users
@@ -298,7 +306,7 @@ def deliver_pending_notifications(db: Session, only_id: str | None = None) -> in
             continue
         notification.attempts += 1
         try:
-            _deliver(credentials, recipients, notification)
+            _deliver(credentials, recipients, notification, sound_by_user)
             notification.status = "sent"
             notification.error = None
             notification.sent_at = now
@@ -312,7 +320,10 @@ def deliver_pending_notifications(db: Session, only_id: str | None = None) -> in
 
 
 def _deliver(
-    credentials: dict[str, Any], devices: list[PushDevice], notification: PushNotification
+    credentials: dict[str, Any],
+    devices: list[PushDevice],
+    notification: PushNotification,
+    sound_by_user: dict[str, str] | None = None,
 ) -> None:
     """Uses FCM HTTP v1 directly, avoiding heavyweight native dependencies on Termux."""
     access_token = _firebase_access_token(credentials)
@@ -321,12 +332,22 @@ def _deliver(
     delivered = 0
     failures: list[str] = []
     for device in devices:
+        sound = (sound_by_user or {}).get(device.user_id, "system")
+        if sound not in SOUND_OPTIONS:
+            sound = "system"
+        channel_id = "sales"  # Legacy fallback for APKs that do not create sound-specific channels.
+        if device.sound_settings_version >= 1 and notification.category in SOUND_CATEGORIES and sound != "system":
+            channel_id = f"parts_v1_{notification.category}_{sound}"
+        data = {str(key): str(value) for key, value in notification.data.items()}
+        if channel_id != "sales":
+            data["notification_channel"] = channel_id
+            data["notification_sound"] = sound
         payload = {
             "message": {
                 "token": device.token,
                 "notification": {"title": notification.title, "body": notification.body},
-                "data": {str(key): str(value) for key, value in notification.data.items()},
-                "android": {"priority": "HIGH", "notification": {"channel_id": "sales"}},
+                "data": data,
+                "android": {"priority": "HIGH", "notification": {"channel_id": channel_id}},
             }
         }
         response = httpx.post(url, headers=headers, json=payload, timeout=15)

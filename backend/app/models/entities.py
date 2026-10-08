@@ -85,6 +85,7 @@ class PushDevice(TimestampMixin, Base):
     token: Mapped[str] = mapped_column(String(4096), unique=True)
     platform: Mapped[str] = mapped_column(String(20), default="android")
     active: Mapped[bool] = mapped_column(Boolean, default=True)
+    sound_settings_version: Mapped[int] = mapped_column(default=0)
     last_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc)
 
     user: Mapped[User] = relationship()
@@ -98,6 +99,7 @@ class PushPreference(TimestampMixin, Base):
     user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
     category: Mapped[str] = mapped_column(String(40), index=True)
     enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    sound: Mapped[str] = mapped_column(String(20), default="system")
     user: Mapped[User] = relationship()
 
 

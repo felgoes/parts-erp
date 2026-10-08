@@ -9,6 +9,7 @@ import { AuthService } from '../core/auth.service';
 import { ApiService } from '../core/api.service';
 import { canAccessPage, ROLE_LABELS } from '../core/user-access';
 import { PushNotification } from '../core/models';
+import { PushNotificationsService } from '../core/push-notifications.service';
 
 @Component({
   selector: 'app-layout',
@@ -123,12 +124,14 @@ export class AppLayout implements OnInit {
   readonly notificationHistory = signal<PushNotification[]>([]);
   readonly notificationCount = signal(0);
   private readonly api = inject(ApiService);
+  private readonly pushNotifications = inject(PushNotificationsService);
   private readonly fb = inject(FormBuilder);
   readonly profileForm = this.fb.nonNullable.group({ email: ['', [Validators.required, Validators.email]] });
   ngOnInit(): void {
     this.brand.load();
     this.loadAvatar();
     this.loadNotifications();
+    void this.pushNotifications.enableForCurrentDevice();
     this.settingsOpen.set(this.isConfigurationRoute());
     this.router.events.pipe(filter((event): event is NavigationEnd => event instanceof NavigationEnd))
       .subscribe((event) => {

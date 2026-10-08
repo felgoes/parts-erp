@@ -68,7 +68,7 @@ def test_push_batch_respects_each_category_without_losing_recipients(db, monkeyp
     monkeypatch.setattr(push_notifications, "_firebase_credentials", lambda: {"project_id": "qa"})
     monkeypatch.setattr(
         push_notifications, "_deliver",
-        lambda credentials, devices, notification: delivered.append(
+        lambda credentials, devices, notification, sound_by_user=None: delivered.append(
             (notification.dedupe_key, [device.id for device in devices])
         ),
     )
@@ -78,3 +78,40 @@ def test_push_batch_respects_each_category_without_losing_recipients(db, monkeyp
     assert muted.attempts == 0
     assert allowed.status == "sent"
     assert allowed.sent_at is not None
+
+
+def test_push_delivery_preserves_legacy_channel_and_uses_per_user_sound(db, monkeypatch):
+    from app.models import PushDevice, User
+
+    user = User(email="sound-qa@example.com", full_name="Sound QA", password_hash="unused")
+    legacy = PushDevice(user=user, token="legacy-device-token-1234567890")
+    modern = PushDevice(user=user, token="modern-device-token-1234567890", sound_settings_version=1)
+    db.add_all([user, legacy, modern])
+    db.commit()
+    sent = []
+
+    class Response:
+        is_success = True
+        status_code = 200
+        text = ""
+
+    monkeypatch.setattr(push_notifications, "_firebase_access_token", lambda credentials: "test-token")
+    monkeypatch.setattr(
+        push_notifications.httpx,
+        "post",
+        lambda *args, **kwargs: (sent.append(kwargs["json"]) or Response()),
+    )
+    notification = PushNotification(
+        dedupe_key="qa-sale-sound",
+        category="sales",
+        title="Nova venda",
+        body="Pedido QA",
+        data={"type": "sale"},
+    )
+
+    push_notifications._deliver({"project_id": "qa"}, [legacy, modern], notification, {user.id: "chime"})
+
+    assert sent[0]["message"]["android"]["notification"]["channel_id"] == "sales"
+    assert sent[1]["message"]["android"]["notification"]["channel_id"] == "parts_v1_sales_chime"
+    assert sent[1]["message"]["notification"]["title"] == "Nova venda"
+    assert sent[1]["message"]["data"]["notification_sound"] == "chime"

@@ -11,6 +11,7 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(PushNotificationsPlugin.class);
         registerPlugin(DocumentOpenerPlugin.class);
         super.onCreate(savedInstanceState);
+        PartsFirebaseMessagingService.createNotificationChannels(this);
         getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
             @Override
             public void handleOnBackPressed() {

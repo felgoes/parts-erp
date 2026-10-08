@@ -14,18 +14,32 @@ const nativePush = registerPlugin<NativePushNotifications>('PushNotifications');
 export class PushNotificationsService {
   private readonly http = inject(HttpClient);
   private registeredToken = '';
+  private registrationRequest: Promise<void> | null = null;
 
   async enableForCurrentDevice(): Promise<void> {
     if (!Capacitor.isNativePlatform() || Capacitor.getPlatform() !== 'android') return;
+    if (this.registeredToken) return;
+    if (this.registrationRequest) return this.registrationRequest;
+    this.registrationRequest = this.registerDevice();
     try {
-      const { token } = await nativePush.register();
-      if (!token || token === this.registeredToken) return;
-      await firstValueFrom(
-        this.http.post<void>(apiUrl('/push/devices'), { token, platform: 'android' }),
-      );
-      this.registeredToken = token;
+      await this.registrationRequest;
     } catch {
       // Never interfere with login if Firebase is not configured in this APK yet.
+    } finally {
+      this.registrationRequest = null;
     }
+  }
+
+  private async registerDevice(): Promise<void> {
+    const { token } = await nativePush.register();
+    if (!token || token === this.registeredToken) return;
+    await firstValueFrom(
+      this.http.post<void>(apiUrl('/push/devices'), {
+        token,
+        platform: 'android',
+        sound_settings_version: 1,
+      }),
+    );
+    this.registeredToken = token;
   }
 }

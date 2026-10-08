@@ -12,6 +12,10 @@ describe('role-aware page access', () => {
     expect(canAccessPage('finance', '/users')).toBe(false);
     expect(canAccessPage('viewer', '/invoices?status=cancelled')).toBe(true);
     expect(canAccessPage('viewer', '/integrations')).toBe(false);
+    expect(canAccessPage('operator', '/notifications')).toBe(true);
+    expect(canAccessPage('stock', '/notifications')).toBe(true);
+    expect(canAccessPage('operator', '/notifications')).toBe(true);
+    expect(canAccessPage('stock', '/notifications')).toBe(true);
   });
 
   it('restricts user management and credential settings to administrators', () => {

@@ -610,11 +610,13 @@ export interface TelemetrySummary {
   health: TelemetryHealth[];
 }
 
+export type PushSound = 'system' | 'bell' | 'chime' | 'soft' | 'silent';
 export interface PushPreference {
   category: string;
   label: string;
   description: string;
   enabled: boolean;
+  sound: PushSound;
 }
 
 export interface PushNotification {

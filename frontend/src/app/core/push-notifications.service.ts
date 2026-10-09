@@ -37,7 +37,7 @@ export class PushNotificationsService {
       this.http.post<void>(apiUrl('/push/devices'), {
         token,
         platform: 'android',
-        sound_settings_version: 1,
+        sound_settings_version: 2,
       }),
     );
     this.registeredToken = token;

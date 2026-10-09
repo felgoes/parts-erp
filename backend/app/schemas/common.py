@@ -130,7 +130,7 @@ class BiometricCredentialOut(BaseModel):
 class PushDeviceRegistration(BaseModel):
     token: str = Field(min_length=20, max_length=4096)
     platform: Literal["android"] = "android"
-    sound_settings_version: Literal[0, 1] = 0
+    sound_settings_version: Literal[0, 1, 2] = 0
 
 
 NotificationSound = Literal["system", "bell", "chime", "soft", "kaching", "silent"]

@@ -86,7 +86,10 @@ def test_push_delivery_preserves_legacy_channel_and_uses_per_user_sound(db, monk
     user = User(email="sound-qa@example.com", full_name="Sound QA", password_hash="unused")
     legacy = PushDevice(user=user, token="legacy-device-token-1234567890")
     modern = PushDevice(user=user, token="modern-device-token-1234567890", sound_settings_version=1)
-    db.add_all([user, legacy, modern])
+    kaching_user = User(email="kaching-qa@example.com", full_name="Kaching QA", password_hash="unused")
+    old_kaching = PushDevice(user=kaching_user, token="old-kaching-device-token", sound_settings_version=1)
+    new_kaching = PushDevice(user=kaching_user, token="new-kaching-device-token", sound_settings_version=2)
+    db.add_all([user, legacy, modern, kaching_user, old_kaching, new_kaching])
     db.commit()
     sent = []
 
@@ -109,9 +112,17 @@ def test_push_delivery_preserves_legacy_channel_and_uses_per_user_sound(db, monk
         data={"type": "sale"},
     )
 
-    push_notifications._deliver({"project_id": "qa"}, [legacy, modern], notification, {user.id: "chime"})
+    push_notifications._deliver(
+        {"project_id": "qa"},
+        [legacy, modern, old_kaching, new_kaching],
+        notification,
+        {user.id: "chime", kaching_user.id: "kaching"},
+    )
 
     assert sent[0]["message"]["android"]["notification"]["channel_id"] == "sales"
     assert sent[1]["message"]["android"]["notification"]["channel_id"] == "parts_v1_sales_chime"
     assert sent[1]["message"]["notification"]["title"] == "Nova venda"
     assert sent[1]["message"]["data"]["notification_sound"] == "chime"
+    assert sent[2]["message"]["android"]["notification"]["channel_id"] == "sales"
+    assert sent[3]["message"]["android"]["notification"]["channel_id"] == "parts_v1_sales_kaching"
+    assert sent[3]["message"]["data"]["notification_sound"] == "kaching"

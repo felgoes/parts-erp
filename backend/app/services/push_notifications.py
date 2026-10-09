@@ -335,6 +335,8 @@ def _deliver(
         sound = (sound_by_user or {}).get(device.user_id, "system")
         if sound not in SOUND_OPTIONS:
             sound = "system"
+        if sound == "kaching" and device.sound_settings_version < 2:
+            sound = "system"
         channel_id = "sales"  # Legacy fallback for APKs that do not create sound-specific channels.
         if device.sound_settings_version >= 1 and notification.category in SOUND_CATEGORIES and sound != "system":
             channel_id = f"parts_v1_{notification.category}_{sound}"

@@ -2,7 +2,7 @@ from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi.responses import FileResponse
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -10,7 +10,7 @@ from app.api.deps import get_current_user, require_permission
 from app.core.permissions import Permission
 from app.core.security import hash_password
 from app.db.session import get_db
-from app.models import User, UserRole
+from app.models import AuthSession, User, UserRole
 from app.schemas.common import (
     UserCreate,
     UserOut,
@@ -125,6 +125,7 @@ def reset_password(
     if user is None:
         raise HTTPException(status_code=404, detail="Usuário não encontrado")
     user.password_hash = hash_password(payload.password)
+    db.execute(delete(AuthSession).where(AuthSession.user_id == user.id))
     db.commit()
     db.refresh(user)
     return user
@@ -178,6 +179,8 @@ def update_user(
         user.role = data["role"]
     if "active" in data:
         user.active = data["active"]
+    if "password" in data or data.get("active") is False:
+        db.execute(delete(AuthSession).where(AuthSession.user_id == user.id))
     try:
         db.commit()
     except IntegrityError as exc:

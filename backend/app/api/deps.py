@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from app.core.permissions import Permission, has_permission
 from app.core.security import decode_token
 from app.db.session import get_db
-from app.models import User, UserRole
+from app.models import AuthSession, User, UserRole
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 
@@ -26,6 +26,11 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
             raise unauthorized
     except jwt.PyJWTError as exc:
         raise unauthorized from exc
+    session_id = payload.get("sid")
+    if session_id:
+        session = db.get(AuthSession, str(session_id))
+        if not session or session.user_id != str(user_id):
+            raise unauthorized
     user = db.get(User, user_id)
     if not user or not user.active:
         raise unauthorized

@@ -18,8 +18,11 @@ export class AuthService {
   get token(): string | null {
     return this.session()?.access_token ?? null;
   }
-  login(email: string, password: string): Observable<AuthToken> {
-    const body = new HttpParams().set('username', email).set('password', password);
+  login(email: string, password: string, rememberMe = false): Observable<AuthToken> {
+    const body = new HttpParams()
+      .set('username', email)
+      .set('password', password)
+      .set('remember_me', String(rememberMe));
     return this.http
       .post<AuthToken>('/api/v1/auth/login', body.toString(), {
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -75,21 +78,34 @@ export class AuthService {
       error: () => { /* A sessão expirada é tratada pelo interceptor. */ },
     });
   }
-  logout(): void {
+  logout(revokeSession = true): void {
+    const token = this.token;
+    if (revokeSession && token) {
+      void firstValueFrom(
+        this.http.post('/api/v1/auth/logout', {}, { headers: { Authorization: `Bearer ${token}` } }),
+      ).catch(() => {});
+    }
     sessionStorage.removeItem(this.storageKey);
+    localStorage.removeItem(this.storageKey);
     this.session.set(null);
-    this.router.navigateByUrl('/login');
+    void this.router.navigateByUrl('/login');
   }
   private restore(): AuthToken | null {
-    try {
-      return JSON.parse(sessionStorage.getItem(this.storageKey) ?? 'null');
-    } catch {
-      sessionStorage.removeItem(this.storageKey);
-      return null;
+    for (const storage of [localStorage, sessionStorage]) {
+      try {
+        const value = storage.getItem(this.storageKey);
+        if (value) return JSON.parse(value);
+      } catch {
+        storage.removeItem(this.storageKey);
+      }
     }
+    return null;
   }
   private storeSession(session: AuthToken): void {
-    sessionStorage.setItem(this.storageKey, JSON.stringify(session));
+    sessionStorage.removeItem(this.storageKey);
+    localStorage.removeItem(this.storageKey);
+    const storage = session.persistent ? localStorage : sessionStorage;
+    storage.setItem(this.storageKey, JSON.stringify(session));
     this.session.set(session);
     void this.pushNotifications.enableForCurrentDevice();
   }

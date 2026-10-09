@@ -132,6 +132,30 @@
   font-size: 13px;
   font-weight: 750;
 }
+.stay-signed-in {
+  display: flex !important;
+  grid-template-columns: none !important;
+  align-items: flex-start;
+  gap: 11px !important;
+  margin-top: 16px !important;
+  color: #34443c;
+  cursor: pointer;
+}
+.stay-signed-in input {
+  width: 18px;
+  height: 18px;
+  margin: 2px 0 0;
+  accent-color: var(--ink);
+}
+.stay-signed-in span {
+  display: grid;
+  gap: 3px;
+}
+.stay-signed-in small {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+}
 .security-note {
   text-align: center;
   color: var(--muted);
@@ -254,6 +278,7 @@
   .login-panel label { margin-top: 15px; color: #34443c; }
   .login-panel input { min-height: 48px; border-radius: 10px; }
   .login-panel .primary { min-height: 48px; border-radius: 10px; }
+  .stay-signed-in input { min-height: 18px !important; }
   .security-note { color: var(--muted); }
   .error { background: #fff0ed; color: #a33628; }
 }
@@ -263,5 +288,6 @@
   .login-panel form { padding: 22px 18px 18px; }
   .hint { margin-bottom: 16px; }
   .login-panel input, .login-panel .primary { min-height: 44px; }
+  .stay-signed-in input { min-height: 18px !important; }
   .security-note { margin-top: 14px; }
 }

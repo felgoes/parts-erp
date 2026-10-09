@@ -36,6 +36,10 @@ import { AuthService } from '../../core/auth.service';
             autocomplete="current-password"
             placeholder="••••••••••••"
         /></label>
+        <label class="stay-signed-in">
+          <input type="checkbox" [checked]="staySignedIn()" (change)="toggleStaySignedIn($event)" />
+          <span><strong>Manter conectado neste dispositivo</strong><small>A sessão permanece ativa até você sair manualmente.</small></span>
+        </label>
         @if (error()) {
           <div class="error">{{ error() }}</div>
         }
@@ -74,6 +78,7 @@ export class LoginPage implements OnInit {
   readonly biometricConfigured = signal(false);
   readonly biometricEmail = signal<string | null>(null);
   readonly enableBiometric = signal(false);
+  readonly staySignedIn = signal(false);
   readonly form = this.fb.nonNullable.group({
     email: ['', [Validators.required, Validators.email]],
     password: ['', Validators.required],
@@ -90,13 +95,16 @@ export class LoginPage implements OnInit {
   toggleBiometric(event: Event): void {
     this.enableBiometric.set((event.target as HTMLInputElement).checked);
   }
+  toggleStaySignedIn(event: Event): void {
+    this.staySignedIn.set((event.target as HTMLInputElement).checked);
+  }
   submit(): void {
     if (this.form.invalid) return;
     this.loading.set(true);
     this.error.set('');
     const { email, password } = this.form.getRawValue();
     this.auth
-      .login(email, password)
+      .login(email, password, this.staySignedIn())
       .pipe(finalize(() => this.loading.set(false)))
       .subscribe({
         next: async () => {

@@ -2,7 +2,7 @@
 
 ## Pendentes
 
-- [ ] Adicionar a opção de manter a sessão ativa sem logout automático (“nunca deslogar”), mantendo o encerramento manual da sessão.
+- [x] CONCLUÍDO — Adicionar a opção de manter a sessão ativa sem logout automático (“nunca deslogar”), com encerramento manual e revogação da sessão.
 
 - [ ] Implementar alertas push de segurança e disponibilidade pelo Firebase: tentativas de login e acessos negados anormais, mudanças de usuários/permissões e arquivos críticos, queda/reinício de serviços, fila parada e recursos esgotando. Usar gravidade, deduplicação e intervalo entre alertas; incluir monitor externo para detectar queda total do aparelho/internet. Solicitado em 07/10/2026, após a auditoria de segurança das APIs e do código.
 

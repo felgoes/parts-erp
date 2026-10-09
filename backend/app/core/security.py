@@ -20,16 +20,19 @@ def verify_password(password: str, hashed: str) -> bool:
     return password_hash.verify(password, hashed)
 
 
-def create_access_token(subject: str, role: str) -> str:
+def create_access_token(subject: str, role: str, session_id: str | None = None) -> str:
     settings = get_settings()
     now = datetime.now(UTC)
     payload = {
         "sub": subject,
         "role": role,
         "iat": now,
-        "exp": now + timedelta(minutes=settings.access_token_minutes),
         "type": "access",
     }
+    if session_id:
+        payload["sid"] = session_id
+    else:
+        payload["exp"] = now + timedelta(minutes=settings.access_token_minutes)
     return jwt.encode(payload, settings.secret_key.get_secret_value(), algorithm="HS256")
 
 

@@ -111,6 +111,7 @@ class UserUpdate(BaseModel):
 class Token(BaseModel):
     access_token: str
     token_type: str = "bearer"  # noqa: S105
+    persistent: bool = False
     user: UserOut
 
 

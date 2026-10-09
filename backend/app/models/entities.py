@@ -77,6 +77,15 @@ class User(TimestampMixin, Base):
     avatar_filename: Mapped[str | None] = mapped_column(String(80))
 
 
+class AuthSession(Base):
+    __tablename__ = "auth_sessions"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc)
+    user: Mapped[User] = relationship()
+
+
 class PushDevice(TimestampMixin, Base):
     __tablename__ = "push_devices"
 

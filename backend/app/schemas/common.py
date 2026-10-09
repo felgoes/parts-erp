@@ -133,7 +133,7 @@ class PushDeviceRegistration(BaseModel):
     sound_settings_version: Literal[0, 1] = 0
 
 
-NotificationSound = Literal["system", "bell", "chime", "soft", "silent"]
+NotificationSound = Literal["system", "bell", "chime", "soft", "kaching", "silent"]
 
 
 class PushPreferenceUpdate(BaseModel):

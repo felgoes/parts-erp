@@ -57,6 +57,7 @@ export class NotificationsPage implements OnInit {
     { value: 'bell', label: 'Sino' },
     { value: 'chime', label: 'Toque' },
     { value: 'soft', label: 'Suave' },
+    { value: 'kaching', label: 'Kaching' },
     { value: 'silent', label: 'Silencioso' },
   ];
   private previewAudio: HTMLAudioElement | null = null;
@@ -64,11 +65,12 @@ export class NotificationsPage implements OnInit {
   load() { this.loading.set(true); this.api.pushPreferences().subscribe({ next: (value) => this.preferences.set(value), error: () => {}, complete: () => this.loading.set(false) }); this.api.pushHistory().subscribe({ next: (value) => this.history.set(value) }); }
   toggle(preference: PushPreference, event: Event) { const enabled = (event.target as HTMLInputElement).checked; this.update(preference, enabled, preference.sound); }
   setSound(preference: PushPreference, event: Event) { const sound = (event.target as HTMLSelectElement).value as PushSound; this.update(preference, preference.enabled, sound); }
-  canPreview(sound: PushSound) { return sound === 'bell' || sound === 'chime' || sound === 'soft'; }
+  canPreview(sound: PushSound) { return sound === 'bell' || sound === 'chime' || sound === 'soft' || sound === 'kaching'; }
   preview(sound: PushSound) {
     if (!this.canPreview(sound)) return;
     this.previewAudio?.pause();
-    this.previewAudio = new Audio('/sounds/notification-' + sound + '.wav');
+    const extension = sound === 'kaching' ? 'mp3' : 'wav';
+    this.previewAudio = new Audio('/sounds/notification-' + sound + '.' + extension);
     void this.previewAudio.play();
   }
   private update(preference: PushPreference, enabled: boolean, sound: PushSound) {

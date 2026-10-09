@@ -16,8 +16,8 @@ public class PartsFirebaseMessagingService extends FirebaseMessagingService {
     private static final String LEGACY_CHANNEL_ID = "sales";
     private static final String[] CATEGORIES = {"sales", "order_status", "fiscal", "backup", "system"};
     private static final String[] CATEGORY_LABELS = {"Novas vendas", "Status dos pedidos", "Notas e etiquetas", "Backups", "Sistema"};
-    private static final String[] SOUNDS = {"bell", "chime", "soft", "silent"};
-    private static final String[] SOUND_LABELS = {"Sino", "Toque", "Suave", "Silencioso"};
+    private static final String[] SOUNDS = {"bell", "chime", "soft", "kaching", "silent"};
+    private static final String[] SOUND_LABELS = {"Sino", "Toque", "Suave", "Kaching", "Silencioso"};
 
     private static String channelId(String category, String sound) {
         return "parts_v1_" + category + "_" + sound;

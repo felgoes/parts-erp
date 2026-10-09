@@ -27,7 +27,7 @@ from app.models import MarketplaceOrder, PushDevice, PushNotification, PushPrefe
 logger = logging.getLogger(__name__)
 MAX_ATTEMPTS = 5
 SOUND_CATEGORIES = {"sales", "order_status", "fiscal", "backup", "system"}
-SOUND_OPTIONS = {"system", "bell", "chime", "soft", "silent"}
+SOUND_OPTIONS = {"system", "bell", "chime", "soft", "kaching", "silent"}
 
 
 _access_token = ""

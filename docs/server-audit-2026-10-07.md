@@ -1,6 +1,6 @@
 # Termux server audit — 2026-10-07
 
-Production host: SSH alias `parts-erp-server`, LAN REMOTE_HOST:8022.
+Production host: private Termux SSH configuration, kept outside Git.
 Infra changes use `deploy/termux/harden-host.sh`, staged from the committed
 source; this is host provisioning, not an application release. It preserves
 the deployed application and takes a restricted backup of host settings.

@@ -44,8 +44,8 @@ Path(path).write_text(json.dumps({
 }, indent=2) + "\n")
 PY
 
-S9_HOST="${S9_HOST:-REMOTE_HOST}"
-S9_USER="${S9_USER:-DEPLOY_USER}"
+S9_HOST="${S9_HOST:-remote-host}"
+S9_USER="${S9_USER:-deploy-user}"
 S9_PORT="${S9_PORT:-8022}"
 S9_APP_DIR="${S9_APP_DIR:-parts-erp}"
 REMOTE="$S9_USER@$S9_HOST"

@@ -27,17 +27,10 @@
 
 ## Production server connection
 
-- Production is the Android/Termux server. Current network address: `REMOTE_HOST`; SSH user: `DEPLOY_USER`; SSH port: `8022`; application directory: `/data/data/com.termux/files/home/parts-erp`.
-- From WSL, use the key at `SSH_IDENTITY_FILE` and never commit or copy the private key into the repository.
-- Read-only connection check:
-  `ssh -o BatchMode=yes -o ConnectTimeout=8 -p 8022 -i SSH_IDENTITY_FILE DEPLOY_USER@REMOTE_HOST "echo ssh-ok"`
-- Production API health check:
-  `ssh -o BatchMode=yes -p 8022 -i SSH_IDENTITY_FILE DEPLOY_USER@REMOTE_HOST "curl -fsS http://127.0.0.1:8000/health"`
-  Expected response: `{"status":"ok"}`. Port `8080` serves the web frontend through nginx; the API health endpoint is on `8000`.
-- Deploy after the GitHub push:
-  `export S9_HOST=REMOTE_HOST S9_USER=DEPLOY_USER S9_PORT=8022 S9_APP_DIR=parts-erp S9_IDENTITY_FILE=SSH_IDENTITY_FILE`
-  followed by `deploy/update-s9.sh`.
-- The Termux address is supplied by the router and can change after reconnect/restart. If SSH fails, confirm the phone's current WLAN address first and update the command/variables for the new address; do not guess another host.
+[historical infra reference removed]
+- Never add internal addresses, SSH users, passwords, private-key paths, tokens, or connection commands with concrete values to tracked files.
+- Use the private project configuration to run a read-only batch-mode SSH connectivity check before deploy, then use the official deploy script.
+- If the connection is unavailable, report the blocker and request the current private project configuration; do not guess hosts or copy values into the repository.
 
 ## Shared period filters
 

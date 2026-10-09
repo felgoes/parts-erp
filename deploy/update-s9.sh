@@ -52,7 +52,7 @@ finally: d.close(); s.close()
 os.chmod(sys.argv[2],0o600)
 BACKUP
 fi
-[[ ! -x "$APP/deploy/termux/stop.sh" ]] || PARTS_ERP_DIR="$APP" "$APP/deploy/termux/stop.sh"
+[[ ! -x "$APP/deploy/termux/stop.sh" ]] || PARTS_ERP_DIR="$APP" PARTS_ERP_PRESERVE_CLOUDFLARED=1 "$APP/deploy/termux/stop.sh"
 rm -rf "$APP/backend/app" "$APP/backend/alembic/versions"
 cp -a "$S/backend/app" "$APP/backend/app"; cp -a "$S/backend/alembic/versions" "$APP/backend/alembic/versions"; cp -a "$S/backend/pyproject.toml" "$APP/backend/pyproject.toml"
 mv "$APP/frontend/dist/frontend" "$APP/data/backups/frontend-pre-$NOW"
@@ -67,5 +67,40 @@ if [[ -f deploy/termux/redis.conf.in ]]; then sed "s|__APP_DIR__|$APP|g" deploy/
 chmod +x deploy/termux/*.sh; (cd backend && "$V/bin/alembic" upgrade heads)
 PARTS_ERP_DIR="$APP" bash deploy/termux/start.sh
 [[ "$(curl --fail --silent http://127.0.0.1:8000/health)" == "{\"status\":\"ok\"}" ]]; curl --fail --silent http://127.0.0.1:8080/ >/dev/null
-rm -rf "$S"; echo "Deploy OK: $VERSION; backups preservados."
+rm -rf "$S"; echo "Origin atualizado: $VERSION; aguardando verificações públicas."
 DEPLOY
+
+
+# A deploy is successful only when both customer-facing origins have recovered
+# through Cloudflare. This catches Tunnel 1033 and origin errors that local checks miss.
+probe_public_page() {
+  local label="$1" url="$2" expected="$3" attempt status body bundle asset_status
+  body="$LOCAL_STAGE/probe-$(printf '%s' "$label" | tr '[:upper:]' '[:lower:]').html"
+  for attempt in {1..18}; do
+    status="$(curl --silent --show-error --location --connect-timeout 8 --max-time 12 \
+      --output "$body" --write-out '%{http_code}' "$url" 2>/dev/null || true)"
+    if [[ "$status" == 200 ]] && grep -Fq "$expected" "$body"; then
+      bundle="$(grep -oE 'src="[^"]*main-[^"]+\.js[^"]*"' "$body" | head -n 1 | cut -d '"' -f 2)"
+      if [[ -n "$bundle" ]]; then
+        asset_status="$(curl --silent --location --connect-timeout 8 --max-time 12 \
+          --output "$LOCAL_STAGE/probe-bundle.js" --write-out '%{http_code}' \
+          "${url%/}/${bundle#/}" 2>/dev/null || true)"
+        if [[ "$asset_status" == 200 && -s "$LOCAL_STAGE/probe-bundle.js" ]]; then
+          echo "Smoke público OK: $label (HTML e bundle JS HTTP 200; tentativa $attempt)."
+          return 0
+        fi
+        status="HTML $status, bundle ${asset_status:-000}"
+      else
+        status="HTML $status, bundle principal ausente"
+      fi
+    fi
+    echo "Aguardando recuperação pública de $label (tentativa $attempt/18; HTTP ${status:-000})."
+    sleep 5
+  done
+  echo "Smoke público falhou para $label; deploy não pode ser considerado concluído." >&2
+  return 1
+}
+
+probe_public_page "site" "${PARTS_ERP_PUBLIC_SITE_URL:-https://goesautoparts.com.br/}" "Goes Auto Parts"
+probe_public_page "ERP" "${PARTS_ERP_PUBLIC_ERP_URL:-https://erp.goesautoparts.com.br/}" "Parts ERP | Gestão de estoque e vendas"
+echo "Deploy e verificações públicas concluídos: $VERSION."

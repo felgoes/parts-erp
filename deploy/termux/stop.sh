@@ -34,8 +34,14 @@ stop_all_cloudflared() {
 
 stop_pid monitor
 stop_pid nginx
-stop_pid cloudflared
-stop_all_cloudflared
+# Deploys keep the connector attached to Cloudflare while the origin is updated.
+# This may cause a brief origin 502, but prevents Error 1033 from losing the last connector.
+if [[ "${PARTS_ERP_PRESERVE_CLOUDFLARED:-0}" == 1 ]]; then
+  printf 'Cloudflared preservado durante o deploy.\n'
+else
+  stop_pid cloudflared
+  stop_all_cloudflared
+fi
 stop_pid worker
 stop_pid api
 stop_pid redis

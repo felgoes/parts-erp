@@ -16,7 +16,7 @@
 
 ## Required delivery order
 
-- For every completed application change, build and run relevant checks locally, review the changed flow, commit and push the exact commit, then deploy it to PRD through the private infrastructure wrapper `deploy/update-s9-template.sh` (which invokes `deploy/update-s9.sh`) and verify the production health endpoint. This is the required end of development, not an optional step. If a prerequisite, deploy, or health check fails, stop and report the blocker; do not claim delivery is complete.
+[historical infra reference removed]
 - Before committing or pushing any UI change, manually validate the affected flow in the local HML browser at localhost:4200 with the dedicated QA account from the ignored .env.qa.local and the local API. Check mobile layout when relevant, fix visual defects, and repeat validation. Never use production accounts or data for QA. If local HML or the QA account is unavailable, stop before push/deploy and report the blocker. Run local HML services natively in WSL using backend/.venv; do not use Docker.
 - Do not deploy a commit that differs from `origin/main`. Preserve production data and configuration.
 

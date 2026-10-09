@@ -41,7 +41,7 @@ import { PeriodFilter } from '../../shared/period-filter';
             <td><div class="purchase-products">@if (purchase.purchase_type === 'expense') { <span>{{ purchase.expense_category }}</span><small>{{ purchase.expense_amount | currency:'BRL' }}</small> } @else { @for (item of purchase.items.slice(0, 2); track item.id) { <span>{{ item.description }}</span> } @if (purchase.items.length > 2) { <small>+{{ purchase.items.length - 2 }} outras</small> } }</div></td>
             <td>@if (purchase.purchase_type === 'expense') { <strong>{{ purchase.supplier_name || 'Sem fornecedor' }}</strong><small>Despesa lançada</small> } @else if (selectedQuote(purchase); as quote) { <strong>{{ quote.supplier_name }}</strong><small>{{ quote.total | currency:'BRL' }} · cotação escolhida</small> } @else { <strong class="muted">Em cotação</strong><small>{{ purchase.quotes.length }} {{ purchase.quotes.length === 1 ? 'proposta registrada' : 'propostas registradas' }}</small> }</td>
             <td><span class="purchase-badge" [attr.data-status]="purchase.status">{{ purchase.purchase_type === 'expense' ? 'Lançada' : statusLabel(purchase.status) }}</span></td>
-            <td>{{ purchase.needed_by ? (purchase.needed_by | date:'dd/MM/yyyy') : '—' }}</td><td>{{ purchase.created_at | date:'dd/MM/yyyy' }}</td><td class="row-action">Abrir <span>→</span></td>
+            <td>{{ purchase.needed_by ? (purchase.needed_by | date:'dd/MM/yyyy') : '—' }}</td><td>{{ purchase.created_at | date:'dd/MM/yyyy' }}</td><td class="row-action"><button type="button" class="row-open" (click)="$event.stopPropagation(); openDetails(purchase)">Abrir <span>→</span></button><div class="purchase-row-menu"><button type="button" class="row-menu-trigger" [attr.aria-label]="'Ações da compra ' + purchase.number" [attr.aria-expanded]="rowMenuId() === purchase.id" aria-haspopup="menu" (click)="toggleRowMenu(purchase.id, $event)">⋮</button>@if (rowMenuId() === purchase.id) { <div class="purchase-row-menu-popover" role="menu"><button type="button" role="menuitem" (click)="copyPurchaseFromList(purchase, $event)">Copiar</button></div> }</div></td>
           </tr>
         } @empty { <tr><td colspan="7"><div class="purchase-empty"><strong>Nenhuma compra neste período</strong><span>Comece uma negociação para acompanhar propostas e recebimentos por aqui.</span>@if (canManagePurchases()) { <button class="secondary" (click)="openNew()">Criar compra</button> }</div></td></tr> }
       </tbody></table></div>
@@ -99,6 +99,7 @@ export class PurchasesPage implements OnInit {
   canReadCosts() { return canReadCosts(this.auth.user()?.role); }
   readonly products = signal<Product[]>([]);
   readonly detail = signal<Purchase | null>(null);
+  readonly rowMenuId = signal<string | null>(null);
   readonly showNew = signal(false);
   readonly saving = signal(false);
   readonly error = signal('');
@@ -157,8 +158,11 @@ export class PurchasesPage implements OnInit {
   load() { this.api.purchases().subscribe({ next: (items) => this.purchases.set(items), error: () => this.error.set('Não foi possível carregar as compras. Tente novamente.') }); }
   applyPeriod(range: DateRange) { this.startDate.set(range.startDate); this.endDate.set(range.endDate); }
   toggleStatus(status: string) { this.statusFilter.set(this.statusFilter() === status ? 'all' : status); }
-  openNew() { this.error.set(''); this.selectedFiles.set([]); this.form.reset({ purchase_type: 'parts', supplier_name: '', expense_category: '', expense_amount: 0, needed_by: '', notes: '' }); while (this.lines.length) this.lines.removeAt(0); this.addLine(); this.showNew.set(true); }
+  openNew() { this.rowMenuId.set(null); this.error.set(''); this.selectedFiles.set([]); this.form.reset({ purchase_type: 'parts', supplier_name: '', expense_category: '', expense_amount: 0, needed_by: '', notes: '' }); while (this.lines.length) this.lines.removeAt(0); this.addLine(); this.showNew.set(true); }
+  toggleRowMenu(id: string, event: Event) { event.stopPropagation(); this.rowMenuId.update((current) => current === id ? null : id); }
+  copyPurchaseFromList(purchase: Purchase, event: Event) { event.stopPropagation(); this.copyPurchase(purchase); }
   copyPurchase(purchase: Purchase) {
+    this.rowMenuId.set(null);
     this.error.set('');
     this.selectedFiles.set([]);
     this.form.reset({
@@ -199,7 +203,7 @@ export class PurchasesPage implements OnInit {
   uploadAttachments(purchase: Purchase, files: FileList | null) { const selected = files ? Array.from(files).slice(0, 10) : []; if (!selected.length) return; this.saving.set(true); this.api.uploadPurchaseAttachments(purchase.id, selected).pipe(finalize(() => this.saving.set(false))).subscribe({ next: (updated) => this.setPurchase(updated), error: (err) => this.error.set(err.error?.detail || 'Não foi possível anexar os documentos.') }); }
   downloadAttachment(purchase: Purchase, attachment: Purchase['attachments'][number]) { this.api.downloadPurchaseAttachment(purchase.id, attachment.id, attachment.filename); }
   formatBytes(bytes: number) { return bytes < 1024 * 1024 ? `${Math.ceil(bytes / 1024)} KB` : `${(bytes / 1024 / 1024).toFixed(1)} MB`; }
-  openDetails(purchase: Purchase) { this.error.set(''); this.receiveValues.set(Object.fromEntries(purchase.items.map((item) => [item.id, { quantity: Math.max(0, item.quantity - item.received_quantity), productId: item.product_id || '', create: !item.product_id }]))); this.quoteCosts.set(Object.fromEntries(purchase.items.map((item) => [item.id, 0]))); this.itemCostDrafts.set(Object.fromEntries(purchase.items.map((item) => [item.id, { base_unit_cost: item.base_unit_cost ?? item.unit_cost ?? 0, freight_amount: item.freight_amount ?? 0, tax_amount: item.tax_amount ?? 0, discount_amount: item.discount_amount ?? 0 }]))); this.detail.set(purchase); }
+  openDetails(purchase: Purchase) { this.rowMenuId.set(null); this.error.set(''); this.receiveValues.set(Object.fromEntries(purchase.items.map((item) => [item.id, { quantity: Math.max(0, item.quantity - item.received_quantity), productId: item.product_id || '', create: !item.product_id }]))); this.quoteCosts.set(Object.fromEntries(purchase.items.map((item) => [item.id, 0]))); this.itemCostDrafts.set(Object.fromEntries(purchase.items.map((item) => [item.id, { base_unit_cost: item.base_unit_cost ?? item.unit_cost ?? 0, freight_amount: item.freight_amount ?? 0, tax_amount: item.tax_amount ?? 0, discount_amount: item.discount_amount ?? 0 }]))); this.detail.set(purchase); }
   selectedQuote(purchase: Purchase) { return purchase.quotes.find((quote) => quote.id === purchase.selected_quote_id) ?? null; }
   statusLabel(status: PurchaseStatus) { return this.statuses.find((entry) => entry.value === status)?.label ?? status; }
   stepIndex(status: PurchaseStatus) { if (status === 'cancelled') return -1; if (status === 'received') return 4; if (status === 'partially_received') return 3; return ['negotiating', 'approved', 'ordered'].indexOf(status); }

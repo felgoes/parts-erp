@@ -27,8 +27,14 @@
 .purchase-badge[data-status="ordered"], .purchase-badge[data-status="partially_received"] { color: #895323; background: #fff0df; }
 .purchase-badge[data-status="received"] { color: #276c43; background: #e5f3e9; }
 .purchase-badge[data-status="cancelled"] { color: #963b35; background: #f9e8e6; }
-.row-action { color: var(--forest); font-size: 12px; font-weight: 750; white-space: nowrap; }
-.row-action span { font-size: 17px; }
+.row-action { display: flex; align-items: center; justify-content: flex-end; gap: 5px; color: var(--forest); font-size: 12px; font-weight: 750; white-space: nowrap; }
+.row-open, .row-menu-trigger { border: 0; border-radius: 7px; background: transparent; color: var(--forest); cursor: pointer; font: inherit; }
+.row-action .row-open span { font-size: 17px; }
+.purchase-row-menu { position: relative; }
+.row-menu-trigger { width: 34px; height: 34px; font-size: 23px; }
+.purchase-row-menu-popover { position: absolute; z-index: 5; top: 100%; right: 0; min-width: 120px; padding: 5px; border: 1px solid var(--line); border-radius: 9px; background: #fff; box-shadow: 0 8px 24px #17251a24; }
+.purchase-row-menu-popover button { width: 100%; padding: 9px; border: 0; border-radius: 6px; background: transparent; color: var(--text); text-align: left; cursor: pointer; }
+.purchase-row-menu-popover button:hover { background: #f1f5ee; }
 .purchase-empty { display: grid; justify-items: center; gap: 9px; padding: 40px 18px; text-align: center; }
 .purchase-empty span { max-width: 390px; color: var(--muted); font-size: 13px; }
 .purchase-empty button { margin-top: 7px; }
@@ -161,8 +167,9 @@
   .purchase-table-card tbody tr td:nth-child(5), .purchase-table-card tbody tr td:nth-child(6) { color: var(--muted); }
   .purchase-table-card tbody tr td:nth-child(5)::before { content: 'Prev.: '; }
   .purchase-table-card tbody tr td:nth-child(6)::before { content: 'Aberta: '; }
-  .purchase-table-card .row-action { position: absolute; top: 14px; right: 0; font-size: 0; }
-  .purchase-table-card .row-action span { font-size: 20px; }
+  .purchase-table-card .row-action { position: absolute; top: 8px; right: 0; display: block; font-size: 0; }
+  .purchase-table-card .row-open { display: none; }
+  .purchase-table-card .row-menu-trigger { font-size: 24px; }
   .purchase-modal { width: 100%; max-height: 92dvh; padding: 20px 16px calc(20px + env(safe-area-inset-bottom)); border-radius: 20px 20px 0 0; }
   .purchase-form-meta { grid-template-columns: 1fr; }
   .purchase-line-form { grid-template-columns: 1fr 1fr; gap: 9px; }

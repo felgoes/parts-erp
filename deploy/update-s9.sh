@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-S9_HOST="${S9_HOST:-remote-host}"; S9_USER="${S9_USER:-deploy-user}"; S9_PORT="${S9_PORT:-8022}"; S9_APP_DIR="${S9_APP_DIR:-parts-erp}"
+# S9/Termux connection defaults; override only when the device address or SSH identity changes.
+S9_HOST="${S9_HOST:-REMOTE_HOST}"; S9_USER="${S9_USER:-DEPLOY_USER}"; S9_PORT="${S9_PORT:-8022}"; S9_APP_DIR="${S9_APP_DIR:-parts-erp}"
 SSH_OPTS=(-p "$S9_PORT" -o BatchMode=yes -o ConnectTimeout=10); [[ -z "${S9_IDENTITY_FILE:-}" ]] || SSH_OPTS+=(-i "$S9_IDENTITY_FILE"); REMOTE="$S9_USER@$S9_HOST"
 [[ -z "$(git -C "$ROOT_DIR" status --porcelain)" ]] || { echo "Deploy exige commit limpo." >&2; exit 1; }
 git -C "$ROOT_DIR" fetch --quiet origin main

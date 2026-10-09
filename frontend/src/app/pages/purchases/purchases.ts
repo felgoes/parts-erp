@@ -64,7 +64,7 @@ import { PeriodFilter } from '../../shared/period-filter';
 
     @if (detail(); as purchase) {
       <div class="modal-backdrop" (click)="detail.set(null)"><section class="modal wide purchase-modal purchase-detail" [class.restricted-costs]="!canReadCosts()" [class.read-only-purchases]="!canManagePurchases()" [class.no-receiving]="!canAdjustStock()" [class.costs-pending]="purchase.purchase_type === 'parts' && !purchase.selected_quote_id" role="dialog" aria-modal="true" [attr.aria-label]="'Compra ' + purchase.number" (click)="$event.stopPropagation()">
-        <div class="modal-head"><div><p class="eyebrow">Suprimentos · {{ purchase.number }}</p><h2>{{ purchase.number }}</h2><p class="modal-intro">Criada em {{ purchase.created_at | date:'dd/MM/yyyy HH:mm' }} @if (purchase.needed_by) { · Previsão {{ purchase.needed_by | date:'dd/MM/yyyy' }} }</p></div><div class="detail-head-actions"><span class="purchase-badge" [attr.data-status]="purchase.status">{{ purchase.purchase_type === 'expense' ? 'Lançada' : statusLabel(purchase.status) }}</span><button class="close" aria-label="Fechar" (click)="detail.set(null)">×</button></div></div>
+        <div class="modal-head"><div><p class="eyebrow">Suprimentos · {{ purchase.number }}</p><h2>{{ purchase.number }}</h2><p class="modal-intro">Criada em {{ purchase.created_at | date:'dd/MM/yyyy HH:mm' }} @if (purchase.needed_by) { · Previsão {{ purchase.needed_by | date:'dd/MM/yyyy' }} }</p></div><div class="detail-head-actions"><span class="purchase-badge" [attr.data-status]="purchase.status">{{ purchase.purchase_type === 'expense' ? 'Lançada' : statusLabel(purchase.status) }}</span>@if (canManagePurchases()) { <button type="button" class="secondary small" (click)="copyPurchase(purchase)">Copiar compra</button> }<button class="close" aria-label="Fechar" (click)="detail.set(null)">×</button></div></div>
         @if (purchase.purchase_type === 'parts') { <div class="purchase-steps" aria-label="Etapas da compra">@for (step of workflow; track step.value; let i = $index) { <div class="purchase-step" [class.step-done]="stepIndex(purchase.status) > i" [class.step-current]="stepIndex(purchase.status) === i"><span>{{ stepIndex(purchase.status) > i ? '✓' : i + 1 }}</span><small>{{ step.label }}</small></div> }</div> } @else { <div class="expense-banner"><strong>Despesa da empresa</strong><span>{{ purchase.expense_category }} · {{ purchase.expense_amount | currency:'BRL' }}</span></div> }
         <div class="purchase-detail-grid">
           <div class="purchase-detail-main">
@@ -158,6 +158,30 @@ export class PurchasesPage implements OnInit {
   applyPeriod(range: DateRange) { this.startDate.set(range.startDate); this.endDate.set(range.endDate); }
   toggleStatus(status: string) { this.statusFilter.set(this.statusFilter() === status ? 'all' : status); }
   openNew() { this.error.set(''); this.selectedFiles.set([]); this.form.reset({ purchase_type: 'parts', supplier_name: '', expense_category: '', expense_amount: 0, needed_by: '', notes: '' }); while (this.lines.length) this.lines.removeAt(0); this.addLine(); this.showNew.set(true); }
+  copyPurchase(purchase: Purchase) {
+    this.error.set('');
+    this.selectedFiles.set([]);
+    this.form.reset({
+      purchase_type: purchase.purchase_type,
+      supplier_name: purchase.supplier_name ?? '',
+      expense_category: purchase.expense_category ?? '',
+      expense_amount: purchase.expense_amount ?? 0,
+      needed_by: '',
+      notes: purchase.notes ? `Cópia de ${purchase.number}\n${purchase.notes}` : `Cópia de ${purchase.number}`,
+    });
+    while (this.lines.length) this.lines.removeAt(0);
+    if (purchase.purchase_type === 'parts') {
+      for (const item of purchase.items) {
+        const line = this.newLine();
+        line.patchValue({ product_id: item.product_id ?? '', sku: item.sku, description: item.description, quantity: item.quantity });
+        this.lines.push(line);
+      }
+    } else {
+      this.addLine();
+    }
+    this.detail.set(null);
+    this.showNew.set(true);
+  }
   addLine() { this.lines.push(this.newLine()); }
   removeLine(index: number) { this.lines.removeAt(index); }
   selectProduct(index: number, id: string) { const line = this.lines.at(index); const product = this.products().find((entry) => entry.id === id); if (product) line.patchValue({ product_id: id, sku: product.sku, description: product.name }); else line.patchValue({ product_id: '', sku: '', description: '' }); }

@@ -65,7 +65,7 @@
 .purchase-form-actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-top: 18px; }
 .purchase-form-actions .muted { font-size: 11px; }
 .purchase-error { padding: 10px 12px; border-radius: 8px; background: #fff0ee; color: #963b35; font-size: 13px; }
-.detail-head-actions { display: flex; align-items: center; gap: 10px; }
+.detail-head-actions { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 10px; }
 .purchase-steps { display: grid; grid-template-columns: repeat(4, 1fr); margin: 22px 0 4px; }
 .purchase-step { position: relative; display: flex; align-items: center; gap: 9px; color: #98a19b; }
 .purchase-step:not(:last-child)::after { position: absolute; left: 29px; right: 8px; top: 15px; height: 2px; background: #e6e9e5; content: ''; }

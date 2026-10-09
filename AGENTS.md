@@ -16,14 +16,14 @@
 
 ## Required delivery order
 
-- For application changes, build and run relevant checks locally, review the changed flow, commit and push the exact commit, then deploy with `deploy/update-s9.sh` and verify the production health endpoint.
+- For application changes, build and run relevant checks locally, review the changed flow, commit and push the exact commit, then, when deployment is requested, use the private infrastructure wrapper `deploy/update-s9-template.sh` (it invokes `deploy/update-s9.sh`) and verify the production health endpoint.
 - Do not deploy a commit that differs from `origin/main`. Preserve production data and configuration.
 
 ## Project commands
 
 - Frontend production build: `cd frontend && npm ci && npm run build -- --configuration production`
 - Backend syntax check: `cd backend && python -m compileall -q app`
-- Deploy only through `deploy/update-s9.sh`; it runs migrations, restarts Termux services, and checks health.
+[historical infra reference removed]
 
 ## Production server connection
 
@@ -41,3 +41,11 @@
 
 - Keep APK signing keys and `frontend/android/app/google-services.json` out of Git and off the public server.
 - A new APK must preserve the signing key to update an existing installation.
+## Shared project steering
+
+- This file is the shared operating standard for the Parts ERP across the public app repository and private infrastructure repository. The private repository may add infrastructure-specific rules, but must not contradict these shared security and development rules.
+[historical infra reference removed]
+[historical infra reference removed]
+[historical infra reference removed]
+[historical infra reference removed]
+- Before changing public files, inspect the diff and scan newly added content for secrets. A secret accidentally committed must be revoked at its issuer; deleting it from the latest revision does not remove it from Git history.

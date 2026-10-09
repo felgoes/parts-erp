@@ -32,7 +32,7 @@
 .row-action .row-open span { font-size: 17px; }
 .purchase-row-menu { position: relative; }
 .row-menu-trigger { width: 34px; height: 34px; font-size: 23px; }
-.purchase-row-menu-popover { position: absolute; z-index: 5; top: 100%; right: 0; min-width: 120px; padding: 5px; border: 1px solid var(--line); border-radius: 9px; background: #fff; box-shadow: 0 8px 24px #17251a24; }
+.purchase-row-menu-popover { position: fixed; z-index: 1000; top: 100%; right: 0; min-width: 130px; padding: 5px; border: 1px solid var(--line); border-radius: 9px; background: #fff; box-shadow: 0 8px 24px #17251a24; }
 .purchase-row-menu-popover button { width: 100%; padding: 9px; border: 0; border-radius: 6px; background: transparent; color: var(--text); text-align: left; cursor: pointer; }
 .purchase-row-menu-popover button:hover { background: #f1f5ee; }
 .purchase-empty { display: grid; justify-items: center; gap: 9px; padding: 40px 18px; text-align: center; }

@@ -52,7 +52,7 @@ finally: d.close(); s.close()
 os.chmod(sys.argv[2],0o600)
 BACKUP
 fi
-[[ ! -x "$S/deploy/termux/stop.sh" ]] || PARTS_ERP_DIR="$APP" PARTS_ERP_PRESERVE_CLOUDFLARED=1 "$S/deploy/termux/stop.sh"
+[[ ! -f "$S/deploy/termux/stop.sh" ]] || PARTS_ERP_DIR="$APP" PARTS_ERP_PRESERVE_CLOUDFLARED=1 bash "$S/deploy/termux/stop.sh"
 rm -rf "$APP/backend/app" "$APP/backend/alembic/versions"
 cp -a "$S/backend/app" "$APP/backend/app"; cp -a "$S/backend/alembic/versions" "$APP/backend/alembic/versions"; cp -a "$S/backend/pyproject.toml" "$APP/backend/pyproject.toml"
 mv "$APP/frontend/dist/frontend" "$APP/data/backups/frontend-pre-$NOW"

@@ -2,7 +2,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { debounceTime } from 'rxjs';
 import { CurrencyPipe, DatePipe, DecimalPipe } from '@angular/common';
 import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
-import { FormArray, FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormArray, FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { finalize } from 'rxjs';
 import { ApiService } from '../../core/api.service';
 import { LiveUpdatesService } from '../../core/live-updates.service';
@@ -15,11 +15,12 @@ import { PeriodFilter } from '../../shared/period-filter';
 
 @Component({
   selector: 'app-purchases',
-  imports: [CurrencyPipe, DatePipe, DecimalPipe, ReactiveFormsModule, PageHeader, PeriodFilter],
+  imports: [CurrencyPipe, DatePipe, DecimalPipe, FormsModule, ReactiveFormsModule, PageHeader, PeriodFilter],
   template: `
     <app-page-header eyebrow="Suprimentos" title="Compras" subtitle="Peças para o estoque e despesas operacionais da empresa.">
-      @if (canManagePurchases()) { <button class="primary" type="button" (click)="openNew()">+ Nova compra</button> }
+      @if (canManagePurchases()) { <div class="purchase-header-actions"><button class="secondary" type="button" [disabled]="importLoading()" (click)="purchaseImportInput.click()">{{ importLoading() ? 'Analisando documento…' : 'Importar documento' }}</button><button class="primary" type="button" (click)="openNew()">+ Nova compra</button><input #purchaseImportInput hidden type="file" accept=".pdf,.xml,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png,application/xml,text/xml" (change)="onImportDocument($event)" /></div> }
     </app-page-header>
+    @if (importError() && !importReview()) { <p class="purchase-error" role="alert">{{ importError() }}</p> }
     <section class="purchase-summary">
       @for (card of summary(); track card.status) {
         <button type="button" class="purchase-stat" [class.active-stat]="statusFilter() === card.status" (click)="toggleStatus(card.status)">
@@ -39,7 +40,7 @@ import { PeriodFilter } from '../../shared/period-filter';
           <tr class="purchase-row" tabindex="0" (click)="openDetails(purchase)" (keydown.enter)="openDetails(purchase)">
             <td><strong>{{ purchase.number }}</strong><small>{{ purchase.purchase_type === 'expense' ? 'Despesa da empresa' : (purchase.items.length + (purchase.items.length === 1 ? ' item' : ' itens')) }}</small></td>
             <td><div class="purchase-products">@if (purchase.purchase_type === 'expense') { <span>{{ purchase.expense_category }}</span><small>{{ purchase.expense_amount | currency:'BRL' }}</small> } @else { @for (item of purchase.items.slice(0, 2); track item.id) { <span>{{ item.description }}</span> } @if (purchase.items.length > 2) { <small>+{{ purchase.items.length - 2 }} outras</small> } }</div></td>
-            <td>@if (purchase.purchase_type === 'expense') { <strong>{{ purchase.supplier_name || 'Sem fornecedor' }}</strong><small>Despesa lançada</small> } @else if (selectedQuote(purchase); as quote) { <strong>{{ quote.supplier_name }}</strong><small>{{ quote.total | currency:'BRL' }} · cotação escolhida</small> } @else { <strong class="muted">Em cotação</strong><small>{{ purchase.quotes.length }} {{ purchase.quotes.length === 1 ? 'proposta registrada' : 'propostas registradas' }}</small> }</td>
+            <td>@if (purchase.purchase_type === 'expense') { <strong>{{ purchase.supplier_name || 'Sem fornecedor' }}</strong><small>Despesa lançada</small> } @else if (selectedQuote(purchase); as quote) { <strong>{{ quote.supplier_name }}</strong><small>{{ quote.total | currency:'BRL' }} · cotação escolhida</small> } @else { <strong [class.muted]="!purchase.supplier_name">{{ purchase.supplier_name || 'Em cotação' }}</strong><small>{{ purchase.supplier_name ? 'Fornecedor informado' : purchase.quotes.length + (purchase.quotes.length === 1 ? ' proposta registrada' : ' propostas registradas') }}</small> }</td>
             <td><span class="purchase-badge" [attr.data-status]="purchase.status">{{ purchase.purchase_type === 'expense' ? 'Lançada' : statusLabel(purchase.status) }}</span></td>
             <td>{{ purchase.needed_by ? (purchase.needed_by | date:'dd/MM/yyyy') : '—' }}</td><td>{{ purchase.created_at | date:'dd/MM/yyyy' }}</td><td class="row-action"><button type="button" class="row-open" (click)="$event.stopPropagation(); openDetails(purchase)">Abrir <span>→</span></button><div class="purchase-row-menu"><button type="button" class="row-menu-trigger" [attr.aria-label]="'Ações da compra ' + purchase.number" [attr.aria-expanded]="rowMenuId() === purchase.id" aria-haspopup="menu" (click)="toggleRowMenu(purchase.id, $event)">⋮</button></div></td>
           </tr>
@@ -47,6 +48,38 @@ import { PeriodFilter } from '../../shared/period-filter';
       </tbody></table></div>
     </section>
     @if (rowMenuPurchase(); as purchase) { <div class="purchase-row-menu-popover" role="menu" [style.top.px]="rowMenuPosition()?.top" [style.left.px]="rowMenuPosition()?.left"><button type="button" role="menuitem" (click)="copyPurchaseFromList(purchase, $event)">Copiar</button></div> }
+
+    @if (importReview(); as review) {
+      <div class="modal-backdrop" (click)="closeImportReview()"><section class="modal wide purchase-modal purchase-import-review" role="dialog" aria-modal="true" aria-labelledby="purchase-import-title" (click)="$event.stopPropagation()">
+        <div class="modal-head"><div><p class="eyebrow">Importação assistida · {{ review.filename }}</p><h2 id="purchase-import-title">Revise antes de criar a compra</h2><p class="modal-intro">A extração é uma sugestão. Confira os campos e valores no documento original.</p></div><button class="close" aria-label="Fechar revisão" (click)="closeImportReview()">×</button></div>
+        @if (review.warnings?.length) { <div class="purchase-import-warnings" role="status"><strong>Confira estes pontos</strong><ul>@for (warning of review.warnings; track warning) { <li>{{ warning }}</li> }</ul></div> }
+        <div class="purchase-form-meta import-meta">
+          <label>Perfil do documento<select [ngModel]="review.profile.profile_id || ''" [ngModelOptions]="{standalone: true}" (ngModelChange)="changeImportProfile($event)"><option value="">Não identificado</option>@for (profile of importProfiles(); track profile.profile_id) { <option [value]="profile.profile_id">{{ profile.name }}</option> }</select><small>@if (review.profile.selected) { Perfil escolhido manualmente · sempre revise antes de salvar } @else { {{ review.profile.confidence * 100 | number:'1.0-0' }}% de evidência automática · sempre revise antes de salvar }</small>@if (importLoading()) { <small role="status">Reanalisando com o perfil selecionado…</small> }</label>
+          <label>Fornecedor<input [value]="importDraft().supplier" (input)="updateImportField('supplier', $any($event.target).value)" placeholder="Conferir fornecedor" />@if (review.fields.supplier) { <small>{{ review.fields.supplier.confidence * 100 | number:'1.0-0' }}% de confiança · {{ review.fields.supplier.source }}</small> }</label>
+          <label>Número do pedido<input [value]="importDraft().orderNumber" (input)="updateImportField('orderNumber', $any($event.target).value)" placeholder="Opcional" />@if (review.fields.order_number) { <small>{{ review.fields.order_number.confidence * 100 | number:'1.0-0' }}% de confiança · {{ review.fields.order_number.source }}</small> }</label>
+          <label>Data do documento<input [value]="importDraft().documentDate" (input)="updateImportField('documentDate', $any($event.target).value)" placeholder="Como aparece no recibo" />@if (review.fields.date) { <small>{{ review.fields.date.confidence * 100 | number:'1.0-0' }}% de confiança · {{ review.fields.date.source }}</small> }</label>
+          <label>Total do documento<input type="number" min="0" step="0.01" [value]="importDraft().total ?? ''" (input)="updateImportNumber('total', $any($event.target).value)" />@if (review.fields.total) { <small>{{ review.fields.total.confidence * 100 | number:'1.0-0' }}% de confiança · {{ review.fields.total.source }}</small> }</label>
+          <label>Frete identificado<input type="number" min="0" step="0.01" [value]="importDraft().shipping ?? ''" (input)="updateImportNumber('shipping', $any($event.target).value)" />@if (review.fields.shipping) { <small>{{ review.fields.shipping.confidence * 100 | number:'1.0-0' }}% de confiança · {{ review.fields.shipping.source }}</small> }</label>
+          <label>Desconto identificado<input type="number" min="0" step="0.01" [value]="importDraft().discount ?? ''" (input)="updateImportNumber('discount', $any($event.target).value)" />@if (review.fields.discount) { <small>{{ review.fields.discount.confidence * 100 | number:'1.0-0' }}% de confiança · {{ review.fields.discount.source }}</small> }</label>
+          <label>Impostos identificados<input type="number" min="0" step="0.01" [value]="importDraft().tax ?? ''" (input)="updateImportNumber('tax', $any($event.target).value)" />@if (review.fields.tax) { <small>{{ review.fields.tax.confidence * 100 | number:'1.0-0' }}% de confiança · {{ review.fields.tax.source }}</small> }</label>
+        </div>
+        <div class="purchase-form-section"><div class="section-heading"><div><p class="eyebrow">Campos extraídos</p><h3>Itens da compra</h3></div><button type="button" class="secondary small" (click)="addImportLine()">+ Adicionar linha</button></div>
+          <p class="purchase-flow-hint">Campos sem evidência não são inventados. Compare quantidade × unitário com o total da linha e com o total do recibo.</p>
+          <div class="purchase-line-list import-line-list">@for (item of importDraft().items; track $index; let i = $index) {
+            <div class="purchase-line-form import-line">
+              <label class="line-description">Descrição<input [value]="item.description" (input)="updateImportItem(i, 'description', $any($event.target).value)" /></label>
+              <label>SKU / código<input [value]="item.sku" (input)="updateImportItem(i, 'sku', $any($event.target).value)" placeholder="Opcional" /></label>
+              <label>Quantidade<input type="number" min="0.001" step="0.001" [value]="item.quantity" (input)="updateImportItem(i, 'quantity', $any($event.target).value)" /></label>
+              <label>Valor unitário<input type="number" min="0" step="0.01" [value]="item.unit_cost" (input)="updateImportItem(i, 'unit_cost', $any($event.target).value)" /></label>
+              <small class="import-confidence">Confiança OCR: {{ item.confidence * 100 | number:'1.0-0' }}%</small>
+              <button type="button" class="remove-line" [attr.aria-label]="'Remover item ' + (i + 1)" (click)="removeImportLine(i)">×</button>
+            </div>
+          } @empty { <p class="muted">Nenhum item detectado. Adicione as linhas manualmente para continuar.</p> }</div>
+        </div>
+        @if (importError()) { <p class="purchase-error" role="alert">{{ importError() }}</p> }
+        <div class="purchase-form-actions"><span class="muted">O arquivo original será anexado. Nenhum estoque será movimentado.</span><div class="import-review-actions"><button type="button" class="secondary" (click)="closeImportReview()">Cancelar</button><button type="button" class="primary" [disabled]="creatingImport() || !canConfirmImport()" (click)="createImportedPurchase()">{{ creatingImport() ? 'Criando…' : 'Confirmar e criar compra' }}</button></div></div>
+      </section></div>
+    }
 
     @if (showNew()) {
       <div class="modal-backdrop" (click)="showNew.set(false)"><section class="modal wide purchase-modal" role="dialog" aria-modal="true" aria-labelledby="new-purchase-title" (click)="$event.stopPropagation()">
@@ -64,7 +97,7 @@ import { PeriodFilter } from '../../shared/period-filter';
     }
 
     @if (detail(); as purchase) {
-      <div class="modal-backdrop" (click)="detail.set(null)"><section class="modal wide purchase-modal purchase-detail" [class.restricted-costs]="!canReadCosts()" [class.read-only-purchases]="!canManagePurchases()" [class.no-receiving]="!canAdjustStock()" [class.costs-pending]="purchase.purchase_type === 'parts' && !purchase.selected_quote_id" role="dialog" aria-modal="true" [attr.aria-label]="'Compra ' + purchase.number" (click)="$event.stopPropagation()">
+      <div class="modal-backdrop" (click)="detail.set(null)"><section class="modal wide purchase-modal purchase-detail" [class.restricted-costs]="!canReadCosts()" [class.read-only-purchases]="!canManagePurchases()" [class.no-receiving]="!canAdjustStock()" [class.costs-pending]="purchase.purchase_type === 'parts' && !purchase.selected_quote_id && !purchase.notes?.startsWith('Importação de documento.')" role="dialog" aria-modal="true" [attr.aria-label]="'Compra ' + purchase.number" (click)="$event.stopPropagation()">
         <div class="modal-head"><div><p class="eyebrow">Suprimentos · {{ purchase.number }}</p><h2>{{ purchase.number }}</h2><p class="modal-intro">Criada em {{ purchase.created_at | date:'dd/MM/yyyy HH:mm' }} @if (purchase.needed_by) { · Previsão {{ purchase.needed_by | date:'dd/MM/yyyy' }} }</p></div><div class="detail-head-actions"><span class="purchase-badge" [attr.data-status]="purchase.status">{{ purchase.purchase_type === 'expense' ? 'Lançada' : statusLabel(purchase.status) }}</span>@if (canManagePurchases()) { <button type="button" class="secondary small" (click)="copyPurchase(purchase)">Copiar compra</button> }<button class="close" aria-label="Fechar" (click)="detail.set(null)">×</button></div></div>
         @if (purchase.purchase_type === 'parts') { <div class="purchase-steps" aria-label="Etapas da compra">@for (step of workflow; track step.value; let i = $index) { <div class="purchase-step" [class.step-done]="stepIndex(purchase.status) > i" [class.step-current]="stepIndex(purchase.status) === i"><span>{{ stepIndex(purchase.status) > i ? '✓' : i + 1 }}</span><small>{{ step.label }}</small></div> }</div> } @else { <div class="expense-banner"><strong>Despesa da empresa</strong><span>{{ purchase.expense_category }} · {{ purchase.expense_amount | currency:'BRL' }}</span></div> }
         <div class="purchase-detail-grid">
@@ -113,6 +146,13 @@ export class PurchasesPage implements OnInit {
   readonly quoteCosts = signal<Record<string, number>>({});
   readonly itemCostDrafts = signal<Record<string, { base_unit_cost: number; freight_amount: number; tax_amount: number; discount_amount: number }>>({});
   readonly selectedFiles = signal<File[]>([]);
+  readonly importReview = signal<any | null>(null);
+  readonly importProfiles = signal<Array<{ profile_id: string; name: string; kind: string; version: number }>>([]);
+  readonly importDraft = signal<{ supplier: string; orderNumber: string; documentDate: string; total: number | null; shipping: number | null; discount: number | null; tax: number | null; items: Array<{ description: string; sku: string; quantity: number; unit_cost: number; confidence: number }> }>({ supplier: '', orderNumber: '', documentDate: '', total: null, shipping: null, discount: null, tax: null, items: [] });
+  readonly importFile = signal<File | null>(null);
+  readonly importLoading = signal(false);
+  readonly creatingImport = signal(false);
+  readonly importError = signal('');
   readonly expenseCategories = ['Aluguel', 'Energia e água', 'Internet e telefonia', 'Contabilidade', 'Marketing', 'Frete e transporte', 'Material de escritório', 'Impostos e taxas', 'Serviços', 'Outros'];
   private readonly initialRange = quickDateRange('last30');
   readonly startDate = signal(this.initialRange.startDate);
@@ -155,8 +195,109 @@ export class PurchasesPage implements OnInit {
     return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
   }
 
-  ngOnInit() { this.load(); this.refreshProducts(); this.live.changes$.pipe(debounceTime(250), takeUntilDestroyed(this.destroyRef)).subscribe(() => { this.load(); this.refreshProducts(); }); }
+  ngOnInit() { this.load(); this.refreshProducts(); this.api.purchaseImportProfiles().subscribe({ next: (result) => this.importProfiles.set(result.profiles), error: () => undefined }); this.live.changes$.pipe(debounceTime(250), takeUntilDestroyed(this.destroyRef)).subscribe(() => { this.load(); this.refreshProducts(); }); }
   private refreshProducts() { this.api.products().subscribe({ next: (items) => this.products.set(items), error: () => undefined }); }
+  onImportDocument(event: Event) {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0]; input.value = '';
+    if (!file) return;
+    this.importFile.set(file); this.importError.set(''); this.importLoading.set(true);
+    this.api.analyzePurchaseDocument(file).pipe(finalize(() => this.importLoading.set(false))).subscribe({
+      next: (review) => this.applyImportReview(review),
+      error: (err) => { const message = err?.error?.detail || 'Não foi possível analisar o documento. A compra manual continua disponível.'; this.importError.set(message); this.error.set(message); },
+    });
+  }
+  private applyImportReview(review: any) {
+    this.importReview.set(review);
+    this.importDraft.set({
+      supplier: String(review.fields?.supplier?.value || ''),
+      orderNumber: String(review.fields?.order_number?.value || ''),
+      documentDate: String(review.fields?.date?.value || ''),
+      total: review.fields?.total?.value == null ? null : Number(review.fields.total.value),
+      shipping: review.fields?.shipping?.value == null ? null : Number(review.fields.shipping.value),
+      discount: review.fields?.discount?.value == null ? null : Number(review.fields.discount.value),
+      tax: review.fields?.tax?.value == null ? null : Number(review.fields.tax.value),
+      items: (review.items || []).map((item: any) => ({
+        description: String(item.description || ''), sku: String(item.sku || ''),
+        quantity: Number(item.quantity ?? 0), unit_cost: Number(item.unit_cost ?? 0),
+        confidence: Number(item.confidence ?? 0),
+      })),
+    });
+    this.importError.set('');
+  }
+  changeImportProfile(profileId: string) {
+    const file = this.importFile(); if (!file) return;
+    this.importLoading.set(true);
+    this.api.analyzePurchaseDocument(file, profileId || undefined).pipe(finalize(() => this.importLoading.set(false))).subscribe({
+      next: (review) => this.applyImportReview(review),
+      error: (err) => this.importError.set(err?.error?.detail || 'Não foi possível processar com este perfil.'),
+    });
+  }
+  updateImportField(field: 'supplier' | 'orderNumber' | 'documentDate', value: string) { this.importDraft.update((draft) => ({ ...draft, [field]: value })); }
+  updateImportNumber(field: 'total' | 'shipping' | 'discount' | 'tax', value: string) { this.importDraft.update((draft) => ({ ...draft, [field]: value === '' ? null : Number(value) })); }
+  updateImportItem(index: number, field: 'description' | 'sku' | 'quantity' | 'unit_cost', value: string) {
+    this.importDraft.update((draft) => ({ ...draft, items: draft.items.map((item, i) => i !== index ? item : ({ ...item, [field]: field === 'description' || field === 'sku' ? value : Number(value) })) }));
+  }
+  private importNotes(review: any, draft: { orderNumber: string; documentDate: string; total: number | null; shipping: number | null; discount: number | null; tax: number | null }): string {
+    const metadata = [
+      `Perfil: ${review.profile.name}`,
+      draft.orderNumber ? `Pedido: ${draft.orderNumber}` : '',
+      draft.documentDate ? `Data no documento: ${draft.documentDate}` : '',
+      draft.shipping != null ? `Frete no documento: ${draft.shipping}` : '',
+      draft.discount != null ? `Desconto no documento: ${draft.discount}` : '',
+      draft.tax != null ? `Impostos no documento: ${draft.tax}` : '',
+      `Total no documento: ${draft.total ?? 'não identificado'}`,
+      'Documento revisado pelo usuário.',
+    ].filter(Boolean);
+    return `Importação de documento. ${metadata.join(' · ')}`.slice(0, 4000);
+  }
+  private allocateImportTotal(total: number | null, items: Array<{ quantity: number; unit_cost: number }>, index: number) {
+    if (total == null || !Number.isFinite(total) || total <= 0) return 0;
+    const weights = items.map((item) => Math.max(0, item.quantity * item.unit_cost));
+    const weightSum = weights.reduce((sum, weight) => sum + weight, 0);
+    if (!weightSum) return index === 0 ? Number(total.toFixed(2)) : 0;
+    if (index === items.length - 1) {
+      const allocated = weights.slice(0, index).reduce((sum, weight) => sum + Math.round(total * weight / weightSum * 100) / 100, 0);
+      return Number((total - allocated).toFixed(2));
+    }
+    return Math.round(total * weights[index] / weightSum * 100) / 100;
+  }
+  canConfirmImport() {
+    const items = this.importDraft().items;
+    return items.length > 0 && items.every((item) => item.description.trim().length >= 2 && Number.isFinite(item.quantity) && item.quantity > 0 && Number.isFinite(item.unit_cost) && item.unit_cost >= 0);
+  }
+  addImportLine() { this.importDraft.update((draft) => ({ ...draft, items: [...draft.items, { description: '', sku: '', quantity: 1, unit_cost: 0, confidence: 0 }] })); }
+  removeImportLine(index: number) { this.importDraft.update((draft) => ({ ...draft, items: draft.items.filter((_, i) => i !== index) })); }
+  closeImportReview() { if (this.creatingImport()) return; this.importReview.set(null); this.importFile.set(null); this.importError.set(''); }
+  createImportedPurchase() {
+    const review = this.importReview(), file = this.importFile(), draft = this.importDraft();
+    if (!review || !file || !draft.items.length || this.creatingImport()) return;
+    this.creatingImport.set(true); this.importError.set('');
+    const payload = {
+      purchase_type: 'parts', supplier_name: draft.supplier.trim() || null,
+      notes: this.importNotes(review, draft),
+      items: draft.items.map((item, index) => ({
+        sku: item.sku.trim(), description: item.description.trim(), quantity: item.quantity,
+        unit_cost: item.unit_cost, product_id: null,
+        freight_amount: this.allocateImportTotal(draft.shipping, draft.items, index),
+        tax_amount: this.allocateImportTotal(draft.tax, draft.items, index),
+        discount_amount: this.allocateImportTotal(draft.discount, draft.items, index),
+      })),
+    };
+    this.api.createPurchase(payload).pipe(finalize(() => this.creatingImport.set(false))).subscribe({
+      next: (purchase) => {
+        this.importReview.set(null); this.importFile.set(null);
+        this.purchases.update((list) => [purchase, ...list]);
+        this.api.uploadPurchaseAttachments(purchase.id, [file]).subscribe({
+          next: (updated) => this.setPurchase(updated),
+          error: () => this.error.set('Compra criada, mas o anexo não foi enviado. Anexe o documento na compra.'),
+        });
+        this.openDetails(purchase);
+      },
+      error: (err) => this.importError.set(err?.error?.detail || 'Não foi possível criar a compra revisada.'),
+    });
+  }
+
   private newLine() { return this.fb.group({ product_id: [''], sku: ['', Validators.required], description: ['', Validators.required], quantity: [1, [Validators.required, Validators.min(0.001)]] }); }
   load() { this.api.purchases().subscribe({ next: (items) => this.purchases.set(items), error: () => this.error.set('Não foi possível carregar as compras. Tente novamente.') }); }
   applyPeriod(range: DateRange) { this.startDate.set(range.startDate); this.endDate.set(range.endDate); }

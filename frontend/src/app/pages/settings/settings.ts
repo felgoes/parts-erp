@@ -25,6 +25,9 @@ export class SettingsPage implements OnInit {
   readonly message = signal('');
   readonly error = signal('');
   readonly logoError = signal('');
+  readonly importProfiles = signal<Array<{ profile_id: string; name: string; kind: string; version: number }>>([]);
+  readonly profileBusy = signal(false);
+  readonly profileError = signal('');
   readonly settings = signal<ErpSettings>({
     company_name: 'Parts ERP',
     company_short_name: 'Parts',
@@ -63,10 +66,59 @@ export class SettingsPage implements OnInit {
     if (params.get('drive_connected') === 'true') this.message.set('Google Drive conectado. Salve a política de backup para ativá-la.');
     if (params.get('drive_error')) this.error.set('Não foi possível autorizar o Google Drive. Confira o Client ID, o segredo e o redirect URI.');
     if (params.has('drive_connected') || params.has('drive_error')) window.history.replaceState({}, '', window.location.pathname);
+    this.api.purchaseImportProfiles().subscribe({ next: (result) => this.importProfiles.set(result.profiles), error: () => undefined });
     this.api.erpSettings().pipe(finalize(() => this.loading.set(false))).subscribe({
       next: (settings) => this.applySettings(settings),
       error: () => this.error.set('Não foi possível carregar as configurações. Tente novamente.'),
     });
+  }
+
+  uploadImportProfile(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';
+    if (!file) return;
+    this.profileError.set('');
+    this.profileBusy.set(true);
+    this.api.uploadPurchaseImportProfile(file).pipe(finalize(() => this.profileBusy.set(false))).subscribe({
+      next: (result) => {
+        this.message.set(`Perfil ${result.name} importado.`);
+        this.api.purchaseImportProfiles().subscribe((response) => this.importProfiles.set(response.profiles));
+      },
+      error: (err) => this.profileError.set(err?.error?.detail || 'Não foi possível importar este perfil JSON.'),
+    });
+  }
+
+  deleteImportProfile(profileId: string): void {
+    if (this.profileBusy()) return;
+    this.profileBusy.set(true);
+    this.api.deletePurchaseImportProfile(profileId).pipe(finalize(() => this.profileBusy.set(false))).subscribe({
+      next: () => {
+        this.importProfiles.update((profiles) => profiles.filter((item) => item.profile_id !== profileId));
+        this.message.set('Perfil removido.');
+      },
+      error: (err) => this.profileError.set(err?.error?.detail || 'Não foi possível remover o perfil.'),
+    });
+  }
+
+  downloadImportProfileExample(): void {
+    const example = {
+      schema: 'parts-erp-purchase-import-profile/v1',
+      profile_id: 'loja_exemplo',
+      name: 'Minha loja',
+      version: 1,
+      match_terms: ['Minha loja', 'Order details'],
+      field_labels: {
+        supplier: ['Seller', 'Vendido por'],
+        order_number: ['Order number', 'Pedido nº'],
+        total: ['Order total', 'Total pago'],
+      },
+    };
+    const blob = new Blob([JSON.stringify(example, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url; link.download = 'perfil-importacao-exemplo.json'; link.click();
+    URL.revokeObjectURL(url);
   }
 
   chooseTheme(theme: AppearanceTheme): void {

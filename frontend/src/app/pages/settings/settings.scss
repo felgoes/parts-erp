@@ -71,3 +71,13 @@
   .settings-actions .primary { width: 100%; }
   .backup-footer { display: grid; gap: .55rem; }
 }
+
+.profile-actions { display: flex; flex-wrap: wrap; gap: .65rem; margin: .9rem 0; }
+.profile-actions .upload-button { display: inline-flex; align-items: center; cursor: pointer; }
+.profile-list { display: grid; border-top: 1px solid var(--line); }
+.profile-row { display: flex; align-items: center; justify-content: space-between; gap: .7rem; min-height: 54px; border-bottom: 1px solid var(--line); }
+.profile-row > div { display: grid; gap: .2rem; }
+.profile-row strong { font-size: .84rem; }
+.profile-row small, .profile-footnote { color: var(--muted); font-size: .73rem; }
+.profile-footnote { display: block; margin-top: .8rem; line-height: 1.45; }
+@media (max-width: 650px) { .profile-actions { display: grid; grid-template-columns: 1fr; } .profile-actions > * { justify-content: center; } }

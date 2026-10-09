@@ -9,13 +9,14 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
 from app.api.deps import require_permission
+from app.core.config import get_settings
 from app.core.permissions import Permission, has_permission
 from app.db.session import get_db
 from app.models import (
     MovementType,
     Product,
-    PurchaseCase,
     PurchaseAttachment,
+    PurchaseCase,
     PurchaseEvent,
     PurchaseItem,
     PurchaseQuote,
@@ -30,8 +31,8 @@ from app.schemas.common import (
     PurchaseQuoteCreate,
     PurchaseReceive,
 )
+from app.services.purchase_import import analyze_upload
 from app.services.stock import move_stock
-from app.core.config import get_settings
 
 router = APIRouter(prefix="/purchases", tags=["Compras"])
 
@@ -467,3 +468,23 @@ def cancel_purchase(
     _event(db, purchase, "cancelled", f"Compra cancelada por {user.full_name}.")
     db.commit()
     return _load(db, purchase.id)
+
+
+@router.post("/import-document")
+async def import_purchase_document(
+    file: UploadFile = File(...),
+    profile_id: str | None = None,
+    _: User = Depends(require_permission(Permission.PURCHASE_MANAGE)),
+) -> dict[str, object]:
+    try:
+        return await analyze_upload(file, profile_id)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except Exception as exc:
+        # Avoid returning or logging document contents or OCR output.
+        raise HTTPException(
+            status_code=422,
+            detail="Não foi possível interpretar o documento. Confira o arquivo e use a compra manual.",
+        ) from exc

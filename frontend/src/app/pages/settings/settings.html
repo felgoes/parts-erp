@@ -50,6 +50,21 @@
       <div class="backup-footer"><span>Último backup <strong>{{ settings().backup_last_at ? (settings().backup_last_at | date:'dd/MM/yyyy HH:mm') : 'Ainda não realizado' }}</strong></span><span>Status <strong>{{ settings().backup_last_status }}</strong></span><button class="secondary" type="button" [disabled]="backupRunning() || !settings().drive_connected" (click)="runBackup()">{{ backupRunning() ? 'Enviando…' : 'Executar backup agora' }}</button></div>
     </section>
 
+    <section class="settings-card import-profile-card">
+      <div class="settings-heading"><span class="section-icon">▤</span><div><p class="eyebrow">Compras</p><h2>Importação de documentos</h2><p>Perfis locais ajudam a identificar recibos de marketplaces. O sistema ainda pede revisão antes de criar uma compra.</p></div></div>
+      <div class="backup-notice"><strong>Leitura local e sem custo por documento</strong><span>PDF, fotos e XML são analisados no servidor do ERP. Perfis contêm apenas rótulos e sinais de identificação; não executam código. Um perfil pode ter várias versões de leiaute.</span></div>
+      <div class="profile-actions"><button class="secondary" type="button" (click)="downloadImportProfileExample()">Baixar modelo JSON</button><label class="secondary upload-button">{{ profileBusy() ? 'Processando…' : 'Importar perfil JSON' }}<input type="file" accept="application/json,.json" [disabled]="profileBusy()" (change)="uploadImportProfile($event)" /></label></div>
+      @if (profileError()) { <p class="field-error" role="alert">{{ profileError() }}</p> }
+      <div class="profile-list" aria-label="Perfis de importação disponíveis">
+        @for (profile of importProfiles(); track profile.profile_id) {
+          <div class="profile-row"><div><strong>{{ profile.name }}</strong><small>{{ profile.kind === 'built_in' ? 'Perfil incluído' : 'Perfil personalizado' }} · v{{ profile.version }}</small></div>
+            @if (profile.kind === 'custom') { <button class="quiet-button" type="button" [disabled]="profileBusy()" (click)="deleteImportProfile(profile.profile_id)">Remover</button> }
+          </div>
+        } @empty { <p class="muted">Carregando perfis disponíveis…</p> }
+      </div>
+      <small class="profile-footnote">Perfis incluídos: AliExpress, Mercado Livre, Shopee, Amazon e Alibaba. Recibos podem variar por país e formato; se a identificação for ambígua, escolha o perfil na revisão.</small>
+    </section>
+
     <div class="settings-actions"><p>As alterações de identidade são compartilhadas com todos os usuários do ERP.</p><button class="primary" type="submit" [disabled]="saving()">{{ saving() ? 'Salvando…' : 'Salvar configurações' }}</button></div>
   </form>
 }

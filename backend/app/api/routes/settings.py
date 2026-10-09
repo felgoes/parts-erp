@@ -1,9 +1,11 @@
 import base64
 import binascii
 import io
+import json
 import re
+from pathlib import Path
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi.responses import RedirectResponse
 from PIL import Image, UnidentifiedImageError
 from sqlalchemy.orm import Session
@@ -15,7 +17,13 @@ from app.core.security import decrypt_secret, encrypt_secret
 from app.db.session import get_db
 from app.models import ErpSettings, User
 from app.schemas.common import ErpSettingsOut, ErpSettingsUpdate
-from app.services.google_drive_backup import authorization_url, callback_url, exchange_code, run_backup
+from app.services.google_drive_backup import (
+    authorization_url,
+    callback_url,
+    exchange_code,
+    run_backup,
+)
+from app.services.purchase_import import PROFILE_SCHEMA, delete_profile, list_profiles, save_profile
 
 router = APIRouter(prefix="/settings", tags=["Configurações"])
 LOGO_MAX_BYTES = 2 * 1024 * 1024
@@ -125,7 +133,9 @@ def connect_google_drive(
 ) -> dict[str, str]:
     current = db.get(ErpSettings, "global")
     if not current or not current.drive_client_id or not current.encrypted_drive_client_secret:
-        raise HTTPException(status_code=400, detail="Informe o Client ID e o segredo OAuth do Google Drive primeiro")
+        raise HTTPException(
+            status_code=400, detail="Informe o Client ID e o segredo OAuth do Google Drive primeiro"
+        )
     return {"authorization_url": authorization_url(current), "redirect_uri": callback_url()}
 
 
@@ -162,3 +172,40 @@ def run_google_drive_backup(
         return {"filename": filename, "message": "Backup concluído e enviado ao Google Drive."}
     except Exception as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+
+@router.get("/purchase-import-profiles")
+def purchase_import_profiles(
+    _: User = Depends(get_current_user),
+) -> dict[str, object]:
+    return {"schema": PROFILE_SCHEMA, "profiles": list_profiles()}
+
+
+@router.post("/purchase-import-profiles")
+def upload_purchase_import_profile(
+    file: UploadFile = File(...),
+    _: User = Depends(require_permission(Permission.SETTINGS_MANAGE)),
+) -> dict[str, object]:
+    if Path(file.filename or "").suffix.lower() != ".json":
+        raise HTTPException(status_code=415, detail="Envie um perfil no formato JSON.")
+    raw = file.file.read(100_001)
+    if len(raw) > 100_000:
+        raise HTTPException(status_code=413, detail="O perfil deve ter até 100 KB.")
+    try:
+        payload = json.loads(raw)
+        profile = save_profile(payload)
+    except (UnicodeDecodeError, json.JSONDecodeError, ValueError) as exc:
+        raise HTTPException(status_code=422, detail=f"Perfil inválido: {exc}") from exc
+    return {"profile_id": profile["profile_id"], "name": profile["name"], "status": "saved"}
+
+
+@router.delete("/purchase-import-profiles/{profile_id}")
+def remove_purchase_import_profile(
+    profile_id: str,
+    _: User = Depends(require_permission(Permission.SETTINGS_MANAGE)),
+) -> dict[str, str]:
+    if profile_id in {"aliexpress", "mercado_livre", "shopee", "amazon", "alibaba"}:
+        raise HTTPException(status_code=409, detail="Perfis nativos não podem ser removidos.")
+    if not delete_profile(profile_id):
+        raise HTTPException(status_code=404, detail="Perfil personalizado não encontrado.")
+    return {"status": "deleted"}

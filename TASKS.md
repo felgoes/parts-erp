@@ -2,11 +2,15 @@
 
 ## Pendentes
 
+- [ ] Criar importação de compras por OCR, mantendo o cadastro manual; extrair do documento os dados do fornecedor, itens, quantidades, valores, datas e outros campos disponíveis, sempre para revisão antes de salvar. Implementação local passou pela HML e os binários/modelos foram testados no S9; publicação em PRD ainda pendente.
+
+## Concluídas
+
 - [x] CONCLUÍDO — Adicionar a opção de manter a sessão ativa sem logout automático (“nunca deslogar”), com encerramento manual e revogação da sessão.
 
-- [ ] Implementar alertas push de segurança e disponibilidade pelo Firebase: tentativas de login e acessos negados anormais, mudanças de usuários/permissões e arquivos críticos, queda/reinício de serviços, fila parada e recursos esgotando. Usar gravidade, deduplicação e intervalo entre alertas; incluir monitor externo para detectar queda total do aparelho/internet. Solicitado em 07/10/2026, após a auditoria de segurança das APIs e do código.
+- [x] CONCLUÍDO — Implementar alertas push de segurança e disponibilidade pelo Firebase: tentativas de login e acessos negados anormais, mudanças de usuários/permissões e arquivos críticos, queda/reinício de serviços, fila parada e recursos esgotando. Usar gravidade, deduplicação e intervalo entre alertas; incluir monitor externo para detectar queda total do aparelho/internet. Solicitado em 07/10/2026, após a auditoria de segurança das APIs e do código.
 
-- [ ] Concluir os backups automáticos para o Google Drive: a tela de Configurações já permite salvar a política (frequência e retenção de até 30 dias), mas ainda faltam autorização segura da conta Google, rotina/agendador no servidor, remoção automática das cópias vencidas e teste de restauração. Confirmar que a solução permanece gratuita e não versionar credenciais nem tokens.
+- [x] CONCLUÍDO — Backups automáticos para o Google Drive: política de frequência e retenção de até 30 dias, autorização segura da conta Google, execução agendada no servidor, remoção automática das cópias vencidas e teste de restauração. Solução mantida sem credenciais nem tokens versionados.
 
 ## Fila solicitada — 07/10/2026
 

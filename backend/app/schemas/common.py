@@ -20,7 +20,9 @@ class UtcModel(BaseModel):
     def serialize_utc_datetimes(self, value: Any) -> Any:
         """SQLite stores our UTC timestamps without tzinfo; make that explicit in JSON."""
         if isinstance(value, datetime):
-            normalized = value.replace(tzinfo=UTC) if value.tzinfo is None else value.astimezone(UTC)
+            normalized = (
+                value.replace(tzinfo=UTC) if value.tzinfo is None else value.astimezone(UTC)
+            )
             return normalized.isoformat().replace("+00:00", "Z")
         return value
 
@@ -388,7 +390,7 @@ class StockAdjustment(BaseModel):
 
 class PurchaseItemCreate(BaseModel):
     product_id: str | None = None
-    sku: str = Field(min_length=1, max_length=80)
+    sku: str = Field(default="", max_length=80)
     description: str = Field(min_length=2, max_length=200)
     quantity: Decimal = Field(gt=0)
     unit_cost: Decimal = Field(default=Decimal("0"), ge=0)
@@ -418,7 +420,16 @@ class PurchaseCreate(BaseModel):
     def validate_kind(self) -> "PurchaseCreate":
         if self.purchase_type == "parts" and not self.items:
             raise ValueError("Informe pelo menos uma peça")
-        if self.purchase_type == "expense" and (not self.expense_category or self.expense_amount is None):
+        imported_document = (self.notes or "").startswith("Importação de documento.")
+        if (
+            self.purchase_type == "parts"
+            and not imported_document
+            and any(not item.sku.strip() for item in self.items)
+        ):
+            raise ValueError("Informe o SKU de cada peça")
+        if self.purchase_type == "expense" and (
+            not self.expense_category or self.expense_amount is None
+        ):
             raise ValueError("Informe a categoria e o valor da despesa")
         return self
 

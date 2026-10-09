@@ -38,6 +38,21 @@ export class ApiService {
   erpSettings(): Observable<ErpSettings> {
     return this.http.get<ErpSettings>(`${this.base}/settings`);
   }
+  purchaseImportProfiles(): Observable<{ schema: string; profiles: Array<{ profile_id: string; name: string; kind: string; version: number }> }> {
+    return this.http.get<{ schema: string; profiles: Array<{ profile_id: string; name: string; kind: string; version: number }> }>(`${this.base}/settings/purchase-import-profiles`);
+  }
+  uploadPurchaseImportProfile(file: File): Observable<{ profile_id: string; name: string; status: string }> {
+    const form = new FormData(); form.append('file', file, file.name);
+    return this.http.post<{ profile_id: string; name: string; status: string }>(`${this.base}/settings/purchase-import-profiles`, form);
+  }
+  deletePurchaseImportProfile(id: string): Observable<{ status: string }> {
+    return this.http.delete<{ status: string }>(`${this.base}/settings/purchase-import-profiles/${encodeURIComponent(id)}`);
+  }
+  analyzePurchaseDocument(file: File, profileId?: string): Observable<any> {
+    const form = new FormData(); form.append('file', file, file.name);
+    const params = profileId ? { profile_id: profileId } : undefined;
+    return this.http.post<any>(`${this.base}/purchases/import-document`, form, { params });
+  }
   saveErpSettings(
     settings: Pick<ErpSettings, 'company_name' | 'company_short_name' | 'logo_data_url' | 'backup_enabled' | 'backup_frequency' | 'backup_time' | 'backup_retention_days' | 'backup_destination'> & { drive_client_id?: string | null; drive_client_secret?: string; drive_folder_id?: string | null },
   ): Observable<ErpSettings> {

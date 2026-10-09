@@ -513,3 +513,25 @@ textarea:focus {
   .date-range-fields input { padding-inline: 7px; font-size: 12px; }
   .date-range-fields button { grid-column: 1 / -1; min-height: 42px; }
 }
+
+.purchase-header-actions { display: flex; gap: .55rem; align-items: center; }
+.purchase-import-warnings { margin: .8rem 0; padding: .8rem 1rem; border-left: 3px solid #d49b3c; border-radius: 0 8px 8px 0; background: color-mix(in srgb, #edb64b 11%, var(--surface)); font-size: .8rem; }
+.purchase-import-warnings ul { margin: .4rem 0 0; padding-left: 1.2rem; color: var(--muted); }
+.import-meta { margin: .8rem 0; }
+.import-line-list { display: grid; gap: .6rem; }
+.import-line { grid-template-columns: minmax(180px, 2fr) repeat(3, minmax(95px, 1fr)) auto; align-items: end; }
+.import-line .import-confidence { grid-column: 1 / -2; color: var(--muted); font-size: .7rem; }
+.import-review-actions { display: flex; gap: .55rem; }
+@media (max-width: 720px) {
+  .purchase-header-actions { flex-wrap: wrap; }
+  .purchase-import-review { max-height: calc(100dvh - 1rem); overflow: auto; }
+  .import-line { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .import-line .line-description, .import-line .import-confidence { grid-column: 1 / -1; }
+  .import-review-actions { width: 100%; flex-direction: column-reverse; }
+  .import-review-actions > button { width: 100%; }
+}
+
+/* Keep the long OCR filename and row controls inside the mobile review sheet. */
+.purchase-import-review { overflow-x: hidden; }
+.purchase-import-review .modal-head > div { min-width: 0; }
+.purchase-import-review .modal-head .eyebrow { overflow-wrap: anywhere; }

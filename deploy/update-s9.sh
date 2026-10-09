@@ -41,6 +41,16 @@ cd "$APP"
 V="$APP/backend/.venv-termux"
 [[ -x "$V/bin/python" ]] || { echo "Virtualenv Termux não encontrado; abortando antes da parada." >&2; exit 1; }
 (cd "$APP/backend" && PYTHONPATH="$S/backend" "$V/bin/python" -c "import app.main")
+for OCR_BIN in tesseract pdfinfo pdftotext pdftoppm; do
+  command -v "$OCR_BIN" >/dev/null || { echo "Dependência OCR ausente ($OCR_BIN); abortando antes da parada." >&2; exit 1; }
+done
+TESSDATA_DIR="$PREFIX/share/tessdata"
+if [[ -n "${TESSDATA_PREFIX:-}" ]]; then TESSDATA_DIR="$TESSDATA_PREFIX"; fi
+for OCR_LANG in por eng; do
+  [[ -s "$TESSDATA_DIR/$OCR_LANG.traineddata" ]] || { echo "Modelo Tesseract ausente ($OCR_LANG); abortando antes da parada." >&2; exit 1; }
+done
+"$PREFIX/bin/tesseract" --list-langs 2>&1 | grep -qx 'eng' || { echo "Tesseract não carregou o modelo eng; abortando antes da parada." >&2; exit 1; }
+"$PREFIX/bin/tesseract" --list-langs 2>&1 | grep -qx 'por' || { echo "Tesseract não carregou o modelo por; abortando antes da parada." >&2; exit 1; }
 mkdir -p "$APP/data/backups"; NOW="$(date +%Y%m%d-%H%M%S)"
 tar -czf "$APP/data/backups/code-$NOW.tar.gz" -C "$APP" backend/app backend/alembic/versions backend/pyproject.toml frontend/dist/frontend deploy/termux; chmod 600 "$APP/data/backups/code-$NOW.tar.gz"
 if [[ -f "$APP/data/parts-erp.db" ]]; then

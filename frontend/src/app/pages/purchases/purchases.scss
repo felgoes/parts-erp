@@ -12,7 +12,7 @@
 .purchase-select select { min-height: 39px; max-width: 190px; padding: 0 28px 0 10px; border: 1px solid var(--line); border-radius: 9px; background: #fff; color: var(--text); }
 .purchase-toolbar > .muted { margin-left: auto; font-size: 12px; }
 .purchase-table-card { padding: 0; overflow: hidden; }
-.purchase-table-card table { min-width: 900px; }
+.purchase-table-card table { min-width: 800px; }
 .purchase-row { cursor: pointer; }
 .purchase-row:hover { background: #f8faf7; }
 .purchase-row td:first-child strong, .purchase-row td:first-child small, .purchase-row td:nth-child(3) strong, .purchase-row td:nth-child(3) small { display: block; }
@@ -67,7 +67,7 @@
 .purchase-line-form > label:nth-child(4) { grid-column: span 2; }
 .purchase-flow-hint { margin: -3px 0 12px; color: var(--muted); font-size: 12px; line-height: 1.45; }
 .purchase-line-form input, .purchase-line-form select { min-width: 0; }
-.purchase-line-form .remove-line { position: absolute; top: -8px; right: -7px; width: 24px; height: 24px; border: 1px solid var(--line); border-radius: 50%; background: #fff; color: #97524a; cursor: pointer; }
+.purchase-line-form .remove-line { position: absolute; top: -8px; right: 2px; width: 24px; height: 24px; border: 1px solid var(--line); border-radius: 50%; background: #fff; color: #97524a; cursor: pointer; }
 .purchase-form-actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-top: 18px; }
 .purchase-form-actions .muted { font-size: 11px; }
 .purchase-error { padding: 10px 12px; border-radius: 8px; background: #fff0ee; color: #963b35; font-size: 13px; }

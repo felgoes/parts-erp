@@ -25,7 +25,7 @@ Inicie o frontend com `cd frontend && npm start`. Mantenha valores reais em `bac
 
 [historical infra reference removed]
 
-Siga `goesautoparts-infra/docs/s9-setup.md` para criar uma chave SSH individual, preencher configuração privada local, validar a conexão e fazer deploy. Configuração e chave ficam em `~/.config/parts-erp/` e `~/.ssh/`, nunca nos repositórios.
+[historical infra reference removed]
 
 ## Verificação antes de compartilhar
 

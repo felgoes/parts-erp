@@ -16,7 +16,7 @@
 
 ## Required delivery order
 
-- For application changes, build and run relevant checks locally, review the changed flow, commit and push the exact commit, then, when deployment is requested, use the private infrastructure wrapper `deploy/update-s9-template.sh` (it invokes `deploy/update-s9.sh`) and verify the production health endpoint.
+- For every completed application change, build and run relevant checks locally, review the changed flow, commit and push the exact commit, then deploy it to PRD through the private infrastructure wrapper `deploy/update-s9-template.sh` (which invokes `deploy/update-s9.sh`) and verify the production health endpoint. This is the required end of development, not an optional step. If a prerequisite, deploy, or health check fails, stop and report the blocker; do not claim delivery is complete.
 - Do not deploy a commit that differs from `origin/main`. Preserve production data and configuration.
 
 ## Project commands

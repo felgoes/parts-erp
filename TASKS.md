@@ -2,9 +2,9 @@
 
 ## Pendentes
 
-- [ ] Criar importação de compras por OCR, mantendo o cadastro manual; extrair do documento os dados do fornecedor, itens, quantidades, valores, datas e outros campos disponíveis, sempre para revisão antes de salvar. Implementação local passou pela HML e os binários/modelos foram testados no S9; publicação em PRD ainda pendente.
-
 ## Concluídas
+
+[historical infra reference removed]
 
 - [x] CONCLUÍDO — Adicionar a opção de manter a sessão ativa sem logout automático (“nunca deslogar”), com encerramento manual e revogação da sessão.
 

@@ -1,6 +1,6 @@
 # Especificação — importação de compras por documento
 
-**Status:** implementação local validada em HML e dependências OCR provisionadas/testadas no S9; publicação em PRD pendente
+[historical infra reference removed]
 **Tarefa:** Parts ERP — importação de compras por OCR
 **Atualizado:** 2026-10-09
 

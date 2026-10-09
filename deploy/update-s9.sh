@@ -1,8 +1,15 @@
 #!/usr/bin/env bash
 set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-S9_HOST="${S9_HOST:-remote-host}"; S9_USER="${S9_USER:-deploy-user}"; S9_PORT="${S9_PORT:-8022}"; S9_APP_DIR="${S9_APP_DIR:-parts-erp}"
-SSH_OPTS=(-p "$S9_PORT" -o BatchMode=yes -o ConnectTimeout=10); [[ -z "${S9_IDENTITY_FILE:-}" ]] || SSH_OPTS+=(-i "$S9_IDENTITY_FILE"); REMOTE="$S9_USER@$S9_HOST"
+for name in S9_HOST S9_USER S9_PORT S9_APP_DIR S9_IDENTITY_FILE; do
+[historical infra reference removed]
+done
+[historical infra reference removed]
+[historical infra reference removed]
+[historical infra reference removed]
+chmod 600 "$S9_IDENTITY_FILE"
+SSH_OPTS=(-p "$S9_PORT" -o BatchMode=yes -o ConnectTimeout=10); SSH_OPTS+=(-i "$S9_IDENTITY_FILE" -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes); REMOTE="$S9_USER@$S9_HOST"
+ssh "${SSH_OPTS[@]}" "$REMOTE" true
 [[ -z "$(git -C "$ROOT_DIR" status --porcelain)" ]] || { echo "Deploy exige commit limpo." >&2; exit 1; }
 git -C "$ROOT_DIR" fetch --quiet origin main
 EXPECTED="$(git -C "$ROOT_DIR" rev-parse origin/main)"

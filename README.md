@@ -1,5 +1,7 @@
 # Parts ERP
 
+[historical infra reference removed]
+
 ERP web para uma loja de autopeças, com estoque, clientes, faturas de venda e sincronização de pedidos do Mercado Livre.
 
 ## Stack

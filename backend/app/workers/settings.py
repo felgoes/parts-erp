@@ -310,9 +310,9 @@ def _scheduled_backup_is_due(settings: ErpSettings, now_utc: datetime | None = N
         return True
     last = settings.backup_last_at
     if last.tzinfo is None:
-        # Older rows may have been saved without an offset. They were written
-        # by the worker in server local time, which is America/Sao_Paulo.
-        last = last.replace(tzinfo=BACKUP_TIMEZONE)
+        # SQLite drops timezone metadata for DateTime columns. Backup timestamps
+        # are written in UTC by run_backup(), so restore UTC before conversion.
+        last = last.replace(tzinfo=UTC)
     last_local = last.astimezone(BACKUP_TIMEZONE)
     elapsed_days = (local_now.date() - last_local.date()).days
     if settings.backup_frequency == "weekly":

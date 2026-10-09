@@ -78,7 +78,7 @@ export class LoginPage implements OnInit {
   readonly biometricConfigured = signal(false);
   readonly biometricEmail = signal<string | null>(null);
   readonly enableBiometric = signal(false);
-  readonly staySignedIn = signal(false);
+  readonly staySignedIn = signal(true);
   readonly form = this.fb.nonNullable.group({
     email: ['', [Validators.required, Validators.email]],
     password: ['', Validators.required],

@@ -68,7 +68,8 @@ export class AuthService {
     const current = this.session();
     if (!current) return;
     const updated = { ...current, user };
-    sessionStorage.setItem(this.storageKey, JSON.stringify(updated));
+    const storage = current.persistent ? localStorage : sessionStorage;
+    storage.setItem(this.storageKey, JSON.stringify(updated));
     this.session.set(updated);
   }
   refreshCurrentUser(): void {

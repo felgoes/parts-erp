@@ -112,4 +112,4 @@ def biometric_login(body: BiometricCredentialLogin, db: Session = Depends(get_db
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Acesso biométrico revogado. Entre com e-mail e senha novamente.",
         )
-    return _issue_token(user, db)
+    return _issue_token(user, db, persistent=True)

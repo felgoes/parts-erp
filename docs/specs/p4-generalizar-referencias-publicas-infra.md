@@ -1,6 +1,6 @@
 # P4 — Generalizar referências públicas à infraestrutura
 
-**Status:** concluída
+**Status:** concluída; referências públicas generalizadas com o contrato do wrapper de deploy preservado e implantada em PRD no commit 7e08f44 em 09/10/2026, com smoke checks públicos do site e ERP em HTTP 200
 **Prioridade:** P4
 
 ## Objetivo

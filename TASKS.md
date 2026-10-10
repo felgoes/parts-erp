@@ -2,10 +2,11 @@
 
 ## Pendentes
 
-- [ ] [P1] EM ANDAMENTO — Padronizar todos os campos monetários editáveis em reais com máscara pt-BR e limite de duas casas, preservando precisão e validação. Helper de login QA local criado; build, checagem de sintaxe e fluxos de máscara em produtos, despesas e estudos de mercado validados no HML autenticado. Aguardando commit, PRD e health checks. Spec: docs/specs/p1-mascara-valores-moeda.md.
 
 
 ## Concluídas
+
+- [x] [P1] CONCLUÍDO — Campos monetários editáveis padronizados em BRL pt-BR, com validação de até duas casas decimais; fluxo QA padronizado documentado. Validado em HML; commit abc8e26 implantado em PRD e smoke checks públicos do site e ERP retornaram HTTP 200. Spec: docs/specs/p1-mascara-valores-moeda.md.
 
 - [x] [P0] CONCLUÍDO — Recebimento parcial/total de materiais de despesas no almoxarifado, criação/vínculo de produtos, saldo e histórico auditável. Validado em HML; commit df975ea publicado e deploy/health checks públicos concluídos. Spec: docs/specs/p0-recebimento-estoque-compras.md.
 

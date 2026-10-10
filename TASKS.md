@@ -2,9 +2,10 @@
 
 ## Pendentes
 
-- [ ] [P0] EM ANDAMENTO — Receber materiais de despesas no almoxarifado, com recebimento parcial/total, atualização de saldo e histórico auditável. Spec: docs/specs/p0-recebimento-estoque-compras.md.
 
 ## Concluídas
+
+- [x] [P0] CONCLUÍDO — Recebimento parcial/total de materiais de despesas no almoxarifado, criação/vínculo de produtos, saldo e histórico auditável. Validado em HML; commit df975ea publicado e deploy/health checks públicos concluídos. Spec: docs/specs/p0-recebimento-estoque-compras.md.
 
 [historical infra reference removed]
 

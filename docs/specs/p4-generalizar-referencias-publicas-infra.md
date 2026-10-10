@@ -50,4 +50,4 @@ Remover do conteúdo atual do repositório público referências identificáveis
 - `bash -n deploy/update-s9.sh` e `git diff --check` passaram. O wrapper privado ainda exporta os mesmos nomes de variáveis e chama o mesmo entrypoint público; seu código e configuração não foram alterados.
 - O commit `7e08f44` foi implantado em PRD em 09/10/2026; o Tunnel foi preservado e os smoke checks do site e do ERP retornaram HTTP 200.
 
-- Não há tags nem refs de PR listadas no remoto. A API do GitHub ainda responde HTTP 200 para um SHA antigo sem refs, indicando objeto órfão/cache hospedado; o expurgo final depende do suporte GitHub. PRD recebe um arquivo exportado sem histórico Git e o HML usa o checkout WSL canônico.
+- Não há tags nem refs de PR listadas no remoto. A API do GitHub ainda responde HTTP 200 para um SHA antigo sem refs, indicando objeto órfão/cache hospedado. A tarefa de solicitar expurgo ao suporte foi encerrada sem contato; a remoção hospedada não está confirmada e o SHA pode continuar respondendo. PRD recebe um arquivo exportado sem histórico Git e o HML usa o checkout WSL canônico.

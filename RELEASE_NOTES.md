@@ -2,6 +2,8 @@
 
 ## 10 de outubro de 2026 — entregas confirmadas em PRD
 
+- [Compras: exclusão e cancelamento seguros · 6527b74](https://github.com/felgoes/parts-erp/commit/6527b74): exclua pedidos em rascunho com registro de auditoria, cancele com motivo escolhendo o que fazer com o material já recebido, encerre o saldo pendente, receba tudo de uma vez e acompanhe o título a pagar gerado pela compra ou despesa — com baixa e estorno no cancelamento.
+
 - [HML local em um comando · a7812dc](https://github.com/felgoes/parts-erp/commit/a7812dc): rotina de desenvolvimento que sobe API, ERP e login de QA com um comando e encerra tudo depois, sem tocar em serviços de outras sessões.
 
 - [Digitação de valores em reais · 1ea5591](https://github.com/felgoes/parts-erp/commit/1ea5591): digite, corrija e cole valores em reais sem o cursor pular; a máscara pt-BR é aplicada ao sair do campo e valores com mais de duas casas decimais ficam sinalizados para correção.

@@ -17,7 +17,7 @@
 ## Required delivery order
 
 [historical infra reference removed]
-- Before committing or pushing any UI change, manually validate the affected flow in the local HML browser at localhost:4200 with the dedicated QA account from the ignored .env.qa.local and the local API. Check mobile layout when relevant, fix visual defects, and repeat validation. Never use production accounts or data for QA. If local HML or the QA account is unavailable, stop before push/deploy and report the blocker. Run local HML services natively in WSL using backend/.venv; do not use Docker.
+- Before committing or pushing any UI change, manually validate the affected flow in the local HML browser at localhost:4200 with the dedicated QA account from the ignored .env.qa.local and the local API. Codex must read the local QA credentials and fill the login form itself; do not ask the user to enter them. Never use production accounts or data for QA, and never echo QA credentials into chat, logs, screenshots, source, or commits. If local HML or the QA account is unavailable, stop before push/deploy and report the blocker. Run local HML services natively in WSL using backend/.venv; do not use Docker.
 - Do not deploy a commit that differs from `origin/main`. Preserve production data and configuration.
 
 ## Project commands

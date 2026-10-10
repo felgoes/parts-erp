@@ -77,8 +77,22 @@ def _present(purchase: PurchaseCase, user: User) -> PurchaseOut:
     )
 
 
-def _event(db: Session, purchase: PurchaseCase, event_type: str, detail: str) -> None:
-    db.add(PurchaseEvent(purchase_id=purchase.id, event_type=event_type, detail=detail))
+def _event(
+    db: Session,
+    purchase: PurchaseCase,
+    event_type: str,
+    detail: str,
+    *,
+    item: PurchaseItem | None = None,
+    user: User | None = None,
+) -> None:
+    db.add(PurchaseEvent(
+        purchase_id=purchase.id,
+        item_id=item.id if item else None,
+        user_id=user.id if user else None,
+        event_type=event_type,
+        detail=detail,
+    ))
 
 
 def _line_adjustment(item: PurchaseItem) -> Decimal:
@@ -156,9 +170,13 @@ def create_purchase(
     for item in payload.items:
         if item.product_id and not db.get(Product, item.product_id):
             raise HTTPException(status_code=404, detail=f"Produto não encontrado: {item.sku}")
+        if item.product_id and payload.purchase_type == "expense":
+            product = db.get(Product, item.product_id)
+            if product and product.stock_type != "warehouse":
+                raise HTTPException(status_code=422, detail="Materiais de despesas devem ser vinculados a itens do almoxarifado.")
     purchase = PurchaseCase(
         number=f"COM-{datetime.now(UTC):%Y}-{uuid4().hex[:6].upper()}",
-        status="received" if payload.purchase_type == "expense" else "negotiating",
+        status=("ordered" if payload.items else "received") if payload.purchase_type == "expense" else "negotiating",
         purchase_type=payload.purchase_type,
         expense_category=payload.expense_category,
         expense_amount=payload.expense_amount,
@@ -175,7 +193,7 @@ def create_purchase(
     )
     db.add(purchase)
     db.flush()
-    _event(db, purchase, "created", f"Negociação criada por {user.full_name}.")
+    _event(db, purchase, "created", f"Compra criada por {user.full_name}.", user=user)
     db.commit()
     return _present(_load(db, purchase.id), user)
 
@@ -362,11 +380,12 @@ def receive_purchase(
     user: User = Depends(require_permission(Permission.PURCHASE_RECEIVE)),
 ) -> PurchaseOut:
     purchase = _load(db, purchase_id, for_update=True)
-    if purchase.status not in {"ordered", "partially_received"}:
+    if purchase.status not in {"ordered", "partially_received", "received"}:
         raise HTTPException(
             status_code=409,
             detail="Só é possível receber itens de um pedido enviado ao fornecedor.",
         )
+    previous_status = purchase.status
     lines = {item.id: item for item in purchase.items}
     for received in payload.items:
         item = lines.get(received.item_id)
@@ -396,9 +415,11 @@ def receive_purchase(
                 raise HTTPException(
                     status_code=422,
                     detail=(
-                        f"Vincule {item.sku} a um produto ou marque para cadastrá-lo no catálogo."
+                        f"Vincule {item.sku or item.description} a um produto ou marque para cadastrá-lo no catálogo."
                     ),
                 )
+            if not item.sku.strip():
+                raise HTTPException(status_code=422, detail="Informe o SKU para cadastrar este material no catálogo.")
             existing = db.scalar(select(Product).where(Product.sku == item.sku))
             if existing:
                 product = existing
@@ -406,10 +427,14 @@ def receive_purchase(
                 product = Product(
                     sku=item.sku,
                     name=item.description,
+                    stock_type="warehouse" if purchase.purchase_type == "expense" else "product",
                     sale_price=0,
                     cost_price=item.unit_cost,
                     current_stock=0,
                     minimum_stock=0,
+                    attributes={},
+                    fitments=[],
+                    images=[],
                 )
                 db.add(product)
                 db.flush()
@@ -422,6 +447,8 @@ def receive_purchase(
                     "após o primeiro recebimento."
                 ),
             )
+        if purchase.purchase_type == "expense" and product.stock_type != "warehouse":
+            raise HTTPException(status_code=422, detail="Recebimentos de despesas só podem creditar itens do almoxarifado.")
 
         new_received = item.received_quantity + received.quantity
         move_stock(
@@ -439,7 +466,10 @@ def receive_purchase(
             db,
             purchase,
             "item_received",
-            f"{received.quantity:g} un. de {item.sku} recebidas por {user.full_name}.",
+            f"{received.quantity:g} {item.unit} de {item.sku or item.description[:80]} recebidas por {user.full_name}."
+            + (f" Observação: {received.observation.strip()}" if received.observation and received.observation.strip() else ""),
+            item=item,
+            user=user,
         )
 
     purchase.status = (
@@ -447,7 +477,7 @@ def receive_purchase(
         if all(item.received_quantity >= item.quantity for item in purchase.items)
         else "partially_received"
     )
-    if purchase.status == "received":
+    if purchase.status == "received" and previous_status != "received":
         _event(db, purchase, "received", "Todos os itens foram recebidos e lançados no estoque.")
     db.commit()
     return _present(_load(db, purchase.id), user)

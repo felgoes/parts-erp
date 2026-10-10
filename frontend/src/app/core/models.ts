@@ -184,6 +184,7 @@ export interface PurchaseItem {
   product_id: string | null;
   sku: string;
   description: string;
+  unit: string;
   quantity: number;
   received_quantity: number;
   base_unit_cost: number | null;
@@ -209,6 +210,8 @@ export interface PurchaseQuote {
 }
 export interface PurchaseEvent {
   id: string;
+  item_id: string | null;
+  user_id: string | null;
   event_type: string;
   detail: string;
   created_at: string;

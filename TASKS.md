@@ -2,6 +2,8 @@
 
 ## Pendentes
 
+- [ ] [P0] EM ANDAMENTO — Receber materiais de despesas no almoxarifado, com recebimento parcial/total, atualização de saldo e histórico auditável. Spec: docs/specs/p0-recebimento-estoque-compras.md.
+
 ## Concluídas
 
 [historical infra reference removed]

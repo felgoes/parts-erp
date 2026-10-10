@@ -395,6 +395,7 @@ class PurchaseItemCreate(BaseModel):
     product_id: str | None = None
     sku: str = Field(default="", max_length=80)
     description: str = Field(min_length=2, max_length=200)
+    unit: str = Field(default="un", min_length=1, max_length=24)
     quantity: Decimal = Field(gt=0)
     unit_cost: Decimal = Field(default=Decimal("0"), ge=0)
     freight_amount: Decimal = Field(default=Decimal("0"), ge=0)
@@ -464,6 +465,7 @@ class PurchaseReceiveItem(BaseModel):
     quantity: Decimal = Field(gt=0)
     product_id: str | None = None
     create_product: bool = False
+    observation: str | None = Field(default=None, max_length=160)
 
 
 class PurchaseReceive(BaseModel):
@@ -475,6 +477,7 @@ class PurchaseItemOut(ORMModel):
     product_id: str | None
     sku: str
     description: str
+    unit: str = "un"
     quantity: Decimal
     received_quantity: Decimal
     base_unit_cost: Decimal | None = None
@@ -502,6 +505,8 @@ class PurchaseQuoteOut(ORMModel):
 
 class PurchaseEventOut(ORMModel):
     id: str
+    item_id: str | None = None
+    user_id: str | None = None
     event_type: str
     detail: str
     created_at: datetime

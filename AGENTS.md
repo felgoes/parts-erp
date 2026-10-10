@@ -10,6 +10,7 @@
 
 ## Canonical development environment
 
+- Before running a WSL command, list installed distributions from Windows with wsl.exe --list --quiet and pass the exact installed name to wsl.exe -d. Do not assume the distro is named Ubuntu; on the current PC it is Ubuntu-24.04. If WSL reports WSL_E_DISTRO_NOT_FOUND, re-list names and retry with the exact match instead of switching to the Windows mirror.
 - Use the WSL Ubuntu checkout as the canonical working copy. Make source changes, builds, Git commits, and GitHub pushes from WSL; do not develop in the Windows mirror.
 - Preserve branch refs; remove only auxiliary checkouts that are clean, task-owned, and no longer needed after delivery.
 - At task completion, close browser tabs opened for the task, stop only services/processes started for it, and remove temporary files. Inventory `git worktree list` and inspect each checkout's branch and status before removing it. Remove task-created auxiliary checkouts once their work is delivered; preserve the canonical checkout and any checkout containing unrelated or uncommitted work. Never use broad `git clean` commands to achieve checkout cleanup.

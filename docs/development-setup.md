@@ -18,7 +18,20 @@ cd ~/workspace/garagista/parts-erp-main
 
 O script valida as versões, cria `backend/.venv`, instala dependências Python e executa `npm ci` pelo lockfile. Execute em cada PC. Não cria nem preenche segredos.
 
-Inicie o frontend com `cd frontend && npm start`. Mantenha valores reais em `backend/.env`, ignorado pelo Git. Use credenciais locais independentes, nunca credenciais de produção. Para validar login e fluxos de UI no HML local, o Codex usa o perfil de QA definido localmente em `.env.qa.local` (ignorado pelo Git) e preenche o formulário de login por conta própria. Não compartilhe esses dados em chat, logs ou capturas de tela; nunca use uma conta de produção para QA.
+## HML local em um comando
+
+Suba API, ERP e login de QA no WSL a partir do checkout canônico:
+
+```bash
+./scripts/hml-local.sh start     # sobe tudo e mostra os endereços
+./scripts/hml-local.sh status    # mostra o que está ativo e as portas
+./scripts/hml-local.sh logs      # acompanha os logs dos três serviços
+./scripts/hml-local.sh stop      # encerra só o que o script iniciou
+```
+
+O script confere os pré-requisitos, cria `backend/.env` a partir de `.env.qa.local` quando ele ainda não existe, aplica as migrações do banco de QA, sobe backend (`127.0.0.1:8000`), frontend (`127.0.0.1:4200`) e o helper de login (`127.0.0.1:8765`), e só libera quando os três respondem. Serviços já ativos em outra sessão são adotados em vez de reiniciados, e `stop` encerra apenas os processos iniciados pelo próprio script. Para usar outras portas, defina `PARTS_ERP_API_PORT` e `PARTS_ERP_WEB_PORT`.
+
+Também é possível subir cada serviço manualmente com `cd frontend && npm start`. Mantenha valores reais em `backend/.env`, ignorado pelo Git. Use credenciais locais independentes, nunca credenciais de produção. Para validar login e fluxos de UI no HML local, o Codex usa o perfil de QA definido localmente em `.env.qa.local` (ignorado pelo Git) e preenche o formulário de login por conta própria. Não compartilhe esses dados em chat, logs ou capturas de tela; nunca use uma conta de produção para QA.
 
 ## Deploy em produção
 

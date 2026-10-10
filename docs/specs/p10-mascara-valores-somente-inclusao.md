@@ -1,6 +1,6 @@
 # P10 — Máscara de valores forte, somente inclusão
 
-**Status:** proposta — aguardando decisões do PO antes da implementação
+**Status:** decidida — decisões do PO fechadas em 10/10/2026; pronta para implementação
 **Prioridade:** P2
 
 ## Objetivo
@@ -38,13 +38,13 @@ Como operador do ERP, quero digitar valores sem risco de deixar o campo num esta
 - **Colagem da nota:** copiar valor do XML, do PDF da nota ou de e-mail do fornecedor é rotina no fechamento; bloquear colagem seria inaceitável na operação.
 - **Risco a evitar:** campo opcional vazio virando zero silencioso em frete e desconto distorce custo de aquisição e título a pagar. Vazio e zero precisam ser decisões distintas.
 
-## Pontos que precisam de decisão do PO
+## Decisões fechadas
 
-1. **Campo opcional vazio:** o campo vazio mostra `R$ 0,00` fixo ou fica realmente em branco até o primeiro dígito? (Afeta frete, desconto, impostos e outros campos opcionais.)
-2. **Campo obrigatório com valor zero:** `R$ 0,00` é aceito como valor preenchido quando o mínimo do campo é maior que zero, ou continua bloqueando o salvamento com a mensagem atual?
-3. **Corrigir o meio do número:** não será possível, por desenho, apagar só um dígito do meio. A correção passa a ser reescrever o valor. Confirmar que essa é a intenção.
-
-**Recomendação (ERP e administração):** 1) campo opcional fica em branco até o primeiro dígito, porque zero e vazio significam coisas diferentes em frete e desconto; campo obrigatório com mínimo maior que zero continua bloqueando o salvamento; 2) confirmar a correção por reescrita — é o comportamento do padrão por centavos e evita estado parcial.
+1. **Campo opcional vazio fica em branco.** `R$ 0,00` só aparece quando o usuário digita zero ou quando o valor é genuinamente zero. Em frete, desconto e impostos, vazio e zero têm significados diferentes: vazio é "não informado", zero é "informado e não há valor". O cálculo financeiro não pode tratar os dois como a mesma coisa.
+2. **Campo obrigatório com mínimo maior que zero continua bloqueando.** Digitar `0` mostra `R$ 0,00` e o salvamento permanece impedido com a mensagem atual; o atributo `min` do campo é respeitado como hoje.
+3. **Correção passa a ser reescrita.** Não existe apagar um dígito do meio: ao focar, o valor fica selecionado e a digitação substitui o número inteiro. É o comportamento do padrão por centavos e evita estado parcial.
+4. **Valor legado com mais de duas casas continua sinalizado.** A máscara não corrige nem arredonda dado antigo sozinho; a correção é explícita pelo usuário, como na P1.
+5. **Campo somente leitura permanece somente leitura.** Nenhum campo calculado ou de exibição passa a capturar teclado.
 
 ## Fora de escopo
 
@@ -62,3 +62,5 @@ Como operador do ERP, quero digitar valores sem risco de deixar o campo num esta
 6. O valor enviado à API representa centavos exatos e as validações de mínimo e máximo continuam valendo.
 7. A regra vale em todos os campos monetários editáveis do ERP, e campos somente leitura não mudam.
 8. Teclado numérico abre corretamente no celular e a digitação funciona igual em desktop e mobile.
+9. Campo opcional sem valor continua em branco e é enviado como não informado, sem virar zero; digitar `0` produz `R$ 0,00` de verdade.
+10. Campo obrigatório com mínimo maior que zero não é liberado com `R$ 0,00`.

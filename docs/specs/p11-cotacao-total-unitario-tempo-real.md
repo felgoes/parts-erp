@@ -1,6 +1,6 @@
 # P11 — Cotação com total e custo unitário em tempo real
 
-**Status:** proposta — aguardando decisões do PO antes da implementação
+**Status:** decidida — decisões do PO fechadas em 10/10/2026; pronta para implementação
 **Prioridade:** P3
 
 ## Objetivo
@@ -18,7 +18,7 @@ Como comprador, quero digitar o total que o fornecedor passou e ver o preço uni
 - **Último campo manda:** o campo editado por último é a fonte da verdade; o outro é recalculado. Não pode haver recálculo em vaivém que faça o número digitado mudar sozinho.
 - **Rateio:** no método proporcional, distribuir pelo subtotal atual de cada item; no método por quantidade, distribuir pela quantidade de peças. Empate ou subtotal zero tem regra explícita e determinística.
 - **Fechamento de centavos:** a soma dos itens rateados tem de fechar exatamente com o total informado; a diferença de arredondamento é ajustada na última linha e visível para o usuário.
-- **Frete, impostos e desconto:** o total informado é da proposta inteira, já com acréscimos e desconto, ou é o subtotal das peças antes deles? (decisão do PO — ver abaixo).
+- **Frete, impostos e desconto:** o total informado é o valor final da proposta, já com acréscimos e desconto. O rateio calcula primeiro o líquido das peças (total − frete − impostos + desconto) e distribui esse líquido entre os itens.
 - **Proposta impossível:** total menor que a soma dos acréscimos menos o desconto, ou custo unitário negativo resultante do rateio, sinaliza o erro e impede salvar a cotação.
 - **Cotação já registrada:** editar uma cotação salva continua recalculando do mesmo jeito, preservando histórico e auditoria.
 
@@ -36,15 +36,14 @@ Como comprador, quero digitar o total que o fornecedor passou e ver o preço uni
 - **Conferência fiscal:** divergência de centavos entre soma dos itens e total é a causa mais comum de retrabalho na conferência da nota do fornecedor.
 - **Cotação vencedora já aprovada:** mudar valor depois de aprovado ou pago altera custo médio e financeiro. A prática de mercado é bloquear ou exigir reescolha com registro de auditoria.
 
-## Pontos que precisam de decisão do PO
+## Decisões fechadas
 
-1. **O que o total digitado representa:** o valor final da proposta (peças + frete + impostos − desconto) ou o subtotal das peças, com frete, impostos e desconto somados depois? Isso define qual número o rateio usa por padrão.
-2. **Sentido padrão com vários itens:** quando o total é digitado e nenhum item tem preço ainda, o rateio começa pelo método selecionado (proporcional/quantidade). Confirmar qual é o padrão sugerido na tela.
-3. **Editar cotação já escolhida:** permitir recalcular a cotação vencedora depois de escolhida altera o custo do item e o título a pagar. Manter bloqueado, exigir reescolha ou permitir com aviso?
-4. **Desconto por linha:** se o desconto percentual por peça permanecer (ver P9), informar como ele entra no cálculo bidirecional.
-5. **Arredondamento:** ajustar a sobra na última linha por ordem de exibição está adequado, ou o ajuste deve ir para o item de maior valor?
-
-**Recomendação (ERP e administração):** 1) o total digitado é o valor final da proposta, já com frete, impostos e desconto, porque é assim que o fornecedor fecha a negociação e é o número que o comprador tem em mãos; 2) sem preço prévio em nenhum item, os dois métodos caem para rateio por quantidade, que é determinístico; 3) cotação já escolhida fica bloqueada para edição, e trocar exige registrar uma nova cotação; 4) a sobra de centavos vai para o item de maior valor, prática mais estável em conferência fiscal.
+1. **O total digitado é o valor final da proposta**, já com frete, impostos e desconto, porque é o número que o fornecedor fecha e que o comprador tem em mãos. O rateio trabalha sobre o líquido das peças: `líquido = total − frete − impostos + desconto`, e depois distribui o líquido entre os itens.
+2. **Rateio padrão é proporcional ao subtotal de cada item**, com o método por quantidade disponível na tela. Quando nenhum item tem preço informado, não existe base proporcional: os dois métodos caem para rateio por quantidade, que é determinístico.
+3. **Cotação escolhida fica travada para edição.** Alterar valor de cotação vencedora muda custo de estoque e título a pagar; para mudar preço, registra-se uma nova cotação e escolhe-se de novo, mantendo o histórico.
+4. **Desconto por linha não existe mais** (decisão da P9). O cálculo bidirecional considera apenas o desconto da cotação, sem risco de desconto em dobro.
+5. **Sobra de centavos vai para o item de maior valor** da proposta; em caso de empate, o primeiro item da lista. O ajuste aparece no detalhe da cotação e nunca fica implícito.
+6. **Proposta impossível não é salva.** Total menor que frete + impostos − desconto, ou rateio que resulte em preço negativo em algum item, sinaliza o erro com mensagem explicando o motivo.
 
 ## Fora de escopo
 
@@ -61,7 +60,8 @@ Como comprador, quero digitar o total que o fornecedor passou e ver o preço uni
 5. Proposta com total impossível (menor que os acréscimos menos o desconto) fica sinalizada e não pode ser salva, com mensagem explicando o motivo.
 6. A diferença de arredondamento de centavos aparece ajustada e rastreável, sem sobra nem falta de centavos entre itens e total.
 7. A cotação salva mantém os valores calculados após sair e voltar à tela.
-8. Os cinco pontos de decisão acima estão resolvidos e registrados nesta spec antes de implementar.
+8. Cotação já escolhida não pode ser editada; a tela oferece registrar uma nova cotação, preservando o histórico da anterior.
+9. Nenhum item recebe preço negativo pelo rateio, e o motivo é explicado quando a proposta não fecha.
 
 ## Verificação
 

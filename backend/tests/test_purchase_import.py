@@ -22,6 +22,9 @@ def test_money_parses_brazilian_and_us_decimal_formats():
 def test_marketplace_profile_detection_requires_evidence_or_manual_choice():
     text = "Mercado Livre\nMercado Pago\nPedido confirmado"
     assert detect_profile(text)["profile_id"] == "mercado_livre"
+    # A DANFE without platform branding must remain ambiguous even when the user
+    # knows which marketplace originated the purchase.
+    assert detect_profile("DANFE\nCNPJ\nValor total da nota")["profile_id"] is None
     assert detect_profile("documento de compra qualquer")["profile_id"] is None
     assert detect_profile("texto sem marca", "amazon")["profile_id"] == "amazon"
 
@@ -51,6 +54,68 @@ def test_labeled_total_and_conservative_item_pattern():
             "confidence": 0.62,
         }
     ]
+
+
+def test_aliexpress_receipt_labels_localized_date_money_and_multiline_item():
+    from app.services.purchase_import import MARKETPLACES, _extract_items
+
+    labels = MARKETPLACES["aliexpress"]["field_labels"]
+    fields = _extract_labeled(
+        [
+            "ID do pedido: ORDER-EXAMPLE",
+            "Data do pedido: 28 set, 2026",
+            "Subtotal: R$ 214,40",
+            "Todos os descontos: R$ 96,71",
+            "Custo de frete: R$ 37,03",
+            "Impostos: R$ 50,31",
+            "Total: R$ 205,03",
+        ],
+        labels,
+    )
+    assert fields["order_number"]["value"] == "ORDER-EXAMPLE"
+    assert fields["date"]["value"] == "2026-09-28"
+    assert fields["subtotal"]["value"] == 214.40
+    assert fields["discount"]["value"] == 96.71
+    assert fields["shipping"]["value"] == 37.03
+    assert fields["tax"]["value"] == 50.31
+    assert fields["total"]["value"] == 205.03
+    assert _extract_items(
+        ["Membrana da tampa da válvula", "10PCS", "BRL 214.40", "x1", "Loja Exemplo"],
+        "aliexpress",
+    ) == [
+        {
+            "description": "Membrana da tampa da válvula 10PCS",
+            "quantity": 1.0,
+            "unit_cost": 214.4,
+            "line_total": 214.4,
+            "confidence": 0.58,
+        }
+    ]
+
+
+def test_alibaba_receipt_labels_currency_and_date_without_using_payment_total():
+    from app.services.purchase_import import MARKETPLACES
+
+    fields = _extract_labeled(
+        [
+            "Sold by: Supplier Example",
+            "Receipt number: ORDER-EXAMPLE",
+            "Receipt date: 09 Oct, 2026",
+            "Subtotal: BRL 1,234.56",
+            "Shipping fee: BRL 25.00",
+            "Order total: BRL 1,259.56",
+            "Payment total: USD 300.00",
+        ],
+        MARKETPLACES["alibaba"]["field_labels"],
+    )
+    assert fields["supplier"]["value"] == "Supplier Example"
+    assert fields["order_number"]["value"] == "ORDER-EXAMPLE"
+    assert fields["date"]["value"] == "2026-10-09"
+    assert fields["subtotal"]["value"] == 1234.56
+    assert fields["shipping"]["value"] == 25.0
+    assert fields["total"]["value"] == 1259.56
+    assert _money("BRL 1,234.56") == 1234.56
+    assert _money("USD 1,234.56") == 1234.56
 
 
 def test_blank_sku_is_allowed_only_for_reviewed_document_imports():

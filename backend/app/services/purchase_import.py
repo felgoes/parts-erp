@@ -26,9 +26,13 @@ MARKETPLACES: dict[str, dict[str, Any]] = {
         "name": "AliExpress",
         "terms": ["aliexpress"],
         "field_labels": {
-            "total": ["order total", "total paid", "total do pedido", "valor total"],
-            "shipping": ["shipping fee", "frete", "delivery fee"],
-            "discount": ["coupon", "discount", "desconto"],
+            "order_number": ["id do pedido", "order id"],
+            "date": ["data do pedido", "order date"],
+            "subtotal": ["subtotal"],
+            "total": ["total", "order total", "total paid", "total do pedido", "valor total"],
+            "shipping": ["custo de frete", "shipping fee", "frete", "delivery fee"],
+            "discount": ["todos os descontos", "coupon", "discount", "desconto"],
+            "tax": ["impostos", "taxes", "tax"],
         },
     },
     "mercado_livre": {
@@ -65,24 +69,33 @@ MARKETPLACES: dict[str, dict[str, Any]] = {
         "name": "Alibaba",
         "terms": ["alibaba.com", "trade assurance", "alibaba group"],
         "field_labels": {
-            "supplier": ["supplier", "seller"],
-            "order_number": ["order number", "trade order"],
-            "total": ["total amount", "order total"],
-            "shipping": ["shipping cost", "freight"],
+            "supplier": ["sold by", "supplier", "seller"],
+            "order_number": ["receipt number", "order number", "trade order"],
+            "date": ["receipt date", "order date"],
+            "subtotal": ["subtotal"],
+            "total": ["order total"],
+            "shipping": ["shipping fee", "shipping cost", "freight"],
         },
     },
 }
 FIELD_LABELS: dict[str, list[str]] = {
     "supplier": ["seller", "sold by", "fornecedor", "vendido por", "loja"],
-    "order_number": ["order number", "order id", "número do pedido", "pedido nº", "pedido no"],
-    "date": ["order date", "purchase date", "data do pedido", "data da compra"],
+    "order_number": [
+        "order number",
+        "order id",
+        "id do pedido",
+        "número do pedido",
+        "pedido nº",
+        "pedido no",
+    ],
+    "date": ["receipt date", "order date", "purchase date", "data do pedido", "data da compra"],
     "subtotal": ["subtotal", "item subtotal", "subtotal dos produtos"],
-    "shipping": ["shipping", "frete", "delivery fee"],
-    "discount": ["discount", "desconto", "coupon"],
+    "shipping": ["shipping fee", "shipping", "frete", "delivery fee", "custo de frete"],
+    "discount": ["todos os descontos", "discount", "desconto", "coupon"],
     "total": ["order total", "total do pedido", "total pago", "valor total", "total"],
     "tax": ["tax", "taxes", "taxa", "imposto", "impostos", "vat", "iva"],
 }
-MONEY = r"(?:R\$\s*)?-?\s*(?:\d{1,3}(?:\.\d{3})+|\d+)(?:,\d{2}|\.\d{2})"
+MONEY = r"(?:(?:R\$|BRL|USD|US\$|\$)\s*)?-?\s*(?:\d{1,3}(?:[,.]\d{3})+|\d+)(?:,\d{2}|\.\d{2})"
 _OCR_SLOT = threading.BoundedSemaphore(1)
 
 
@@ -265,7 +278,7 @@ def _profile_labels(profile_id: str | None) -> dict[str, list[str]]:
 
 
 def _money(value: str) -> float | None:
-    raw = re.sub(r"R\$|\$", "", value, flags=re.IGNORECASE).replace(" ", "")
+    raw = re.sub(r"R\$|BRL|USD|US\$|\$", "", value, flags=re.IGNORECASE).replace(" ", "")
     if "," in raw and "." in raw:
         decimal_mark = "," if raw.rfind(",") > raw.rfind(".") else "."
         grouping_mark = "." if decimal_mark == "," else ","
@@ -279,6 +292,66 @@ def _money(value: str) -> float | None:
     try:
         number = float(raw)
         return round(number, 2) if number == number and abs(number) < 1e12 else None
+    except ValueError:
+        return None
+
+
+def _normalize_order_date(value: str) -> str | None:
+    months = {
+        "jan": 1,
+        "january": 1,
+        "fev": 2,
+        "feb": 2,
+        "february": 2,
+        "mar": 3,
+        "march": 3,
+        "abr": 4,
+        "apr": 4,
+        "april": 4,
+        "mai": 5,
+        "may": 5,
+        "jun": 6,
+        "june": 6,
+        "jul": 7,
+        "july": 7,
+        "ago": 8,
+        "aug": 8,
+        "august": 8,
+        "set": 9,
+        "sep": 9,
+        "sept": 9,
+        "september": 9,
+        "out": 10,
+        "oct": 10,
+        "october": 10,
+        "nov": 11,
+        "november": 11,
+        "dez": 12,
+        "dec": 12,
+        "december": 12,
+    }
+    text = _normalize(value).replace(",", " ")
+    iso = re.fullmatch(r"(\d{4})-(\d{2})-(\d{2})", text)
+    if iso:
+        return text
+    numeric = re.fullmatch(r"(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})", text)
+    if numeric:
+        day, month, year = map(int, numeric.groups())
+    else:
+        localized = re.fullmatch(r"(\d{1,2})\s+([a-z]+)\s+(\d{4})", text)
+        if not localized or localized.group(2) not in months:
+            return None
+        day, month, year = (
+            int(localized.group(1)),
+            months[localized.group(2)],
+            int(localized.group(3)),
+        )
+    if year < 100:
+        year += 2000 if year < 70 else 1900
+    try:
+        from datetime import date
+
+        return date(year, month, day).isoformat()
     except ValueError:
         return None
 
@@ -299,7 +372,7 @@ def _extract_labeled(lines: list[str], labels: dict[str, list[str]]) -> dict[str
             )
             if not matched:
                 continue
-            value_part = normalized_line[len(matched):].strip(" :#-\t")
+            value_part = normalized_line[len(matched) :].strip(" :#-\t")
             if not value_part and i + 1 < len(lines):
                 value_part = _normalize(lines[i + 1])
             if not value_part:
@@ -308,22 +381,46 @@ def _extract_labeled(lines: list[str], labels: dict[str, list[str]]) -> dict[str
                 match = re.fullmatch(rf"\s*({MONEY})\s*", value_part, re.I)
                 value = _money(match.group(1)) if match else None
             elif field == "date":
+                date_text = value_part.strip(" :#-")
                 date_match = re.fullmatch(
-                    r"(?:data (?:do pedido|da compra|do documento)|order date|purchase date)"
-                    r"\s*[:#-]?\s*(\d{4}-\d{2}-\d{2}|\d{1,2}[/-]\d{1,2}[/-]\d{2,4})",
-                    normalized_line,
+                    r"(\d{4}-\d{2}-\d{2}|\d{1,2}[/-]\d{1,2}[/-]\d{2,4}|"
+                    r"\d{1,2}\s+[a-z]+,?\s+\d{4})",
+                    date_text,
                 )
-                value = date_match.group(1) if date_match else None
+                value = _normalize_order_date(date_match.group(1)) if date_match else None
             else:
-                value = line[len(matched):].strip(" :#-\t")[:160]
+                value = line[len(matched) :].strip(" :#-\t")[:160]
             if value not in (None, ""):
                 output[field] = {"value": value, "confidence": 0.78, "source": "label"}
                 break
     return output
 
 
-def _extract_items(lines: list[str]) -> list[dict[str, Any]]:
+def _extract_items(lines: list[str], profile_id: str | None = None) -> list[dict[str, Any]]:
     items = []
+    # AliExpress order details place the product/variant, unit price, and xN quantity
+    # on separate lines. Require that complete local sequence to avoid summary totals.
+    if profile_id == "aliexpress":
+        for index in range(2, len(lines) - 1):
+            price_match = re.fullmatch(rf"\s*({MONEY})\s*", lines[index], re.I)
+            qty_match = re.fullmatch(r"\s*x\s*(\d+(?:[,.]\d+)?)\s*", lines[index + 1], re.I)
+            if not price_match or not qty_match:
+                continue
+            unit = _money(price_match.group(1))
+            qty = float(qty_match.group(1).replace(",", "."))
+            description = " ".join(lines[index - 2 : index]).strip()
+            if unit is None or qty <= 0 or not description:
+                continue
+            items.append(
+                {
+                    "description": description[:200],
+                    "quantity": qty,
+                    "unit_cost": unit,
+                    "line_total": round(unit * qty, 2),
+                    "confidence": 0.58,
+                }
+            )
+        return items[:100]
     # Deliberately conservative: only accept explicit quantity × price patterns.
     pattern = re.compile(
         rf"^(?P<description>.+?)\s+(?:x|×)\s*(?P<qty>\d+(?:[,.]\d+)?)\s+(?P<unit>{MONEY})(?:\s+(?P<total>{MONEY}))?\s*$",
@@ -575,7 +672,7 @@ async def analyze_upload(upload: UploadFile, selected_profile: str | None = None
     for field in fields.values():
         field["confidence"] = round(field["confidence"] * ocr_quality, 2)
         field["source"] = source
-    items = _extract_items(lines)
+    items = _extract_items(lines, profile["profile_id"])
     for item in items:
         item["confidence"] = round(item["confidence"] * ocr_quality, 2)
     warnings = []

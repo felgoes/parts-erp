@@ -405,6 +405,9 @@ class PurchaseItemCreate(BaseModel):
 
 
 class PurchaseItemUpdate(BaseModel):
+    description: str | None = Field(default=None, min_length=2, max_length=200)
+    sku: str | None = Field(default=None, max_length=80)
+    unit: str | None = Field(default=None, min_length=1, max_length=24)
     quantity: Decimal | None = Field(default=None, gt=0)
     base_unit_cost: Decimal | None = Field(default=None, ge=0)
     freight_amount: Decimal | None = Field(default=None, ge=0)
@@ -507,13 +510,6 @@ class PurchaseCreate(BaseModel):
     def validate_kind(self) -> "PurchaseCreate":
         if self.purchase_type == "parts" and not self.items:
             raise ValueError("Informe pelo menos uma peça")
-        imported_document = (self.notes or "").startswith("Importação de documento.")
-        if (
-            self.purchase_type == "parts"
-            and not imported_document
-            and any(not item.sku.strip() for item in self.items)
-        ):
-            raise ValueError("Informe o SKU de cada peça")
         if self.purchase_type == "expense" and (
             not self.expense_category or self.expense_amount is None
         ):
@@ -625,6 +621,7 @@ class PurchaseOut(ORMModel):
     notes: str | None
     created_at: datetime
     updated_at: datetime
+    total_amount: Decimal | None = None
     items: list[PurchaseItemOut]
     quotes: list[PurchaseQuoteOut]
     events: list[PurchaseEventOut]

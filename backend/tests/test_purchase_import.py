@@ -118,10 +118,10 @@ def test_alibaba_receipt_labels_currency_and_date_without_using_payment_total():
     assert _money("USD 1,234.56") == 1234.56
 
 
-def test_blank_sku_is_allowed_only_for_reviewed_document_imports():
+def test_blank_sku_is_allowed_in_drafts_and_required_before_the_order():
     line = PurchaseItemCreate(description="Filtro", quantity=1, unit_cost=10)
-    with pytest.raises(ValidationError, match="Informe o SKU"):
-        PurchaseCreate(purchase_type="parts", items=[line])
+    draft = PurchaseCreate(purchase_type="parts", items=[line])
+    assert draft.items[0].sku == ""
     imported = PurchaseCreate(
         purchase_type="parts",
         notes="Importação de documento. Documento revisado pelo usuário.",

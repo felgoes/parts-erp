@@ -251,6 +251,7 @@ export interface Purchase {
   notes: string | null;
   created_at: string;
   updated_at: string;
+  total_amount?: number | null;
   items: PurchaseItem[];
   quotes: PurchaseQuote[];
   events: PurchaseEvent[];

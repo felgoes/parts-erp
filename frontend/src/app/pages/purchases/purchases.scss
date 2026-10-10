@@ -154,6 +154,27 @@
 .lifecycle-resolution legend { padding: 0 4px; color: var(--muted); font-size: 10px; }
 .lifecycle-resolution label { display: flex; align-items: flex-start; gap: 7px; color: var(--ink); font-size: 11px; line-height: 1.4; }
 .lifecycle-actions { display: flex; justify-content: space-between; gap: 8px; }
+.overdue-chip { display: inline-block; margin-left: 6px; padding: 2px 6px; border-radius: 6px; background: #f6dedb; color: #984b43; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+.row-select { width: 34px; text-align: center; }
+.row-select input { width: 15px; height: 15px; }
+.purchase-pages { display: inline-flex; align-items: center; gap: 8px; }
+.purchase-pages small { color: var(--muted); font-size: 11px; }
+.draft-editor { border-color: #b9c9b5; background: #f7faf5; }
+.draft-editor .purchase-form-meta { margin-bottom: 14px; }
+.purchase-detail { width: min(1040px, 100%); }
+.draft-lines { display: grid; gap: 12px; margin-top: 12px; }
+.draft-line { display: flex; flex-wrap: wrap; gap: 10px 12px; align-items: flex-end; padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; background: #fff; }
+.draft-line label { display: grid; flex: 0 1 96px; gap: 5px; min-width: 0; color: var(--muted); font-size: 10px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
+.draft-line label:nth-child(1) { flex: 2 1 176px; }
+.draft-line label:nth-child(2) { flex: 1 1 122px; }
+.draft-line label:nth-child(5) { flex: 0 1 104px; }
+.draft-line label input { width: 100%; min-width: 0; height: 38px; padding: 0 10px; border: 1px solid var(--line); border-radius: 8px; background: #fff; color: var(--ink); font-size: 13px; font-weight: 500; text-transform: none; letter-spacing: 0; }
+.draft-line label input:focus-visible { border-color: var(--forest); outline: 3px solid #557a4b33; outline-offset: 1px; }
+.draft-line-actions { display: flex; flex: 1 1 100%; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: flex-end; }
+.draft-line-actions button { white-space: nowrap; }
+.draft-line-new { border-style: dashed; background: #fcfcf8; }
+@media (max-width: 900px) { .draft-line label { flex: 1 1 44%; } .draft-line label:nth-child(1) { flex: 1 1 100%; } .draft-line-actions { justify-content: flex-start; } }
+@media (max-width: 620px) { .draft-line { padding: 12px; } .draft-line label, .draft-line label:nth-child(n) { flex: 1 1 100%; } .draft-line-actions button { flex: 1 1 auto; justify-content: center; } }
 
 @media (max-width: 850px) {
   .purchase-detail-grid { grid-template-columns: minmax(0, 1fr) 220px; gap: 15px; }

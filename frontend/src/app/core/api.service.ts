@@ -227,6 +227,22 @@ export class ApiService {
     return this.http.patch<Purchase>(`${this.base}/purchases/${id}`, payload);
   }
 
+  addPurchaseItem(id: string, payload: unknown): Observable<Purchase> {
+    return this.http.post<Purchase>(`${this.base}/purchases/${id}/items`, payload);
+  }
+
+  removePurchaseItem(id: string, itemId: string): Observable<Purchase> {
+    return this.http.delete<Purchase>(`${this.base}/purchases/${id}/items/${itemId}`);
+  }
+
+  suppliers(): Observable<Array<{ id: string; name: string; contact: string | null; default_delivery_days: number | null; default_payment_terms: string | null }>> {
+    return this.http.get<Array<{ id: string; name: string; contact: string | null; default_delivery_days: number | null; default_payment_terms: string | null }>>(`${this.base}/suppliers`);
+  }
+
+  createSupplier(payload: unknown): Observable<{ id: string; name: string; default_delivery_days: number | null; default_payment_terms: string | null }> {
+    return this.http.post<{ id: string; name: string; default_delivery_days: number | null; default_payment_terms: string | null }>(`${this.base}/suppliers`, payload);
+  }
+
   receivePurchaseInFull(id: string, options?: { create_products?: boolean; observation?: string }): Observable<Purchase> {
     const params: Record<string, string> = {};
     if (options?.create_products) params['create_products'] = 'true';

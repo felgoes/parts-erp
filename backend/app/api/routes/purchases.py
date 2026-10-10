@@ -34,6 +34,7 @@ from app.schemas.common import (
     PurchaseCloseRequest,
     PurchaseCreate,
     PurchaseDeletionOut,
+    PurchaseItemCreate,
     PurchaseItemUpdate,
     PurchaseOut,
     PurchaseQuoteCreate,
@@ -48,11 +49,12 @@ router = APIRouter(prefix="/purchases", tags=["Compras"])
 
 
 def _present(purchase: PurchaseCase, user: User) -> PurchaseOut:
-    if has_permission(getattr(user, "role", UserRole.admin), Permission.FINANCE_READ):
-        return PurchaseOut.model_validate(purchase)
     result = PurchaseOut.model_validate(purchase)
+    if has_permission(getattr(user, "role", UserRole.admin), Permission.FINANCE_READ):
+        return result.model_copy(update={"total_amount": _purchase_total(purchase)})
     return result.model_copy(
         update={
+            "total_amount": None,
             "items": [
                 item.model_copy(
                     update={
@@ -85,6 +87,21 @@ def _present(purchase: PurchaseCase, user: User) -> PurchaseOut:
             ],
         }
     )
+
+
+def _purchase_total(purchase: PurchaseCase) -> Decimal:
+    if purchase.purchase_type == "expense":
+        return Decimal(purchase.expense_amount or 0).quantize(Decimal("0.01"))
+    return sum(
+        (Decimal(item.quantity) * Decimal(item.unit_cost or 0) for item in purchase.items),
+        Decimal("0"),
+    ).quantize(Decimal("0.01"))
+
+
+def _apply_supplier_defaults(purchase: PurchaseCase, supplier: Supplier | None) -> None:
+    """Reuse the supplier's usual lead time when the buyer did not set a date."""
+    if supplier and supplier.default_delivery_days and not purchase.needed_by:
+        purchase.needed_by = datetime.now(UTC) + timedelta(days=supplier.default_delivery_days)
 
 
 def _event(
@@ -246,6 +263,8 @@ def _delete_blockers(purchase: PurchaseCase) -> list[str]:
 
 @router.get("", response_model=list[PurchaseOut])
 def list_purchases(
+    limit: int = Query(default=500, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
     db: Session = Depends(get_db),
     user: User = Depends(require_permission(Permission.PURCHASE_READ)),
 ) -> list[PurchaseOut]:
@@ -259,7 +278,8 @@ def list_purchases(
                 selectinload(PurchaseCase.attachments),
             )
             .order_by(PurchaseCase.created_at.desc())
-            .limit(500)
+            .offset(offset)
+            .limit(limit)
         )
     )
     return [_present(purchase, user) for purchase in purchases]
@@ -316,6 +336,7 @@ def create_purchase(
             for item in payload.items
         ],
     )
+    _apply_supplier_defaults(purchase, supplier)
     db.add(purchase)
     db.flush()
     _event(db, purchase, "created", f"Compra criada por {user.full_name}.", user=user)
@@ -406,10 +427,10 @@ def update_purchase_item(
     if not item:
         raise HTTPException(status_code=404, detail="Peça não encontrada nesta compra.")
     changes = payload.model_dump(exclude_unset=True)
-    if purchase.status != "negotiating" and {"description", "sku", "unit"} & changes.keys():
+    if purchase.status not in {"negotiating", "approved"} and {"description", "sku", "unit"} & changes.keys():
         raise HTTPException(
             status_code=409,
-            detail="Descrição, SKU e unidade só podem ser alterados durante a negociação.",
+            detail="Descrição, SKU e unidade só podem ser alterados antes do pedido ao fornecedor.",
         )
     if payload.quantity is not None and payload.quantity < item.received_quantity:
         raise HTTPException(status_code=422, detail="A quantidade não pode ser menor que o já recebido.")
@@ -424,6 +445,83 @@ def update_purchase_item(
         _event(db, purchase, "item_updated", f"Dados de {item.description} atualizados por {user.full_name}.")
     else:
         _event(db, purchase, "item_cost_updated", f"Custos de {item.description} atualizados por {user.full_name}.")
+    db.commit()
+    return _present(_load(db, purchase.id), user)
+
+
+@router.post("/{purchase_id}/items", response_model=PurchaseOut, status_code=201)
+def add_purchase_item(
+    purchase_id: str,
+    payload: PurchaseItemCreate,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_permission(Permission.PURCHASE_MANAGE)),
+) -> PurchaseOut:
+    purchase = _load(db, purchase_id, for_update=True)
+    if purchase.purchase_type != "parts":
+        raise HTTPException(status_code=409, detail="Itens só podem ser incluídos em compras de peças.")
+    if purchase.status != "negotiating":
+        raise HTTPException(
+            status_code=409, detail="Só é possível incluir itens durante a negociação."
+        )
+    if len(purchase.items) >= 100:
+        raise HTTPException(status_code=422, detail="Esta compra já atingiu o limite de 100 itens.")
+    if payload.product_id and not db.get(Product, payload.product_id):
+        raise HTTPException(status_code=404, detail=f"Produto não encontrado: {payload.sku}")
+    item = PurchaseItem(**payload.model_dump(), base_unit_cost=payload.unit_cost)
+    purchase.items.append(item)
+    db.flush()
+    _recompute_purchase_costs(purchase)
+    _event(
+        db,
+        purchase,
+        "item_added",
+        f"{item.description} incluída na negociação por {user.full_name}.",
+        item=item,
+        user=user,
+    )
+    db.commit()
+    return _present(_load(db, purchase.id), user)
+
+
+@router.delete("/{purchase_id}/items/{item_id}", response_model=PurchaseOut)
+def remove_purchase_item(
+    purchase_id: str,
+    item_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_permission(Permission.PURCHASE_MANAGE)),
+) -> PurchaseOut:
+    purchase = _load(db, purchase_id, for_update=True)
+    if purchase.purchase_type != "parts":
+        raise HTTPException(status_code=409, detail="Itens só podem ser removidos de compras de peças.")
+    if purchase.status != "negotiating":
+        raise HTTPException(
+            status_code=409, detail="Só é possível remover itens durante a negociação."
+        )
+    item = next((entry for entry in purchase.items if entry.id == item_id), None)
+    if not item:
+        raise HTTPException(status_code=404, detail="Peça não encontrada nesta compra.")
+    if len(purchase.items) <= 1:
+        raise HTTPException(
+            status_code=422,
+            detail="A compra precisa de pelo menos uma peça; exclua o rascunho se não for usá-la.",
+        )
+    if Decimal(item.received_quantity) > 0:
+        raise HTTPException(status_code=409, detail="Esta peça já tem recebimento registrado.")
+    for quote in purchase.quotes:
+        costs = dict(quote.item_costs or {})
+        if costs.pop(item.id, None) is not None:
+            quote.item_costs = costs
+    description = item.description
+    purchase.items.remove(item)
+    db.flush()
+    _recompute_purchase_costs(purchase)
+    _event(
+        db,
+        purchase,
+        "item_removed",
+        f"{description} removida da negociação por {user.full_name}.",
+        user=user,
+    )
     db.commit()
     return _present(_load(db, purchase.id), user)
 
@@ -460,7 +558,7 @@ def add_quote(
         f"Cotação de {quote.supplier_name} registrada por {user.full_name}.",
     )
     db.commit()
-    return _load(db, purchase.id)
+    return _present(_load(db, purchase.id), user)
 
 
 @router.post("/{purchase_id}/select-quote/{quote_id}", response_model=PurchaseOut)
@@ -488,7 +586,7 @@ def select_quote(
         f"Cotação de {quote.supplier_name} selecionada por {user.full_name} ({quote.total:.2f}).",
     )
     db.commit()
-    return _load(db, purchase.id)
+    return _present(_load(db, purchase.id), user)
 
 
 @router.post("/{purchase_id}/place-order", response_model=PurchaseOut)
@@ -516,7 +614,7 @@ def place_order(
     purchase.ordered_at = datetime.now(UTC)
     _event(db, purchase, "ordered", f"Pedido enviado ao fornecedor por {user.full_name}.")
     db.commit()
-    return _load(db, purchase.id)
+    return _present(_load(db, purchase.id), user)
 
 
 def _apply_receipt(
@@ -890,6 +988,18 @@ def update_purchase(
             raise HTTPException(status_code=404, detail="Fornecedor não encontrado.")
     for field, value in changes.items():
         setattr(purchase, field, value)
+    if {"supplier_id", "supplier_name"} & changes.keys():
+        supplier = (
+            db.get(Supplier, purchase.supplier_id)
+            if purchase.supplier_id
+            else (
+                db.scalar(select(Supplier).where(Supplier.name == purchase.supplier_name))
+                if purchase.supplier_name
+                else None
+            )
+        )
+        purchase.supplier = supplier
+        _apply_supplier_defaults(purchase, supplier)
     if purchase.purchase_type == "expense":
         _sync_payable(db, purchase)
     _event(db, purchase, "updated", f"Dados do pedido atualizados por {user.full_name}.")

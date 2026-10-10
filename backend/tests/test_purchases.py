@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.api.routes.purchases import (
     add_quote,
+    add_purchase_item,
     cancel_purchase,
     close_purchase_balance,
     create_purchase,
@@ -17,9 +18,13 @@ from app.api.routes.purchases import (
     place_order,
     receive_purchase_in_full,
     receive_purchase,
+    remove_purchase_item,
     select_quote,
     settle_payable,
+    update_purchase,
+    update_purchase_item,
 )
+from app.api.routes.suppliers import create_supplier
 from app.models import MovementType, Product, PurchaseCase, PurchaseDeletion, StockMovement
 from app.schemas.common import (
     PayableUpdate,
@@ -31,6 +36,9 @@ from app.schemas.common import (
     PurchaseQuoteCreate,
     PurchaseReceive,
     PurchaseReceiveItem,
+    PurchaseItemUpdate,
+    PurchaseUpdate,
+    SupplierCreate,
 )
 
 
@@ -371,3 +379,112 @@ def test_expense_payable_is_settled_and_reversed_when_cancelled(db: Session) -> 
     refreshed = get_purchase(expense.id, db, user)
     assert refreshed.status == "cancelled"
     assert refreshed.payables[0].status == "cancelled"
+
+
+def test_draft_item_without_sku_is_accepted_until_the_order(db: Session) -> None:
+    user = _actor()
+    purchase = create_purchase(
+        PurchaseCreate(
+            items=[PurchaseItemCreate(description="Peça ainda sem código", quantity=1, unit_cost=5)]
+        ),
+        db,
+        user,
+    )
+    line = purchase.items[0]
+    assert line.sku == ""
+
+    purchase = add_quote(
+        purchase.id,
+        PurchaseQuoteCreate(supplier_name="Fornecedor", total=5, item_costs={line.id: 5}),
+        db,
+        user,
+    )
+    purchase = select_quote(purchase.id, purchase.quotes[0].id, db, user)
+
+    with pytest.raises(HTTPException) as error:
+        place_order(purchase.id, db, user)
+    assert error.value.status_code == 422
+    assert "SKU" in str(error.value.detail)
+
+    purchase = update_purchase_item(
+        purchase.id, line.id, PurchaseItemUpdate(sku="SKU-OK", description="Peça identificada"), db, user
+    )
+    purchase = place_order(purchase.id, db, user)
+    assert purchase.status == "ordered"
+
+
+def test_draft_lines_can_be_added_and_removed_with_quotes_following(db: Session) -> None:
+    user = _actor()
+    purchase = create_purchase(
+        PurchaseCreate(
+            items=[PurchaseItemCreate(sku="A", description="Peça A", quantity=1, unit_cost=10)]
+        ),
+        db,
+        user,
+    )
+    purchase = add_purchase_item(
+        purchase.id,
+        PurchaseItemCreate(sku="B", description="Peça B", quantity=2, unit_cost=3),
+        db,
+        user,
+    )
+    assert [item.sku for item in purchase.items] == ["A", "B"]
+    line_b = next(item for item in purchase.items if item.sku == "B")
+
+    purchase = add_quote(
+        purchase.id,
+        PurchaseQuoteCreate(
+            supplier_name="Fornecedor",
+            total=16,
+            item_costs={item.id: Decimal("10") if item.sku == "A" else Decimal("3") for item in purchase.items},
+        ),
+        db,
+        user,
+    )
+    assert len(purchase.quotes[0].item_costs) == 2
+
+    purchase = remove_purchase_item(purchase.id, line_b.id, db, user)
+
+    assert [item.sku for item in purchase.items] == ["A"]
+    assert line_b.id not in (purchase.quotes[0].item_costs or {})
+
+
+def test_draft_header_keeps_supplier_defaults_document_fields_and_total(db: Session) -> None:
+    user = _actor()
+    supplier = create_supplier(
+        SupplierCreate(name="Fornecedor Padrão", default_delivery_days=7), db, user
+    )
+    purchase = create_purchase(
+        PurchaseCreate(
+            supplier_id=supplier.id,
+            items=[PurchaseItemCreate(sku="X", description="Peça X", quantity=2, unit_cost=Decimal("12.50"))],
+        ),
+        db,
+        user,
+    )
+    assert purchase.supplier_name == "Fornecedor Padrão"
+    assert purchase.needed_by is not None
+    assert purchase.total_amount == Decimal("25.00")
+
+    purchase = update_purchase(
+        purchase.id,
+        PurchaseUpdate(
+            supplier_order_number="PED-99",
+            document_date=datetime(2026, 10, 1, tzinfo=UTC),
+            notes="Conferir na entrega",
+        ),
+        db,
+        user,
+    )
+
+    assert purchase.supplier_order_number == "PED-99"
+    assert purchase.document_date is not None and purchase.document_date.date().isoformat() == "2026-10-01"
+    assert purchase.notes == "Conferir na entrega"
+
+
+def test_supplier_creation_reuses_the_existing_record(db: Session) -> None:
+    user = _actor()
+    first = create_supplier(SupplierCreate(name="Loja Única", contact="11 90000-0000"), db, user)
+    again = create_supplier(SupplierCreate(name="Loja Única"), db, user)
+
+    assert first.id == again.id

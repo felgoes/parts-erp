@@ -123,6 +123,7 @@ def publish_product_channel(
 def list_products(
     search: str | None = None,
     low_stock: bool = False,
+    stock_type: str | None = Query(default=None, pattern="^(product|warehouse)$"),
     limit: int = Query(default=100, le=500),
     db: Session = Depends(get_db),
     actor: User = Depends(require_permission(Permission.PRODUCT_READ)),
@@ -132,8 +133,10 @@ def list_products(
         query = query.where(
             or_(Product.name.ilike(f"%{search}%"), Product.sku.ilike(f"%{search}%"))
         )
+    if stock_type:
+        query = query.where(Product.stock_type == stock_type)
     if low_stock:
-        query = query.where(Product.current_stock <= Product.minimum_stock)
+        query = query.where(Product.stock_type == "product", Product.current_stock < Product.minimum_stock)
     products = list(db.scalars(query))
     if has_permission(actor.role, Permission.FINANCE_READ):
         return products

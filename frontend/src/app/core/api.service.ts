@@ -82,10 +82,11 @@ export class ApiService {
       params: { start_date: startDate, end_date: endDate },
     });
   }
-  products(search = '', lowStock = false): Observable<Product[]> {
+  products(search = '', lowStock = false, stockType?: 'product' | 'warehouse'): Observable<Product[]> {
     let params = new HttpParams();
     if (search) params = params.set('search', search);
     if (lowStock) params = params.set('low_stock', true);
+    if (stockType) params = params.set('stock_type', stockType);
     return this.http.get<Product[]>(`${this.base}/products`, { params });
   }
   productMovements(id: string): Observable<import('./models').StockMovement[]> {

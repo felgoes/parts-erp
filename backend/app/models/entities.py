@@ -162,6 +162,7 @@ class Product(TimestampMixin, Base):
     manufacturer_part_number: Mapped[str | None] = mapped_column(String(120), index=True)
     barcode: Mapped[str | None] = mapped_column(String(32), index=True)
     category: Mapped[str | None] = mapped_column(String(160))
+    stock_type: Mapped[str] = mapped_column(String(20), default="product", server_default="product", index=True)
     item_condition: Mapped[str] = mapped_column(String(24), default="new")
     warranty_days: Mapped[int | None] = mapped_column()
     origin_country: Mapped[str | None] = mapped_column(String(80))

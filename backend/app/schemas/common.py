@@ -173,6 +173,7 @@ class ProductCreate(BaseModel):
     manufacturer_part_number: str | None = Field(default=None, max_length=120)
     barcode: str | None = Field(default=None, max_length=32)
     category: str | None = Field(default=None, max_length=160)
+    stock_type: Literal["product", "warehouse"] = "product"
     item_condition: Literal["new", "used", "refurbished"] = "new"
     warranty_days: int | None = Field(default=None, ge=0, le=3650)
     origin_country: str | None = Field(default=None, max_length=80)
@@ -197,6 +198,7 @@ class ProductUpdate(BaseModel):
     manufacturer_part_number: str | None = Field(default=None, max_length=120)
     barcode: str | None = Field(default=None, max_length=32)
     category: str | None = Field(default=None, max_length=160)
+    stock_type: Literal["product", "warehouse"] | None = None
     item_condition: Literal["new", "used", "refurbished"] | None = None
     warranty_days: int | None = Field(default=None, ge=0, le=3650)
     origin_country: str | None = Field(default=None, max_length=80)
@@ -222,6 +224,7 @@ class ProductOut(ORMModel):
     manufacturer_part_number: str | None = None
     barcode: str | None = None
     category: str | None = None
+    stock_type: Literal["product", "warehouse"] = "product"
     item_condition: str = "new"
     warranty_days: int | None = None
     origin_country: str | None = None

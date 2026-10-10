@@ -401,6 +401,7 @@ class PurchaseItemCreate(BaseModel):
     freight_amount: Decimal = Field(default=Decimal("0"), ge=0)
     tax_amount: Decimal = Field(default=Decimal("0"), ge=0)
     discount_amount: Decimal = Field(default=Decimal("0"), ge=0)
+    discount_percent: Decimal = Field(default=Decimal("0"), ge=0, le=100)
 
 
 class PurchaseItemUpdate(BaseModel):
@@ -409,6 +410,84 @@ class PurchaseItemUpdate(BaseModel):
     freight_amount: Decimal | None = Field(default=None, ge=0)
     tax_amount: Decimal | None = Field(default=None, ge=0)
     discount_amount: Decimal | None = Field(default=None, ge=0)
+    discount_percent: Decimal | None = Field(default=None, ge=0, le=100)
+
+
+class PurchaseUpdate(BaseModel):
+    supplier_name: str | None = Field(default=None, max_length=200)
+    supplier_id: str | None = None
+    supplier_order_number: str | None = Field(default=None, max_length=80)
+    document_date: datetime | None = None
+    needed_by: datetime | None = None
+    notes: str | None = Field(default=None, max_length=4000)
+    expense_category: str | None = Field(default=None, max_length=80)
+    expense_amount: Decimal | None = Field(default=None, ge=0)
+
+
+class PurchaseReturnItem(BaseModel):
+    item_id: str
+    quantity: Decimal = Field(gt=0)
+    observation: str | None = Field(default=None, max_length=160)
+
+
+class PurchaseCancelRequest(BaseModel):
+    reason: str = Field(min_length=3, max_length=255)
+    resolution: Literal["keep_received", "return_received"] = "keep_received"
+    return_items: list[PurchaseReturnItem] = Field(default_factory=list)
+
+
+class PurchaseCloseRequest(BaseModel):
+    reason: str | None = Field(default=None, max_length=255)
+
+
+class SupplierCreate(BaseModel):
+    name: str = Field(min_length=2, max_length=200)
+    contact: str | None = Field(default=None, max_length=200)
+    document: str | None = Field(default=None, max_length=20)
+    default_delivery_days: int | None = Field(default=None, ge=0, le=3650)
+    default_payment_terms: str | None = Field(default=None, max_length=200)
+
+
+class SupplierOut(ORMModel):
+    id: str
+    name: str
+    contact: str | None
+    document: str | None
+    default_delivery_days: int | None
+    default_payment_terms: str | None
+
+
+class PayableOut(ORMModel):
+    id: str
+    supplier_name: str | None
+    amount: Decimal
+    due_date: datetime
+    status: str
+    paid_at: datetime | None
+    payment_method: str | None
+    payment_notes: str | None
+    cancelled_at: datetime | None
+    cancel_reason: str | None
+    created_at: datetime
+
+
+class PayableUpdate(BaseModel):
+    due_date: datetime | None = None
+    payment_method: str | None = Field(default=None, max_length=60)
+    payment_notes: str | None = Field(default=None, max_length=255)
+    paid_at: datetime | None = None
+
+
+class PurchaseDeletionOut(ORMModel):
+    id: str
+    number: str
+    purchase_type: str
+    supplier_name: str | None
+    items_summary: str
+    total_amount: Decimal
+    reason: str | None
+    user_id: str | None
+    created_at: datetime
 
 
 class PurchaseCreate(BaseModel):
@@ -416,6 +495,9 @@ class PurchaseCreate(BaseModel):
     expense_category: str | None = Field(default=None, max_length=80)
     expense_amount: Decimal | None = Field(default=None, ge=0)
     supplier_name: str | None = Field(default=None, max_length=200)
+    supplier_id: str | None = None
+    supplier_order_number: str | None = Field(default=None, max_length=80)
+    document_date: datetime | None = None
     needed_by: datetime | None = None
     notes: str | None = Field(default=None, max_length=4000)
     source_import_id: str | None = Field(default=None, min_length=36, max_length=36)
@@ -481,11 +563,13 @@ class PurchaseItemOut(ORMModel):
     unit: str = "un"
     quantity: Decimal
     received_quantity: Decimal
+    returned_quantity: Decimal = Decimal("0")
     base_unit_cost: Decimal | None = None
     unit_cost: Decimal | None = None
     freight_amount: Decimal | None = Decimal("0")
     tax_amount: Decimal | None = Decimal("0")
     discount_amount: Decimal | None = Decimal("0")
+    discount_percent: Decimal | None = Decimal("0")
 
 
 class PurchaseQuoteOut(ORMModel):
@@ -529,9 +613,15 @@ class PurchaseOut(ORMModel):
     expense_category: str | None
     expense_amount: Decimal | None
     supplier_name: str | None
+    supplier_id: str | None = None
+    supplier_order_number: str | None = None
+    document_date: datetime | None = None
     selected_quote_id: str | None
     needed_by: datetime | None
     ordered_at: datetime | None
+    cancel_reason: str | None = None
+    cancelled_at: datetime | None = None
+    closed_at: datetime | None = None
     notes: str | None
     created_at: datetime
     updated_at: datetime
@@ -539,6 +629,7 @@ class PurchaseOut(ORMModel):
     quotes: list[PurchaseQuoteOut]
     events: list[PurchaseEventOut]
     attachments: list[PurchaseAttachmentOut]
+    payables: list[PayableOut] = Field(default_factory=list)
 
 
 class CustomerCreate(BaseModel):

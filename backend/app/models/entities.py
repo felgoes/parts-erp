@@ -303,6 +303,18 @@ class StockMovement(Base):
     product: Mapped[Product] = relationship()
 
 
+class Supplier(TimestampMixin, Base):
+    """Lightweight supplier registry used to reuse contact, lead time and terms."""
+
+    __tablename__ = "suppliers"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    name: Mapped[str] = mapped_column(String(200), unique=True, index=True)
+    contact: Mapped[str | None] = mapped_column(String(200))
+    document: Mapped[str | None] = mapped_column(String(20))
+    default_delivery_days: Mapped[int | None] = mapped_column()
+    default_payment_terms: Mapped[str | None] = mapped_column(String(200))
+
+
 class PurchaseCase(TimestampMixin, Base):
     """A procurement cycle, from supplier negotiation through stock receipt."""
 
@@ -314,11 +326,23 @@ class PurchaseCase(TimestampMixin, Base):
     expense_category: Mapped[str | None] = mapped_column(String(80))
     expense_amount: Mapped[Decimal | None] = mapped_column(Numeric(14, 2))
     supplier_name: Mapped[str | None] = mapped_column(String(200))
+    supplier_id: Mapped[str | None] = mapped_column(
+        ForeignKey("suppliers.id", ondelete="SET NULL"), index=True
+    )
+    supplier_order_number: Mapped[str | None] = mapped_column(String(80), index=True)
+    document_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     selected_quote_id: Mapped[str | None] = mapped_column(String(36))
     needed_by: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     ordered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    cancel_reason: Mapped[str | None] = mapped_column(String(255))
+    cancelled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    cancelled_by_id: Mapped[str | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL")
+    )
+    closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     notes: Mapped[str | None] = mapped_column(Text)
     source_import_id: Mapped[str | None] = mapped_column(String(36), unique=True, index=True)
+    supplier: Mapped["Supplier | None"] = relationship(lazy="joined")
     items: Mapped[list["PurchaseItem"]] = relationship(
         cascade="all, delete-orphan", back_populates="purchase", lazy="selectin"
     )
@@ -332,6 +356,9 @@ class PurchaseCase(TimestampMixin, Base):
         cascade="all, delete-orphan", back_populates="purchase", lazy="selectin"
     )
     attachments: Mapped[list["PurchaseAttachment"]] = relationship(
+        cascade="all, delete-orphan", back_populates="purchase", lazy="selectin"
+    )
+    payables: Mapped[list["PurchasePayable"]] = relationship(
         cascade="all, delete-orphan", back_populates="purchase", lazy="selectin"
     )
 
@@ -348,11 +375,13 @@ class PurchaseItem(Base):
     unit: Mapped[str] = mapped_column(String(24), default="un", server_default="un")
     quantity: Mapped[Decimal] = mapped_column(Numeric(14, 3))
     received_quantity: Mapped[Decimal] = mapped_column(Numeric(14, 3), default=0)
+    returned_quantity: Mapped[Decimal] = mapped_column(Numeric(14, 3), default=0)
     base_unit_cost: Mapped[Decimal] = mapped_column(Numeric(14, 2), default=0)
     unit_cost: Mapped[Decimal] = mapped_column(Numeric(14, 2), default=0)
     freight_amount: Mapped[Decimal] = mapped_column(Numeric(14, 2), default=0)
     tax_amount: Mapped[Decimal] = mapped_column(Numeric(14, 2), default=0)
     discount_amount: Mapped[Decimal] = mapped_column(Numeric(14, 2), default=0)
+    discount_percent: Mapped[Decimal] = mapped_column(Numeric(5, 2), default=0)
     purchase: Mapped[PurchaseCase] = relationship(back_populates="items")
     product: Mapped[Product | None] = relationship()
 
@@ -402,6 +431,45 @@ class PurchaseAttachment(Base):
     storage_path: Mapped[str] = mapped_column(String(500))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc)
     purchase: Mapped[PurchaseCase] = relationship(back_populates="attachments")
+
+
+class PurchasePayable(TimestampMixin, Base):
+    """Accounts payable title created by an expense or by receiving a purchase."""
+
+    __tablename__ = "purchase_payables"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    purchase_id: Mapped[str] = mapped_column(
+        ForeignKey("purchase_cases.id", ondelete="CASCADE"), index=True
+    )
+    supplier_id: Mapped[str | None] = mapped_column(
+        ForeignKey("suppliers.id", ondelete="SET NULL")
+    )
+    supplier_name: Mapped[str | None] = mapped_column(String(200))
+    amount: Mapped[Decimal] = mapped_column(Numeric(14, 2), default=0)
+    due_date: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    status: Mapped[str] = mapped_column(String(20), default="open", index=True)
+    paid_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    payment_method: Mapped[str | None] = mapped_column(String(60))
+    payment_notes: Mapped[str | None] = mapped_column(String(255))
+    cancelled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    cancel_reason: Mapped[str | None] = mapped_column(String(255))
+    purchase: Mapped[PurchaseCase] = relationship(back_populates="payables")
+
+
+class PurchaseDeletion(Base):
+    """Immutable audit record kept after a draft purchase is deleted."""
+
+    __tablename__ = "purchase_deletions"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    purchase_id: Mapped[str] = mapped_column(String(36), index=True)
+    number: Mapped[str] = mapped_column(String(30))
+    purchase_type: Mapped[str] = mapped_column(String(30))
+    supplier_name: Mapped[str | None] = mapped_column(String(200))
+    items_summary: Mapped[str] = mapped_column(Text, default="")
+    total_amount: Mapped[Decimal] = mapped_column(Numeric(14, 2), default=0)
+    reason: Mapped[str | None] = mapped_column(String(255))
+    user_id: Mapped[str | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc)
 
 
 class MarketStudyConnectorConfig(TimestampMixin, Base):

@@ -209,6 +209,38 @@ export class ApiService {
   cancelPurchase(id: string): Observable<Purchase> {
     return this.http.post<Purchase>(`${this.base}/purchases/${id}/cancel`, {});
   }
+
+  cancelPurchaseWithReason(id: string, payload: { reason: string; resolution?: string; return_items?: unknown[] }): Observable<Purchase> {
+    return this.http.post<Purchase>(`${this.base}/purchases/${id}/cancel`, payload);
+  }
+
+  closePurchaseBalance(id: string, payload: { reason?: string | null }): Observable<Purchase> {
+    return this.http.post<Purchase>(`${this.base}/purchases/${id}/close-balance`, payload);
+  }
+
+  deletePurchase(id: string, reason?: string): Observable<{ number: string; items_summary: string }> {
+    const params = reason ? { reason } : undefined;
+    return this.http.delete<{ number: string; items_summary: string }>(`${this.base}/purchases/${id}`, { params });
+  }
+
+  updatePurchase(id: string, payload: unknown): Observable<Purchase> {
+    return this.http.patch<Purchase>(`${this.base}/purchases/${id}`, payload);
+  }
+
+  receivePurchaseInFull(id: string, options?: { create_products?: boolean; observation?: string }): Observable<Purchase> {
+    const params: Record<string, string> = {};
+    if (options?.create_products) params['create_products'] = 'true';
+    if (options?.observation) params['observation'] = options.observation;
+    return this.http.post<Purchase>(`${this.base}/purchases/${id}/receive-all`, {}, { params });
+  }
+
+  settlePurchasePayable(purchaseId: string, payableId: string, payload: unknown = {}): Observable<unknown> {
+    return this.http.post(`${this.base}/purchases/${purchaseId}/payables/${payableId}/settle`, payload);
+  }
+
+  updatePurchasePayable(purchaseId: string, payableId: string, payload: unknown): Observable<unknown> {
+    return this.http.patch(`${this.base}/purchases/${purchaseId}/payables/${payableId}`, payload);
+  }
   updatePurchaseItem(id: string, itemId: string, payload: unknown): Observable<Purchase> {
     return this.http.patch<Purchase>(`${this.base}/purchases/${id}/items/${itemId}`, payload);
   }

@@ -178,7 +178,7 @@ export interface FinanceOverview {
   by_product: FinanceProductMetric[];
   daily: FinanceDailyMetric[];
 }
-export type PurchaseStatus = 'negotiating' | 'approved' | 'ordered' | 'partially_received' | 'received' | 'cancelled';
+export type PurchaseStatus = 'negotiating' | 'approved' | 'ordered' | 'partially_received' | 'received' | 'closed' | 'cancelled';
 export interface PurchaseItem {
   id: string;
   product_id: string | null;
@@ -187,11 +187,26 @@ export interface PurchaseItem {
   unit: string;
   quantity: number;
   received_quantity: number;
+  returned_quantity?: number;
   base_unit_cost: number | null;
   unit_cost: number | null;
   freight_amount: number | null;
   tax_amount: number | null;
   discount_amount: number | null;
+  discount_percent?: number | null;
+}
+export interface PurchasePayable {
+  id: string;
+  supplier_name: string | null;
+  amount: number;
+  due_date: string;
+  status: 'open' | 'paid' | 'cancelled';
+  paid_at: string | null;
+  payment_method: string | null;
+  payment_notes: string | null;
+  cancelled_at: string | null;
+  cancel_reason: string | null;
+  created_at: string;
 }
 export interface PurchaseQuote {
   id: string;
@@ -224,9 +239,15 @@ export interface Purchase {
   expense_category: string | null;
   expense_amount: number | null;
   supplier_name: string | null;
+  supplier_id?: string | null;
+  supplier_order_number?: string | null;
+  document_date?: string | null;
   selected_quote_id: string | null;
   needed_by: string | null;
   ordered_at: string | null;
+  cancel_reason?: string | null;
+  cancelled_at?: string | null;
+  closed_at?: string | null;
   notes: string | null;
   created_at: string;
   updated_at: string;
@@ -234,6 +255,7 @@ export interface Purchase {
   quotes: PurchaseQuote[];
   events: PurchaseEvent[];
   attachments: PurchaseAttachment[];
+  payables?: PurchasePayable[];
 }
 export interface PurchaseAttachment {
   id: string;

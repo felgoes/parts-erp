@@ -7,7 +7,7 @@ import { finalize } from 'rxjs';
 import { ApiService } from '../../core/api.service';
 import { LiveUpdatesService } from '../../core/live-updates.service';
 import { AuthService } from '../../core/auth.service';
-import { Product, Purchase, PurchaseItem, PurchaseStatus } from '../../core/models';
+import { Product, Purchase, PurchaseItem, PurchasePayable, PurchaseStatus } from '../../core/models';
 import { canAdjustStock, canManageCatalog, canManagePurchases, canReadCosts } from '../../core/user-access';
 import { DateRange, quickDateRange } from '../../core/quick-date-ranges';
 import { PageHeader } from '../../shared/page-header';
@@ -128,8 +128,24 @@ import { MoneyInputDirective } from '../../shared/money-input.directive';
             <section class="purchase-form-section"><div class="section-heading"><div><p class="eyebrow">Documentação</p><h3>Documentos anexados</h3></div>@if (canManagePurchases()) { <label class="attachment-inline">+ Anexar documentos<input type="file" multiple (change)="uploadAttachments(purchase, $any($event.target).files)" /></label> }</div>@if (purchase.attachments.length) { <div class="attachment-list">@for (attachment of purchase.attachments; track attachment.id) { <button type="button" class="attachment-row" (click)="downloadAttachment(purchase, attachment)"><span>📎 {{ attachment.filename }}</span><small>{{ formatBytes(attachment.size_bytes) }}</small></button> }</div> } @else { <p class="muted">Nenhum documento anexado ainda.</p> }</section>
           </div>
           <aside class="purchase-aside"><section class="purchase-aside-card"><p class="eyebrow">Resumo</p><div><span>Itens</span><strong>{{ purchase.items.length }}</strong></div>@if (purchase.purchase_type === 'parts') { <div><span>Unidades pedidas</span><strong>{{ totalUnits(purchase) | number:'1.0-3' }}</strong></div><div><span>Recebidas</span><strong>{{ receivedUnits(purchase) | number:'1.0-3' }}</strong></div> }@if (selectedQuote(purchase); as quote) { <div><span>Fornecedor escolhido</span><strong>{{ quote.supplier_name }}</strong></div><div><span>Valor acordado</span><strong>{{ quote.total | currency:'BRL' }}</strong></div> }</section>
+            @if (purchase.payables?.length) { <section class="purchase-aside-card payable-card"><p class="eyebrow">Contas a pagar</p>@for (payable of purchase.payables; track payable.id) { <div class="payable-row"><div><strong>{{ payable.amount | currency:'BRL' }}</strong><small>{{ payableLabel(payable) }}</small></div>@if (canManagePurchases() && payable.status === 'open') { <button type="button" class="secondary small" [disabled]="saving()" (click)="settlePayable(purchase, payable)">Registrar pagamento</button> }</div> }</section> }
             <section class="purchase-aside-card timeline-card"><p class="eyebrow">Histórico da compra</p>@for (event of purchase.events; track event.id) { <div class="purchase-event"><i></i><div><strong>{{ event.detail }}</strong><small>{{ event.created_at | date:'dd/MM/yyyy HH:mm' }}</small></div></div> }</section>
-            @if (canManagePurchases() && purchase.status !== 'received' && purchase.status !== 'cancelled') { <button type="button" class="cancel-purchase" (click)="cancel()">Cancelar compra</button> }
+            @if (purchaseStatusNote(purchase); as note) { <p class="purchase-status-note">{{ note }}</p> }
+            @if (canManagePurchases() && isActive(purchase)) { <div class="purchase-lifecycle-actions">
+              @if (purchase.status === 'ordered' || purchase.status === 'partially_received') { <button type="button" class="secondary" [disabled]="saving()" (click)="receiveAll(purchase)">Receber tudo</button> }
+              @if (purchase.status === 'ordered' || purchase.status === 'partially_received') { <button type="button" class="secondary" [disabled]="saving()" (click)="openLifecycleForm('close')">Encerrar saldo</button> }
+              <button type="button" class="cancel-purchase" [disabled]="saving()" (click)="openLifecycleForm('cancel')">Cancelar compra</button>
+              @if (purchase.status === 'negotiating') { <button type="button" class="danger-outline" [disabled]="saving()" (click)="deleteDraft(purchase)">Excluir rascunho</button> }
+            </div> }
+            @if (lifecycleForm(); as form) { <section class="purchase-aside-card lifecycle-form">
+              <p class="eyebrow">{{ form.mode === 'cancel' ? 'Cancelar compra' : 'Encerrar saldo pendente' }}</p>
+              <label>Motivo<input type="text" maxlength="255" [value]="form.reason" (input)="setLifecycleReason($any($event.target).value)" placeholder="Ex.: fornecedor não entregou o restante" /></label>
+              @if (form.mode === 'cancel' && hasReceived(purchase)) { <fieldset class="lifecycle-resolution"><legend>O que fazer com o material já recebido?</legend>
+                <label><input type="radio" name="resolution" [checked]="form.resolution === 'keep_received'" (change)="setLifecycleResolution('keep_received')" /> Manter o recebido e encerrar o saldo</label>
+                <label><input type="radio" name="resolution" [checked]="form.resolution === 'return_received'" (change)="setLifecycleResolution('return_received')" /> Registrar devolução ao fornecedor (saída de estoque)</label>
+              </fieldset> }
+              <div class="lifecycle-actions"><button type="button" class="secondary small" (click)="lifecycleForm.set(null)">Voltar</button><button type="button" class="primary small" [disabled]="saving() || form.reason.trim().length < 3" (click)="submitLifecycle(purchase)">Confirmar</button></div>
+            </section> }
           </aside>
         </div>
         @if (error()) { <p class="purchase-error" role="alert">{{ error() }}</p> }
@@ -166,6 +182,7 @@ export class PurchasesPage implements OnInit {
   readonly quoteCostValidity = signal<Record<string, boolean>>({});
   readonly itemCostDrafts = signal<Record<string, { base_unit_cost: number; freight_amount: number; tax_amount: number; discount_amount: number }>>({});
   readonly itemCostValidity = signal<Record<string, boolean>>({});
+  readonly lifecycleForm = signal<{ mode: 'cancel' | 'close'; reason: string; resolution: 'keep_received' | 'return_received' } | null>(null);
   readonly importMoneyValidity = signal<Record<string, boolean>>({});
   readonly importProductSearch = signal<Record<number, string>>({});
   readonly importProductResults = signal<Record<number, Product[]>>({});
@@ -191,7 +208,8 @@ export class PurchasesPage implements OnInit {
   readonly statuses: { value: string; label: string }[] = [
     { value: 'negotiating', label: 'Em negociação' }, { value: 'approved', label: 'Aprovada' },
     { value: 'ordered', label: 'Pedido enviado' }, { value: 'partially_received', label: 'Recebimento parcial' },
-    { value: 'received', label: 'Recebida' }, { value: 'cancelled', label: 'Cancelada' },
+    { value: 'received', label: 'Recebida' }, { value: 'closed', label: 'Encerrada' },
+    { value: 'cancelled', label: 'Cancelada' },
   ];
   readonly workflow = [{ value: 'negotiating', label: 'Negociação' }, { value: 'approved', label: 'Aprovação' }, { value: 'ordered', label: 'Pedido' }, { value: 'received', label: 'Recebimento' }];
   readonly form = this.fb.group({
@@ -413,8 +431,21 @@ export class PurchasesPage implements OnInit {
   availableProducts(stockType: 'product' | 'warehouse') { return this.products().filter((product) => product.stock_type === stockType); }
   selectedQuote(purchase: Purchase) { return purchase.quotes.find((quote) => quote.id === purchase.selected_quote_id) ?? null; }
   statusLabel(status: PurchaseStatus) { return this.statuses.find((entry) => entry.value === status)?.label ?? status; }
-  purchaseStatusLabel(purchase: Purchase) { return purchase.purchase_type === 'expense' && !purchase.items.length ? 'Lançada' : purchase.purchase_type === 'expense' && purchase.status === 'ordered' ? 'Aguardando recebimento' : this.statusLabel(purchase.status); }
-  stepIndex(status: PurchaseStatus) { if (status === 'cancelled') return -1; if (status === 'received') return 4; if (status === 'partially_received') return 3; return ['negotiating', 'approved', 'ordered'].indexOf(status); }
+  purchaseStatusLabel(purchase: Purchase) { return this.statusLabel(purchase.status); }
+  purchaseStatusNote(purchase: Purchase) {
+    if (purchase.status === 'cancelled') return purchase.cancel_reason ? `Cancelada · ${purchase.cancel_reason}` : 'Compra cancelada.';
+    if (purchase.status === 'closed') return 'Saldo pendente encerrado; o material recebido foi mantido no estoque.';
+    return '';
+  }
+  payableLabel(payable: PurchasePayable) {
+    if (payable.status === 'paid') return `Pago${payable.payment_method ? ' · ' + payable.payment_method : ''}`;
+    if (payable.status === 'cancelled') return 'Encerrado com o cancelamento';
+    return `Vence ${this.dateLabel(payable.due_date)}`;
+  }
+  dateLabel(value: string) { return new Date(value).toLocaleDateString('pt-BR'); }
+  isActive(purchase: Purchase) { return purchase.status !== 'cancelled' && purchase.status !== 'closed'; }
+  hasReceived(purchase: Purchase) { return purchase.items.some((item) => item.received_quantity - (item.returned_quantity ?? 0) > 0); }
+  stepIndex(status: PurchaseStatus) { if (status === 'cancelled') return -1; if (status === 'received' || status === 'closed') return 4; if (status === 'partially_received') return 3; return ['negotiating', 'approved', 'ordered'].indexOf(status); }
   progress(item: PurchaseItem) { return item.quantity ? Math.min(100, item.received_quantity / item.quantity * 100) : 0; }
   totalUnits(purchase: Purchase) { return purchase.items.reduce((sum, item) => sum + item.quantity, 0); }
   receivedUnits(purchase: Purchase) { return purchase.items.reduce((sum, item) => sum + item.received_quantity, 0); }
@@ -450,7 +481,59 @@ export class PurchasesPage implements OnInit {
     });
   }
   private clearReceiptId(item: PurchaseItem) { this.receiptIds.update((ids) => { const updated = { ...ids }; delete updated[item.id]; return updated; }); }
-  cancel() { const purchase = this.detail(); if (!purchase || this.saving()) return; if (!confirm(`Cancelar ${purchase.number}? Essa ação não poderá ser desfeita.`)) return; this.runAction(this.api.cancelPurchase(purchase.id)); }
+  openLifecycleForm(mode: 'cancel' | 'close') {
+    const purchase = this.detail();
+    if (!purchase) return;
+    this.error.set('');
+    this.lifecycleForm.set({ mode, reason: '', resolution: this.hasReceived(purchase) ? 'keep_received' : 'return_received' });
+  }
+  setLifecycleReason(value: string) { this.lifecycleForm.update((form) => form ? { ...form, reason: value } : form); }
+  setLifecycleResolution(value: 'keep_received' | 'return_received') { this.lifecycleForm.update((form) => form ? { ...form, resolution: value } : form); }
+  submitLifecycle(purchase: Purchase) {
+    const form = this.lifecycleForm();
+    if (!form || this.saving() || form.reason.trim().length < 3) return;
+    const request = form.mode === 'cancel'
+      ? this.api.cancelPurchaseWithReason(purchase.id, { reason: form.reason.trim(), resolution: form.resolution })
+      : this.api.closePurchaseBalance(purchase.id, { reason: form.reason.trim() });
+    this.saving.set(true); this.error.set('');
+    request.pipe(finalize(() => this.saving.set(false))).subscribe({
+      next: (updated) => { this.lifecycleForm.set(null); this.setPurchase(updated); },
+      error: (err) => this.error.set(err.error?.detail || 'Não foi possível concluir a ação.'),
+    });
+  }
+  receiveAll(purchase: Purchase) {
+    if (this.saving()) return;
+    if (!confirm(`Receber todos os itens pendentes de ${purchase.number}? Itens sem produto vinculado serão cadastrados no catálogo.`)) return;
+    this.saving.set(true); this.error.set('');
+    this.api.receivePurchaseInFull(purchase.id, { create_products: true }).pipe(finalize(() => this.saving.set(false))).subscribe({
+      next: (updated) => { this.setPurchase(updated); this.api.products('', false).subscribe((items) => this.products.set(items)); },
+      error: (err) => this.error.set(err.error?.detail || 'Não foi possível registrar o recebimento.'),
+    });
+  }
+  settlePayable(purchase: Purchase, payable: PurchasePayable) {
+    if (this.saving()) return;
+    const amount = payable.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    if (!confirm(`Registrar o pagamento de ${amount} do título de ${purchase.number}?`)) return;
+    this.saving.set(true); this.error.set('');
+    this.api.settlePurchasePayable(purchase.id, payable.id).pipe(finalize(() => this.saving.set(false))).subscribe({
+      next: () => this.api.purchases().subscribe((items) => {
+        this.purchases.set(items);
+        const refreshed = items.find((item) => item.id === purchase.id);
+        if (refreshed) this.detail.set(refreshed);
+      }),
+      error: (err) => this.error.set(err.error?.detail || 'Não foi possível registrar o pagamento.'),
+    });
+  }
+  deleteDraft(purchase: Purchase) {
+    if (this.saving()) return;
+    const supplier = purchase.supplier_name || 'sem fornecedor';
+    if (!confirm(`Excluir definitivamente o rascunho ${purchase.number} de ${supplier}? Esta ação não pode ser desfeita.`)) return;
+    this.saving.set(true); this.error.set('');
+    this.api.deletePurchase(purchase.id).pipe(finalize(() => this.saving.set(false))).subscribe({
+      next: () => { this.detail.set(null); this.purchases.update((items) => items.filter((item) => item.id !== purchase.id)); },
+      error: (err) => this.error.set(err.error?.detail || 'Não foi possível excluir o rascunho.'),
+    });
+  }
   private runAction(request: ReturnType<ApiService['placePurchaseOrder']>) { const purchase = this.detail(); if (!purchase) return; this.saving.set(true); this.error.set(''); request.pipe(finalize(() => this.saving.set(false))).subscribe({ next: (updated) => { this.setPurchase(updated); if (updated.status === 'received') this.api.products('', false, 'product').subscribe((items) => this.products.set(items)); }, error: (err) => this.error.set(err.error?.detail || 'Não foi possível atualizar esta compra.') }); }
   private setPurchase(purchase: Purchase) { this.itemCostDrafts.set(Object.fromEntries(purchase.items.map((item) => [item.id, { base_unit_cost: item.base_unit_cost ?? item.unit_cost ?? 0, freight_amount: item.freight_amount ?? 0, tax_amount: item.tax_amount ?? 0, discount_amount: item.discount_amount ?? 0 }]))); this.detail.set(purchase); this.purchases.update((items) => items.map((item) => item.id === purchase.id ? purchase : item)); }
 }

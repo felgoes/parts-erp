@@ -86,6 +86,7 @@ def test_purchase_costs_are_redacted_for_stock_profile() -> None:
         id="purchase-1",
         number="COM-2026-ABC123",
         status="ordered",
+        purchase_type="parts",
         created_at=now,
         updated_at=now,
         items=[
@@ -94,9 +95,12 @@ def test_purchase_costs_are_redacted_for_stock_profile() -> None:
                 purchase_id="purchase-1",
                 sku="PART-1",
                 description="Peça de teste",
+                unit="un",
                 quantity=Decimal("2"),
                 received_quantity=Decimal("0"),
+                returned_quantity=Decimal("0"),
                 unit_cost=Decimal("25.00"),
+                base_unit_cost=Decimal("25.00"),
             )
         ],
         quotes=[
@@ -105,6 +109,10 @@ def test_purchase_costs_are_redacted_for_stock_profile() -> None:
                 purchase_id="purchase-1",
                 supplier_name="Fornecedor",
                 total=Decimal("50.00"),
+                freight_amount=Decimal("0"),
+                tax_amount=Decimal("0"),
+                discount_amount=Decimal("0"),
+                allocation_method="proportional",
                 item_costs={"item-1": "25.00"},
                 created_at=now,
                 updated_at=now,
@@ -132,12 +140,13 @@ def test_product_cost_is_redacted_from_stock_product_listing(db) -> None:
             cost_price=Decimal("25.00"),
             current_stock=3,
             minimum_stock=0,
+            attributes={},
         )
     )
     db.commit()
 
-    stock_view = list_products(None, False, 100, db, User(role=UserRole.stock))
-    manager_view = list_products(None, False, 100, db, User(role=UserRole.manager))
+    stock_view = list_products(None, False, None, 100, db, User(role=UserRole.stock))
+    manager_view = list_products(None, False, None, 100, db, User(role=UserRole.manager))
 
     assert stock_view[0].cost_price is None
     assert manager_view[0].cost_price == Decimal("25.00")

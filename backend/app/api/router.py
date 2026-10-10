@@ -15,6 +15,7 @@ from app.api.routes import (
     push,
     purchases,
     settings,
+    suppliers,
     telemetry,
     users,
 )
@@ -29,6 +30,7 @@ api_router.include_router(dashboard.router)
 api_router.include_router(finance.router)
 api_router.include_router(products.router)
 api_router.include_router(purchases.router)
+api_router.include_router(suppliers.router)
 api_router.include_router(catalog.router)
 api_router.include_router(telemetry.router)
 api_router.include_router(customers.router)

@@ -1,6 +1,6 @@
 # P1 — Máscara e precisão para valores em reais
 
-**Status:** concluído; validado em HML e implantado em PRD no commit 6b90755, com smoke checks públicos do site e ERP em HTTP 200
+**Status:** concluído; retomada da edição, colagem e cursor validada em HML e implantada em PRD no commit 1ea5591 em 10/10/2026, com smoke checks públicos do site e ERP em HTTP 200
 **Prioridade:** P1
 
 ## Objetivo

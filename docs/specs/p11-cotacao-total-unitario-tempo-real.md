@@ -22,6 +22,20 @@ Como comprador, quero digitar o total que o fornecedor passou e ver o preço uni
 - **Proposta impossível:** total menor que a soma dos acréscimos menos o desconto, ou custo unitário negativo resultante do rateio, sinaliza o erro e impede salvar a cotação.
 - **Cotação já registrada:** editar uma cotação salva continua recalculando do mesmo jeito, preservando histórico e auditoria.
 
+## Referência de mercado (ERP)
+
+- **SAP:** o preço é composto por condições (preço bruto, desconto, frete, imposto) e o total é sempre derivado; não existe digitação de total no documento. Digitar o total é uma conveniência de negociação, não a fonte de verdade.
+- **TOTVS, Omie e Bling:** a cotação é registrada item a item com preço do fornecedor, e o total é calculado. Fechar a compra por valor global, com rateio entre itens, é comum em lote ou kit.
+- **Rateio no Brasil:** frete e descontos são rateados por valor (proporcional) ou por peso/quantidade. Proporcional ao valor é a regra mais aceita para custo de aquisição; por quantidade faz sentido em peças homogêneas.
+- **Conclusão do benchmark:** o caminho unitário → total é o padrão dos ERPs; o caminho total → unitário é diferencial de negociação e precisa de base de rateio explícita para não produzir custo arbitrário.
+
+## Impacto administrativo e fiscal
+
+- **Base de rateio inexistente:** ratear proporcionalmente ao valor quando nenhum item tem preço é divisão por zero. O caminho total → unitário precisa de um substituto determinístico, como quantidade ou último custo conhecido do produto.
+- **Custo e financeiro:** o rateio define o custo unitário que entra no estoque e o valor do título a pagar. Por isso a soma dos itens tem de fechar exatamente com o total, e a sobra de centavos precisa ser rastreável.
+- **Conferência fiscal:** divergência de centavos entre soma dos itens e total é a causa mais comum de retrabalho na conferência da nota do fornecedor.
+- **Cotação vencedora já aprovada:** mudar valor depois de aprovado ou pago altera custo médio e financeiro. A prática de mercado é bloquear ou exigir reescolha com registro de auditoria.
+
 ## Pontos que precisam de decisão do PO
 
 1. **O que o total digitado representa:** o valor final da proposta (peças + frete + impostos − desconto) ou o subtotal das peças, com frete, impostos e desconto somados depois? Isso define qual número o rateio usa por padrão.
@@ -29,6 +43,8 @@ Como comprador, quero digitar o total que o fornecedor passou e ver o preço uni
 3. **Editar cotação já escolhida:** permitir recalcular a cotação vencedora depois de escolhida altera o custo do item e o título a pagar. Manter bloqueado, exigir reescolha ou permitir com aviso?
 4. **Desconto por linha:** se o desconto percentual por peça permanecer (ver P9), informar como ele entra no cálculo bidirecional.
 5. **Arredondamento:** ajustar a sobra na última linha por ordem de exibição está adequado, ou o ajuste deve ir para o item de maior valor?
+
+**Recomendação (ERP e administração):** 1) o total digitado é o valor final da proposta, já com frete, impostos e desconto, porque é assim que o fornecedor fecha a negociação e é o número que o comprador tem em mãos; 2) sem preço prévio em nenhum item, os dois métodos caem para rateio por quantidade, que é determinístico; 3) cotação já escolhida fica bloqueada para edição, e trocar exige registrar uma nova cotação; 4) a sobra de centavos vai para o item de maior valor, prática mais estável em conferência fiscal.
 
 ## Fora de escopo
 

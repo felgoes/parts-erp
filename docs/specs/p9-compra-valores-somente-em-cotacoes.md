@@ -17,6 +17,21 @@ Como comprador, quero cadastrar a compra apenas com as peças e quantidades que 
 - Sem cotação escolhida, o item aparece com custo pendente; a compra é válida sem custo.
 - Com cotação escolhida, os valores dos itens são os da cotação vencedora e ficam somente para leitura.
 
+## Referência de mercado (ERP)
+
+- **SAP (MM):** a necessidade nasce como requisição de compra, sem preço; o preço entra na solicitação de cotação (RFQ) e é herdado pelo pedido de compra do fornecedor vencedor. Não se digita preço na requisição.
+- **TOTVS Protheus (Compras):** solicitação de compra → mapa de cotação → pedido de compra, e o pedido herda o preço do fornecedor escolhido no mapa.
+- **Omie, Bling e Tiny:** o pedido de compra aceita preço, mas a prática é registrar a proposta do fornecedor na cotação e herdar o valor; preço também pode vir de tabela de preços ou contrato de fornecimento.
+- **Conclusão do benchmark:** manter um único lugar de verdade para o preço e herdar para o pedido é o padrão dos ERPs maduros. Digitar valor estimado direto no pedido é exceção justificada, não o caminho normal.
+
+## Impacto administrativo e financeiro
+
+- **Custo de aquisição e custo médio:** o valor que entra no estoque no recebimento é o da cotação vencedora, com frete, impostos e desconto rateados. Sem cotação escolhida não existe custo de aquisição, então o recebimento não pode gerar custo nem alimentar custo médio.
+- **Contas a pagar:** o título a pagar só pode nascer quando existe valor, ou seja, depois da escolha da cotação e da aprovação. Compra sem cotação não deve gerar título com valor inventado nem zerado.
+- **Alçada de aprovação:** controle de aprovação por faixa de valor é prática padrão e só é possível com o total da cotação. A aprovação deve exigir cotação escolhida.
+- **Divergência cotação × nota fiscal:** no recebimento, o valor da nota do fornecedor é o que vale para o financeiro. Divergência entre cotação e nota precisa ser registrada e visível, nunca sobrescrita silenciosamente.
+- **Risco de desconto em dobro:** desconto percentual por linha na compra somado ao desconto da cotação aplica desconto duas vezes no mesmo custo. Manter o desconto em um único lugar evita erro de custo e de título.
+
 ## Escopo
 
 - **Cadastro da compra — Peças para estoque:** manter apenas produto/SKU, descrição, unidade, quantidade e os dados do cabeçalho (fornecedor, previsão desejada, número do pedido do fornecedor, data do documento, observações e documentos). Nenhum campo monetário. O texto de orientação atual ("Nesta etapa, informe somente as peças e quantidades") permanece.
@@ -31,6 +46,8 @@ Como comprador, quero cadastrar a compra apenas com as peças e quantidades que 
 1. **Desconto por linha (%) no rascunho:** hoje existe um campo de desconto percentual por peça, fora da cotação. Ele sai junto com os demais valores ou permanece como ferramenta de negociação? Se permanecer, como ele conversa com o desconto da cotação?
 2. **Importação de documento:** a revisão da importação pede total do documento, frete, desconto, impostos e valor unitário por item extraídos do próprio documento. Manter a revisão como está (valores vêm do papel, não são digitados às cegas) ou tratar o documento importado como cotação e remover a digitação de total ali também?
 3. **Despesa da empresa:** despesa não tem cotação de fornecedor e hoje pede "Valor total" e custo unitário dos materiais, que alimentam o título a pagar. A regra de "nenhum valor no cadastro" vale só para compra de peças, mantendo a despesa como está?
+
+**Recomendação (ERP e administração):** 1) o desconto por linha sai — desconto pertence à cotação, e manter os dois cria desconto em dobro no custo; 2) a importação mantém os valores extraídos do documento, que funcionam como a cotação de origem daquela compra; 3) a despesa mantém o valor total, porque não existe cotação e é ele que sustenta o título a pagar.
 
 ## Fora de escopo
 

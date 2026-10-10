@@ -24,11 +24,27 @@ Como operador do ERP, quero digitar valores sem risco de deixar o campo num esta
 - **Campo somente leitura:** continua apenas exibindo o valor formatado, sem capturar teclado.
 - **Substitui:** esta regra substitui, na P1, a edição livre de texto durante o foco e os critérios que exigiam editar e apagar trechos no meio do valor.
 
+## Referência de mercado (ERP)
+
+- **Padrão brasileiro:** Bling, Omie, Conta Azul, retaguardas fiscais e aplicativos bancários usam digitação por centavos, com o valor crescendo da direita para a esquerda e separadores fixos. É o comportamento pedido aqui.
+- **SAP Fiori:** usa digitação livre com separador decimal e validação ao confirmar. É um caminho diferente e mais permissivo; fica registrado como desvio consciente do padrão escolhido.
+- **Acessibilidade:** os ERPs de mercado mantêm colagem, navegação por teclado e leitores de tela com a máscara aplicada; a máscara forte não pode quebrar isso.
+- **Eficiência de digitação:** quem lança nota de fornecedor, contas a pagar e preço de catálogo digita dezenas de valores por dia. Máscara previsível é ganho direto de produtividade, e é por isso que o padrão por centavos venceu no mercado brasileiro.
+
+## Impacto administrativo
+
+- **Precisão do dado:** o valor é persistido em centavos inteiros e a máscara nunca cria estado parcial, então nenhum lançamento financeiro nasce de um número ambíguo.
+- **Conferência:** os erros mais comuns de digitação de valor no Brasil são `1.234,` e `,56`. A máscara forte elimina a categoria inteira.
+- **Colagem da nota:** copiar valor do XML, do PDF da nota ou de e-mail do fornecedor é rotina no fechamento; bloquear colagem seria inaceitável na operação.
+- **Risco a evitar:** campo opcional vazio virando zero silencioso em frete e desconto distorce custo de aquisição e título a pagar. Vazio e zero precisam ser decisões distintas.
+
 ## Pontos que precisam de decisão do PO
 
 1. **Campo opcional vazio:** o campo vazio mostra `R$ 0,00` fixo ou fica realmente em branco até o primeiro dígito? (Afeta frete, desconto, impostos e outros campos opcionais.)
 2. **Campo obrigatório com valor zero:** `R$ 0,00` é aceito como valor preenchido quando o mínimo do campo é maior que zero, ou continua bloqueando o salvamento com a mensagem atual?
 3. **Corrigir o meio do número:** não será possível, por desenho, apagar só um dígito do meio. A correção passa a ser reescrever o valor. Confirmar que essa é a intenção.
+
+**Recomendação (ERP e administração):** 1) campo opcional fica em branco até o primeiro dígito, porque zero e vazio significam coisas diferentes em frete e desconto; campo obrigatório com mínimo maior que zero continua bloqueando o salvamento; 2) confirmar a correção por reescrita — é o comportamento do padrão por centavos e evita estado parcial.
 
 ## Fora de escopo
 

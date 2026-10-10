@@ -486,7 +486,11 @@ def _parse_nfe_xml(data: bytes) -> dict[str, Any]:
                     "sku": vals.get("cProd", "")[:80],
                     "quantity": float(vals.get("qCom", "0")),
                     "unit_cost": round(float(vals.get("vUnCom", "0")), 4),
-                    "line_total": round(float(vals.get("vProd", "0")), 2),
+                    "line_total": max(
+                        0,
+                        round(float(vals.get("vProd", "0")) - float(one("vDesc", det) or "0"), 2),
+                    ),
+                    "discount_amount": round(float(one("vDesc", det) or "0"), 2),
                     "confidence": 1.0,
                 }
             )

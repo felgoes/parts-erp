@@ -554,3 +554,13 @@ textarea:focus {
 .purchase-import-review { overflow-x: hidden; }
 .purchase-import-review .modal-head > div { min-width: 0; }
 .purchase-import-review .modal-head .eyebrow { overflow-wrap: anywhere; }
+
+/* Product lookup and creation inside document import review. */
+.purchase-import-review .import-product-search { position: relative; grid-column: 1 / -1; }
+.purchase-import-review .import-product-results { position: absolute; z-index: 5; inset: calc(100% - .2rem) 0 auto; display: grid; max-height: 15rem; overflow: auto; padding: .35rem; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); box-shadow: 0 8px 24px #0002; }
+.purchase-import-review .import-product-results button { display: grid; gap: .2rem; padding: .55rem .65rem; text-align: left; border: 0; background: transparent; color: inherit; }
+.purchase-import-review .import-product-results button:hover { background: color-mix(in srgb, var(--primary) 8%, var(--surface)); }
+.purchase-import-review .import-product-results small, .purchase-import-review .import-product-search > small { color: var(--muted); }
+.purchase-import-review .import-stock-control { display: flex; align-items: center; gap: .5rem; }
+.import-product-backdrop { z-index: 1001; }
+.import-product-modal { width: min(54rem, calc(100vw - 2rem)); max-height: calc(100dvh - 2rem); overflow: auto; }

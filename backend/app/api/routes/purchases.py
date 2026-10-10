@@ -167,6 +167,14 @@ def create_purchase(
     db: Session = Depends(get_db),
     user: User = Depends(require_permission(Permission.PURCHASE_MANAGE)),
 ) -> PurchaseOut:
+    if payload.source_import_id:
+        if not (payload.notes or "").startswith("Importação de documento."):
+            raise HTTPException(status_code=422, detail="Identificador de importação inválido.")
+        existing = db.scalar(
+            select(PurchaseCase).where(PurchaseCase.source_import_id == payload.source_import_id)
+        )
+        if existing:
+            return _present(_load(db, existing.id), user)
     for item in payload.items:
         if item.product_id and not db.get(Product, item.product_id):
             raise HTTPException(status_code=404, detail=f"Produto não encontrado: {item.sku}")
@@ -183,6 +191,7 @@ def create_purchase(
         supplier_name=payload.supplier_name,
         needed_by=payload.needed_by,
         notes=payload.notes,
+        source_import_id=payload.source_import_id,
         items=[
             PurchaseItem(
                 **item.model_dump(),

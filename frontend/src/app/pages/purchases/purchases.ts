@@ -8,7 +8,7 @@ import { ApiService } from '../../core/api.service';
 import { LiveUpdatesService } from '../../core/live-updates.service';
 import { AuthService } from '../../core/auth.service';
 import { Product, Purchase, PurchaseItem, PurchaseStatus } from '../../core/models';
-import { canAdjustStock, canManagePurchases, canReadCosts } from '../../core/user-access';
+import { canAdjustStock, canManageCatalog, canManagePurchases, canReadCosts } from '../../core/user-access';
 import { DateRange, quickDateRange } from '../../core/quick-date-ranges';
 import { PageHeader } from '../../shared/page-header';
 import { PeriodFilter } from '../../shared/period-filter';
@@ -70,8 +70,20 @@ import { MoneyInputDirective } from '../../shared/money-input.directive';
             <div class="purchase-line-form import-line">
               <label class="line-description">Descrição<input [value]="item.description" (input)="updateImportItem(i, 'description', $any($event.target).value)" /></label>
               <label>SKU / código<input [value]="item.sku" (input)="updateImportItem(i, 'sku', $any($event.target).value)" placeholder="Opcional" /></label>
+              <label class="import-stock-control"><input type="checkbox" [checked]="item.stock_controlled" (change)="setImportStockControlled(i, $any($event.target).checked)" /> Controlado no estoque</label>
+              <div class="import-product-search"><label>Produto do estoque<input [value]="importProductSearch()[i] || ''" (input)="searchImportProducts(i, $any($event.target).value)" placeholder="Buscar nome, SKU ou código de barras" autocomplete="off" /></label>
+                <div class="import-product-results" [hidden]="!importProductSearch()[i]">
+                  @for (product of importProductResults()[i] || []; track product.id) {
+                    <button type="button" (click)="selectImportedProduct(i, product)"><strong>{{ product.name }}</strong><small>SKU {{ product.sku }} · EAN {{ product.barcode || 'sem código' }} · {{ product.current_stock | number:'1.0-3' }} un. em estoque</small></button>
+                  }
+                  @if (importProductSearch()[i] && !(importProductResults()[i] || []).length) { <small>Nenhum produto encontrado. Confira nome, SKU e código.</small> }
+                </div>
+                @if (item.stock_controlled && item.product_id) { <small>Vinculado: {{ selectedImportProduct(item.product_id)?.sku }} · {{ selectedImportProduct(item.product_id)?.name }} <button type="button" class="text-button" (click)="clearImportedProduct(i)">Remover vínculo</button></small> }
+                @if (canManageCatalog()) { <button type="button" class="secondary small" [disabled]="!item.stock_controlled" (click)="openImportProductCreate(i)">+ Cadastrar produto</button> }
+              </div>
               <label>Quantidade<input type="number" min="0.001" step="0.001" [value]="item.quantity" (input)="updateImportItem(i, 'quantity', $any($event.target).value)" /></label>
               <label>Valor unitário<input appMoneyInput [appMoneyInput]="item.unit_cost" min="0" (moneyInput)="updateImportItem(i, 'unit_cost', $event)" (moneyValidity)="setImportMoneyValidity('item-' + i, $event)" /></label>
+              <label>Desconto da linha<input appMoneyInput [appMoneyInput]="item.discount_amount" min="0" (moneyInput)="updateImportItem(i, 'discount_amount', $event)" (moneyValidity)="setImportMoneyValidity('discount-' + i, $event)" /></label><small>Total da linha: {{ item.line_total | currency:'BRL' }}</small>
               <small class="import-confidence">Confiança OCR: {{ item.confidence * 100 | number:'1.0-0' }}%</small>
               <button type="button" class="remove-line" [attr.aria-label]="'Remover item ' + (i + 1)" (click)="removeImportLine(i)">×</button>
             </div>
@@ -80,6 +92,10 @@ import { MoneyInputDirective } from '../../shared/money-input.directive';
         @if (importError()) { <p class="purchase-error" role="alert">{{ importError() }}</p> }
         <div class="purchase-form-actions"><span class="muted">O arquivo original será anexado. Nenhum estoque será movimentado.</span><div class="import-review-actions"><button type="button" class="secondary" (click)="closeImportReview()">Cancelar</button><button type="button" class="primary" [disabled]="creatingImport() || !canConfirmImport()" (click)="createImportedPurchase()">{{ creatingImport() ? 'Criando…' : 'Confirmar e criar compra' }}</button></div></div>
       </section></div>
+    }
+
+    @if (importProductModal()) {
+      <div class="modal-backdrop import-product-backdrop" (click)="closeImportProductCreate()"><section class="modal purchase-modal import-product-modal" role="dialog" aria-modal="true" aria-labelledby="import-product-title" (click)="$event.stopPropagation()"><div class="modal-head"><div><p class="eyebrow">Catálogo · nova peça</p><h2 id="import-product-title">Cadastrar e vincular produto</h2><p class="modal-intro">Preencha os mesmos dados básicos exigidos no catálogo. O cadastro só será criado ao confirmar.</p></div><button class="close" type="button" aria-label="Fechar" (click)="closeImportProductCreate()">×</button></div><div class="purchase-form-meta"><label>Tipo de estoque<select [value]="importProductDraft().stock_type" (change)="updateImportProduct('stock_type', $any($event.target).value)"><option value="product">Produto</option><option value="warehouse">Almoxarifado</option></select></label><label>SKU *<input [value]="importProductDraft().sku" (input)="updateImportProduct('sku', $any($event.target).value)" /></label><label>Nome *<input [value]="importProductDraft().name" (input)="updateImportProduct('name', $any($event.target).value)" /></label><label>Marca<input [value]="importProductDraft().brand" (input)="updateImportProduct('brand', $any($event.target).value)" /></label><label>Fabricante<input [value]="importProductDraft().manufacturer" (input)="updateImportProduct('manufacturer', $any($event.target).value)" /></label><label>Número OEM / MPN<input [value]="importProductDraft().manufacturer_part_number" (input)="updateImportProduct('manufacturer_part_number', $any($event.target).value)" /></label><label>GTIN / código de barras<input [value]="importProductDraft().barcode" (input)="updateImportProduct('barcode', $any($event.target).value)" /></label><label>Categoria<input [value]="importProductDraft().category" (input)="updateImportProduct('category', $any($event.target).value)" /></label><label>Condição<select [value]="importProductDraft().item_condition" (change)="updateImportProduct('item_condition', $any($event.target).value)"><option value="new">Nova</option><option value="used">Usada</option><option value="refurbished">Recondicionada</option></select></label><label>Garantia (dias)<input type="number" min="0" max="3650" [value]="importProductDraft().warranty_days ?? ''" (input)="updateImportProduct('warranty_days', $any($event.target).value)" /></label><label>País de origem<input [value]="importProductDraft().origin_country" (input)="updateImportProduct('origin_country', $any($event.target).value)" /></label><label>Preço de venda<input appMoneyInput [appMoneyInput]="importProductDraft().sale_price" min="0" (moneyInput)="updateImportProduct('sale_price', $event)" /></label>@if (canReadCosts()) { <label>Custo<input appMoneyInput [appMoneyInput]="importProductDraft().cost_price" min="0" (moneyInput)="updateImportProduct('cost_price', $event)" /></label> }<label>Estoque mínimo<input type="number" min="0" step="0.001" [value]="importProductDraft().minimum_stock" (input)="updateImportProduct('minimum_stock', $any($event.target).value)" /></label><label>Peso embalado (g)<input type="number" min="0" step="0.001" [value]="importProductDraft().weight_g ?? ''" (input)="updateImportProduct('weight_g', $any($event.target).value)" /></label><label>Comprimento (cm)<input type="number" min="0" step="0.01" [value]="importProductDraft().package_length_cm ?? ''" (input)="updateImportProduct('package_length_cm', $any($event.target).value)" /></label><label>Largura (cm)<input type="number" min="0" step="0.01" [value]="importProductDraft().package_width_cm ?? ''" (input)="updateImportProduct('package_width_cm', $any($event.target).value)" /></label><label>Altura (cm)<input type="number" min="0" step="0.01" [value]="importProductDraft().package_height_cm ?? ''" (input)="updateImportProduct('package_height_cm', $any($event.target).value)" /></label><label class="notes-field">Descrição<textarea rows="2" [value]="importProductDraft().description" (input)="updateImportProduct('description', $any($event.target).value)"></textarea></label></div>@if (importProductError()) { <p class="purchase-error" role="alert">{{ importProductError() }}</p> }<div class="purchase-form-actions"><span class="muted">Estoque inicial zero · sem movimentação.</span><button type="button" class="primary" [disabled]="savingImportProduct() || !canSaveImportProduct()" (click)="saveImportProduct()">{{ savingImportProduct() ? 'Salvando…' : 'Criar e vincular à linha' }}</button></div></section></div>
     }
 
     @if (showNew()) {
@@ -131,6 +147,7 @@ export class PurchasesPage implements OnInit {
   private readonly fb = inject(FormBuilder);
   readonly purchases = signal<Purchase[]>([]);
   canManagePurchases() { return canManagePurchases(this.auth.user()?.role); }
+  canManageCatalog() { return canManageCatalog(this.auth.user()?.role); }
   canAdjustStock() { return canAdjustStock(this.auth.user()?.role); }
   canReadCosts() { return canReadCosts(this.auth.user()?.role); }
   readonly products = signal<Product[]>([]);
@@ -150,10 +167,19 @@ export class PurchasesPage implements OnInit {
   readonly itemCostDrafts = signal<Record<string, { base_unit_cost: number; freight_amount: number; tax_amount: number; discount_amount: number }>>({});
   readonly itemCostValidity = signal<Record<string, boolean>>({});
   readonly importMoneyValidity = signal<Record<string, boolean>>({});
+  readonly importProductSearch = signal<Record<number, string>>({});
+  readonly importProductResults = signal<Record<number, Product[]>>({});
+  private readonly importSearchRevision = signal<Record<number, number>>({});
+  readonly importProductModal = signal(false);
+  readonly importProductLine = signal<number | null>(null);
+  readonly savingImportProduct = signal(false);
+  readonly importProductError = signal('');
+  readonly importProductDraft = signal({ sku: '', stock_type: 'product' as 'product' | 'warehouse', name: '', description: '', sale_price: 0, cost_price: 0, minimum_stock: 0, brand: '', manufacturer: '', manufacturer_part_number: '', barcode: '', category: '', item_condition: 'new' as 'new' | 'used' | 'refurbished', warranty_days: null as number | null, origin_country: '', weight_g: null as number | null, package_length_cm: null as number | null, package_width_cm: null as number | null, package_height_cm: null as number | null });
+  private readonly importId = signal<string | null>(null);
   readonly selectedFiles = signal<File[]>([]);
   readonly importReview = signal<any | null>(null);
   readonly importProfiles = signal<Array<{ profile_id: string; name: string; kind: string; version: number }>>([]);
-  readonly importDraft = signal<{ supplier: string; orderNumber: string; documentDate: string; total: number | null; shipping: number | null; discount: number | null; tax: number | null; items: Array<{ description: string; sku: string; quantity: number; unit_cost: number; confidence: number }> }>({ supplier: '', orderNumber: '', documentDate: '', total: null, shipping: null, discount: null, tax: null, items: [] });
+  readonly importDraft = signal<{ supplier: string; orderNumber: string; documentDate: string; total: number | null; shipping: number | null; discount: number | null; tax: number | null; items: Array<{ description: string; sku: string; quantity: number; unit_cost: number; confidence: number; product_id: string | null; stock_controlled: boolean; line_total: number; discount_amount: number }> }>({ supplier: '', orderNumber: '', documentDate: '', total: null, shipping: null, discount: null, tax: null, items: [] });
   readonly importFile = signal<File | null>(null);
   readonly importLoading = signal(false);
   readonly creatingImport = signal(false);
@@ -214,6 +240,8 @@ export class PurchasesPage implements OnInit {
   }
   private applyImportReview(review: any) {
     this.importMoneyValidity.set({});
+    this.importId.set(crypto.randomUUID());
+    this.importProductSearch.set({}); this.importProductResults.set({}); this.importSearchRevision.set({});
     this.importReview.set(review);
     this.importDraft.set({
       supplier: String(review.fields?.supplier?.value || ''),
@@ -224,8 +252,8 @@ export class PurchasesPage implements OnInit {
       discount: review.fields?.discount?.value == null ? null : Number(review.fields.discount.value),
       tax: review.fields?.tax?.value == null ? null : Number(review.fields.tax.value),
       items: (review.items || []).map((item: any) => ({
-        description: String(item.description || ''), sku: String(item.sku || ''),
-        quantity: Number(item.quantity ?? 0), unit_cost: Number(item.unit_cost ?? 0),
+        description: String(item.description || ''), sku: String(item.sku || ''), product_id: null, stock_controlled: true,
+        quantity: Number(item.quantity ?? 0), unit_cost: Number(item.unit_cost ?? 0), line_total: Number(item.line_total ?? Number(item.quantity ?? 0) * Number(item.unit_cost ?? 0)), discount_amount: Number(item.discount_amount ?? 0),
         confidence: Number(item.confidence ?? 0),
       })),
     });
@@ -241,10 +269,20 @@ export class PurchasesPage implements OnInit {
   }
   updateImportField(field: 'supplier' | 'orderNumber' | 'documentDate', value: string) { this.importDraft.update((draft) => ({ ...draft, [field]: value })); }
   updateImportNumber(field: 'total' | 'shipping' | 'discount' | 'tax', value: number | null) { this.importDraft.update((draft) => ({ ...draft, [field]: value })); }
-  updateImportItem(index: number, field: 'description' | 'sku' | 'quantity' | 'unit_cost', value: string | number | null) {
-    this.importDraft.update((draft) => ({ ...draft, items: draft.items.map((item, i) => i !== index ? item : ({ ...item, [field]: field === 'description' || field === 'sku' ? value : field === 'quantity' ? Number(value) : value })) }));
+  updateImportItem(index: number, field: 'description' | 'sku' | 'quantity' | 'unit_cost' | 'discount_amount', value: string | number | null) {
+    this.importDraft.update((draft) => ({ ...draft, items: draft.items.map((item, i) => { if (i !== index) return item; const updated = { ...item, [field]: field === 'description' || field === 'sku' ? value : Number(value ?? 0) }; if (field === 'quantity' || field === 'unit_cost' || field === 'discount_amount') updated.line_total = Math.max(0, Number(updated.quantity) * Number(updated.unit_cost) - Number(updated.discount_amount)); return updated; }) }));
   }
   setImportMoneyValidity(key: string, invalid: boolean) { this.importMoneyValidity.update((values) => ({ ...values, [key]: invalid })); }
+  searchImportProducts(index: number, value: string) { this.importProductSearch.update((rows) => ({ ...rows, [index]: value })); const revision = (this.importSearchRevision()[index] || 0) + 1; this.importSearchRevision.update((rows) => ({ ...rows, [index]: revision })); if (!value.trim()) { this.importProductResults.update((rows) => ({ ...rows, [index]: [] })); return; } this.api.products(value.trim(), false).subscribe({ next: (products) => { if (this.importSearchRevision()[index] === revision) this.importProductResults.update((rows) => ({ ...rows, [index]: products.filter((product) => product.stock_type === 'product' || product.stock_type === 'warehouse') })); }, error: () => { if (this.importSearchRevision()[index] === revision) this.importProductResults.update((rows) => ({ ...rows, [index]: [] })); } }); }
+  selectedImportProduct(id: string | null) { return id ? this.products().find((product) => product.id === id) || Object.values(this.importProductResults()).flat().find((product) => product.id === id) || null : null; }
+  selectImportedProduct(index: number, product: Product) { this.importDraft.update((draft) => ({ ...draft, items: draft.items.map((item, i) => i === index ? { ...item, product_id: product.id, stock_controlled: true, sku: item.sku || product.sku } : item) })); this.products.update((items) => items.some((entry) => entry.id === product.id) ? items : [...items, product]); this.importProductSearch.update((rows) => ({ ...rows, [index]: '' })); this.importProductResults.update((rows) => ({ ...rows, [index]: [] })); }
+  setImportStockControlled(index: number, value: boolean) { this.importDraft.update((draft) => ({ ...draft, items: draft.items.map((item, i) => i === index ? { ...item, stock_controlled: value, product_id: value ? item.product_id : null } : item) })); }
+  clearImportedProduct(index: number) { this.importDraft.update((draft) => ({ ...draft, items: draft.items.map((item, i) => i === index ? { ...item, product_id: null } : item) })); }
+  openImportProductCreate(index: number) { const item = this.importDraft().items[index]; this.importProductLine.set(index); this.importProductError.set(''); this.importProductDraft.set({ sku: item.sku, stock_type: 'product', name: item.description, description: item.description, sale_price: 0, cost_price: 0, minimum_stock: 0, brand: '', manufacturer: '', manufacturer_part_number: '', barcode: '', category: '', item_condition: 'new', warranty_days: null, origin_country: '', weight_g: null, package_length_cm: null, package_width_cm: null, package_height_cm: null }); this.importProductModal.set(true); }
+  closeImportProductCreate() { if (!this.savingImportProduct()) this.importProductModal.set(false); }
+  updateImportProduct(field: string, value: string | number | null) { this.importProductDraft.update((draft) => { const numeric = ['sale_price', 'cost_price', 'minimum_stock', 'warranty_days', 'weight_g', 'package_length_cm', 'package_width_cm', 'package_height_cm'].includes(field); return { ...draft, [field]: numeric ? value === '' || value == null ? null : Number(value) : value } as typeof draft; }); }
+  canSaveImportProduct() { const value = this.importProductDraft(); return value.sku.trim().length > 0 && value.sku.trim().length <= 80 && value.name.trim().length >= 2 && value.name.trim().length <= 200; }
+  saveImportProduct() { if (!this.canSaveImportProduct() || this.savingImportProduct()) return; const index = this.importProductLine(), draft = this.importProductDraft(); if (index == null) return; this.savingImportProduct.set(true); this.importProductError.set(''); this.api.createProduct({ ...draft, sku: draft.sku.trim(), name: draft.name.trim(), current_stock: 0, sale_price: draft.sale_price ?? 0, cost_price: draft.cost_price ?? 0, minimum_stock: draft.minimum_stock ?? 0, attributes: {}, fitments: [] }).pipe(finalize(() => this.savingImportProduct.set(false))).subscribe({ next: (product) => { this.selectImportedProduct(index, product); this.importProductModal.set(false); }, error: (err) => this.importProductError.set(err?.error?.detail || 'Não foi possível cadastrar o produto. Confira SKU e campos obrigatórios.') }); }
   private importNotes(review: any, draft: { orderNumber: string; documentDate: string; total: number | null; shipping: number | null; discount: number | null; tax: number | null }): string {
     const metadata = [
       `Perfil: ${review.profile.name}`,
@@ -271,31 +309,32 @@ export class PurchasesPage implements OnInit {
   }
   canConfirmImport() {
     const items = this.importDraft().items;
-    return !Object.values(this.importMoneyValidity()).some(Boolean) && items.length > 0 && items.every((item) => item.description.trim().length >= 2 && Number.isFinite(item.quantity) && item.quantity > 0 && Number.isFinite(item.unit_cost) && item.unit_cost >= 0);
+    return !Object.values(this.importMoneyValidity()).some(Boolean) && items.length > 0 && items.every((item) => (!item.stock_controlled || !!item.product_id) && item.description.trim().length >= 2 && Number.isFinite(item.quantity) && item.quantity > 0 && Number.isFinite(item.unit_cost) && item.unit_cost >= 0 && Number.isFinite(item.discount_amount) && item.discount_amount >= 0 && item.discount_amount <= item.quantity * item.unit_cost);
   }
-  addImportLine() { this.importDraft.update((draft) => ({ ...draft, items: [...draft.items, { description: '', sku: '', quantity: 1, unit_cost: 0, confidence: 0 }] })); }
+  addImportLine() { this.importDraft.update((draft) => ({ ...draft, items: [...draft.items, { description: '', sku: '', quantity: 1, unit_cost: 0, confidence: 0, product_id: null, stock_controlled: true, line_total: 0, discount_amount: 0 }] })); }
   removeImportLine(index: number) { this.importDraft.update((draft) => ({ ...draft, items: draft.items.filter((_, i) => i !== index) })); this.importMoneyValidity.update((values) => Object.fromEntries(Object.entries(values).filter(([key]) => !key.startsWith('item-')))); }
-  closeImportReview() { if (this.creatingImport()) return; this.importReview.set(null); this.importFile.set(null); this.importError.set(''); }
+  closeImportReview() { if (this.creatingImport()) return; this.importReview.set(null); this.importFile.set(null); this.importId.set(null); this.importError.set(''); this.importProductModal.set(false); }
   createImportedPurchase() {
-    const review = this.importReview(), file = this.importFile(), draft = this.importDraft();
-    if (!review || !file || !this.canConfirmImport() || this.creatingImport()) return;
+    const review = this.importReview(), file = this.importFile(), draft = this.importDraft(), importId = this.importId();
+    if (!review || !file || !importId || !this.canConfirmImport() || this.creatingImport()) return;
     this.creatingImport.set(true); this.importError.set('');
     const payload = {
-      purchase_type: 'parts', supplier_name: draft.supplier.trim() || null,
+      purchase_type: 'parts', source_import_id: importId, supplier_name: draft.supplier.trim() || null,
       notes: this.importNotes(review, draft),
       items: draft.items.map((item, index) => ({
         sku: item.sku.trim(), description: item.description.trim(), quantity: item.quantity,
-        unit_cost: item.unit_cost, product_id: null,
+        unit_cost: item.unit_cost, product_id: item.product_id,
         freight_amount: this.allocateImportTotal(draft.shipping, draft.items, index),
         tax_amount: this.allocateImportTotal(draft.tax, draft.items, index),
-        discount_amount: this.allocateImportTotal(draft.discount, draft.items, index),
+        discount_amount: item.discount_amount + this.allocateImportTotal(draft.discount, draft.items, index),
       })),
     };
     this.api.createPurchase(payload).pipe(finalize(() => this.creatingImport.set(false))).subscribe({
       next: (purchase) => {
         this.importReview.set(null); this.importFile.set(null);
         this.purchases.update((list) => [purchase, ...list]);
-        this.api.uploadPurchaseAttachments(purchase.id, [file]).subscribe({
+        const alreadyAttached = purchase.attachments.some((attachment) => attachment.filename === file.name && attachment.size_bytes === file.size);
+        if (!alreadyAttached) this.api.uploadPurchaseAttachments(purchase.id, [file]).subscribe({
           next: (updated) => this.setPurchase(updated),
           error: () => this.error.set('Compra criada, mas o anexo não foi enviado. Anexe o documento na compra.'),
         });

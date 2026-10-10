@@ -131,7 +131,11 @@ def list_products(
     query = select(Product).order_by(Product.name).limit(limit)
     if search:
         query = query.where(
-            or_(Product.name.ilike(f"%{search}%"), Product.sku.ilike(f"%{search}%"))
+            or_(
+                Product.name.ilike(f"%{search}%"),
+                Product.sku.ilike(f"%{search}%"),
+                Product.barcode.ilike(f"%{search}%"),
+            )
         )
     if stock_type:
         query = query.where(Product.stock_type == stock_type)

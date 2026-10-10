@@ -418,6 +418,7 @@ class PurchaseCreate(BaseModel):
     supplier_name: str | None = Field(default=None, max_length=200)
     needed_by: datetime | None = None
     notes: str | None = Field(default=None, max_length=4000)
+    source_import_id: str | None = Field(default=None, min_length=36, max_length=36)
     items: list[PurchaseItemCreate] = Field(default_factory=list, max_length=100)
 
     @model_validator(mode="after")

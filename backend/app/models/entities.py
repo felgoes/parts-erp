@@ -318,6 +318,7 @@ class PurchaseCase(TimestampMixin, Base):
     needed_by: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     ordered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     notes: Mapped[str | None] = mapped_column(Text)
+    source_import_id: Mapped[str | None] = mapped_column(String(36), unique=True, index=True)
     items: Mapped[list["PurchaseItem"]] = relationship(
         cascade="all, delete-orphan", back_populates="purchase", lazy="selectin"
     )

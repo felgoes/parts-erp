@@ -174,7 +174,7 @@
   .purchase-form-meta { grid-template-columns: 1fr; }
   .purchase-line-form { grid-template-columns: 1fr 1fr; gap: 9px; }
   .purchase-line-form > label:first-child, .purchase-line-form .line-description { grid-column: 1 / -1; }
-  .item-cost-editor { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .item-cost-editor { grid-template-columns: 1fr; }
   .item-cost-editor button { grid-column: 1 / -1; }
   .purchase-form-actions { align-items: stretch; flex-direction: column; }
   .purchase-form-actions .primary { width: 100%; }
@@ -215,3 +215,10 @@
 .purchase-detail.costs-pending .item-cost-breakdown,
 .purchase-detail.costs-pending .item-cost-editor { display: none; }
 .purchase-detail.costs-pending .item-title::after { align-self: center; color: var(--muted); font-size: 12px; font-weight: 700; content: 'Aguardando cotação'; }
+
+.purchase-modal .money-field { color: #344a3b; font-size: 12px; }
+.purchase-modal .money-field input[appMoneyInput] { min-width: 0; min-height: 46px; padding-inline: 12px; border-color: #b8c9b9; font-size: 15px; font-variant-numeric: tabular-nums; font-weight: 700; }
+.purchase-modal .money-field input[appMoneyInput]:focus-visible { border-color: var(--forest); outline: 3px solid #557a4b33; outline-offset: 1px; }
+.purchase-line-form > label.money-field { grid-column: span 3; }
+@media (min-width: 641px) and (max-width: 1100px) { .item-cost-editor { grid-template-columns: repeat(2, minmax(0, 1fr)); } .item-cost-editor button { grid-column: 1 / -1; justify-self: start; } }
+@media (max-width: 640px) { .purchase-line-form > label.money-field { grid-column: 1 / -1; } .item-cost-editor .money-field input[appMoneyInput] { min-height: 48px; padding-inline: 10px; font-size: 14px; } }

@@ -18,7 +18,7 @@
 
 ## Required delivery order
 
-[historical infra reference removed]
+- For every completed application change, build and run relevant checks locally, review the changed flow, commit and push the exact commit, then deploy it to PRD through the official wrapper documented in the local private infrastructure setup. The wrapper invokes the app's deployment implementation. The deploy must preserve the Cloudflare Tunnel connector during origin updates and verify local API/Nginx health plus external HTTPS smoke checks for both the public site and ERP before reporting success. A 1033/530, timeout, wrong HTTP status, or unexpected page content means delivery is incomplete; investigate and recover, then repeat all checks. This is the required end of development, not optional. If a prerequisite, deploy, or health check fails, stop and report the blocker; do not claim delivery is complete.
 - Before committing or pushing any UI change, manually validate the affected flow in the local HML browser at localhost:4200 with the dedicated QA account from the ignored `.env.qa.local` and the local API. Use the standardized local helper: start `python3 scripts/qa-login-helper.py`, open `http://localhost:4200/__qa-login`, and submit the embedded real ERP login form through the browser. The helper reads credentials locally and prefills the real form without exposing them to browser automation; Codex must submit the form and inspect the authenticated HML page itself. Do not ask the user to enter credentials. Never use production accounts or data for QA, and never echo QA credentials into chat, logs, screenshots, source, or commits. If local HML, the helper, or the QA account is unavailable, stop before push/deploy and report the blocker. Run local HML services natively in WSL using `backend/.venv`; do not use Docker.
 - Do not deploy a commit that differs from `origin/main`. Preserve production data and configuration.
 
@@ -30,11 +30,11 @@
 
 - Frontend production build: `cd frontend && npm ci && npm run build -- --configuration production`
 - Backend syntax check: `cd backend && python -m compileall -q app`
-[historical infra reference removed]
+- Deploy only through the official wrapper specified by the local private infrastructure setup. It validates the private production connection and invokes the app implementation, which runs migrations, restarts application services, and checks health.
 
 ## Production server connection
 
-[historical infra reference removed]
+- Production SSH host, user, port, application path, and identity key are private project configuration. Keep them outside Git.
 - Never add internal addresses, SSH users, passwords, private-key paths, tokens, or connection commands with concrete values to tracked files.
 - Use the private project configuration to run a read-only batch-mode SSH connectivity check before deploy, then use the official deploy script.
 - If the connection is unavailable, report the blocker and request the current private project configuration; do not guess hosts or copy values into the repository.
@@ -51,8 +51,8 @@
 ## Shared project steering
 
 - This file is the shared operating standard for the Parts ERP across the public app repository and private infrastructure repository. The private repository may add infrastructure-specific rules, but must not contradict these shared security and development rules.
-[historical infra reference removed]
-[historical infra reference removed]
-[historical infra reference removed]
-[historical infra reference removed]
+- Use WSL Ubuntu on every development PC. Keep the public app checkout at `~/workspace/garagista/parts-erp-main`. The private infrastructure checkout location is machine-local configuration and must not be published. Follow `docs/development-setup.md` and its pinned runtimes; run `scripts/setup-local.sh` on each PC.
+- Keep all real credentials, connection metadata, SSH private keys, production data, and backups outside Git. Never place them in the public app repository. Local app environment values belong in ignored `backend/.env`; production connection values belong in the machine-local private configuration directory with restrictive permissions.
+- Connection checks and deploy procedures are defined in the local private infrastructure setup. Run its read-only connectivity check before the official wrapper. The public app repository contains an internal deployment implementation; do not bypass the private wrapper for routine deploys.
+- Keep private production connection settings local to each PC. Use individually managed SSH credentials and verified `known_hosts`; never copy private keys between PCs or disable strict host-key checking.
 - Before changing public files, inspect the diff and scan newly added content for secrets. A secret accidentally committed must be revoked at its issuer; deleting it from the latest revision does not remove it from Git history.

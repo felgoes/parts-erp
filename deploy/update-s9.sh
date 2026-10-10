@@ -2,11 +2,11 @@
 set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 for name in S9_HOST S9_USER S9_PORT S9_APP_DIR S9_IDENTITY_FILE; do
-[historical infra reference removed]
+  [[ -n "${!name:-}" && "${!name}" != *CHANGE_ME* ]] || { echo "Configuração de conexão ausente. Consulte as instruções privadas locais." >&2; exit 2; }
 done
-[historical infra reference removed]
-[historical infra reference removed]
-[historical infra reference removed]
+[[ "$S9_PORT" =~ ^[0-9]{1,5}$ ]] && (( S9_PORT >= 1 && S9_PORT <= 65535 )) || { echo "Porta SSH inválida." >&2; exit 2; }
+[[ "$S9_APP_DIR" != /* && "$S9_APP_DIR" != *..* && "$S9_APP_DIR" =~ ^[A-Za-z0-9._/-]+$ ]] || { echo "O caminho remoto do app deve ser relativo e seguro." >&2; exit 2; }
+[[ -f "$S9_IDENTITY_FILE" && ! -L "$S9_IDENTITY_FILE" ]] || { echo "A identidade SSH está ausente ou inválida." >&2; exit 2; }
 chmod 600 "$S9_IDENTITY_FILE"
 SSH_OPTS=(-p "$S9_PORT" -o BatchMode=yes -o ConnectTimeout=10); SSH_OPTS+=(-i "$S9_IDENTITY_FILE" -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes); REMOTE="$S9_USER@$S9_HOST"
 ssh "${SSH_OPTS[@]}" "$REMOTE" true

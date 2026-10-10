@@ -1,6 +1,6 @@
 # Parts ERP
 
-[historical infra reference removed]
+Para preparar um ambiente consistente em outro PC e consultar o procedimento de deploy, siga [docs/development-setup.md](docs/development-setup.md).
 
 ERP web para uma loja de autopeças, com estoque, clientes, faturas de venda e sincronização de pedidos do Mercado Livre.
 

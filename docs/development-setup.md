@@ -1,9 +1,6 @@
 # Ambiente local reproduzível (WSL Ubuntu)
 
-[historical infra reference removed]
-
-[historical infra reference removed]
-[historical infra reference removed]
+Use WSL Ubuntu e mantenha o checkout público do app em `~/workspace/garagista/parts-erp-main`. O checkout privado de infraestrutura é configurado localmente em cada máquina; não publique seu nome ou caminho.
 
 Não use pasta sincronizada por OneDrive/Dropbox para checkouts, bancos ou backups. Não copie `.env`, bancos, backups, chaves SSH ou tokens entre máquinas.
 
@@ -23,9 +20,9 @@ O script valida as versões, cria `backend/.venv`, instala dependências Python 
 
 Inicie o frontend com `cd frontend && npm start`. Mantenha valores reais em `backend/.env`, ignorado pelo Git. Use credenciais locais independentes, nunca credenciais de produção. Para validar login e fluxos de UI no HML local, o Codex usa o perfil de QA definido localmente em `.env.qa.local` (ignorado pelo Git) e preenche o formulário de login por conta própria. Não compartilhe esses dados em chat, logs ou capturas de tela; nunca use uma conta de produção para QA.
 
-[historical infra reference removed]
+## Deploy em produção
 
-[historical infra reference removed]
+Siga as instruções disponíveis no checkout privado de infraestrutura configurado localmente para verificar a conexão e executar o wrapper oficial de deploy. Ao concluir uma mudança funcional do app, faça build e checks, commit e push antes do deploy. Confirme os health checks locais e externos do site e do ERP. Se conexão, deploy ou health check falhar, informe o bloqueio e não declare a entrega concluída. A configuração de conexão e as chaves ficam fora dos repositórios, em diretórios locais com permissões restritas.
 
 ## Verificação antes de compartilhar
 

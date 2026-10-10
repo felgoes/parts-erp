@@ -4,6 +4,8 @@
 
 ## Concluídas
 
+- [x] [P4] CONCLUÍDO — Generalizadas as instruções públicas e os registros OCR para omitir o identificador do checkout privado e dados do aparelho de produção; preservado o contrato do wrapper. Histórico Git anterior não foi reescrito. Spec: docs/specs/p4-generalizar-referencias-publicas-infra.md.
+
 - [x] [P3] CONCLUÍDO — Perfis de AliExpress e Alibaba ajustados às amostras; NF-e/DANFE enviada como Mercado Livre documentada como ambígua para manter seleção manual quando não há marca da plataforma. Testes de importação, compilação do backend e build de produção passaram; commit 9ed2b96 implantado em PRD em 09/10/2026 com smoke checks públicos HTTP 200. Spec: docs/specs/p3-reconhecimento-documentos-plataformas.md.
 
 - [x] [P2] CONCLUÍDO — Notas de atualização em português com histórico retroativo linkado a 24 commits do GitHub, data de commit separada de deploy confirmado, acesso pelo README e regra para atualizar após novas implantações. Spec: docs/specs/p2-release-notes-github.md.
@@ -12,7 +14,7 @@
 
 - [x] [P0] CONCLUÍDO — Recebimento parcial/total de materiais de despesas no almoxarifado, criação/vínculo de produtos, saldo e histórico auditável. Validado em HML; commit df975ea publicado e deploy/health checks públicos concluídos. Spec: docs/specs/p0-recebimento-estoque-compras.md.
 
-[historical infra reference removed]
+- [x] CONCLUÍDO — Criar importação de compras por OCR, mantendo o cadastro manual; extrair do documento os dados do fornecedor, itens, quantidades, valores, datas e outros campos disponíveis, sempre para revisão antes de salvar. Validado visualmente em HML, dependências/modelos conferidos no ambiente de produção e publicado em PRD.
 
 - [x] CONCLUÍDO — Adicionar a opção de manter a sessão ativa sem logout automático (“nunca deslogar”), com encerramento manual e revogação da sessão.
 

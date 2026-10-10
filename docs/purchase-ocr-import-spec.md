@@ -1,6 +1,6 @@
 # Especificação — importação de compras por documento
 
-[historical infra reference removed]
+**Status:** publicado em PRD após validação visual em HML e verificação das dependências OCR no ambiente de produção
 **Tarefa:** Parts ERP — importação de compras por OCR
 **Atualizado:** 2026-10-09
 
@@ -8,28 +8,28 @@
 
 Permitir iniciar uma compra a partir de um documento fiscal ou comercial, extraindo fornecedor, itens, quantidades e valores para uma etapa de conferência. A compra só é persistida após confirmação explícita. O cadastro manual atual continua disponível e sem dependência do OCR.
 
-[historical infra reference removed]
+## 2. Recomendação de tecnologia: OCR local, sem tarifa por documento
 
 ### Recomendação: Tesseract 5 + modelo português `tessdata_best`
 
-[historical infra reference removed]
+Para PDFs digitalizados e imagens, executar OCR localmente no runtime Android usado pela implantação com Tesseract 5.5.3 ARM64 e o modelo oficial português `por` de `tessdata_best`. Esse modelo foi melhor no pequeno benchmark feito no aparelho: reconheceu 44 de 45 trechos-chave normalizados, contra 43 de 45 do modelo `tessdata_fast`, ao custo de levar em média 2,4 s por página em vez de 1,0 s. O pico observado ficou abaixo de 61 MB de RAM para uma página. São documentos sintéticos, então os números comparam configurações, mas não demonstram acurácia em notas reais.
 
-[historical infra reference removed]
+Configuração inicial indicada: segmentação `--psm 6`, idioma `por`, `OMP_THREAD_LIMIT=2`, processamento assíncrono pela fila ARQ e apenas uma tarefa OCR simultânea. Em três imagens, dois threads foram mais rápidos que 1, 4 ou 8; não houve ganho com 4/8. Processar páginas sequencialmente evita picos desnecessários de memória. O modelo `tessdata_best` tem 7,8 MB; a variante `fast` tem 1,9 MB e pode ser selecionada se a carga real do runtime tornar o tempo mais importante que a pequena diferença observada.
 
-[historical infra reference removed]
+Não haverá cobrança por página nem envio dos documentos a terceiros. O custo é CPU, memória, armazenamento e bateria/energia do runtime móvel. Tesseract reconhece texto; não interpreta por si só a semântica das linhas. A extração de fornecedor, itens e valores precisa de parser próprio, validação aritmética e conferência humana. Nenhum valor OCR pode criar uma compra sem confirmação explícita.
 
 Para NF-e em XML, usar parser XML local, sem OCR. No teste sintético, o parser de referência em Python padrão leu 1.000 documentos de dois itens em aproximadamente 0,17 s (cerca de 5.900 documentos/s). Esse microbenchmark mede parsing estrutural, não valida todos os leiautes/esquemas reais da NF-e.
 
-[historical infra reference removed]
+### Registro da prova em runtime móvel — 09/10/2026
 
-[historical infra reference removed]
+- A prova foi executada por SSH em modo somente leitura em um host Android ARM64. O modelo do aparelho, identificadores e capacidade de memória foram omitidos desta documentação pública.
 - Tesseract 5.5.3 foi instalado temporariamente no Termux e removido ao final; o teste não reiniciou nem alterou API, worker ou Nginx.
 - Corpus local gerado para o teste: sete imagens sintéticas de DANFE, com texto limpo, inclinação, desfoque, JPEG, baixa resolução e duas versões pré-processadas. Não havia amostras fiscais/PDF apropriadas nos arquivos do repositório.
 - `tessdata_fast` + PSM 6: 61/63 trechos esperados encontrados nas sete imagens; mediana 1,21 s e máximo 1,37 s por imagem. PSM 11 encontrou 56/63 e não foi mais rápido.
 - Comparação pareada em cinco imagens: `tessdata_best` encontrou 44/45 trechos-chave e levou 2,14–2,56 s por imagem (média ~2,40 s; pico observado ~60,7 MiB); `tessdata_fast` encontrou 43/45 e levou 0,88–1,11 s (média ~1,03 s; pico observado ~52,4 MiB).
 - Um teste apontou erros que não podem passar sem revisão: `42,75` foi lido como `42,15` e `171,00` apareceu como `17/1,00`. Soma divergente, campos numéricos com baixa confiança ou formatos inválidos precisam destacar/rejeitar a prévia e solicitar correção.
 - A tentativa de instalar Poppler para testar PDFs digitalizados falhou porque o repositório Termux configurado retornou HTTP 404 para uma dependência. Portanto, a etapa de renderização PDF ainda precisa de prova técnica; imagem OCR foi testada, PDF não.
-[historical infra reference removed]
+- Depois do teste, foram removidos Tesseract, dependências exclusivas instaladas para a prova e todos os arquivos sintéticos/modelos temporários do runtime móvel. API e web responderam HTTP 200 após a limpeza.
 
 Os modelos oficiais oferecem uma troca explícita entre velocidade e qualidade: a documentação do Tesseract descreve `tessdata_best` como mais lento e mais preciso e `tessdata_fast` como menor/mais rápido. A decisão por `best` é provisória e deve ser confirmada com documentos anonimizados reais. Fontes: [Tesseract — arquivos de dados dos modelos](https://tesseract-ocr.github.io/tessdoc/Data-Files) e [Tesseract — tessdata_fast](https://github.com/tesseract-ocr/tessdata_fast).
 
@@ -37,7 +37,7 @@ Os modelos oficiais oferecem uma troca explícita entre velocidade e qualidade: 
 
 - Os resultados acima usam imagens sintéticas feitas com fontes legíveis. Não generalizar o percentual para notas reais, fotos inclinadas, impressões térmicas, tabelas densas, baixa luz ou documentos manuscritos.
 - O OCR retorna texto/caixas e confiança, não a estrutura fiscal confiável. Linhas e valores devem passar por parser, validações e revisão.
-[historical infra reference removed]
+- A etapa PDF não foi validada. Antes da implementação da importação de PDF, testar texto nativo e renderização de PDF digitalizado no Termux sem atualizar ou degradar pacotes críticos do runtime móvel.
 - A primeira rodada com documentos reais deve usar ao menos 20 amostras anonimizadas com verdade de referência. Se a acurácia observada for baixa, mostrar só rascunho parcial; não ampliar automaticamente a extração.
 
 ## 3. Escopo da primeira versão
@@ -145,12 +145,12 @@ O backend atual tem compra, itens, cotações e anexos, mas não tem objeto pró
 
 ## 10. Plano de entrega
 
-[historical infra reference removed]
+1. Prova técnica: validar no runtime móvel o pacote Termux/modelo, PDF texto e escaneado, limite de páginas, latência e memória com amostras anonimizadas; se o repositório não fornecer dependência necessária, interromper sem atualizar pacotes críticos.
 2. Implementar parser de NF-e XML, entidade/estados de importação e deduplicação, sem depender de OCR para NF-e XML.
 3. Integrar o worker ao Tesseract local, testar extração de PDF no Termux e definir a renderização segura de páginas.
 4. Implementar tela de envio/revisão e confirmação, mantendo formulário manual.
 5. Completar cobertura automatizada e validar visualmente no HML local com usuário QA em desktop/mobile.
-[historical infra reference removed]
+6. Revisar segurança, consumo do runtime móvel e logs; seguir o processo de release do projeto somente após aceite funcional.
 
 ## 11. Decisões recomendadas para aprovação de produto
 
@@ -198,4 +198,4 @@ O processamento atual é local, limitado a 15 MB e 10 páginas PDF. Usa XML estr
 
 A implementação ainda não cobre todas as garantias sugeridas acima: metadados fiscais e data/número do documento ficam nas observações da compra, não em uma entidade fiscal própria; a compra e o anexo são gravados em duas requisições; não há deduplicação fiscal nem chave idempotente; o parser de itens é conservador e genérico, não cobre todas as variações de recibos; e não foi validado com 20 documentos reais anonimizados. Os perfis incluídos identificam marketplaces e ajustam rótulos, mas não são modelos treinados nem garantem reconhecimento de qualquer leiaute.
 
-[historical infra reference removed]
+Validação das dependências no runtime móvel em 09/10/2026: após atualizar apenas os índices do gerenciador de pacotes, a simulação mostrou 13 novos pacotes e nenhuma atualização/remoção; a instalação de Tesseract 5.5.3 e Poppler 26.02.0 concluiu sem parar API, Nginx ou Tunnel. Os modelos oficiais tessdata_best por e eng foram instalados na pasta tessdata do Termux e conferidos com SHA-256: por 711de9dbb8052067bd42f16b9119967f30bada80d57e2ef24f65d09f531adb04; eng 8280aed0782fe27257a68ea10fe7ef324ca0f8d85bd2fd145d1c2b560bcb66ba. Em fixtures sintéticas, PDF pesquisável, PDF escaneado, PNG e JPG passaram no runtime móvel; cada página de foto/PDF escaneado levou aproximadamente 1,0–1,04 s com por+eng e PSM 6. Não são medições de acurácia real. O deploy ainda não foi executado; o script agora exige binários e os dois modelos antes de parar qualquer serviço. A publicação depende de build final, push do commit e sucesso das verificações do wrapper oficial.

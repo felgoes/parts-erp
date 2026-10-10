@@ -1,7 +1,8 @@
 # Notas de atualização — Parts ERP
 
-## 10 de outubro de 2026 — entrega confirmada em PRD
+## 10 de outubro de 2026 — entregas confirmadas em PRD
 
+- [Vínculo de produtos nos itens importados · 0ec83fe](https://github.com/felgoes/parts-erp/commit/0ec83fe): associe cada linha importada a um produto existente ou cadastre uma nova peça; descontos e valores seguem na compra revisada.
 - [Custos por item nas compras · 0987cd8](https://github.com/felgoes/parts-erp/commit/0987cd8): campos monetários mais legíveis nos modais de compra, com valores completos e edição em coluna em telas estreitas.
 
 A versão web é identificada pelo commit implantado. Cada entrada aponta para os commits correspondentes no GitHub. O histórico anterior foi reconstruído pelos commits disponíveis; as datas abaixo são datas dos commits e não afirmam uma data de publicação em produção quando ela não foi registrada.

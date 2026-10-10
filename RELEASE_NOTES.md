@@ -2,6 +2,8 @@
 
 ## 10 de outubro de 2026 — entregas confirmadas em PRD
 
+- [HML local em um comando · a7812dc](https://github.com/felgoes/parts-erp/commit/a7812dc): rotina de desenvolvimento que sobe API, ERP e login de QA com um comando e encerra tudo depois, sem tocar em serviços de outras sessões.
+
 - [Digitação de valores em reais · 1ea5591](https://github.com/felgoes/parts-erp/commit/1ea5591): digite, corrija e cole valores em reais sem o cursor pular; a máscara pt-BR é aplicada ao sair do campo e valores com mais de duas casas decimais ficam sinalizados para correção.
 
 - [Vínculo de produtos nos itens importados · 0ec83fe](https://github.com/felgoes/parts-erp/commit/0ec83fe): associe cada linha importada a um produto existente ou cadastre uma nova peça; descontos e valores seguem na compra revisada.

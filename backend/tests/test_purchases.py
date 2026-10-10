@@ -57,7 +57,6 @@ def _ordered_purchase(db: Session, user: SimpleNamespace) -> PurchaseOut:
                     sku="LR174890",
                     description="Kit membrana Tiggo",
                     quantity=5,
-                    unit_cost=Decimal("24.90"),
                 )
             ],
         ),
@@ -90,7 +89,6 @@ def test_negotiation_receiving_links_product_and_updates_stock_once(db: Session)
                     sku="LR174890",
                     description="Kit membrana Tiggo",
                     quantity=5,
-                    unit_cost=Decimal("24.90"),
                 )
             ],
         ),
@@ -219,7 +217,7 @@ def test_draft_purchase_is_deleted_with_immutable_audit_record(db: Session) -> N
             supplier_name="Fornecedor Rascunho",
             items=[
                 PurchaseItemCreate(
-                    sku="P-9", description="Peça em rascunho", quantity=2, unit_cost=Decimal("10")
+                    sku="P-9", description="Peça em rascunho", quantity=2
                 )
             ],
         ),
@@ -385,7 +383,7 @@ def test_draft_item_without_sku_is_accepted_until_the_order(db: Session) -> None
     user = _actor()
     purchase = create_purchase(
         PurchaseCreate(
-            items=[PurchaseItemCreate(description="Peça ainda sem código", quantity=1, unit_cost=5)]
+            items=[PurchaseItemCreate(description="Peça ainda sem código", quantity=1)]
         ),
         db,
         user,
@@ -417,14 +415,14 @@ def test_draft_lines_can_be_added_and_removed_with_quotes_following(db: Session)
     user = _actor()
     purchase = create_purchase(
         PurchaseCreate(
-            items=[PurchaseItemCreate(sku="A", description="Peça A", quantity=1, unit_cost=10)]
+            items=[PurchaseItemCreate(sku="A", description="Peça A", quantity=1)]
         ),
         db,
         user,
     )
     purchase = add_purchase_item(
         purchase.id,
-        PurchaseItemCreate(sku="B", description="Peça B", quantity=2, unit_cost=3),
+        PurchaseItemCreate(sku="B", description="Peça B", quantity=2),
         db,
         user,
     )
@@ -457,14 +455,16 @@ def test_draft_header_keeps_supplier_defaults_document_fields_and_total(db: Sess
     purchase = create_purchase(
         PurchaseCreate(
             supplier_id=supplier.id,
-            items=[PurchaseItemCreate(sku="X", description="Peça X", quantity=2, unit_cost=Decimal("12.50"))],
+            items=[PurchaseItemCreate(sku="X", description="Peça X", quantity=2)],
         ),
         db,
         user,
     )
     assert purchase.supplier_name == "Fornecedor Padrão"
     assert purchase.needed_by is not None
-    assert purchase.total_amount == Decimal("25.00")
+    # P9: a compra nasce só com peças e quantidades — nenhum valor antes da cotação.
+    assert purchase.total_amount == Decimal("0.00")
+    assert purchase.items[0].unit_cost == Decimal("0.00")
 
     purchase = update_purchase(
         purchase.id,
@@ -481,6 +481,20 @@ def test_draft_header_keeps_supplier_defaults_document_fields_and_total(db: Sess
     assert purchase.document_date is not None and purchase.document_date.date().isoformat() == "2026-10-01"
     assert purchase.notes == "Conferir na entrega"
 
+    line = purchase.items[0]
+    purchase = add_quote(
+        purchase.id,
+        PurchaseQuoteCreate(
+            supplier_name="Fornecedor Padrão",
+            total=25,
+            item_costs={line.id: Decimal("12.50")},
+        ),
+        db,
+        user,
+    )
+    purchase = select_quote(purchase.id, purchase.quotes[0].id, db, user)
+    assert purchase.total_amount == Decimal("25.00")
+
 
 def test_supplier_creation_reuses_the_existing_record(db: Session) -> None:
     user = _actor()
@@ -488,3 +502,191 @@ def test_supplier_creation_reuses_the_existing_record(db: Session) -> None:
     again = create_supplier(SupplierCreate(name="Loja Única"), db, user)
 
     assert first.id == again.id
+
+
+def test_parts_purchase_rejects_values_outside_the_quote(db: Session) -> None:
+    """P9: a compra de peças nasce sem valor; quem informa custo é a cotação."""
+    user = _actor()
+    with pytest.raises(HTTPException) as error:
+        create_purchase(
+            PurchaseCreate(
+                items=[
+                    PurchaseItemCreate(
+                        sku="A", description="Peça A", quantity=1, unit_cost=Decimal("10")
+                    )
+                ]
+            ),
+            db,
+            user,
+        )
+    assert error.value.status_code == 422
+
+
+def test_document_import_is_the_only_parts_purchase_born_with_values(db: Session) -> None:
+    """P9, decisão 2A: o documento importado traz os valores do papel e mantém a idempotência."""
+    user = _actor()
+    payload = PurchaseCreate(
+        source_import_id="11111111-2222-3333-4444-555555555555",
+        notes="Importação de documento. Total no documento: 100.00",
+        items=[
+            PurchaseItemCreate(
+                sku="DOC-1",
+                description="Peça do recibo",
+                quantity=2,
+                unit_cost=Decimal("50"),
+                freight_amount=Decimal("10"),
+            )
+        ],
+    )
+    purchase = create_purchase(payload, db, user)
+    item = purchase.items[0]
+
+    assert item.base_unit_cost == Decimal("50.00")
+    assert item.freight_amount == Decimal("10.00")
+    assert purchase.total_amount == Decimal("100.00")
+
+    again = create_purchase(payload, db, user)
+    assert again.id == purchase.id
+
+
+def test_item_update_keeps_costs_pending_without_a_quote(db: Session) -> None:
+    """P9: editar a peça muda descrição, SKU, unidade e quantidade — nunca o custo."""
+    user = _actor()
+    purchase = create_purchase(
+        PurchaseCreate(items=[PurchaseItemCreate(sku="A", description="Peça A", quantity=2)]),
+        db,
+        user,
+    )
+    line = purchase.items[0]
+    purchase = update_purchase_item(
+        purchase.id,
+        line.id,
+        PurchaseItemUpdate(
+            description="Peça A revisada", quantity=3, base_unit_cost=Decimal("9")
+        ),
+        db,
+        user,
+    )
+    assert purchase.items[0].quantity == Decimal("3.000")
+    assert purchase.items[0].description == "Peça A revisada"
+    assert purchase.items[0].base_unit_cost == Decimal("0.00")
+    assert purchase.items[0].unit_cost == Decimal("0.00")
+    assert purchase.total_amount == Decimal("0.00")
+
+
+def test_quote_total_must_close_with_the_items(db: Session) -> None:
+    """P11: a soma dos itens tem de fechar com o total informado da proposta."""
+    user = _actor()
+    purchase = create_purchase(
+        PurchaseCreate(items=[PurchaseItemCreate(sku="A", description="Peça A", quantity=2)]),
+        db,
+        user,
+    )
+    line = purchase.items[0]
+    with pytest.raises(HTTPException) as error:
+        add_quote(
+            purchase.id,
+            PurchaseQuoteCreate(
+                supplier_name="Fornecedor", total=99, item_costs={line.id: Decimal("10")}
+            ),
+            db,
+            user,
+        )
+    assert error.value.status_code == 422
+    assert "não fecha" in str(error.value.detail)
+
+
+def test_quote_below_charges_is_rejected(db: Session) -> None:
+    """P11: proposta impossível (total menor que frete + impostos − desconto) não é salva."""
+    user = _actor()
+    purchase = create_purchase(
+        PurchaseCreate(items=[PurchaseItemCreate(sku="A", description="Peça A", quantity=1)]),
+        db,
+        user,
+    )
+    line = purchase.items[0]
+    with pytest.raises(HTTPException) as error:
+        add_quote(
+            purchase.id,
+            PurchaseQuoteCreate(
+                supplier_name="Fornecedor",
+                total=10,
+                freight_amount=Decimal("50"),
+                item_costs={line.id: Decimal("1")},
+            ),
+            db,
+            user,
+        )
+    assert error.value.status_code == 422
+    assert "menor que o frete" in str(error.value.detail)
+
+
+def test_quote_charges_are_spread_across_items(db: Session) -> None:
+    """P11: frete, impostos e desconto da cotação chegam rateados ao item."""
+    user = _actor()
+    purchase = create_purchase(
+        PurchaseCreate(
+            items=[
+                PurchaseItemCreate(sku="A", description="Peça A", quantity=1),
+                PurchaseItemCreate(sku="B", description="Peça B", quantity=3),
+            ]
+        ),
+        db,
+        user,
+    )
+    lines = purchase.items
+    purchase = add_quote(
+        purchase.id,
+        PurchaseQuoteCreate(
+            supplier_name="Fornecedor",
+            total=60,
+            freight_amount=Decimal("20"),
+            item_costs={lines[0].id: Decimal("10"), lines[1].id: Decimal("10")},
+        ),
+        db,
+        user,
+    )
+    purchase = select_quote(purchase.id, purchase.quotes[0].id, db, user)
+
+    first, second = purchase.items
+    assert first.freight_amount == Decimal("5.00")
+    assert second.freight_amount == Decimal("15.00")
+    assert first.unit_cost == Decimal("15.00")
+    assert second.unit_cost == Decimal("15.00")
+    assert purchase.total_amount == Decimal("60.00")
+
+
+def test_selected_quote_can_be_replaced_by_a_new_one(db: Session) -> None:
+    """P11: a cotação escolhida não é editada — registra-se outra e escolhe de novo."""
+    user = _actor()
+    purchase = create_purchase(
+        PurchaseCreate(items=[PurchaseItemCreate(sku="A", description="Peça A", quantity=2)]),
+        db,
+        user,
+    )
+    line = purchase.items[0]
+    purchase = add_quote(
+        purchase.id,
+        PurchaseQuoteCreate(
+            supplier_name="Fornecedor A", total=20, item_costs={line.id: Decimal("10")}
+        ),
+        db,
+        user,
+    )
+    purchase = select_quote(purchase.id, purchase.quotes[0].id, db, user)
+    assert purchase.status == "approved"
+
+    purchase = add_quote(
+        purchase.id,
+        PurchaseQuoteCreate(
+            supplier_name="Fornecedor B", total=16, item_costs={line.id: Decimal("8")}
+        ),
+        db,
+        user,
+    )
+    replacement = next(quote for quote in purchase.quotes if quote.supplier_name == "Fornecedor B")
+    purchase = select_quote(purchase.id, replacement.id, db, user)
+
+    assert len(purchase.quotes) == 2
+    assert purchase.items[0].unit_cost == Decimal("8.00")
+    assert purchase.total_amount == Decimal("16.00")

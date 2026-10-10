@@ -1,5 +1,5 @@
 from datetime import UTC, datetime, timedelta
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 from pathlib import Path
 from uuid import uuid4
 
@@ -124,33 +124,52 @@ def _event(
     ))
 
 
-def _line_adjustment(item: PurchaseItem) -> Decimal:
-    if Decimal(item.discount_percent or 0) > 0:
-        item.discount_amount = (
-            Decimal(item.base_unit_cost) * Decimal(item.quantity) * Decimal(item.discount_percent) / 100
-        ).quantize(Decimal("0.01"))
-    return item.freight_amount + item.tax_amount - item.discount_amount
+def _split_amount(amount: Decimal, weights: dict[str, Decimal]) -> dict[str, Decimal]:
+    """Rateia um valor monetário por peso, fechando a sobra de centavos no maior item."""
+    total_weight = sum(weights.values(), Decimal("0"))
+    if total_weight <= 0:
+        return {key: Decimal("0") for key in weights}
+    shares = {
+        key: (amount * weight / total_weight).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        for key, weight in weights.items()
+    }
+    residual = (amount - sum(shares.values(), Decimal("0"))).quantize(Decimal("0.01"))
+    if residual:
+        largest = max(weights, key=lambda key: weights[key])
+        shares[largest] = (shares[largest] + residual).quantize(Decimal("0.01"))
+    return shares
 
 
 def _recompute_purchase_costs(purchase: PurchaseCase, quote: PurchaseQuote | None = None) -> None:
+    """Aplica no item os valores da cotação vencedora; sem cotação, o custo fica pendente.
+
+    A P9 tirou a digitação de valor da compra: nenhum custo nasce fora da cotação e os
+    valores já gravados em compras antigas permanecem exatamente como estão.
+    """
     if not quote:
-        for item in purchase.items:
-            item.unit_cost = (item.base_unit_cost + _line_adjustment(item) / item.quantity).quantize(Decimal("0.01"))
         return
-    adjustment = quote.freight_amount + quote.tax_amount - quote.discount_amount
-    subtotal = sum(Decimal(quote.item_costs[item.id]) * item.quantity for item in purchase.items)
-    total_quantity = sum(item.quantity for item in purchase.items)
+    weights = {
+        item.id: item.quantity
+        if quote.allocation_method == "quantity"
+        else Decimal(quote.item_costs[item.id]) * item.quantity
+        for item in purchase.items
+    }
+    if quote.allocation_method != "quantity" and not any(weight > 0 for weight in weights.values()):
+        # Sem preço informado em nenhum item não existe base proporcional: cai para quantidade.
+        weights = {item.id: item.quantity for item in purchase.items}
+    freight = _split_amount(Decimal(quote.freight_amount), weights)
+    tax = _split_amount(Decimal(quote.tax_amount), weights)
+    discount = _split_amount(Decimal(quote.discount_amount), weights)
     for item in purchase.items:
         base_cost = Decimal(quote.item_costs[item.id])
-        if quote.allocation_method == "quantity" or subtotal <= 0:
-            allocated = adjustment * item.quantity / total_quantity
-        else:
-            allocated = adjustment * (base_cost * item.quantity) / subtotal
-        landed_unit_cost = base_cost + (_line_adjustment(item) + allocated) / item.quantity
-        if landed_unit_cost < 0:
+        item.freight_amount = freight[item.id]
+        item.tax_amount = tax[item.id]
+        item.discount_amount = discount[item.id]
+        landed = base_cost + (freight[item.id] + tax[item.id] - discount[item.id]) / item.quantity
+        if landed < 0:
             raise HTTPException(status_code=422, detail="Os descontos deixam o custo de alguma peça negativo.")
         item.base_unit_cost = base_cost
-        item.unit_cost = landed_unit_cost.quantize(Decimal("0.01"))
+        item.unit_cost = landed.quantize(Decimal("0.01"))
 
 
 def _load(db: Session, purchase_id: str, *, for_update: bool = False) -> PurchaseCase:
@@ -304,6 +323,22 @@ def create_purchase(
         )
         if existing:
             return _present(_load(db, existing.id), user)
+    elif payload.purchase_type == "parts" and any(
+        Decimal(item.unit_cost or 0)
+        or Decimal(item.freight_amount or 0)
+        or Decimal(item.tax_amount or 0)
+        or Decimal(item.discount_amount or 0)
+        for item in payload.items
+    ):
+        # P9: a compra de peças nasce sem valor; o custo entra pela cotação ou pela
+        # revisão de um documento importado (que tem fonte no papel).
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                "Compras de peças são cadastradas sem valor. Informe custo, frete, impostos e "
+                "desconto na cotação do fornecedor."
+            ),
+        )
     for item in payload.items:
         if item.product_id and not db.get(Product, item.product_id):
             raise HTTPException(status_code=404, detail=f"Produto não encontrado: {item.sku}")
@@ -440,16 +475,11 @@ def update_purchase_item(
     if payload.quantity is not None and payload.quantity < item.received_quantity:
         raise HTTPException(status_code=422, detail="A quantidade não pode ser menor que o já recebido.")
     for field, value in changes.items():
-        if field == "base_unit_cost":
-            item.base_unit_cost = value
-        elif value is not None:
+        if value is not None:
             setattr(item, field, value)
     selected = next((quote for quote in purchase.quotes if quote.id == purchase.selected_quote_id), None)
     _recompute_purchase_costs(purchase, selected)
-    if {"description", "sku", "unit"} & changes.keys():
-        _event(db, purchase, "item_updated", f"Dados de {item.description} atualizados por {user.full_name}.")
-    else:
-        _event(db, purchase, "item_cost_updated", f"Custos de {item.description} atualizados por {user.full_name}.")
+    _event(db, purchase, "item_updated", f"Dados de {item.description} atualizados por {user.full_name}.")
     db.commit()
     return _present(_load(db, purchase.id), user)
 
@@ -472,7 +502,15 @@ def add_purchase_item(
         raise HTTPException(status_code=422, detail="Esta compra já atingiu o limite de 100 itens.")
     if payload.product_id and not db.get(Product, payload.product_id):
         raise HTTPException(status_code=404, detail=f"Produto não encontrado: {payload.sku}")
-    item = PurchaseItem(**payload.model_dump(), base_unit_cost=payload.unit_cost)
+    # Peça incluída na negociação entra sem valor: o custo só existe depois da cotação.
+    item = PurchaseItem(
+        product_id=payload.product_id,
+        sku=payload.sku,
+        description=payload.description,
+        unit=payload.unit,
+        quantity=payload.quantity,
+        base_unit_cost=Decimal("0"),
+    )
     purchase.items.append(item)
     db.flush()
     _recompute_purchase_costs(purchase)
@@ -539,15 +577,44 @@ def add_quote(
     user: User = Depends(require_permission(Permission.PURCHASE_MANAGE)),
 ) -> PurchaseCase:
     purchase = _load(db, purchase_id)
-    if purchase.status != "negotiating":
+    if purchase.status not in {"negotiating", "approved"}:
         raise HTTPException(
-            status_code=409, detail="As cotações só podem ser registradas durante a negociação."
+            status_code=409, detail="As cotações só podem ser registradas antes do pedido ao fornecedor."
         )
     expected_item_ids = {item.id for item in purchase.items}
     if set(payload.item_costs) != expected_item_ids:
         raise HTTPException(
             status_code=422,
             detail="Informe o custo unitário desta proposta para todas as peças da negociação.",
+        )
+    net_amount = (
+        Decimal(payload.total)
+        - Decimal(payload.freight_amount)
+        - Decimal(payload.tax_amount)
+        + Decimal(payload.discount_amount)
+    )
+    if net_amount < 0:
+        raise HTTPException(
+            status_code=422,
+            detail="O total da proposta é menor que o frete e os impostos menos o desconto.",
+        )
+    item_subtotal = sum(
+        (Decimal(payload.item_costs[item.id]) * item.quantity for item in purchase.items),
+        Decimal("0"),
+    )
+    expected_total = (
+        item_subtotal
+        + Decimal(payload.freight_amount)
+        + Decimal(payload.tax_amount)
+        - Decimal(payload.discount_amount)
+    )
+    if abs(expected_total - Decimal(payload.total)) > Decimal("0.01") * max(1, len(purchase.items)):
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                "A soma dos itens não fecha com o total da proposta. "
+                "Confira os custos unitários, o frete, os impostos e o desconto."
+            ),
         )
     quote_data = payload.model_dump(exclude={"item_costs"})
     quote = PurchaseQuote(
@@ -574,9 +641,9 @@ def select_quote(
     user: User = Depends(require_permission(Permission.PURCHASE_MANAGE)),
 ) -> PurchaseCase:
     purchase = _load(db, purchase_id)
-    if purchase.status != "negotiating":
+    if purchase.status not in {"negotiating", "approved"}:
         raise HTTPException(
-            status_code=409, detail="Esta compra não está mais na etapa de negociação."
+            status_code=409, detail="Só é possível escolher uma cotação antes de enviar o pedido ao fornecedor."
         )
     quote = next((q for q in purchase.quotes if q.id == quote_id), None)
     if not quote:

@@ -1,8 +1,21 @@
 import { Directive, ElementRef, EventEmitter, HostListener, Input, OnChanges, Output, SimpleChanges, forwardRef, inject } from '@angular/core';
 import { AbstractControl, ControlValueAccessor, NG_VALIDATORS, NG_VALUE_ACCESSOR, ValidationErrors, Validator } from '@angular/forms';
 
-type ParsedMoney = { value: number | null; cents: number | null; valid: boolean; incomplete: boolean };
+/** Limite de dígitos aceitos para o valor em centavos. */
+const MAX_DIGITS = 15;
 
+/**
+ * Máscara de valores em reais "somente inclusão" (P10).
+ *
+ * O campo exibe sempre o formato completo — `R$ 1.234,56` — inclusive durante a digitação.
+ * Digitar acrescenta um dígito no fim, então o valor cresce em centavos (`1` → `R$ 0,01`,
+ * `1234` → `R$ 12,34`), e apagar remove só o último dígito. A vírgula, o ponto de milhar,
+ * o `R$` e os zeros dos centavos nunca saem do lugar: não existe estado parcial nem
+ * terceira casa decimal alcançável pelo teclado.
+ *
+ * Campo opcional sem valor continua em branco: vazio é "não informado" e é diferente de
+ * `R$ 0,00`, que só aparece quando o valor é genuinamente zero.
+ */
 @Directive({
   selector: 'input[appMoneyInput]',
   standalone: true,
@@ -10,7 +23,7 @@ type ParsedMoney = { value: number | null; cents: number | null; valid: boolean;
     { provide: NG_VALUE_ACCESSOR, useExisting: forwardRef(() => MoneyInputDirective), multi: true },
     { provide: NG_VALIDATORS, useExisting: forwardRef(() => MoneyInputDirective), multi: true },
   ],
-  host: { '[attr.type]': '"text"', '[attr.inputmode]': '"decimal"', '[attr.autocomplete]': '"off"' },
+  host: { '[attr.type]': '"text"', '[attr.inputmode]': '"numeric"', '[attr.autocomplete]': '"off"' },
 })
 export class MoneyInputDirective implements ControlValueAccessor, Validator, OnChanges {
   @Input() appMoneyInput: number | string | null | undefined;
@@ -21,30 +34,26 @@ export class MoneyInputDirective implements ControlValueAccessor, Validator, OnC
   private onChange: (value: number | null) => void = () => undefined;
   private onTouched: () => void = () => undefined;
   private validatorChanged: () => void = () => undefined;
-  private rawValue = '';
+  /** Dígitos em centavos, sem zeros à esquerda. Vazio é "não informado". */
+  private digits = '';
+  private negative = false;
+  /** Texto do valor legado com mais de duas casas, exibido até o usuário reescrever. */
+  private legacyText: string | null = null;
+  /** Campo opcional que entrou em foco sem valor volta a ficar em branco quando esvaziado. */
+  private blankWhenCleared = false;
   private formatError = false;
   private focused = false;
   private hint?: HTMLElement;
 
-  ngOnChanges(changes: SimpleChanges) {
+  ngOnChanges(changes: SimpleChanges): void {
     if (changes['appMoneyInput'] && !this.focused && this.appMoneyInput !== undefined) {
-      const numeric = this.toNumber(this.appMoneyInput);
-      this.rawValue = numeric === null ? '' : this.formatInputValue(numeric);
-      this.element.nativeElement.value = this.rawValue;
-      this.setValidity();
-      this.validatorChanged();
-      this.moneyValidity.emit(this.formatError);
+      this.applyIncoming(this.toNumber(this.appMoneyInput));
     }
   }
 
   writeValue(value: number | string | null | undefined): void {
-    if (this.focused || this.formatError) return;
-    const numeric = this.toNumber(value);
-    this.rawValue = numeric === null || !Number.isFinite(numeric) ? '' : this.formatInputValue(numeric);
-    this.element.nativeElement.value = this.rawValue;
-    this.setValidity();
-    this.validatorChanged();
-    this.moneyValidity.emit(this.formatError);
+    if (this.focused) return;
+    this.applyIncoming(this.toNumber(value));
   }
 
   registerOnChange(fn: (value: number | null) => void): void { this.onChange = fn; }
@@ -54,115 +63,154 @@ export class MoneyInputDirective implements ControlValueAccessor, Validator, OnC
 
   validate(_control: AbstractControl): ValidationErrors | null {
     if (this.formatError) return { moneyFormat: { message: this.message() } };
-    const parsed = this.parse(this.rawValue);
-    const minAttribute = this.element.nativeElement.getAttribute('min');
-    const maxAttribute = this.element.nativeElement.getAttribute('max');
-    const min = minAttribute === null ? Number.NaN : Number(minAttribute);
-    const max = maxAttribute === null ? Number.NaN : Number(maxAttribute);
-    if (parsed.value !== null && Number.isFinite(min) && parsed.value < min) return { min: { min, actual: parsed.value } };
-    if (parsed.value !== null && Number.isFinite(max) && parsed.value > max) return { max: { max, actual: parsed.value } };
+    const value = this.currentValue();
+    const min = this.bound('min');
+    const max = this.bound('max');
+    if (value !== null && Number.isFinite(min) && value < min) return { min: { min, actual: value } };
+    if (value !== null && Number.isFinite(max) && value > max) return { max: { max, actual: value } };
     return null;
   }
 
-  @HostListener('focus') onFocus() {
+  @HostListener('focus') onFocus(): void {
     this.focused = true;
-    const input = this.element.nativeElement;
-    const caret = input.selectionStart ?? input.value.length;
-    const digitsBeforeCaret = (input.value.slice(0, caret).match(/[0-9]/g) || []).length;
-    const parsed = this.parse(input.value);
-    if (!parsed.valid || parsed.cents === null) return;
-
-    const cents = Math.abs(parsed.cents);
-    const whole = Math.floor(cents / 100).toString();
-    const decimals = String(cents % 100).padStart(2, '0');
-    const editable = `${parsed.cents < 0 ? '-' : ''}${whole},${decimals}`;
-    this.rawValue = editable;
-    input.value = editable;
-    if (parsed.cents === 0) input.setSelectionRange(0, input.value.length);
-    else this.setCaretAfterDigitCount(input, digitsBeforeCaret);
+    if (this.readonly) return;
+    // O valor aparece completo e selecionado: a primeira digitação substitui o número.
+    this.legacyText = null;
+    this.blankWhenCleared = this.digits === '';
+    this.render();
+    this.element.nativeElement.select();
   }
 
-  @HostListener('input') onInput() {
-    const input = this.element.nativeElement;
-    const before = input.value;
-    this.rawValue = before;
-    const parsed = this.parse(before);
-    const minAttribute = input.getAttribute('min');
-    const maxAttribute = input.getAttribute('max');
-    const min = minAttribute === null ? Number.NaN : Number(minAttribute);
-    const max = maxAttribute === null ? Number.NaN : Number(maxAttribute);
-    this.formatError = !parsed.valid || (parsed.value !== null && Number.isFinite(min) && parsed.value < min) || (parsed.value !== null && Number.isFinite(max) && parsed.value > max);
-
-    if (parsed.valid) {
-      this.onChange(parsed.value);
-      this.moneyInput.emit(parsed.value);
-    } else if (!parsed.valid) {
-      this.onChange(null);
-      this.moneyInput.emit(null);
+  @HostListener('keydown', ['$event']) onKeydown(event: KeyboardEvent): void {
+    if (this.readonly) return;
+    if (event.ctrlKey || event.metaKey || event.altKey) return;
+    if (event.key === 'Backspace' || event.key === 'Delete') {
+      event.preventDefault();
+      // Apagar um valor informado nunca deixa o campo em branco: termina em `R$ 0,00`.
+      this.digits = this.digits.length > 1
+        ? this.digits.slice(0, -1)
+        : (this.blankWhenCleared ? '' : '0');
+      this.commit();
+      return;
     }
-
-    this.setValidity();
-    this.validatorChanged();
-    this.moneyValidity.emit(this.formatError);
+    if (/^[0-9]$/.test(event.key)) {
+      event.preventDefault();
+      const input = this.element.nativeElement;
+      const replacesAll = input.selectionStart === 0 && input.selectionEnd === input.value.length;
+      this.digits = this.normalize((replacesAll ? '' : this.digits) + event.key);
+      this.commit();
+      return;
+    }
+    // Letras, sinais, `%` e separadores não entram no campo; o cursor volta para o fim.
+    if (event.key.length === 1) {
+      event.preventDefault();
+      this.setCaretToEnd();
+    }
   }
 
-  @HostListener('blur') onBlur() {
+  @HostListener('paste', ['$event']) onPaste(event: ClipboardEvent): void {
+    if (this.readonly) return;
+    event.preventDefault();
+    const pasted = event.clipboardData?.getData('text') ?? '';
+    this.digits = this.normalize(pasted.replace(/\D+/g, ''));
+    this.commit();
+  }
+
+  /** Rede de segurança para teclados móveis que não emitem keydown reconhecível. */
+  @HostListener('input') onInput(): void {
+    if (this.readonly) return;
+    const text = String(this.element.nativeElement.value).replace(/\D+/g, '');
+    this.digits = this.normalize(text);
+    this.commit();
+  }
+
+  @HostListener('blur') onBlur(): void {
     this.focused = false;
-    const parsed = this.parse(this.rawValue);
-    const minAttribute = this.element.nativeElement.getAttribute('min');
-    const maxAttribute = this.element.nativeElement.getAttribute('max');
-    const min = minAttribute === null ? Number.NaN : Number(minAttribute);
-    const max = maxAttribute === null ? Number.NaN : Number(maxAttribute);
-    this.formatError = !parsed.valid || (parsed.value !== null && Number.isFinite(min) && parsed.value < min) || (parsed.value !== null && Number.isFinite(max) && parsed.value > max);
-    if (parsed.valid && !this.formatError) {
-      this.rawValue = parsed.value === null ? '' : this.format(parsed.value);
-      this.element.nativeElement.value = this.rawValue;
-      this.onChange(parsed.value);
-      this.moneyInput.emit(parsed.value);
-    }
+    if (this.readonly) return;
+    this.render();
+    if (!this.formatError) this.emit();
     this.onTouched();
     this.setValidity();
     this.validatorChanged();
     this.moneyValidity.emit(this.formatError);
   }
 
-  private parse(source: string): ParsedMoney {
-    let text = source.replace(/\s/g, '').replace(/^R\$/i, '');
-    if (!text) return { value: null, cents: null, valid: true, incomplete: false };
-    const negative = text.startsWith('-');
-    if (negative) text = text.slice(1);
-    if (!text || (!/^\d+(?:,\d*)?$/.test(text) && !/^\d{1,3}(?:\.\d{3})+(?:,\d*)?$/.test(text))) {
-      return { value: null, cents: null, valid: false, incomplete: false };
+  private applyIncoming(numeric: number | null): void {
+    if (numeric === null || !Number.isFinite(numeric)) {
+      this.digits = '';
+      this.negative = false;
+      this.legacyText = null;
+      this.formatError = false;
+    } else {
+      this.digits = String(Math.round(Math.abs(numeric) * 100));
+      this.negative = numeric < 0;
+      this.legacyText = this.hasLegacyPrecision(numeric) ? this.formatLegacy(numeric) : null;
+      this.formatError = this.legacyText !== null;
     }
-    const comma = text.indexOf(',');
-    const decimals = comma < 0 ? '' : text.slice(comma + 1);
-    if (decimals.length > 2) return { value: null, cents: null, valid: false, incomplete: false };
-    const incomplete = comma >= 0 && decimals.length === 0;
-    const integerText = (comma < 0 ? text : text.slice(0, comma)).replace(/\./g, '');
-    const cents = Number(integerText || '0') * 100 + Number((decimals + '00').slice(0, 2));
-    const signedCents = negative ? -cents : cents;
-    return { value: signedCents / 100, cents: signedCents, valid: true, incomplete };
+    if (!this.focused) this.render();
+    this.setValidity();
+    this.validatorChanged();
+    this.moneyValidity.emit(this.formatError);
   }
 
-  private setCaretAfterDigitCount(input: HTMLInputElement, digitsBeforeCaret: number) {
-    if (digitsBeforeCaret <= 0) {
-      input.setSelectionRange(0, 0);
-      return;
-    }
-    let seen = 0;
-    for (let i = 0; i < input.value.length; i++) {
-      if (/\d/.test(input.value[i])) seen++;
-      if (seen >= digitsBeforeCaret) {
-        input.setSelectionRange(i + 1, i + 1);
-        return;
-      }
-    }
-    input.setSelectionRange(input.value.length, input.value.length);
+  private commit(): void {
+    this.formatError = false;
+    this.negative = false;
+    this.legacyText = null;
+    this.render();
+    this.emit();
+    this.setValidity();
+    this.validatorChanged();
+    this.moneyValidity.emit(this.formatError);
+  }
+
+  private emit(): void {
+    const value = this.currentValue();
+    this.onChange(value);
+    this.moneyInput.emit(value);
+  }
+
+  private render(): void {
+    const input = this.element.nativeElement;
+    input.value = this.legacyText ?? (this.digits === '' ? '' : this.format(this.signedValue() ?? 0));
+    this.setCaretToEnd();
+  }
+
+  private currentValue(): number | null {
+    return this.digits === '' ? null : this.signedValue();
+  }
+
+  private signedValue(): number | null {
+    return (Number(this.digits) / 100) * (this.negative ? -1 : 1);
+  }
+
+  /** Zeros à esquerda não contam: `05` é `R$ 0,05` e `0` é `R$ 0,00`. */
+  private normalize(digits: string): string {
+    const trimmed = digits.replace(/^0+(?=\d)/, '');
+    return trimmed.length > MAX_DIGITS ? trimmed.slice(-MAX_DIGITS) : trimmed;
+  }
+
+  private bound(attribute: 'min' | 'max'): number {
+    const raw = this.element.nativeElement.getAttribute(attribute);
+    return raw === null ? Number.NaN : Number(raw);
+  }
+
+  private setCaretToEnd(): void {
+    const input = this.element.nativeElement;
+    try { input.setSelectionRange(input.value.length, input.value.length); } catch { /* campos sem seleção */ }
+  }
+
+  private get readonly(): boolean {
+    return this.element.nativeElement.readOnly;
+  }
+
+  private hasLegacyPrecision(value: number): boolean {
+    return Math.abs(value * 100 - Math.round(value * 100)) > 1e-8;
   }
 
   /**
-   * The API serializes Decimal as text ("12.50"), so money bindings may arrive as
-   * number or string. Accept both instead of leaving the field blank.
+   * A API serializa Decimal como texto ("12.50"), então valores monetários chegam como
+   * número ou string. Aceite os dois em vez de deixar o campo em branco.
    */
   private toNumber(value: number | string | null | undefined): number | null {
     if (value === null || value === undefined || value === '') return null;
@@ -179,18 +227,14 @@ export class MoneyInputDirective implements ControlValueAccessor, Validator, OnC
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value);
   }
 
-  private formatInputValue(value: number): string {
-    const hasLegacyPrecision = Math.abs(value * 100 - Math.round(value * 100)) > 1e-8;
-    this.formatError = hasLegacyPrecision;
-    if (hasLegacyPrecision) {
-      const decimals = Math.min(8, Math.max(3, (String(value).split('.')[1] || '').length));
-      return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: decimals, maximumFractionDigits: decimals }).format(value);
-    }
-    return this.format(value);
+  private formatLegacy(value: number): string {
+    const decimals = Math.min(8, Math.max(3, (String(value).split('.')[1] || '').length));
+    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: decimals, maximumFractionDigits: decimals }).format(value);
   }
 
-  private message() { return 'Use reais com vírgula e no máximo duas casas decimais.'; }
-  private setValidity() {
+  private message(): string { return 'Use reais com vírgula e no máximo duas casas decimais.'; }
+
+  private setValidity(): void {
     const input = this.element.nativeElement;
     input.setCustomValidity(this.formatError ? this.message() : '');
     if (!this.hint) {

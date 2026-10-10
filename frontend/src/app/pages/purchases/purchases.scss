@@ -92,8 +92,6 @@
 .item-title > strong { white-space: nowrap; font-size: 14px; }
 .item-title > strong small { color: var(--muted); font-size: 10px; font-weight: 500; }
 .item-cost-breakdown { display: flex; flex-wrap: wrap; gap: 8px 14px; margin-top: 10px; color: var(--muted); font-size: 11px; }
-.item-cost-editor { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)) auto; align-items: end; gap: 8px; margin-top: 13px; padding-top: 12px; border-top: 1px solid var(--line); }
-.item-cost-editor button { min-height: 40px; }
 .receipt-progress { display: grid; gap: 7px; margin-top: 14px; color: var(--muted); font-size: 11px; }
 .receipt-progress b { color: var(--text); }
 .receipt-progress > div { height: 6px; overflow: hidden; border-radius: 20px; background: #edf0ec; }
@@ -114,6 +112,7 @@
 .quote-card > div b { color: var(--forest); white-space: nowrap; }
 .quote-card p, .quote-card > small { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.5; }
 .quote-card button { justify-self: start; margin-top: 4px; }
+.quote-locked { color: var(--forest); font-weight: 700; }
 .quote-form { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; padding: 13px; border-radius: 10px; background: #f5f7f3; }
 .quote-item-costs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; grid-column: 1 / -1; }
 .quote-item-costs > strong { grid-column: 1 / -1; font-size: 11px; }
@@ -211,8 +210,6 @@
   .purchase-form-meta { grid-template-columns: 1fr; }
   .purchase-line-form { grid-template-columns: 1fr 1fr; gap: 9px; }
   .purchase-line-form > label:first-child, .purchase-line-form .line-description { grid-column: 1 / -1; }
-  .item-cost-editor { grid-template-columns: 1fr; }
-  .item-cost-editor button { grid-column: 1 / -1; }
   .purchase-form-actions { align-items: stretch; flex-direction: column; }
   .purchase-form-actions .primary { width: 100%; }
   .purchase-steps { gap: 4px; }
@@ -249,13 +246,11 @@
   display: none;
 }
 .purchase-detail.costs-pending .item-title > strong,
-.purchase-detail.costs-pending .item-cost-breakdown,
-.purchase-detail.costs-pending .item-cost-editor { display: none; }
+.purchase-detail.costs-pending .item-cost-breakdown { display: none; }
 .purchase-detail.costs-pending .item-title::after { align-self: center; color: var(--muted); font-size: 12px; font-weight: 700; content: 'Aguardando cotação'; }
 
 .purchase-modal .money-field { color: #344a3b; font-size: 12px; }
 .purchase-modal .money-field input[appMoneyInput] { min-width: 0; min-height: 46px; padding-inline: 12px; border-color: #b8c9b9; font-size: 15px; font-variant-numeric: tabular-nums; font-weight: 700; }
 .purchase-modal .money-field input[appMoneyInput]:focus-visible { border-color: var(--forest); outline: 3px solid #557a4b33; outline-offset: 1px; }
 .purchase-line-form > label.money-field { grid-column: span 3; }
-@media (min-width: 641px) and (max-width: 1100px) { .item-cost-editor { grid-template-columns: repeat(2, minmax(0, 1fr)); } .item-cost-editor button { grid-column: 1 / -1; justify-self: start; } }
-@media (max-width: 640px) { .purchase-line-form > label.money-field { grid-column: 1 / -1; } .item-cost-editor .money-field input[appMoneyInput] { min-height: 48px; padding-inline: 10px; font-size: 14px; } }
+@media (max-width: 640px) { .purchase-line-form > label.money-field { grid-column: 1 / -1; } }

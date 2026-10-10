@@ -405,15 +405,12 @@ class PurchaseItemCreate(BaseModel):
 
 
 class PurchaseItemUpdate(BaseModel):
+    """P9: a compra só edita dados da peça — custo, frete, impostos e desconto vivem na cotação."""
+
     description: str | None = Field(default=None, min_length=2, max_length=200)
     sku: str | None = Field(default=None, max_length=80)
     unit: str | None = Field(default=None, min_length=1, max_length=24)
     quantity: Decimal | None = Field(default=None, gt=0)
-    base_unit_cost: Decimal | None = Field(default=None, ge=0)
-    freight_amount: Decimal | None = Field(default=None, ge=0)
-    tax_amount: Decimal | None = Field(default=None, ge=0)
-    discount_amount: Decimal | None = Field(default=None, ge=0)
-    discount_percent: Decimal | None = Field(default=None, ge=0, le=100)
 
 
 class PurchaseUpdate(BaseModel):

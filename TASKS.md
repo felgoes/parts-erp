@@ -4,7 +4,7 @@
 
 ## Concluídas
 
-- [x] [P3] CONCLUÍDO — Perfis de AliExpress e Alibaba ajustados às amostras; NF-e/DANFE enviada como Mercado Livre documentada como ambígua para manter seleção manual quando não há marca da plataforma. Testes de importação e compilação do backend passaram. Spec: docs/specs/p3-reconhecimento-documentos-plataformas.md.
+- [x] [P3] CONCLUÍDO — Perfis de AliExpress e Alibaba ajustados às amostras; NF-e/DANFE enviada como Mercado Livre documentada como ambígua para manter seleção manual quando não há marca da plataforma. Testes de importação, compilação do backend e build de produção passaram; commit 9ed2b96 implantado em PRD em 09/10/2026 com smoke checks públicos HTTP 200. Spec: docs/specs/p3-reconhecimento-documentos-plataformas.md.
 
 - [x] [P2] CONCLUÍDO — Notas de atualização em português com histórico retroativo linkado a 24 commits do GitHub, data de commit separada de deploy confirmado, acesso pelo README e regra para atualizar após novas implantações. Spec: docs/specs/p2-release-notes-github.md.
 

@@ -40,6 +40,7 @@ export interface Product {
   manufacturer_part_number: string | null;
   barcode: string | null;
   category: string | null;
+  stock_type: 'product' | 'warehouse';
   item_condition: 'new' | 'used' | 'refurbished';
   warranty_days: number | null;
   origin_country: string | null;

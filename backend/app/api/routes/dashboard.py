@@ -67,7 +67,9 @@ def summary(
     low_stock = (
         db.scalar(
             select(func.count(Product.id)).where(
-                Product.active.is_(True), Product.current_stock <= Product.minimum_stock
+                Product.active.is_(True),
+                Product.stock_type == "product",
+                Product.current_stock < Product.minimum_stock,
             )
         )
         or 0

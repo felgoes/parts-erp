@@ -196,7 +196,7 @@ export class PurchasesPage implements OnInit {
   }
 
   ngOnInit() { this.load(); this.refreshProducts(); this.api.purchaseImportProfiles().subscribe({ next: (result) => this.importProfiles.set(result.profiles), error: () => undefined }); this.live.changes$.pipe(debounceTime(250), takeUntilDestroyed(this.destroyRef)).subscribe(() => { this.load(); this.refreshProducts(); }); }
-  private refreshProducts() { this.api.products().subscribe({ next: (items) => this.products.set(items), error: () => undefined }); }
+  private refreshProducts() { this.api.products('', false, 'product').subscribe({ next: (items) => this.products.set(items), error: () => undefined }); }
   onImportDocument(event: Event) {
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0]; input.value = '';
@@ -391,12 +391,12 @@ export class PurchasesPage implements OnInit {
     this.receiptIds.update((ids) => ({ ...ids, [item.id]: receiptId }));
     this.saving.set(true); this.error.set('');
     this.api.receivePurchase(purchase.id, { items: [{ item_id: item.id, receipt_id: receiptId, quantity: choice.quantity, product_id: choice.productId || null, create_product: choice.create }] }).pipe(finalize(() => this.saving.set(false))).subscribe({
-      next: (updated) => { this.setPurchase(updated); this.clearReceiptId(item); this.api.products().subscribe((items) => this.products.set(items)); },
+      next: (updated) => { this.setPurchase(updated); this.clearReceiptId(item); this.api.products('', false, 'product').subscribe((items) => this.products.set(items)); },
       error: (err) => this.error.set(err.error?.detail || 'Não foi possível registrar o recebimento.')
     });
   }
   private clearReceiptId(item: PurchaseItem) { this.receiptIds.update((ids) => { const updated = { ...ids }; delete updated[item.id]; return updated; }); }
   cancel() { const purchase = this.detail(); if (!purchase || this.saving()) return; if (!confirm(`Cancelar ${purchase.number}? Essa ação não poderá ser desfeita.`)) return; this.runAction(this.api.cancelPurchase(purchase.id)); }
-  private runAction(request: ReturnType<ApiService['placePurchaseOrder']>) { const purchase = this.detail(); if (!purchase) return; this.saving.set(true); this.error.set(''); request.pipe(finalize(() => this.saving.set(false))).subscribe({ next: (updated) => { this.setPurchase(updated); if (updated.status === 'received') this.api.products().subscribe((items) => this.products.set(items)); }, error: (err) => this.error.set(err.error?.detail || 'Não foi possível atualizar esta compra.') }); }
+  private runAction(request: ReturnType<ApiService['placePurchaseOrder']>) { const purchase = this.detail(); if (!purchase) return; this.saving.set(true); this.error.set(''); request.pipe(finalize(() => this.saving.set(false))).subscribe({ next: (updated) => { this.setPurchase(updated); if (updated.status === 'received') this.api.products('', false, 'product').subscribe((items) => this.products.set(items)); }, error: (err) => this.error.set(err.error?.detail || 'Não foi possível atualizar esta compra.') }); }
   private setPurchase(purchase: Purchase) { this.itemCostDrafts.set(Object.fromEntries(purchase.items.map((item) => [item.id, { base_unit_cost: item.base_unit_cost ?? item.unit_cost ?? 0, freight_amount: item.freight_amount ?? 0, tax_amount: item.tax_amount ?? 0, discount_amount: item.discount_amount ?? 0 }]))); this.detail.set(purchase); this.purchases.update((items) => items.map((item) => item.id === purchase.id ? purchase : item)); }
 }

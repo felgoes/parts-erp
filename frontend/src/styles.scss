@@ -442,7 +442,19 @@ textarea:focus {
     max-width: 250px;
   }
   .object-modal .close { flex: 0 0 34px; }
-  .table-wrap { margin-inline: -16px; padding-inline: 16px; }
+  .table-wrap { margin-inline: -16px; padding-inline: 16px; max-width: calc(100vw - 32px); }
+  main, .page-content, .content, .page { min-width: 0; max-width: 100%; }
+  img, video, canvas, svg { max-width: 100%; }
+  input, select, textarea { min-width: 0; max-width: 100%; }
+  button, [role="button"], input[type="checkbox"], input[type="radio"] { touch-action: manipulation; }
+  .modal-backdrop { overscroll-behavior: contain; }
+  .modal, .modal.wide, .object-modal { min-width: 0; overflow-x: hidden; overflow-wrap: anywhere; }
+  .modal form, .modal section, .modal article { min-width: 0; max-width: 100%; }
+  .modal .form-grid, .modal .form-row, .modal .modal-actions, .modal .form-actions { min-width: 0; }
+  .modal .form-actions, .modal .modal-actions { flex-wrap: wrap; }
+  .modal .form-actions > button, .modal .modal-actions > button { min-height: 44px; }
+  .card-head, .section-heading, .modal-head { min-width: 0; }
+  .card-head > *, .section-heading > *, .modal-head > * { min-width: 0; }
   table { font-size: 12px; }
   th { padding: 10px 12px; }
   td { padding: 12px; }
@@ -498,6 +510,8 @@ textarea:focus {
   .after-sale-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
   .after-sale-cards > div { padding: 12px; }
   .date-filter-heading { align-items: flex-start; flex-direction: row; gap: 8px; }
+  .date-filter-heading { width: 100%; min-width: 0; }
+  .date-filter-heading small { min-width: 0; max-width: 100%; flex: 0 1 auto; white-space: normal; overflow-wrap: anywhere; }
   .date-filter-heading small { text-align: right; }
   .date-filter:not(.invoice-filter-toolbar) .date-filter-heading { flex-direction: column; gap: 2px; }
   .date-filter:not(.invoice-filter-toolbar) .date-filter-heading small { text-align: left; }
@@ -505,9 +519,13 @@ textarea:focus {
   .date-filter-options { grid-column: 1 / -1; }
   .invoice-status-filter > span { display: none; }
   .invoice-status-filter button { min-height: 34px; }
-  .date-filter > .date-quick-filters { grid-column: 1 / -1; justify-content: flex-start; flex-wrap: nowrap; overflow-x: auto; margin: 0 -4px; padding: 2px 4px 6px; scrollbar-width: thin; }
-  .date-filter:not(.has-custom-range) > .date-quick-filters { justify-content: flex-start; }
-  .date-preset { min-height: 38px; flex: 0 0 auto; padding: 6px 10px; white-space: nowrap; }
+  .date-filter > .date-quick-filters { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); justify-content: stretch; gap: 6px; overflow: visible; margin: 0; padding: 0; }
+  .date-filter:not(.has-custom-range) > .date-quick-filters { justify-content: stretch; }
+  .date-filter-options { grid-column: 1 / -1; display: grid; gap: 8px; overflow: visible; }
+  .date-filter-options .date-quick-filters { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); overflow: visible; }
+  .invoice-status-filter { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); flex: initial; white-space: normal; }
+  .invoice-status-filter button { justify-content: center; min-width: 0; white-space: normal; text-align: center; }
+  .date-preset { min-height: 40px; flex: initial; padding: 6px 4px; white-space: normal; line-height: 1.15; text-align: center; }
   .date-filter > .date-range-fields { grid-column: 1 / -1; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; }
   .date-range-fields label { min-width: 0; }
   .date-range-fields input { padding-inline: 7px; font-size: 12px; }

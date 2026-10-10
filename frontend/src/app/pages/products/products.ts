@@ -21,23 +21,18 @@ import { PageHeader } from '../../shared/page-header';
       subtitle="Peças, preços e disponibilidade em um só lugar."
       >@if (canManageCatalog()) { <button class="primary" (click)="openNew()">+ Novo produto</button> }</app-page-header
     >
+    <nav class="stock-tabs" aria-label="Tipo de estoque">
+      <button type="button" [class.active]="stockTab() === 'product'" (click)="setStockTab('product')">Produtos</button>
+      <button type="button" [class.active]="stockTab() === 'warehouse'" (click)="setStockTab('warehouse')">Almoxarifado</button>
+    </nav>
     <section class="toolbar">
       <div class="search">
-        <span>⌕</span
-        ><input
-          placeholder="Buscar por peça ou SKU…"
-          [value]="search()"
-          (input)="search.set($any($event.target).value)"
-        />
+        <span>⌕</span><input placeholder="Buscar por peça ou SKU…" [value]="search()" (input)="search.set($any($event.target).value)" />
       </div>
-      <label class="check"
-        ><input
-          type="checkbox"
-          [checked]="onlyLow()"
-          (change)="onlyLow.set($any($event.target).checked)"
-        />
-        Apenas estoque baixo</label
-      ><span class="count">{{ filtered().length }} produtos</span>
+      @if (stockTab() === 'product') {
+        <label class="check"><input type="checkbox" [checked]="onlyLow()" (change)="onlyLow.set($any($event.target).checked)" /> Apenas estoque baixo</label>
+      }
+      <span class="count">{{ filtered().length }} {{ stockTab() === 'product' ? 'produtos' : 'itens de almoxarifado' }}</span>
     </section>
     <section class="card table-card">
       <div class="table-wrap">
@@ -74,10 +69,10 @@ import { PageHeader } from '../../shared/page-header';
                 <td>
                   <span
                     class="badge"
-                    [class.warning]="product.current_stock <= product.minimum_stock"
-                    [class.success]="product.current_stock > product.minimum_stock"
+                    [class.warning]="isLowStock(product)"
+                    [class.success]="!isLowStock(product)"
                     >{{
-                      product.current_stock <= product.minimum_stock ? 'Baixo' : 'Disponível'
+                      product.stock_type === 'warehouse' ? 'Almoxarifado' : isLowStock(product) ? 'Baixo' : 'Disponível'
                     }}</span
                   >
                 </td>
@@ -125,7 +120,7 @@ import { PageHeader } from '../../shared/page-header';
           } @else {
             <form [formGroup]="productForm" (ngSubmit)="saveProduct()">
               <div class="form-grid">
-                <label>SKU<input formControlName="sku" placeholder="PAST-001" [readonly]="!!editing()" /></label
+                <label>Tipo de estoque<select formControlName="stock_type"><option value="product">Produto</option><option value="warehouse">Almoxarifado</option></select></label><label>SKU<input formControlName="sku" placeholder="PAST-001" [readonly]="!!editing()" /></label
                 ><label
                   >Nome<input
                     formControlName="name"
@@ -231,6 +226,7 @@ export class ProductsPage implements OnInit {
   private readonly auth = inject(AuthService);
   private readonly fb = inject(FormBuilder);
   readonly products = signal<Product[]>([]);
+  readonly stockTab = signal<'product' | 'warehouse'>('product');
   readonly search = signal('');
   readonly onlyLow = signal(false);
   readonly modal = signal(false);
@@ -257,16 +253,22 @@ export class ProductsPage implements OnInit {
   readonly channelAttributes = signal<Record<string, string>>({});
   readonly selectedLogistics = signal<number[]>([]);
   readonly channelMessage = signal('');
+  isLowStock(product: Product): boolean {
+    return product.stock_type === 'product' && Number(product.current_stock) < Number(product.minimum_stock);
+  }
+
   readonly filtered = computed(() => {
     const q = this.search().toLowerCase();
     return this.products().filter(
       (p) =>
+        p.stock_type === this.stockTab() &&
         (!q || p.name.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q)) &&
-        (!this.onlyLow() || p.current_stock <= p.minimum_stock),
+        (this.stockTab() !== 'product' || !this.onlyLow() || this.isLowStock(p)),
     );
   });
   readonly productForm = this.fb.nonNullable.group({
     sku: ['', Validators.required],
+    stock_type: ['product' as 'product' | 'warehouse'],
     name: ['', Validators.required],
     description: [''],
     sale_price: [0, [Validators.required, Validators.min(0)]],
@@ -285,8 +287,9 @@ export class ProductsPage implements OnInit {
     this.load();
     this.live.changes$.pipe(debounceTime(250), takeUntilDestroyed(this.destroyRef)).subscribe(() => this.load());
   }
+  setStockTab(value: 'product' | 'warehouse') { this.stockTab.set(value); this.onlyLow.set(false); this.load(); }
   load() {
-    this.api.products().subscribe((v) => this.products.set(v));
+    this.api.products('', false, this.stockTab()).subscribe((v) => this.products.set(v));
     const detailId = this.detail()?.id;
     if (detailId) {
       this.api.productDetail(detailId).subscribe((full) => {
@@ -303,6 +306,7 @@ export class ProductsPage implements OnInit {
     this.selectedFiles.set([]); this.photoPreviews.set([]); this.attributesText.set(''); this.fitmentsText.set('');
     this.productForm.reset({
       sku: '',
+      stock_type: this.stockTab(),
       name: '',
       description: '',
       sale_price: 0,
@@ -318,7 +322,7 @@ export class ProductsPage implements OnInit {
     this.detail.set(null); this.adjusting.set(null); this.editing.set(product); this.selectedFiles.set([]); this.photoPreviews.set([]);
     this.attributesText.set(Object.entries(product.attributes || {}).map(([key, value]) => `${key}: ${value}`).join('\n'));
     this.fitmentsText.set((product.fitments || []).map((fit) => [fit.make, fit.model, fit.year_from || '', fit.year_to || '', fit.engine || ''].join(' | ')).join('\n'));
-    this.productForm.reset({ sku: product.sku, name: product.name, description: product.description || '', sale_price: product.sale_price, cost_price: product.cost_price ?? 0, current_stock: product.current_stock, minimum_stock: product.minimum_stock, brand: product.brand || '', manufacturer: product.manufacturer || '', manufacturer_part_number: product.manufacturer_part_number || '', barcode: product.barcode || '', category: product.category || '', item_condition: product.item_condition, warranty_days: product.warranty_days, origin_country: product.origin_country || '', weight_g: product.weight_g, package_length_cm: product.package_length_cm, package_width_cm: product.package_width_cm, package_height_cm: product.package_height_cm });
+    this.productForm.reset({ sku: product.sku, stock_type: product.stock_type, name: product.name, description: product.description || '', sale_price: product.sale_price, cost_price: product.cost_price ?? 0, current_stock: product.current_stock, minimum_stock: product.minimum_stock, brand: product.brand || '', manufacturer: product.manufacturer || '', manufacturer_part_number: product.manufacturer_part_number || '', barcode: product.barcode || '', category: product.category || '', item_condition: product.item_condition, warranty_days: product.warranty_days, origin_country: product.origin_country || '', weight_g: product.weight_g, package_length_cm: product.package_length_cm, package_width_cm: product.package_width_cm, package_height_cm: product.package_height_cm });
     this.modal.set(true);
   }
   selectPhotos(event: Event) { const files = Array.from((event.target as HTMLInputElement).files || []); this.selectedFiles.set(files); this.photoPreviews.set(files.map((file) => URL.createObjectURL(file))); }

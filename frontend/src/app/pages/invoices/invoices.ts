@@ -256,7 +256,7 @@ export class InvoicesPage implements OnInit {
   private today() { return new Date().toLocaleDateString('sv-SE'); }
   private monthStart() { return `${this.today().slice(0, 7)}-01`; }
   openNew() {
-    forkJoin([this.api.products(), this.api.customers()]).subscribe(([p, c]) => {
+    forkJoin([this.api.products('', false, 'product'), this.api.customers()]).subscribe(([p, c]) => {
       this.products.set(p);
       this.customers.set(c);
       this.lines.set([]);

@@ -23,6 +23,7 @@
   background: transparent;
 }
 .check {
+  white-space: nowrap;
   font-size: 13px;
   color: var(--muted);
   display: flex;
@@ -200,4 +201,13 @@ form label small {
     border-radius: 14px;
   }
   .table-card .table-wrap { margin-inline: 0; padding-inline: 16px; }
+}
+
+
+.stock-tabs { display: flex; gap: 8px; margin: 0 0 14px; border-bottom: 1px solid var(--line); }
+.stock-tabs button { min-height: 42px; padding: 9px 14px; border: 0; border-bottom: 3px solid transparent; background: transparent; color: var(--muted); font-weight: 750; cursor: pointer; }
+.stock-tabs button.active { border-color: var(--forest); color: var(--forest); }
+@media (max-width: 600px) {
+  .stock-tabs { display: grid; grid-template-columns: 1fr 1fr; }
+  .stock-tabs button { padding-inline: 8px; }
 }

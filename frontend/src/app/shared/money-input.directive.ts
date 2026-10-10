@@ -63,13 +63,27 @@ export class MoneyInputDirective implements ControlValueAccessor, Validator, OnC
     return null;
   }
 
-  @HostListener('focus') onFocus() { this.focused = true; }
+  @HostListener('focus') onFocus() {
+    this.focused = true;
+    const input = this.element.nativeElement;
+    const caret = input.selectionStart ?? input.value.length;
+    const digitsBeforeCaret = (input.value.slice(0, caret).match(/[0-9]/g) || []).length;
+    const parsed = this.parse(input.value);
+    if (!parsed.valid || parsed.cents === null) return;
+
+    const cents = Math.abs(parsed.cents);
+    const whole = Math.floor(cents / 100).toString();
+    const decimals = String(cents % 100).padStart(2, '0');
+    const editable = `${parsed.cents < 0 ? '-' : ''}${whole},${decimals}`;
+    this.rawValue = editable;
+    input.value = editable;
+    if (parsed.cents === 0) input.setSelectionRange(0, input.value.length);
+    else this.setCaretAfterDigitCount(input, digitsBeforeCaret);
+  }
 
   @HostListener('input') onInput() {
     const input = this.element.nativeElement;
     const before = input.value;
-    const caret = input.selectionStart ?? before.length;
-    const digitsBeforeCaret = (before.slice(0, caret).match(/[0-9]/g) || []).length;
     this.rawValue = before;
     const parsed = this.parse(before);
     const minAttribute = input.getAttribute('min');
@@ -86,19 +100,6 @@ export class MoneyInputDirective implements ControlValueAccessor, Validator, OnC
       this.moneyInput.emit(null);
     }
 
-    if (parsed.valid && before.trim()) {
-      const formatted = this.formatEditing(before, parsed);
-      input.value = formatted;
-      this.rawValue = formatted;
-      let nextCaret = formatted.length;
-      let seen = 0;
-      for (let i = 0; i < formatted.length; i++) {
-        if (/\d/.test(formatted[i])) seen++;
-        if (seen >= digitsBeforeCaret) { nextCaret = i + 1; break; }
-      }
-      if (digitsBeforeCaret === 0) nextCaret = formatted.indexOf('R$') + 3;
-      input.setSelectionRange(nextCaret, nextCaret);
-    }
     this.setValidity();
     this.validatorChanged();
     this.moneyValidity.emit(this.formatError);
@@ -112,7 +113,7 @@ export class MoneyInputDirective implements ControlValueAccessor, Validator, OnC
     const min = minAttribute === null ? Number.NaN : Number(minAttribute);
     const max = maxAttribute === null ? Number.NaN : Number(maxAttribute);
     this.formatError = !parsed.valid || (parsed.value !== null && Number.isFinite(min) && parsed.value < min) || (parsed.value !== null && Number.isFinite(max) && parsed.value > max);
-    if (parsed.valid) {
+    if (parsed.valid && !this.formatError) {
       this.rawValue = parsed.value === null ? '' : this.format(parsed.value);
       this.element.nativeElement.value = this.rawValue;
       this.onChange(parsed.value);
@@ -142,12 +143,20 @@ export class MoneyInputDirective implements ControlValueAccessor, Validator, OnC
     return { value: signedCents / 100, cents: signedCents, valid: true, incomplete };
   }
 
-  private formatEditing(source: string, parsed: ParsedMoney): string {
-    const comma = source.includes(',');
-    const decimals = comma ? source.replace(/\s/g, '').split(',').at(-1)!.replace(/\D/g, '').slice(0, 2) : '';
-    const negative = source.replace(/\s/g, '').replace(/^R\$/i, '').startsWith('-');
-    const whole = Math.floor(Math.abs(parsed.cents ?? 0) / 100).toLocaleString('pt-BR');
-    return `R$ ${negative ? '-' : ''}${whole}${comma ? `,${decimals}` : ''}`;
+  private setCaretAfterDigitCount(input: HTMLInputElement, digitsBeforeCaret: number) {
+    if (digitsBeforeCaret <= 0) {
+      input.setSelectionRange(0, 0);
+      return;
+    }
+    let seen = 0;
+    for (let i = 0; i < input.value.length; i++) {
+      if (/\d/.test(input.value[i])) seen++;
+      if (seen >= digitsBeforeCaret) {
+        input.setSelectionRange(i + 1, i + 1);
+        return;
+      }
+    }
+    input.setSelectionRange(input.value.length, input.value.length);
   }
 
   private format(value: number): string {

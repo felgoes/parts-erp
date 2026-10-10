@@ -11,13 +11,14 @@
 ## Canonical development environment
 
 - Use the WSL Ubuntu checkout as the canonical working copy. Make source changes, builds, Git commits, and GitHub pushes from WSL; do not develop in the Windows mirror.
-- Keep separate parts-erp checkouts and branches intact.
+- Preserve branch refs; remove only auxiliary checkouts that are clean, task-owned, and no longer needed after delivery.
+- At task completion, close browser tabs opened for the task, stop only services/processes started for it, and remove temporary files. Inventory `git worktree list` and inspect each checkout's branch and status before removing it. Remove task-created auxiliary checkouts once their work is delivered; preserve the canonical checkout and any checkout containing unrelated or uncommitted work. Never use broad `git clean` commands to achieve checkout cleanup.
 - Never commit `.env.qa.local`, passwords, private keys, Cloudflare tokens, Firebase keys, or other secrets.
 
 ## Required delivery order
 
 [historical infra reference removed]
-- Before committing or pushing any UI change, manually validate the affected flow in the local HML browser at localhost:4200 with the dedicated QA account from the ignored .env.qa.local and the local API. Codex must read the local QA credentials and fill the login form itself; do not ask the user to enter them. Never use production accounts or data for QA, and never echo QA credentials into chat, logs, screenshots, source, or commits. If local HML or the QA account is unavailable, stop before push/deploy and report the blocker. Run local HML services natively in WSL using backend/.venv; do not use Docker.
+- Before committing or pushing any UI change, manually validate the affected flow in the local HML browser at localhost:4200 with the dedicated QA account from the ignored `.env.qa.local` and the local API. Use the standardized local helper: start `python3 scripts/qa-login-helper.py`, open `http://localhost:4200/__qa-login`, and submit the embedded real ERP login form through the browser. The helper reads credentials locally and prefills the real form without exposing them to browser automation; Codex must submit the form and inspect the authenticated HML page itself. Do not ask the user to enter credentials. Never use production accounts or data for QA, and never echo QA credentials into chat, logs, screenshots, source, or commits. If local HML, the helper, or the QA account is unavailable, stop before push/deploy and report the blocker. Run local HML services natively in WSL using `backend/.venv`; do not use Docker.
 - Do not deploy a commit that differs from `origin/main`. Preserve production data and configuration.
 
 ## Project commands

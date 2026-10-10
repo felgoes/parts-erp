@@ -10,10 +10,11 @@ import { AuthService } from '../../core/auth.service';
 import { Product, ProductChannelDraft, ProductChannelMetadata, ProductDetail, ProductFitment, ProductImage, StockMovement } from '../../core/models';
 import { canAdjustStock, canManageCatalog, canReadCosts } from '../../core/user-access';
 import { PageHeader } from '../../shared/page-header';
+import { MoneyInputDirective } from '../../shared/money-input.directive';
 
 @Component({
   selector: 'app-products',
-  imports: [CurrencyPipe, DatePipe, DecimalPipe, ReactiveFormsModule, PageHeader],
+  imports: [CurrencyPipe, DatePipe, DecimalPipe, MoneyInputDirective, ReactiveFormsModule, PageHeader],
   template: `
     <app-page-header
       eyebrow="Catálogo"
@@ -137,10 +138,9 @@ import { PageHeader } from '../../shared/page-header';
                   >Descrição<textarea formControlName="description" rows="2"></textarea></label
                 ><label
                   >Preço de venda<input
-                    type="number"
-                    step="0.01"
+                    appMoneyInput
                     formControlName="sale_price" /></label
-                >@if (canReadCosts()) { <label>Custo<input type="number" step="0.01" formControlName="cost_price" /></label> }
+                >@if (canReadCosts()) { <label>Custo<input appMoneyInput formControlName="cost_price" /></label> }
                 ><label
                   >Estoque inicial<input
                     type="number"
@@ -193,7 +193,7 @@ import { PageHeader } from '../../shared/page-header';
                 @if (selectedCategory()) {
                   <div class="channel-form-grid">
                     <label>{{ channelProvider() === 'mercadolivre' && meta.user_product_seller ? 'Nome da família no Mercado Livre' : 'Título do anúncio' }}<input [value]="channelTitle()" (input)="channelTitle.set($any($event.target).value)" [attr.maxlength]="meta.limits.max_title_length || 200" /><small>{{ channelTitle().length }}/{{ meta.limits.max_title_length || 200 }} caracteres{{ channelProvider() === 'mercadolivre' && meta.user_product_seller ? ' · o título será gerado pelo Mercado Livre' : '' }}</small></label>
-                    <label>Preço neste canal<input type="number" min="0.01" step="0.01" [value]="channelPrice()" (input)="channelPrice.set(+$any($event.target).value)" /></label>
+                    <label>Preço neste canal<input appMoneyInput [appMoneyInput]="channelPrice()" (moneyInput)="channelPrice.set($event ?? 0)" (moneyValidity)="channelPriceInvalid.set($event)" min="0.01" /></label>
                     @if (channelProvider() === 'mercadolivre') { <label>Tipo de anúncio<select [value]="listingType()" (change)="listingType.set($any($event.target).value)">@for (type of meta.listing_types; track type.id) { <option [value]="type.id">{{ type.name || type.id }}</option> }</select></label> }
                     @for (attribute of meta.attributes; track attribute.id) {
                       <label>{{ attribute.name }} @if (attribute.required || (channelProvider() === 'mercadolivre' && attribute.new_required)) {<em>Obrigatório</em>}
@@ -204,7 +204,7 @@ import { PageHeader } from '../../shared/page-header';
                     @if (channelProvider() === 'shopee') { <fieldset class="channel-logistics"><legend>Formas de envio habilitadas</legend>@for (logistics of meta.logistics; track logistics.id) { <label><input type="checkbox" [checked]="selectedLogistics().includes(logistics.id)" (change)="toggleLogistics(logistics.id, $any($event.target).checked)" />{{ logistics.name }}</label> }</fieldset> }
                   </div>
                   <label>Descrição comercial para este canal<textarea rows="4" [value]="channelDescription()" (input)="channelDescription.set($any($event.target).value)" placeholder="Descrição clara, aplicação e conteúdo da embalagem"></textarea></label>
-                  <div class="channel-actions"><button class="secondary" [disabled]="saving()" (click)="saveChannelDraft(product)">Salvar rascunho</button><button class="primary" [disabled]="saving()" (click)="publishChannel(product)">Validar e publicar / sincronizar</button></div>
+                  <div class="channel-actions"><button class="secondary" [disabled]="saving() || channelPriceInvalid()" (click)="saveChannelDraft(product)">Salvar rascunho</button><button class="primary" [disabled]="saving() || channelPriceInvalid()" (click)="publishChannel(product)">Validar e publicar / sincronizar</button></div>
                 }
               }
             } @else {
@@ -249,6 +249,7 @@ export class ProductsPage implements OnInit {
   readonly channelTitle = signal('');
   readonly channelDescription = signal('');
   readonly channelPrice = signal(0);
+  readonly channelPriceInvalid = signal(false);
   readonly listingType = signal('gold_special');
   readonly channelAttributes = signal<Record<string, string>>({});
   readonly selectedLogistics = signal<number[]>([]);

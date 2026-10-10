@@ -2,6 +2,8 @@
 
 ## Pendentes
 
+- [ ] [P1] EM ANDAMENTO — Padronizar todos os campos monetários editáveis em reais com máscara pt-BR e limite de duas casas, preservando precisão e validação. Helper de login QA local criado; build, checagem de sintaxe e fluxos de máscara em produtos, despesas e estudos de mercado validados no HML autenticado. Aguardando commit, PRD e health checks. Spec: docs/specs/p1-mascara-valores-moeda.md.
+
 
 ## Concluídas
 

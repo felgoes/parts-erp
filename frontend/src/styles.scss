@@ -533,6 +533,7 @@ textarea:focus {
 }
 
 .purchase-header-actions { display: flex; gap: .55rem; align-items: center; }
+.money-input-error { display: block; color: var(--danger, #b42318); font-size: .75rem; font-weight: 500; }
 .purchase-import-warnings { margin: .8rem 0; padding: .8rem 1rem; border-left: 3px solid #d49b3c; border-radius: 0 8px 8px 0; background: color-mix(in srgb, #edb64b 11%, var(--surface)); font-size: .8rem; }
 .purchase-import-warnings ul { margin: .4rem 0 0; padding-left: 1.2rem; color: var(--muted); }
 .import-meta { margin: .8rem 0; }

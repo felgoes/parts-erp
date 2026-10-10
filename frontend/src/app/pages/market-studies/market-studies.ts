@@ -8,12 +8,13 @@ import { ApiService } from '../../core/api.service';
 import { AuthService } from '../../core/auth.service';
 import { MarketStudy, MarketStudyConnector } from '../../core/models';
 import { PageHeader } from '../../shared/page-header';
+import { MoneyInputDirective } from '../../shared/money-input.directive';
 
 registerLocaleData(localePtBr);
 
 @Component({
   selector: 'app-market-studies',
-  imports: [CurrencyPipe, DatePipe, FormsModule, PageHeader, PercentPipe, RouterLink],
+  imports: [CurrencyPipe, DatePipe, FormsModule, MoneyInputDirective, PageHeader, PercentPipe, RouterLink],
   template: `
     <app-page-header eyebrow="Inteligência comercial" title="Estudos de mercado" subtitle="Cruze sinais do Mercado Livre com suas vendas, custos e estoque antes de decidir o que comprar ou anunciar." />
 
@@ -41,16 +42,16 @@ registerLocaleData(localePtBr);
     <div class="research-layout">
       @if (canManage) { <section class="study-form card">
         <div class="panel-heading"><div><p class="eyebrow">Novo estudo</p><h2>Pesquise uma oportunidade</h2><p>Use nome da peça, código OEM ou aplicação. Informe custo posto na sua loja para comparar a margem.</p></div><span class="step-mark">01</span></div>
-        <div class="study-fields">
+        <form #studyForm="ngForm" class="study-fields" (ngSubmit)="runStudy()">
           <label class="field-wide">Peça ou termo de busca<input [(ngModel)]="form.search_term" maxlength="200" placeholder="Ex.: bomba d’água Tiggo 7 1.5T" /></label>
           <label>SKU interno (opcional)<input [(ngModel)]="form.sku" maxlength="80" placeholder="Usa vendas e saldo existentes" /></label>
           <label>Categoria ML (opcional)<input [(ngModel)]="form.category_id" maxlength="40" placeholder="Ex.: MLB..." /></label>
-          <label>Custo unitário da peça (R$)<input type="number" min="0" step="0.01" [(ngModel)]="form.landed_cost" /></label>
-          <label>Frete unitário rateado (R$)<input type="number" min="0" step="0.01" [(ngModel)]="form.shipping_cost" /></label>
+          <label>Custo unitário da peça (R$)<input appMoneyInput name="landed_cost" [(ngModel)]="form.landed_cost" min="0" /></label>
+          <label>Frete unitário rateado (R$)<input appMoneyInput name="shipping_cost" [(ngModel)]="form.shipping_cost" min="0" /></label>
           <label>Taxas estimadas do canal (%)<input type="number" min="0" max="79" step="0.1" [(ngModel)]="form.marketplace_fee_pct" /></label>
           <label>Margem desejada (%)<input type="number" min="0" max="79" step="0.1" [(ngModel)]="form.target_margin_pct" /></label>
-        </div>
-        <div class="study-submit"><small>Pesquisa até 50 anúncios do ML, tendências e histórico ERP de 90 dias para o SKU.</small><button class="primary" type="button" [disabled]="loading() || !form.search_term.trim()" (click)="runStudy()">{{ loading() ? 'Analisando mercado…' : 'Gerar estudo' }} <span aria-hidden="true">→</span></button></div>
+        </form>
+        <div class="study-submit"><small>Pesquisa até 50 anúncios do ML, tendências e histórico ERP de 90 dias para o SKU.</small><button class="primary" type="button" [disabled]="loading() || studyForm.invalid || !form.search_term.trim()" (click)="runStudy()">{{ loading() ? 'Analisando mercado…' : 'Gerar estudo' }} <span aria-hidden="true">→</span></button></div>
         @if (error()) { <p class="inline-message is-error" role="alert">{{ error() }}</p> }
       </section> } @else { <section class="study-form card read-only-note"><p class="eyebrow">Acesso de consulta</p><h2>Peça um novo estudo à gestão</h2><p>Você pode consultar análises já salvas. Para consumir a API do marketplace e executar uma nova pesquisa, é necessário perfil de gerente ou administrador.</p></section> }
 
@@ -68,7 +69,7 @@ registerLocaleData(localePtBr);
         <div class="result-heading"><div><p class="eyebrow">Estudo salvo · {{ study.created_at | date:'dd/MM/yyyy HH:mm' }}</p><h2>{{ study.search_term }}</h2><p>{{ study.sku ? 'SKU ' + study.sku + ' · ' : '' }}Dados observados em {{ study.result.observed_at | date:'dd/MM/yyyy HH:mm':'':'pt-BR' }}</p></div><span class="result-badge" [class.is-limited]="study.status === 'insufficient_data'">{{ study.status === 'completed' ? 'Dados comparáveis' : 'Amostra limitada' }}</span></div>
         <div class="market-metrics">
           <article><span>Preço mediano comparável</span><strong>{{ study.result.market_metrics.median_price ? (+study.result.market_metrics.median_price | currency:'BRL':'symbol':'1.2-2':'pt-BR') : 'Sem amostra' }}</strong><small>{{ study.result.market_metrics.comparable_offers }} anúncios semelhantes</small></article>
-          <article><span>Faixa observada</span><strong>{{ study.result.market_metrics.min_price ? (+study.result.market_metrics.min_price | currency:'BRL':'symbol':'1.0-0':'pt-BR') + ' — ' + (+study.result.market_metrics.max_price! | currency:'BRL':'symbol':'1.0-0':'pt-BR') : '—' }}</strong><small>Preços anunciados; não incluem todas as condições</small></article>
+          <article><span>Faixa observada</span><strong>{{ study.result.market_metrics.min_price ? (+study.result.market_metrics.min_price | currency:'BRL':'symbol':'1.2-2':'pt-BR') + ' — ' + (+study.result.market_metrics.max_price! | currency:'BRL':'symbol':'1.2-2':'pt-BR') : '—' }}</strong><small>Preços anunciados; não incluem todas as condições</small></article>
           <article><span>Preço para margem desejada</span><strong>{{ study.result.price_scenario.target_price ? (+study.result.price_scenario.target_price | currency:'BRL':'symbol':'1.2-2':'pt-BR') : '—' }}</strong><small>Após taxas estimadas de {{ study.marketplace_fee_pct }}%</small></article>
           <article><span>Margem no preço mediano</span><strong [class.negative]="+(study.result.price_scenario.market_margin_at_median_pct ?? 0) < 0">{{ study.result.price_scenario.market_margin_at_median_pct !== null ? study.result.price_scenario.market_margin_at_median_pct + '%' : '—' }}</strong><small>Custo posto informado: {{ (study.landed_cost + study.shipping_cost) | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</small></article>
         </div>

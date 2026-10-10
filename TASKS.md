@@ -4,7 +4,7 @@
 
 ## Concluídas
 
-- [x] [P4] CONCLUÍDO — Generalizadas as instruções públicas e os registros OCR para omitir o identificador do checkout privado e dados do aparelho de produção; preservado o contrato do wrapper. Histórico Git anterior não foi reescrito. Spec: docs/specs/p4-generalizar-referencias-publicas-infra.md.
+- [x] [P4] CONCLUÍDO — Generalizadas as instruções públicas e os registros OCR para omitir o identificador do checkout privado e dados do aparelho de produção; preservado o contrato do wrapper. Commit d284e7e implantado em PRD em 09/10/2026 com site e ERP HTTP 200. Histórico Git anterior não foi reescrito. Spec: docs/specs/p4-generalizar-referencias-publicas-infra.md.
 
 - [x] [P3] CONCLUÍDO — Perfis de AliExpress e Alibaba ajustados às amostras; NF-e/DANFE enviada como Mercado Livre documentada como ambígua para manter seleção manual quando não há marca da plataforma. Testes de importação, compilação do backend e build de produção passaram; commit 9ed2b96 implantado em PRD em 09/10/2026 com smoke checks públicos HTTP 200. Spec: docs/specs/p3-reconhecimento-documentos-plataformas.md.
 

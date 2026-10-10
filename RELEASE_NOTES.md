@@ -4,6 +4,7 @@ A versão web é identificada pelo commit implantado. Cada entrada aponta para o
 
 ## 9 de outubro de 2026 — entregas confirmadas em PRD
 
+- [Instruções públicas de infraestrutura generalizadas · d284e7e](https://github.com/felgoes/parts-erp/commit/d284e7e): referências específicas foram removidas dos documentos públicos, mantendo as instruções de operação e o wrapper de deploy.
 - [Perfis de documentos AliExpress e Alibaba · 9ed2b96](https://github.com/felgoes/parts-erp/commit/9ed2b96): reconhece os campos dos recibos enviados e mantém DANFE sem marca de marketplace para revisão manual.
 - [Máscara de valores em reais · abc8e26](https://github.com/felgoes/parts-erp/commit/abc8e26): campos monetários padronizados em reais, com validação de até duas casas decimais.
 - [Recebimento de materiais de despesas · df975ea](https://github.com/felgoes/parts-erp/commit/df975ea): registre recebimentos parciais ou totais e acompanhe saldo e histórico no almoxarifado.

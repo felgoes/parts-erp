@@ -48,3 +48,4 @@ Remover do conteúdo atual do repositório público referências identificáveis
 - Mensagens de erro do deploy agora descrevem a configuração ausente sem nomear servidor ou checkout privado. Os nomes legados de variáveis e entrypoints foram mantidos como contrato do wrapper.
 - A varredura do conteúdo documental rastreado não encontrou o nome do checkout privado, modelo do aparelho, hostname ou endereço de conexão específico. A busca do histórico confirmou que revisões anteriores ainda contêm as referências; o histórico não foi reescrito nesta tarefa.
 - `bash -n deploy/update-s9.sh` e `git diff --check` passaram. O wrapper privado ainda exporta os mesmos nomes de variáveis e chama o mesmo entrypoint público; seu código e configuração não foram alterados.
+- O commit `d284e7e` foi implantado em PRD em 09/10/2026; o Tunnel foi preservado e os smoke checks do site e do ERP retornaram HTTP 200.

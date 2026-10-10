@@ -2,6 +2,8 @@
 
 ## 10 de outubro de 2026 — entregas confirmadas em PRD
 
+- [Contas a pagar como módulo · 2e5a0f7](https://github.com/felgoes/parts-erp/commit/2e5a0f7): nova área com todos os títulos de compras e despesas — resumo de em aberto, vencido e pago no período, aging por faixa de atraso, baixa parcial com histórico de cada pagamento, conciliação, filtros, relatório por fornecedor e por mês e exportação em CSV.
+
 - [Edição do pedido de compra simplificada · bbb6fe9](https://github.com/felgoes/parts-erp/commit/bbb6fe9): edite fornecedor, previsão, observações, número do pedido e data do documento no rascunho, inclua ou remova peças (SKU pode ficar para depois), aplique desconto por linha, cadastre o fornecedor no próprio fluxo, veja o valor total com paginação na lista, exclua rascunhos em lote e acompanhe previsões vencidas.
 
 - [Compras: exclusão e cancelamento seguros · 6527b74](https://github.com/felgoes/parts-erp/commit/6527b74): exclua pedidos em rascunho com registro de auditoria, cancele com motivo escolhendo o que fazer com o material já recebido, encerre o saldo pendente, receba tudo de uma vez e acompanhe o título a pagar gerado pela compra ou despesa — com baixa e estorno no cancelamento.

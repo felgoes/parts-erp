@@ -11,6 +11,7 @@ from app.api.routes import (
     invoices,
     live_updates,
     market_studies,
+    payables,
     products,
     push,
     purchases,
@@ -31,6 +32,7 @@ api_router.include_router(finance.router)
 api_router.include_router(products.router)
 api_router.include_router(purchases.router)
 api_router.include_router(suppliers.router)
+api_router.include_router(payables.router)
 api_router.include_router(catalog.router)
 api_router.include_router(telemetry.router)
 api_router.include_router(customers.router)

@@ -14,6 +14,7 @@ from app.core.permissions import Permission, has_permission
 from app.db.session import get_db
 from app.models import (
     MovementType,
+    PayablePayment,
     Product,
     PurchaseAttachment,
     PurchaseCase,
@@ -43,6 +44,7 @@ from app.schemas.common import (
     PurchaseUpdate,
 )
 from app.services.purchase_import import analyze_upload
+from app.services.payables import payable_balance, refresh_payable
 from app.services.stock import move_stock
 
 router = APIRouter(prefix="/purchases", tags=["Compras"])
@@ -222,16 +224,19 @@ def _sync_payable(
             _event(db, purchase, "payable_cancelled", f"Título a pagar de {payable.amount:.2f} encerrado com o cancelamento.")
         return payable
     if amount <= 0:
-        if payable and payable.status == "open":
+        if payable and payable.status in {"open", "partial"} and not payable.payments:
             payable.status = "cancelled"
             payable.cancelled_at = datetime.now(UTC)
             payable.cancel_reason = "Sem valor a pagar depois do encerramento do saldo."
             _event(db, purchase, "payable_cancelled", "Título a pagar encerrado por não haver valor recebido.")
+        elif payable:
+            refresh_payable(payable)
         return payable
     if payable:
         if payable.status == "open" and Decimal(payable.amount) != amount:
             payable.amount = amount
             payable.due_date = _payable_due_date(purchase)
+        refresh_payable(payable)
         return payable
     payable = PurchasePayable(
         supplier_id=purchase.supplier_id,
@@ -1048,19 +1053,31 @@ def settle_payable(
     payable = _find_payable(purchase, payable_id)
     if payable.status == "cancelled":
         raise HTTPException(status_code=409, detail="Este título foi encerrado com o cancelamento.")
-    if payable.status == "paid":
+    balance = payable_balance(payable)
+    if balance <= 0:
         raise HTTPException(status_code=409, detail="Este título já está pago.")
-    payable.status = "paid"
-    payable.paid_at = _as_utc(payload.paid_at) or datetime.now(UTC)
-    if payload.payment_method:
-        payable.payment_method = payload.payment_method
-    if payload.payment_notes:
-        payable.payment_notes = payload.payment_notes
+    payment = PayablePayment(
+        payable_id=payable.id,
+        amount=balance,
+        paid_at=_as_utc(payload.paid_at) or datetime.now(UTC),
+        method=(payload.payment_method or "").strip() or None,
+        notes=(payload.payment_notes or "").strip() or None,
+        created_by_id=user.id,
+    )
+    db.add(payment)
+    payable.payments.append(payment)
+    payable.paid_at = payment.paid_at
+    if payment.method:
+        payable.payment_method = payment.method
+    if payment.notes:
+        payable.payment_notes = payment.notes
+    db.flush()
+    refresh_payable(payable)
     _event(
         db,
         purchase,
         "payable_settled",
-        f"Título a pagar de {payable.amount:.2f} quitado por {user.full_name}.",
+        f"Título a pagar de {Decimal(payment.amount):.2f} quitado por {user.full_name}.",
         user=user,
     )
     db.commit()

@@ -446,6 +446,7 @@ class PurchasePayable(TimestampMixin, Base):
     )
     supplier_name: Mapped[str | None] = mapped_column(String(200))
     amount: Mapped[Decimal] = mapped_column(Numeric(14, 2), default=0)
+    paid_amount: Mapped[Decimal] = mapped_column(Numeric(14, 2), default=0)
     due_date: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     status: Mapped[str] = mapped_column(String(20), default="open", index=True)
     paid_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
@@ -454,6 +455,34 @@ class PurchasePayable(TimestampMixin, Base):
     cancelled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     cancel_reason: Mapped[str | None] = mapped_column(String(255))
     purchase: Mapped[PurchaseCase] = relationship(back_populates="payables")
+    payments: Mapped[list["PayablePayment"]] = relationship(
+        cascade="all, delete-orphan", back_populates="payable", lazy="selectin"
+    )
+
+
+class PayablePayment(Base):
+    """A single payment recorded against a payable title (partial payments allowed)."""
+
+    __tablename__ = "payable_payments"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    payable_id: Mapped[str] = mapped_column(
+        ForeignKey("purchase_payables.id", ondelete="CASCADE"), index=True
+    )
+    amount: Mapped[Decimal] = mapped_column(Numeric(14, 2))
+    paid_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc)
+    method: Mapped[str | None] = mapped_column(String(60))
+    notes: Mapped[str | None] = mapped_column(String(255))
+    idempotency_key: Mapped[str | None] = mapped_column(String(120), unique=True, index=True)
+    reconciled: Mapped[bool] = mapped_column(Boolean, default=False)
+    reconciled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    reconciled_by_id: Mapped[str | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL")
+    )
+    created_by_id: Mapped[str | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL")
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc)
+    payable: Mapped[PurchasePayable] = relationship(back_populates="payments")
 
 
 class PurchaseDeletion(Base):

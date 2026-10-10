@@ -27,8 +27,9 @@ export class MoneyInputDirective implements ControlValueAccessor, Validator, OnC
   private hint?: HTMLElement;
 
   ngOnChanges(changes: SimpleChanges) {
-    if (changes['appMoneyInput'] && !this.focused && (typeof this.appMoneyInput === 'number' || this.appMoneyInput === null)) {
-      this.rawValue = this.appMoneyInput === null ? '' : this.formatInputValue(this.appMoneyInput);
+    if (changes['appMoneyInput'] && !this.focused && this.appMoneyInput !== undefined) {
+      const numeric = this.toNumber(this.appMoneyInput);
+      this.rawValue = numeric === null ? '' : this.formatInputValue(numeric);
       this.element.nativeElement.value = this.rawValue;
       this.setValidity();
       this.validatorChanged();
@@ -38,7 +39,7 @@ export class MoneyInputDirective implements ControlValueAccessor, Validator, OnC
 
   writeValue(value: number | string | null | undefined): void {
     if (this.focused || this.formatError) return;
-    const numeric = value === null || value === undefined || value === '' ? null : Number(value);
+    const numeric = this.toNumber(value);
     this.rawValue = numeric === null || !Number.isFinite(numeric) ? '' : this.formatInputValue(numeric);
     this.element.nativeElement.value = this.rawValue;
     this.setValidity();
@@ -157,6 +158,21 @@ export class MoneyInputDirective implements ControlValueAccessor, Validator, OnC
       }
     }
     input.setSelectionRange(input.value.length, input.value.length);
+  }
+
+  /**
+   * The API serializes Decimal as text ("12.50"), so money bindings may arrive as
+   * number or string. Accept both instead of leaving the field blank.
+   */
+  private toNumber(value: number | string | null | undefined): number | null {
+    if (value === null || value === undefined || value === '') return null;
+    if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+    const text = String(value).trim();
+    if (!text) return null;
+    const numeric = text.includes(',')
+      ? Number(text.replace(/\./g, '').replace(',', '.'))
+      : Number(text.replace(/\s/g, ''));
+    return Number.isFinite(numeric) ? numeric : null;
   }
 
   private format(value: number): string {

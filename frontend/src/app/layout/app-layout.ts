@@ -189,6 +189,7 @@ export class AppLayout implements OnInit {
         items: [
           { path: '/monitoring', label: 'Monitoramento', icon: '◉' },
           { path: '/finance', label: 'Financeiro', icon: '$' },
+          { path: '/payables', label: 'Contas a pagar', icon: '↧' },
           { path: '/market-studies', label: 'Estudos de mercado', icon: '⌕' },
         ],
       },

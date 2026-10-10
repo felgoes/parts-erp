@@ -22,6 +22,7 @@ export const routes: Routes = [
       { path: 'purchases', loadComponent: () => import('./pages/purchases/purchases').then((m) => m.PurchasesPage) },
       { path: 'market-studies', loadComponent: () => import('./pages/market-studies/market-studies').then((m) => m.MarketStudiesPage) },
       { path: 'finance', loadComponent: () => import('./pages/finance/finance').then((m) => m.FinancePage) },
+      { path: 'payables', loadComponent: () => import('./pages/payables/payables').then((m) => m.PayablesPage) },
       { path: 'invoices', loadComponent: () => import('./pages/invoices/invoices').then((m) => m.InvoicesPage) },
       { path: 'customers', loadComponent: () => import('./pages/customers/customers').then((m) => m.CustomersPage) },
       { path: 'marketplace', loadComponent: () => import('./pages/marketplace/marketplace').then((m) => m.MarketplacePage) },

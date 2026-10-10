@@ -464,6 +464,7 @@ class PayableOut(ORMModel):
     id: str
     supplier_name: str | None
     amount: Decimal
+    paid_amount: Decimal = Decimal("0")
     due_date: datetime
     status: str
     paid_at: datetime | None
@@ -479,6 +480,105 @@ class PayableUpdate(BaseModel):
     payment_method: str | None = Field(default=None, max_length=60)
     payment_notes: str | None = Field(default=None, max_length=255)
     paid_at: datetime | None = None
+
+
+class PayablePaymentCreate(BaseModel):
+    amount: Decimal = Field(gt=0)
+    paid_at: datetime | None = None
+    method: str | None = Field(default=None, max_length=60)
+    notes: str | None = Field(default=None, max_length=255)
+    idempotency_key: str | None = Field(default=None, min_length=8, max_length=120)
+
+
+class PayablePaymentOut(ORMModel):
+    id: str
+    amount: Decimal
+    paid_at: datetime
+    method: str | None
+    notes: str | None
+    reconciled: bool
+    reconciled_at: datetime | None
+    reconciled_by_id: str | None
+    created_by_id: str | None
+    created_at: datetime
+
+
+class PayableReconcile(BaseModel):
+    reconciled: bool = True
+
+
+class PayableListItem(ORMModel):
+    id: str
+    purchase_id: str
+    purchase_number: str
+    purchase_type: str
+    purchase_status: str
+    expense_category: str | None
+    supplier_id: str | None
+    supplier_name: str | None
+    amount: Decimal
+    paid_amount: Decimal
+    balance: Decimal
+    due_date: datetime
+    status: str
+    days_overdue: int
+    payment_count: int
+    reconciled_payment_count: int
+    last_payment_at: datetime | None
+    created_at: datetime
+
+
+class PayableDetailOut(PayableListItem):
+    payments: list[PayablePaymentOut] = Field(default_factory=list)
+
+
+class PayableAgingBucket(BaseModel):
+    label: str
+    count: int
+    balance: Decimal
+
+
+class PayableSummary(BaseModel):
+    open_balance: Decimal
+    overdue_balance: Decimal
+    due_next_days_balance: Decimal
+    paid_in_period: Decimal
+    open_count: int
+    overdue_count: int
+    partial_count: int
+    paid_count: int
+    unreconciled_payments: int
+
+
+class PayableListResponse(BaseModel):
+    items: list[PayableListItem]
+    summary: PayableSummary
+    aging: list[PayableAgingBucket]
+    next_days: int
+
+
+class PayableSupplierReport(BaseModel):
+    supplier_name: str
+    open_balance: Decimal
+    overdue_balance: Decimal
+    paid_in_period: Decimal
+    titles: int
+
+
+class PayableMonthReport(BaseModel):
+    month: str
+    paid: Decimal
+    titles: int
+
+
+class PayableReportResponse(BaseModel):
+    period_label: str
+    start_date: date
+    end_date: date
+    summary: PayableSummary
+    aging: list[PayableAgingBucket]
+    by_supplier: list[PayableSupplierReport]
+    by_month: list[PayableMonthReport]
 
 
 class PurchaseDeletionOut(ORMModel):

@@ -11,6 +11,15 @@ class MoneyInputHost {
   value: number | null = 1234.56;
 }
 
+@Component({
+  standalone: true,
+  imports: [MoneyInputDirective],
+  template: '<input appMoneyInput [appMoneyInput]="value" />',
+})
+class MoneyTextHost {
+  value: string | number = '1234.56';
+}
+
 describe('MoneyInputDirective', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({ imports: [MoneyInputHost] }).compileComponents();
@@ -130,5 +139,17 @@ describe('MoneyInputDirective', () => {
     const hint = input.nextElementSibling as HTMLElement;
     expect(hint.textContent).toContain('no máximo duas casas decimais');
     expect(hint.hasAttribute('hidden')).toBe(false);
+  });
+
+  it('shows values that the API sends as decimal text', async () => {
+    TestBed.resetTestingModule();
+    await TestBed.configureTestingModule({ imports: [MoneyTextHost] }).compileComponents();
+    for (const raw of ['1234.56', '1.234,56']) {
+      const fixture = TestBed.createComponent(MoneyTextHost);
+      fixture.componentInstance.value = raw;
+      fixture.detectChanges();
+      const input = fixture.nativeElement.querySelector('input') as HTMLInputElement;
+      expect(input.value).toContain('1.234,56');
+    }
   });
 });

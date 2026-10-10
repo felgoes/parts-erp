@@ -22,6 +22,9 @@ import {
   ProductChannelMetadata,
   ProductChannelDraft,
   Purchase,
+  PayableDetail,
+  PayableListResponse,
+  PayableReport,
   CustomerDetail,
   User,
   TelemetrySummary,
@@ -252,6 +255,53 @@ export class ApiService {
 
   settlePurchasePayable(purchaseId: string, payableId: string, payload: unknown = {}): Observable<unknown> {
     return this.http.post(`${this.base}/purchases/${purchaseId}/payables/${payableId}/settle`, payload);
+  }
+
+  payables(params: Record<string, string | number | boolean> = {}): Observable<PayableListResponse> {
+    return this.http.get<PayableListResponse>(`${this.base}/payables`, { params: this.queryParams(params) });
+  }
+
+  payable(id: string): Observable<PayableDetail> {
+    return this.http.get<PayableDetail>(`${this.base}/payables/${id}`);
+  }
+
+  payableReport(params: Record<string, string | number | boolean> = {}): Observable<PayableReport> {
+    return this.http.get<PayableReport>(`${this.base}/payables/report`, { params: this.queryParams(params) });
+  }
+
+  addPayablePayment(id: string, payload: unknown): Observable<PayableDetail> {
+    return this.http.post<PayableDetail>(`${this.base}/payables/${id}/payments`, payload);
+  }
+
+  removePayablePayment(id: string, paymentId: string): Observable<PayableDetail> {
+    return this.http.delete<PayableDetail>(`${this.base}/payables/${id}/payments/${paymentId}`);
+  }
+
+  reconcilePayablePayment(id: string, paymentId: string, reconciled: boolean): Observable<PayableDetail> {
+    return this.http.post<PayableDetail>(`${this.base}/payables/${id}/payments/${paymentId}/reconcile`, { reconciled });
+  }
+
+  updatePayable(id: string, payload: unknown): Observable<PayableDetail> {
+    return this.http.patch<PayableDetail>(`${this.base}/payables/${id}`, payload);
+  }
+
+  downloadPayablesCsv(params: Record<string, string | number | boolean> = {}): void {
+    this.http.get(`${this.base}/payables/export.csv`, { params: this.queryParams(params), responseType: 'blob' }).subscribe((blob) => {
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'contas-a-pagar.csv';
+      link.click();
+      URL.revokeObjectURL(url);
+    });
+  }
+
+  private queryParams(params: Record<string, string | number | boolean>): Record<string, string> {
+    return Object.fromEntries(
+      Object.entries(params)
+        .filter(([, value]) => value !== undefined && value !== null && value !== '')
+        .map(([key, value]) => [key, String(value)]),
+    );
   }
 
   updatePurchasePayable(purchaseId: string, payableId: string, payload: unknown): Observable<unknown> {

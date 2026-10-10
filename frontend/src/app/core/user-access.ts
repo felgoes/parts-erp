@@ -28,6 +28,7 @@ const PAGE_ROLES: Record<string, UserRole[]> = {
   purchases: ['admin', 'manager', 'stock', 'finance', 'viewer'],
   'market-studies': ['admin', 'manager', 'finance', 'viewer'],
   finance: ['admin', 'manager', 'finance', 'viewer'],
+  payables: ['admin', 'manager', 'finance', 'viewer'],
   invoices: ['admin', 'manager', 'operator', 'stock', 'finance', 'viewer'],
   customers: ['admin', 'manager', 'operator', 'finance', 'viewer'],
   marketplace: ['admin', 'manager', 'operator', 'stock', 'finance', 'viewer'],

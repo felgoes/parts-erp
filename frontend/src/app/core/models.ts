@@ -199,14 +199,82 @@ export interface PurchasePayable {
   id: string;
   supplier_name: string | null;
   amount: number;
+  paid_amount?: number;
   due_date: string;
-  status: 'open' | 'paid' | 'cancelled';
+  status: 'open' | 'partial' | 'paid' | 'cancelled';
   paid_at: string | null;
   payment_method: string | null;
   payment_notes: string | null;
   cancelled_at: string | null;
   cancel_reason: string | null;
   created_at: string;
+}
+export type PayableStatus = 'open' | 'partial' | 'paid' | 'cancelled';
+export interface PayablePayment {
+  id: string;
+  amount: number;
+  paid_at: string;
+  method: string | null;
+  notes: string | null;
+  reconciled: boolean;
+  reconciled_at: string | null;
+  reconciled_by_id: string | null;
+  created_by_id: string | null;
+  created_at: string;
+}
+export interface PayableListItem {
+  id: string;
+  purchase_id: string;
+  purchase_number: string;
+  purchase_type: 'parts' | 'expense';
+  purchase_status: string;
+  expense_category: string | null;
+  supplier_id: string | null;
+  supplier_name: string | null;
+  amount: number;
+  paid_amount: number;
+  balance: number;
+  due_date: string;
+  status: PayableStatus;
+  days_overdue: number;
+  payment_count: number;
+  reconciled_payment_count: number;
+  last_payment_at: string | null;
+  created_at: string;
+}
+export interface PayableDetail extends PayableListItem {
+  payments: PayablePayment[];
+}
+export interface PayableAgingBucket {
+  label: string;
+  count: number;
+  balance: number;
+}
+export interface PayableSummary {
+  open_balance: number;
+  overdue_balance: number;
+  due_next_days_balance: number;
+  paid_in_period: number;
+  open_count: number;
+  overdue_count: number;
+  partial_count: number;
+  paid_count: number;
+  unreconciled_payments: number;
+}
+export interface PayableListResponse {
+  items: PayableListItem[];
+  summary: PayableSummary;
+  aging: PayableAgingBucket[];
+  next_days: number;
+}
+export interface PayableReport {
+  period_label: string;
+  start_date: string;
+  end_date: string;
+  summary: PayableSummary;
+  aging: PayableAgingBucket[];
+  by_supplier: Array<{ supplier_name: string; open_balance: number; overdue_balance: number; paid_in_period: number; titles: number }>;
+  by_month: Array<{ month: string; paid: number; titles: number }>;
 }
 export interface PurchaseQuote {
   id: string;

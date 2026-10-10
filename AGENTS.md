@@ -22,6 +22,10 @@
 - Before committing or pushing any UI change, manually validate the affected flow in the local HML browser at localhost:4200 with the dedicated QA account from the ignored `.env.qa.local` and the local API. Use the standardized local helper: start `python3 scripts/qa-login-helper.py`, open `http://localhost:4200/__qa-login`, and submit the embedded real ERP login form through the browser. The helper reads credentials locally and prefills the real form without exposing them to browser automation; Codex must submit the form and inspect the authenticated HML page itself. Do not ask the user to enter credentials. Never use production accounts or data for QA, and never echo QA credentials into chat, logs, screenshots, source, or commits. If local HML, the helper, or the QA account is unavailable, stop before push/deploy and report the blocker. Run local HML services natively in WSL using `backend/.venv`; do not use Docker.
 - Do not deploy a commit that differs from `origin/main`. Preserve production data and configuration.
 
+## Release notes
+
+- After each successful PRD deployment, add concise, user-facing notes to RELEASE_NOTES.md and link the exact deployed commit on GitHub. Record only verified deployment dates; distinguish retroactive commit dates from deployment dates. Keep the README link to the notes easy to find.
+
 ## Project commands
 
 - Frontend production build: `cd frontend && npm ci && npm run build -- --configuration production`

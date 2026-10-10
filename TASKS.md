@@ -2,9 +2,9 @@
 
 ## Pendentes
 
-
-
 ## Concluídas
+
+- [x] [P2] CONCLUÍDO — Notas de atualização em português com histórico retroativo linkado a 24 commits do GitHub, data de commit separada de deploy confirmado, acesso pelo README e regra para atualizar após novas implantações. Spec: docs/specs/p2-release-notes-github.md.
 
 - [x] [P1] CONCLUÍDO — Campos monetários editáveis padronizados em BRL pt-BR, com validação de até duas casas decimais; fluxo QA padronizado documentado. Validado em HML; commit abc8e26 implantado em PRD e smoke checks públicos do site e ERP retornaram HTTP 200. Spec: docs/specs/p1-mascara-valores-moeda.md.
 

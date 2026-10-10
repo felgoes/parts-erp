@@ -4,6 +4,8 @@
 
 ERP web para uma loja de autopeças, com estoque, clientes, faturas de venda e sincronização de pedidos do Mercado Livre.
 
+Veja as [notas de atualização](RELEASE_NOTES.md) e os commits correspondentes a cada versão publicada.
+
 ## Stack
 
 - Angular 21 com componentes standalone e Signals

@@ -4,7 +4,10 @@
 
 ## Concluídas
 
-- [x] [P4] CONCLUÍDO — Generalizadas as instruções públicas e os registros OCR para omitir o identificador do checkout privado e dados do aparelho de produção; preservado o contrato do wrapper. Commit 7e08f44 implantado em PRD em 09/10/2026 com site e ERP HTTP 200. Histórico Git público reescrito e branches publicados serão sincronizados; PRD recebe artefato sem diretório .git e o HML usa o checkout WSL canônico. Spec: docs/specs/p4-generalizar-referencias-publicas-infra.md.
+- [ ] [P1] Expurgar objetos históricos órfãos ainda servidos pelo GitHub após a reescrita das branches; solicitar limpeza hospedada ao suporte. Bloqueio: API ainda responde HTTP 200 ao SHA antigo. Spec: docs/specs/p4-generalizar-referencias-publicas-infra.md.
+
+
+- [x] [P4] CONCLUÍDO — Generalizadas as instruções públicas e os registros OCR para omitir o identificador do checkout privado e dados do aparelho de produção; preservado o contrato do wrapper. Commit 7e08f44 implantado em PRD em 09/10/2026 com site e ERP HTTP 200. Refs de branches públicas reescritas; clones WSL e Windows sincronizados e expurgados. PRD recebe artefato sem diretório .git e o HML compartilha o checkout WSL canônico. O GitHub ainda resolve um objeto órfão por SHA; expurgo hospedado pendente. Spec: docs/specs/p4-generalizar-referencias-publicas-infra.md.
 
 - [x] [P3] CONCLUÍDO — Perfis de AliExpress e Alibaba ajustados às amostras; NF-e/DANFE enviada como Mercado Livre documentada como ambígua para manter seleção manual quando não há marca da plataforma. Testes de importação, compilação do backend e build de produção passaram; commit bd7f1f4 implantado em PRD em 09/10/2026 com smoke checks públicos HTTP 200. Spec: docs/specs/p3-reconhecimento-documentos-plataformas.md.
 

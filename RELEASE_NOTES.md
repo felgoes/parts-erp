@@ -2,6 +2,10 @@
 
 ## 10 de outubro de 2026 — entregas confirmadas em PRD
 
+- [Leitura de recibo por coluna (Alibaba e DANFE) · bec502c](https://github.com/felgoes/parts-erp/commit/bec502c): os itens de recibos com colunas agora são lidos — descrição (inclusive em duas linhas), quantidade, valor unitário e total da linha, com código do produto e unidade; a DANFE passa a entregar chave de acesso, número, série, emitente, CNPJ, data de emissão, valor dos produtos, frete, desconto e total da nota.
+
+- [Importação de documento: moeda, cotação, valor pago e conferência · 6e117ad](https://github.com/felgoes/parts-erp/commit/6e117ad): a revisão mostra a moeda lida e exige a cotação quando o recibo não é em reais, aproveitando a taxa que o próprio documento informa; o valor pago ganha campo próprio com a diferença destacada (na amostra Alibaba, a taxa de R$ 9,31 aparece em separado); a conferência fecha itens + frete + impostos − descontos − total, sem alarme falso quando os números batem; documento repetido é bloqueado por chave de acesso ou número do pedido com origem; datas em vários formatos e o texto lido ficam disponíveis na revisão.
+
 - [Excluir compra pelos três pontos · 24983c7](https://github.com/felgoes/parts-erp/commit/24983c7): a ação agora está no menu de cada pedido e no detalhe, com confirmação mostrando número, fornecedor, valor e o que será apagado; a exclusão remove itens, cotações, anexos, histórico e título a pagar, devolve o estoque recebido por movimento de estorno e fica registrada na auditoria. Bloqueia quando há pagamento ao fornecedor ou quando o estorno deixaria saldo negativo, explicando o caminho correto.
 
 - [Título a pagar parcelado pela condição combinada · 701bef8](https://github.com/felgoes/parts-erp/commit/701bef8): escolha à vista, 30 dias, 30/60, 30/60/90 ou uma condição própria na cotação e na despesa; o título a pagar nasce na aprovação já parcelado, com vencimento e valor por parcela, baixa parcela a parcela e mudança de condição recalculando apenas o que está em aberto.

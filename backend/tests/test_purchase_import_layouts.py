@@ -1,6 +1,7 @@
 """P14 — leitura de itens por coluna (recibos de marketplace e DANFE)."""
 
 from app.services.purchase_import import (
+    _extract_image_items,
     _extract_danfe_fields,
     _extract_danfe_items,
     _extract_items_by_columns,
@@ -34,6 +35,36 @@ def test_column_grid_derives_quantity_when_only_unit_and_total_are_read():
     assert len(items) == 1
     assert items[0]["quantity"] == 5.0
     assert items[0]["quantity_derived"] is True
+
+
+def test_image_receipt_keeps_packaging_text_and_reads_quantity_one():
+    """Recibo fotografado: o OCR perde as colunas, e o '10PCS' é embalagem, não quantidade."""
+    lines = [
+        "Detalhes do item",
+        "Membrana da Tampa da Válvula LR",
+        "¢ (=) 10PCS",
+        "R$214,40 ra",
+        "Seoce 10,. HWATPS Store",
+    ]
+
+    items = _extract_image_items(lines)
+
+    assert len(items) == 1
+    assert items[0]["description"] == "Membrana da Tampa da Válvula LR 10PCS"
+    assert items[0]["quantity"] == 1.0
+    assert items[0]["unit_cost"] == 214.4
+    assert items[0]["line_total"] == 214.4
+    assert items[0]["quantity_derived"] is True
+    assert items[0]["source"] == "ocr"
+
+
+def test_image_receipt_uses_explicit_quantity_when_present():
+    items = _extract_image_items(
+        ["Detalhes do item", "Filtro de óleo", "2 un", "R$ 30,00"]
+    )
+
+    assert items[0]["quantity"] == 2.0
+    assert items[0]["quantity_derived"] is False
 
 
 def test_danfe_reads_document_identity_and_item_with_two_line_description():

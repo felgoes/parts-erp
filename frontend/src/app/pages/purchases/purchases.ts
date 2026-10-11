@@ -263,7 +263,7 @@ export class PurchasesPage implements OnInit {
   readonly selectedFiles = signal<File[]>([]);
   readonly importReview = signal<any | null>(null);
   readonly importProfiles = signal<Array<{ profile_id: string; name: string; kind: string; version: number }>>([]);
-  readonly importDraft = signal<{ supplier: string; orderNumber: string; documentDate: string; total: number | null; shipping: number | null; discount: number | null; tax: number | null; currency: string | null; exchangeRate: number | null; paidAmount: number | null; items: Array<{ description: string; sku: string; quantity: number; unit_cost: number; confidence: number; product_id: string | null; stock_controlled: boolean; line_total: number; discount_amount: number }> }>({ supplier: '', orderNumber: '', documentDate: '', total: null, shipping: null, discount: null, tax: null, currency: null, exchangeRate: null, paidAmount: null, items: [] });
+  readonly importDraft = signal<{ supplier: string; orderNumber: string; documentDate: string; total: number | null; shipping: number | null; discount: number | null; tax: number | null; currency: string | null; exchangeRate: number | null; paidAmount: number | null; items: Array<{ description: string; sku: string; quantity: number; unit_cost: number; confidence: number; product_id: string | null; stock_controlled: boolean; line_total: number; discount_amount: number; source: string; quantityDerived: boolean }> }>({ supplier: '', orderNumber: '', documentDate: '', total: null, shipping: null, discount: null, tax: null, currency: null, exchangeRate: null, paidAmount: null, items: [] });
   readonly importDuplicate = signal<{ purchase_id: string; purchase_number: string; purchase_status: string; cancelled: boolean } | null>(null);
   readonly importCheck = signal<{ items_total: number | null; closing_difference: number | null; subtotal_difference: number | null; balanced: boolean } | null>(null);
   readonly importFile = signal<File | null>(null);
@@ -342,11 +342,18 @@ export class PurchasesPage implements OnInit {
       currency: review.currency ? String(review.currency) : null,
       exchangeRate: review.exchange_rate == null ? null : Number(review.exchange_rate),
       paidAmount: review.paid?.amount == null ? null : Number(review.paid.amount),
-      items: (review.items || []).map((item: any) => ({
-        description: String(item.description || ''), sku: String(item.sku || ''), product_id: null, stock_controlled: true,
-        quantity: Number(item.quantity ?? 0), unit_cost: Number(item.unit_cost ?? 0), line_total: Number(item.line_total ?? Number(item.quantity ?? 0) * Number(item.unit_cost ?? 0)), discount_amount: Number(item.discount_amount ?? 0),
-        confidence: Number(item.confidence ?? 0),
-      })),
+      items: (review.items || []).map((item: any) => {
+        const sku = String(item.sku || '').trim();
+        // Vínculo automático só com correspondência exata de SKU ou código de barras (P14).
+        const match = sku
+          ? this.products().find((product) => product.sku.toLowerCase() === sku.toLowerCase() || (!!product.barcode && product.barcode === sku))
+          : undefined;
+        return {
+          description: String(item.description || ''), sku, product_id: match ? match.id : null, stock_controlled: true,
+          quantity: Number(item.quantity ?? 0), unit_cost: Number(item.unit_cost ?? 0), line_total: Number(item.line_total ?? Number(item.quantity ?? 0) * Number(item.unit_cost ?? 0)), discount_amount: Number(item.discount_amount ?? 0),
+          confidence: Number(item.confidence ?? 0), source: String(item.source || ''), quantityDerived: !!item.quantity_derived,
+        };
+      }),
     });
     this.importError.set('');
     this.importCheck.set(review.check || null);
@@ -383,9 +390,10 @@ export class PurchasesPage implements OnInit {
     if (source === 'columns') return 'grade do documento';
     return 'documento';
   }
-  itemOrigin(item: { source?: string; confidence?: number; quantity_derived?: boolean }): string {
+  itemOrigin(item: { source?: string; confidence?: number; quantity_derived?: boolean; quantityDerived?: boolean }): string {
     const base = this.fieldOrigin(item);
-    return item.quantity_derived ? `${base} · quantidade derivada` : base;
+    const derived = item.quantity_derived ?? item.quantityDerived;
+    return derived ? `${base} · quantidade derivada` : base;
   }
   setImportPaid(value: number | null) { this.importDraft.update((draft) => ({ ...draft, paidAmount: value })); }
   importItemsTotal() { return this.importDraft().items.reduce((sum, item) => sum + Number(item.line_total || 0), 0); }
@@ -452,7 +460,7 @@ export class PurchasesPage implements OnInit {
     if (this.importNeedsRate() && !(Number(this.importDraft().exchangeRate) > 0)) return false;
     return !Object.values(this.importMoneyValidity()).some(Boolean) && items.length > 0 && items.every((item) => (!item.stock_controlled || !!item.product_id) && item.description.trim().length >= 2 && Number.isFinite(item.quantity) && item.quantity > 0 && Number.isFinite(item.unit_cost) && item.unit_cost >= 0 && Number.isFinite(item.discount_amount) && item.discount_amount >= 0 && item.discount_amount <= item.quantity * item.unit_cost);
   }
-  addImportLine() { this.importDraft.update((draft) => ({ ...draft, items: [...draft.items, { description: '', sku: '', quantity: 1, unit_cost: 0, confidence: 0, product_id: null, stock_controlled: true, line_total: 0, discount_amount: 0 }] })); }
+  addImportLine() { this.importDraft.update((draft) => ({ ...draft, items: [...draft.items, { description: '', sku: '', quantity: 1, unit_cost: 0, confidence: 0, product_id: null, stock_controlled: true, line_total: 0, discount_amount: 0, source: '', quantityDerived: false }] })); }
   removeImportLine(index: number) { this.importDraft.update((draft) => ({ ...draft, items: draft.items.filter((_, i) => i !== index) })); this.importMoneyValidity.update((values) => Object.fromEntries(Object.entries(values).filter(([key]) => !key.startsWith('item-')))); }
   closeImportReview() { if (this.creatingImport()) return; this.importReview.set(null); this.importFile.set(null); this.importId.set(null); this.importError.set(''); this.importProductModal.set(false); }
   createImportedPurchase() {

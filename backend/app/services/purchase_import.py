@@ -580,6 +580,58 @@ def _clean_text(value: str) -> str:
     return html.unescape(value).strip()
 
 
+QUANTITY_HINT = re.compile(r"\bx\s*(\d+)\b|\bqty\s*:?\s*(\d+)\b|\b(\d+)\s*un\b", re.I)
+
+
+def _extract_image_items(lines: list[str]) -> list[dict[str, Any]]:
+    """Item de recibo fotografado: o OCR não preserva colunas, então usa o bloco do item."""
+    start = next(
+        (index for index, line in enumerate(lines) if "detalhes do item" in _normalize(line)),
+        None,
+    )
+    if start is None:
+        return []
+    block = [line.strip() for line in lines[start + 1 : start + 8] if line.strip()]
+    price_index = next(
+        (index for index, line in enumerate(block) if re.search(r"(?:R\$|BRL)\s*\d", line, re.I)),
+        None,
+    )
+    if price_index is None:
+        return []
+    price_match = re.search(r"(R\$\s*\d[\d.,]*|BRL\s*\d[\d.,]*)", block[price_index], re.I)
+    unit_cost = _money(price_match.group(1)) if price_match else None
+    if unit_cost is None or unit_cost <= 0:
+        return []
+    quantity = 1.0
+    explicit = False
+    for line in block[: price_index + 1]:
+        hint = QUANTITY_HINT.search(_normalize(line))
+        if hint:
+            quantity = float(next(value for value in hint.groups() if value))
+            explicit = True
+            break
+    description_parts = []
+    for line in block[:price_index]:
+        # Marcador de ícone/checkbox do recibo não é descrição.
+        clean = re.sub(r"^[^\wÀ-ÿ]+", "", line).strip()
+        if clean:
+            description_parts.append(_clean_text(clean))
+    description = " ".join(description_parts).strip()
+    if len(description) < 3:
+        return []
+    return [
+        {
+            "description": description[:200],
+            "quantity": quantity,
+            "unit_cost": float(unit_cost),
+            "line_total": round(unit_cost * quantity, 2),
+            "confidence": 0.55,
+            "source": "ocr",
+            "quantity_derived": not explicit,
+        }
+    ]
+
+
 def _extract_items(lines: list[str], profile_id: str | None = None) -> list[dict[str, Any]]:
     items = []
     if profile_id == "danfe" or _looks_like_danfe(lines):
@@ -608,7 +660,9 @@ def _extract_items(lines: list[str], profile_id: str | None = None) -> list[dict
                     "confidence": 0.58,
                 }
             )
-        return items[:100]
+        if items:
+            return items[:100]
+        return _extract_image_items(lines)
     # Deliberately conservative: only accept explicit quantity × price patterns.
     pattern = re.compile(
         rf"^(?P<description>.+?)\s+(?:x|×)\s*(?P<qty>\d+(?:[,.]\d+)?)\s+(?P<unit>{MONEY})(?:\s+(?P<total>{MONEY}))?\s*$",

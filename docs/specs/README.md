@@ -1,0 +1,13 @@
+# Especificações — Parts ERP
+
+As specs descrevem comportamento e critérios de aceite de cada item. A lista oficial do que está pendente ou em andamento é o `TASKS.md` do workspace do projeto; concluída a tarefa, o histórico fica aqui (linha `Status:`) e no `RELEASE_NOTES.md`.
+
+1. [P0 — Receber itens de compras no almoxarifado](p0-recebimento-estoque-compras.md)
+2. [P1 — Máscara e precisão para valores em reais](p1-mascara-valores-moeda.md)
+3. [P2 — Notas de atualização no GitHub](p2-release-notes-github.md)
+4. [P3 — Reconhecimento de campos por plataforma](p3-reconhecimento-documentos-plataformas.md)
+5. [P4 — Remover referências públicas à infraestrutura](p4-generalizar-referencias-publicas-infra.md)
+6. [P5 — Visualização dos valores por item na compra](p5-visual-valores-itens-compra.md)
+7. [P6 — Vincular itens importados aos produtos do estoque](p6-vincular-itens-importados-a-produtos.md)
+8. [P7 — Simplificar o pedido de compra e permitir exclusão segura](p7-simplificar-pedido-compra-exclusao.md)
+9. [P8 — Contas a pagar como módulo](p8-contas-a-pagar-modulo.md)

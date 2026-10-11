@@ -2,6 +2,8 @@
 
 ## 10 de outubro de 2026 — entregas confirmadas em PRD
 
+- [Origem do dado, anexo na mesma operação e NF-e XML · d9db8f1](https://github.com/felgoes/parts-erp/commit/d9db8f1): a revisão da importação mostra de onde veio cada valor (documento, XML da NF-e ou OCR com a qualidade lida) em vez de porcentagens fixas; a compra importada é criada e anexada na mesma operação, então falha no anexo não deixa compra sem documento; e a NF-e XML passa a registrar CNPJ do emitente, série e número em campos próprios.
+
 - [Leitura de recibo por coluna (Alibaba e DANFE) · bec502c](https://github.com/felgoes/parts-erp/commit/bec502c): os itens de recibos com colunas agora são lidos — descrição (inclusive em duas linhas), quantidade, valor unitário e total da linha, com código do produto e unidade; a DANFE passa a entregar chave de acesso, número, série, emitente, CNPJ, data de emissão, valor dos produtos, frete, desconto e total da nota.
 
 - [Importação de documento: moeda, cotação, valor pago e conferência · 6e117ad](https://github.com/felgoes/parts-erp/commit/6e117ad): a revisão mostra a moeda lida e exige a cotação quando o recibo não é em reais, aproveitando a taxa que o próprio documento informa; o valor pago ganha campo próprio com a diferença destacada (na amostra Alibaba, a taxa de R$ 9,31 aparece em separado); a conferência fecha itens + frete + impostos − descontos − total, sem alarme falso quando os números batem; documento repetido é bloqueado por chave de acesso ou número do pedido com origem; datas em vários formatos e o texto lido ficam disponíveis na revisão.

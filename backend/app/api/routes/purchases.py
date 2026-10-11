@@ -44,7 +44,7 @@ from app.schemas.common import (
     PurchaseUpdate,
 )
 from app.services.purchase_import import analyze_upload
-from app.services.payables import payable_balance, refresh_payable
+from app.services.payables import apply_payment_condition, normalize_condition, payable_balance, refresh_payable
 from app.services.stock import move_stock
 
 router = APIRouter(prefix="/purchases", tags=["Compras"])
@@ -77,6 +77,10 @@ def _present(purchase: PurchaseCase, user: User) -> PurchaseOut:
                         "freight_amount": Decimal("0"),
                         "tax_amount": Decimal("0"),
                         "discount_amount": Decimal("0"),
+                        "payment_type": None,
+                        "installment_count": None,
+                        "first_due_days": None,
+                        "interval_days": None,
                     }
                 )
                 for quote in result.quotes
@@ -222,18 +226,71 @@ def _active_payable(purchase: PurchaseCase) -> PurchasePayable | None:
     return None
 
 
+def _owed_value(purchase: PurchaseCase) -> Decimal:
+    """Valor devido ao fornecedor.
+
+    P9/P12: a compra de peças deve o valor acordado na cotação vencedora desde a aprovação.
+    Quando o saldo pendente é encerrado, o fornecedor não entrega o restante e o título
+    passa a valer o que foi efetivamente recebido.
+    """
+    if purchase.purchase_type == "expense":
+        return Decimal(purchase.expense_amount or 0)
+    if purchase.status == "closed":
+        return _received_value(purchase)
+    quote = next((entry for entry in purchase.quotes if entry.id == purchase.selected_quote_id), None)
+    if quote is not None:
+        return Decimal(quote.total).quantize(Decimal("0.01"))
+    return _received_value(purchase)
+
+
+def _payable_condition(purchase: PurchaseCase) -> tuple[str, int, int, int]:
+    """Condição combinada: a da cotação vencedora; sem ela, à vista no prazo padrão."""
+    quote = next((entry for entry in purchase.quotes if entry.id == purchase.selected_quote_id), None)
+    if quote is not None:
+        return (
+            quote.payment_type,
+            quote.installment_count,
+            quote.first_due_days,
+            quote.interval_days,
+        )
+    default_first_due = 0 if purchase.purchase_type == "expense" else PAYABLE_TERM_DAYS
+    return "cash", 1, default_first_due, PAYABLE_TERM_DAYS
+
+
+def _payable_base_date(purchase: PurchaseCase, payable: PurchasePayable | None) -> datetime:
+    """P12: data base é a data do documento da compra e, sem ela, a data da aprovação."""
+    return (
+        _as_utc(purchase.document_date)
+        or _as_utc(payable.created_at if payable else None)
+        or datetime.now(UTC)
+    )
+
+
+def _apply_payable_condition(
+    purchase: PurchaseCase,
+    payable: PurchasePayable,
+    *,
+    condition: tuple[str, int, int, int] | None = None,
+) -> None:
+    try:
+        apply_payment_condition(
+            payable,
+            base_date=_payable_base_date(purchase, payable),
+            condition=condition,
+        )
+    except ValueError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+
+
 def _sync_payable(
     db: Session,
     purchase: PurchaseCase,
     *,
     reason: str | None = None,
+    condition: tuple[str, int, int, int] | None = None,
 ) -> PurchasePayable | None:
     """Keep the accounts payable title aligned with what the purchase actually owes."""
-    amount = (
-        Decimal(purchase.expense_amount or 0)
-        if purchase.purchase_type == "expense"
-        else _received_value(purchase)
-    )
+    amount = _owed_value(purchase)
     payable = _active_payable(purchase)
     if purchase.status == "cancelled":
         if payable and payable.status != "cancelled":
@@ -252,9 +309,11 @@ def _sync_payable(
             refresh_payable(payable)
         return payable
     if payable:
-        if payable.status == "open" and Decimal(payable.amount) != amount:
+        if Decimal(payable.amount) != amount and payable.status in {"open", "partial"}:
             payable.amount = amount
-            payable.due_date = _payable_due_date(purchase)
+            _apply_payable_condition(purchase, payable)
+        elif not payable.installments:
+            _apply_payable_condition(purchase, payable, condition=_payable_condition(purchase))
         refresh_payable(payable)
         return payable
     payable = PurchasePayable(
@@ -266,6 +325,11 @@ def _sync_payable(
     )
     purchase.payables.append(payable)
     db.flush()
+    _apply_payable_condition(
+        purchase,
+        payable,
+        condition=normalize_condition(*(condition or _payable_condition(purchase))),
+    )
     _event(db, purchase, "payable_created", f"Título a pagar de {amount:.2f} criado.")
     return payable
 
@@ -381,7 +445,16 @@ def create_purchase(
     db.flush()
     _event(db, purchase, "created", f"Compra criada por {user.full_name}.", user=user)
     if payload.purchase_type == "expense":
-        _sync_payable(db, purchase)
+        _sync_payable(
+            db,
+            purchase,
+            condition=(
+                payload.payment_type,
+                payload.installment_count,
+                payload.first_due_days,
+                payload.interval_days,
+            ),
+        )
     db.commit()
     return _present(_load(db, purchase.id), user)
 
@@ -651,6 +724,8 @@ def select_quote(
     purchase.selected_quote_id = quote.id
     purchase.status = "approved"
     _recompute_purchase_costs(purchase, quote)
+    # P12: o título a pagar nasce na aprovação, com o valor e a condição da cotação vencedora.
+    _sync_payable(db, purchase)
     _event(
         db,
         purchase,

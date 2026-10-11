@@ -47,7 +47,7 @@ Como comprador, quero cadastrar a compra apenas com as peças e quantidades que 
 2. **Revisão da importação de documento mantém os valores extraídos.** O documento enviado funciona como a cotação de origem daquela compra: os valores vêm do papel, passam por revisão humana antes de salvar e ficam registrados como origem do custo. A regra de "nenhum valor no cadastro" vale para a compra digitada, não para a leitura do documento.
 3. **Despesa da empresa mantém o valor total e o custo unitário dos materiais.** Despesa não tem cotação de fornecedor e o valor total é a base do título a pagar.
 4. **Sem alçada por faixa de valor nesta fase.** A operação é pequena; os perfis atuais (admin, manager, operator) e o registro de auditoria cobrem o controle. A criação de alçada foi encerrada sem implementação e está registrada na lista de tarefas.
-5. **Título na aprovação e divergência de nota ficaram fora desta entrega.** As duas ideias foram encerradas junto com a limpeza do backlog em 10/10/2026; o título continua seguindo o que foi recebido.
+5. **Título a pagar na aprovação.** O título nasce na aprovação com o valor acordado e as parcelas da condição da cotação (P12). A checagem de divergência entre nota e cotação no recebimento ficou encerrada com a limpeza do backlog em 10/10/2026.
 
 ## Fora de escopo
 
@@ -55,7 +55,7 @@ Como comprador, quero cadastrar a compra apenas com as peças e quantidades que 
 - Alterar preço de venda, custo de catálogo de produto e estudos de mercado.
 - Migrar, apagar ou recalcular valores de compras e itens já existentes.
 - Criar novos perfis de acesso ou alçada de aprovação por valor.
-- Gerar parcelas do título a pagar a partir da condição de pagamento (P12).
+- Gerar parcelas do título a pagar com regras próprias: a P12 passou a derivá-las da condição da cotação.
 
 ## Critérios de aceite
 

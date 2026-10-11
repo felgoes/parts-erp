@@ -16,11 +16,11 @@
   Digitar o total final da proposta distribui o líquido pelos itens e mostra o preço unitário; digitar o preço unitário atualiza o total na hora. Rateio proporcional ao subtotal, com queda para quantidade quando não há preço; sobra de centavos no item de maior valor e cotação escolhida travada.
   Spec: docs/specs/p11-cotacao-total-unitario-tempo-real.md
 
+- [x] [P12] Condição de pagamento da cotação gera as parcelas do título a pagar.
+  Condição estruturada na cotação e na despesa (à vista, parcelado ou entrada + parcelas, com atalhos 30, 30/60 e 30/60/90); o título a pagar nasce na aprovação já parcelado, com vencimentos, soma fechando no total, baixa por parcela e mudança de condição recalculando só o que está em aberto.
+  Spec: docs/specs/p12-condicao-pagamento-parcelas-titulo.md
+
 ## Encerradas sem implementação
-
-- [x] ENCERRADA — Alçada de aprovação por faixa de valor. Avaliada na revisão de ERP e administração de 10/10/2026: a operação é pequena e os perfis existentes (admin, manager, operator) somados ao registro de auditoria cobrem o controle. Criar hierarquia de aprovação seria controle sem uso real; pode voltar ao backlog se o time crescer.
-
-- [x] ENCERRADA — Condição de pagamento estruturada gerando parcelas do título a pagar (P12). Descartada a pedido do PO em 10/10/2026 junto com a limpeza do backlog; a condição da cotação segue como texto livre e o título continua com vencimento único.
 
 ## Fila solicitada
 

@@ -201,6 +201,9 @@ export interface PurchasePayable {
   amount: number;
   paid_amount?: number;
   due_date: string;
+  payment_terms?: string | null;
+  installment_count?: number;
+  installments?: PayableInstallment[];
   status: 'open' | 'partial' | 'paid' | 'cancelled';
   paid_at: string | null;
   payment_method: string | null;
@@ -235,6 +238,8 @@ export interface PayableListItem {
   paid_amount: number;
   balance: number;
   due_date: string;
+  payment_terms?: string | null;
+  installment_count?: number;
   status: PayableStatus;
   days_overdue: number;
   payment_count: number;
@@ -243,7 +248,20 @@ export interface PayableListItem {
   created_at: string;
 }
 export interface PayableDetail extends PayableListItem {
+  payment_type?: PaymentConditionType;
+  first_due_days?: number;
+  interval_days?: number;
   payments: PayablePayment[];
+  installments: PayableInstallment[];
+}
+export type PaymentConditionType = 'cash' | 'installments' | 'entry';
+export interface PayableInstallment {
+  id: string;
+  number: number;
+  due_date: string;
+  amount: number;
+  paid_amount: number;
+  balance: number;
 }
 export interface PayableAgingBucket {
   label: string;
@@ -287,6 +305,10 @@ export interface PurchaseQuote {
   allocation_method: 'proportional' | 'quantity';
   item_costs: Record<string, number> | null;
   delivery_days: number | null;
+  payment_type?: PaymentConditionType | null;
+  installment_count?: number | null;
+  first_due_days?: number | null;
+  interval_days?: number | null;
   payment_terms: string | null;
   notes: string | null;
   created_at: string;

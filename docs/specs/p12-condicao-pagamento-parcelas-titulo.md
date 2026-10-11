@@ -1,6 +1,6 @@
 # P12 — Condição de pagamento da cotação gera as parcelas do título a pagar
 
-**Status:** decidida — decisões do PO fechadas em 10/10/2026; pronta para implementação
+**Status:** concluída — decisões do PO fechadas em 10/10/2026 e implementadas
 **Prioridade:** P4
 
 ## Objetivo

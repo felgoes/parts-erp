@@ -8,7 +8,7 @@ import { finalize } from 'rxjs';
 import { ApiService } from '../../core/api.service';
 import { AuthService } from '../../core/auth.service';
 import { LiveUpdatesService } from '../../core/live-updates.service';
-import { PayableDetail, PayableListItem, PayableListResponse, PayableReport } from '../../core/models';
+import { PayableDetail, PayableInstallment, PayableListItem, PayableListResponse, PayableReport, PaymentConditionType } from '../../core/models';
 import { DateRange, quickDateRange } from '../../core/quick-date-ranges';
 import { canManagePurchases } from '../../core/user-access';
 import { dateOnlyLabel, dateOnlyValue } from '../../shared/date-only';
@@ -102,6 +102,12 @@ import { PeriodFilter } from '../../shared/period-filter';
       <div class="modal-backdrop" (click)="closeDetail()"><section class="modal wide payable-modal" role="dialog" aria-modal="true" [attr.aria-label]="'Título ' + payable.purchase_number" (click)="$event.stopPropagation()">
         <div class="modal-head"><div><p class="eyebrow">{{ payable.purchase_type === 'expense' ? 'Despesa' : 'Compra' }} · {{ payable.purchase_number }}</p><h2>{{ payable.supplier_name || 'Sem fornecedor' }}</h2><p class="modal-intro">Vencimento {{ dateOnly(payable.due_date) }} · valor {{ payable.amount | currency:'BRL':'symbol':'1.2-2':'pt-BR' }} · saldo {{ payable.balance | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</p></div><div class="detail-head-actions"><span class="payable-badge" [attr.data-status]="payable.status">{{ payableStatusLabel(payable.status) }}</span><button class="close" aria-label="Fechar" (click)="closeDetail()">×</button></div></div>
 
+        @if (payable.installments.length) { <section class="payable-form payable-installments">
+          <div class="section-title"><div><p class="eyebrow">Parcelas</p><h3>{{ payable.payment_terms || 'Condição não informada' }}</h3><p>{{ payable.installments.length }} parcela(s) · soma {{ payable.amount | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</p></div></div>
+          <div class="installment-list">@for (installment of payable.installments; track installment.id) { <div class="installment-row"><div><strong>{{ installment.number }}ª parcela</strong><small>{{ dateOnly(installment.due_date) }} · {{ installment.amount | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}@if (installment.paid_amount > 0) { · pago {{ installment.paid_amount | currency:'BRL':'symbol':'1.2-2':'pt-BR' }} }@if (installment.balance > 0 && installment.paid_amount > 0) { · saldo {{ installment.balance | currency:'BRL':'symbol':'1.2-2':'pt-BR' }} }</small></div>@if (installment.balance <= 0) { <span class="payable-badge" data-status="paid">Paga</span> } @else if (canManage() && payable.status !== 'cancelled') { <button type="button" class="secondary small" [disabled]="saving()" (click)="payInstallment(payable, installment)">Pagar parcela</button> }</div> }</div>
+          @if (canManage() && payable.status !== 'cancelled') { <div class="installment-condition"><p class="eyebrow">Condição</p><div class="payable-form-grid"><label>Tipo<select [value]="conditionDraft().payment_type" (change)="setConditionType($any($event.target).value)"><option value="cash">À vista</option><option value="installments">Parcelado</option><option value="entry">Entrada + parcelas</option></select></label>@if (conditionDraft().payment_type !== 'cash') { <label>Parcelas<input type="number" min="1" max="36" [value]="conditionDraft().installment_count" (input)="setConditionNumber('installment_count', $any($event.target).value)" /></label><label>1º vencimento (dias)<input type="number" min="0" max="3650" [value]="conditionDraft().first_due_days" (input)="setConditionNumber('first_due_days', $any($event.target).value)" /></label><label>Intervalo (dias)<input type="number" min="1" max="3650" [value]="conditionDraft().interval_days" (input)="setConditionNumber('interval_days', $any($event.target).value)" /></label> }</div><div class="payable-form-actions"><span class="muted">Parcela já paga não muda; as em aberto são recalculadas.</span><button type="button" class="secondary" [disabled]="saving()" (click)="saveCondition(payable)">Salvar condição</button></div></div> }
+        </section> }
+
         @if (canManage() && payable.status !== 'cancelled' && payable.balance > 0) {
           <section class="payable-form">
             <div class="section-title"><div><p class="eyebrow">Baixa</p><h3>Registrar pagamento</h3><p>Pagamentos parciais são permitidos até quitar o saldo.</p></div></div>
@@ -158,7 +164,8 @@ export class PayablesPage implements OnInit {
   private readonly initialRange = quickDateRange('last30');
   readonly startDate = signal(this.initialRange.startDate);
   readonly endDate = signal(this.initialRange.endDate);
-  readonly paymentDraft = signal({ amount: 0, paid_at: this.today(), method: '', notes: '' });
+  readonly paymentDraft = signal<{ amount: number; paid_at: string; method: string; notes: string; installmentId: string | null }>({ amount: 0, paid_at: this.today(), method: '', notes: '', installmentId: null });
+  readonly conditionDraft = signal<{ payment_type: PaymentConditionType; installment_count: number; first_due_days: number; interval_days: number }>({ payment_type: 'cash', installment_count: 1, first_due_days: 30, interval_days: 30 });
   private readonly filterChanges = new Subject<void>();
 
   constructor() {
@@ -228,7 +235,8 @@ export class PayablesPage implements OnInit {
     this.message.set('');
     this.api.payable(item.id).subscribe({
       next: (payable) => {
-        this.paymentDraft.set({ amount: Number(payable.balance), paid_at: this.today(), method: '', notes: '' });
+        this.paymentDraft.set({ amount: Number(payable.balance), paid_at: this.today(), method: '', notes: '', installmentId: null });
+        this.conditionDraft.set({ payment_type: (payable.payment_type ?? 'cash') as PaymentConditionType, installment_count: payable.installment_count ?? payable.installments.length ?? 1, first_due_days: payable.first_due_days ?? 30, interval_days: payable.interval_days ?? 30 });
         this.detail.set(payable);
       },
       error: (err) => this.error.set(err.error?.detail || 'Não foi possível abrir o título.'),
@@ -238,6 +246,26 @@ export class PayablesPage implements OnInit {
   closeDetail() { this.detail.set(null); }
 
   setPaymentAmount(value: number | null) { this.paymentDraft.update((draft) => ({ ...draft, amount: value ?? 0 })); }
+  /** P12: pré-seleciona a parcela no formulário de baixa. */
+  payInstallment(payable: PayableDetail, installment: PayableInstallment) {
+    const open = Number(installment.balance ?? Number(installment.amount) - Number(installment.paid_amount ?? 0));
+    this.paymentDraft.set({ amount: open, paid_at: this.today(), method: '', notes: `Parcela ${installment.number}`, installmentId: installment.id });
+  }
+
+  setConditionType(value: string) { this.conditionDraft.update((draft) => ({ ...draft, payment_type: value as PaymentConditionType })); }
+  setConditionNumber(field: 'installment_count' | 'first_due_days' | 'interval_days', value: string) { this.conditionDraft.update((draft) => ({ ...draft, [field]: Number(value) || 0 })); }
+
+  /** P12: altera a condição do título; parcelas já pagas ficam como estão. */
+  saveCondition(payable: PayableDetail) {
+    if (this.saving()) return;
+    const draft = this.conditionDraft();
+    this.saving.set(true);
+    this.error.set('');
+    this.api.updatePayable(payable.id, draft).pipe(finalize(() => this.saving.set(false))).subscribe({
+      next: (updated) => { this.detail.set(updated); this.afterMutation('Condição de pagamento atualizada.'); },
+      error: (err) => this.error.set(err.error?.detail || 'Não foi possível alterar a condição de pagamento.'),
+    });
+  }
   setPaymentField(field: 'paid_at' | 'method' | 'notes', value: string) { this.paymentDraft.update((draft) => ({ ...draft, [field]: value })); }
 
   submitPayment(payable: PayableDetail) {
@@ -245,8 +273,8 @@ export class PayablesPage implements OnInit {
     if (this.saving() || draft.amount <= 0 || draft.amount > payable.balance) return;
     this.saving.set(true);
     this.error.set('');
-    this.api.addPayablePayment(payable.id, { amount: draft.amount, paid_at: draft.paid_at || null, method: draft.method || null, notes: draft.notes || null }).pipe(finalize(() => this.saving.set(false))).subscribe({
-      next: (updated) => { this.paymentDraft.set({ amount: Number(updated.balance), paid_at: this.today(), method: '', notes: '' }); this.detail.set(updated); this.afterMutation('Pagamento registrado.'); },
+    this.api.addPayablePayment(payable.id, { amount: draft.amount, paid_at: draft.paid_at || null, method: draft.method || null, notes: draft.notes || null, installment_id: draft.installmentId }).pipe(finalize(() => this.saving.set(false))).subscribe({
+      next: (updated) => { this.paymentDraft.set({ amount: Number(updated.balance), paid_at: this.today(), method: '', notes: '', installmentId: null }); this.detail.set(updated); this.afterMutation('Pagamento registrado.'); },
       error: (err) => this.error.set(err.error?.detail || 'Não foi possível registrar o pagamento.'),
     });
   }

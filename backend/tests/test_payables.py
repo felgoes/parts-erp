@@ -32,13 +32,14 @@ def _actor() -> SimpleNamespace:
 
 
 def _expense(db: Session, user: SimpleNamespace, amount: str, supplier: str = "Fornecedor AP", due_in_days: int = 10):
+    """Despesa sem condição informada: P12 faz o vencimento único cair na data do documento."""
     expense = create_purchase(
         PurchaseCreate(
             purchase_type="expense",
             expense_category="Serviços",
             expense_amount=Decimal(amount),
             supplier_name=supplier,
-            needed_by=datetime.now(UTC) + timedelta(days=due_in_days - 30),
+            document_date=datetime.now(UTC) + timedelta(days=due_in_days),
         ),
         db,
         user,
@@ -222,3 +223,112 @@ def test_cancelled_title_rejects_new_payments(db: Session) -> None:
     with pytest.raises(HTTPException) as error:
         create_payment(payable.id, PayablePaymentCreate(amount=Decimal("10.00")), db, user)
     assert error.value.status_code == 409
+
+
+def test_expense_condition_splits_the_title_into_installments(db: Session) -> None:
+    """P12: condição 30/60/90 em R$ 100,00 gera 33,33 + 33,33 + 33,34."""
+    user = _actor()
+    expense = create_purchase(
+        PurchaseCreate(
+            purchase_type="expense",
+            expense_category="Serviços",
+            expense_amount=Decimal("100.00"),
+            supplier_name="Fornecedor AP",
+            document_date=datetime(2026, 10, 1, tzinfo=UTC),
+            payment_type="installments",
+            installment_count=3,
+            first_due_days=30,
+            interval_days=30,
+        ),
+        db,
+        user,
+    )
+
+    payable = expense.payables[0]
+    assert payable.payment_terms == "30/60/90"
+    assert [item.amount for item in payable.installments] == [
+        Decimal("33.33"),
+        Decimal("33.33"),
+        Decimal("33.34"),
+    ]
+    assert [item.due_date.date().isoformat() for item in payable.installments] == [
+        "2026-10-31",
+        "2026-11-30",
+        "2026-12-30",
+    ]
+    assert sum(item.amount for item in payable.installments) == payable.amount
+
+
+def test_payment_can_be_registered_against_one_installment(db: Session) -> None:
+    """P12: baixa por parcela, com baixa parcial dentro da parcela."""
+    user = _actor()
+    payable = _expense(db, user, "300.00")
+    installment = payable.installments[0]
+
+    detail = create_payment(
+        payable.id,
+        PayablePaymentCreate(amount=Decimal("100.00"), installment_id=installment.id),
+        db,
+        user,
+    )
+    assert detail.installments[0].paid_amount == Decimal("100.00")
+    assert detail.installments[0].balance == Decimal("200.00")
+    assert detail.status == "partial"
+
+    with pytest.raises(HTTPException) as error:
+        create_payment(
+            payable.id,
+            PayablePaymentCreate(amount=Decimal("300.00"), installment_id=installment.id),
+            db,
+            user,
+        )
+    assert error.value.status_code == 422
+
+
+def test_changing_the_condition_recalculates_only_open_installments(db: Session) -> None:
+    """P12: parcela paga não muda; as demais são recalculadas com a nova condição."""
+    user = _actor()
+    expense = create_purchase(
+        PurchaseCreate(
+            purchase_type="expense",
+            expense_category="Serviços",
+            expense_amount=Decimal("300.00"),
+            supplier_name="Fornecedor AP",
+            document_date=datetime(2026, 10, 1, tzinfo=UTC),
+            payment_type="installments",
+            installment_count=3,
+            first_due_days=30,
+            interval_days=30,
+        ),
+        db,
+        user,
+    )
+    payable = expense.payables[0]
+    first = payable.installments[0]
+    create_payment(
+        payable.id,
+        PayablePaymentCreate(amount=first.amount, installment_id=first.id),
+        db,
+        user,
+    )
+
+    detail = update_payable(
+        payable.id,
+        PayableUpdate(
+            payment_type="installments",
+            installment_count=2,
+            first_due_days=15,
+            interval_days=30,
+        ),
+        db,
+        user,
+    )
+
+    assert detail.payment_terms == "15/45"
+    assert len(detail.installments) == 3
+    assert detail.installments[0].paid_amount == Decimal("100.00")
+    assert [item.amount for item in detail.installments[1:]] == [
+        Decimal("100.00"),
+        Decimal("100.00"),
+    ]
+    assert sum(item.amount for item in detail.installments) == detail.amount

@@ -113,6 +113,9 @@
 .quote-card p, .quote-card > small { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.5; }
 .quote-card button { justify-self: start; margin-top: 4px; }
 .quote-locked { color: var(--forest); font-weight: 700; }
+.quote-presets { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; grid-column: 1 / -1; }
+.quote-presets span { color: var(--muted); font-size: 11px; }
+.payable-installments { display: grid; gap: 3px; margin-top: 6px; }
 .quote-form { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; padding: 13px; border-radius: 10px; background: #f5f7f3; }
 .quote-item-costs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; grid-column: 1 / -1; }
 .quote-item-costs > strong { grid-column: 1 / -1; font-size: 11px; }

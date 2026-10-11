@@ -457,12 +457,24 @@ class SupplierOut(ORMModel):
     default_payment_terms: str | None
 
 
+class PayableInstallmentOut(ORMModel):
+    id: str
+    number: int
+    due_date: datetime
+    amount: Decimal
+    paid_amount: Decimal = Decimal("0")
+    balance: Decimal = Decimal("0")
+
+
 class PayableOut(ORMModel):
     id: str
     supplier_name: str | None
     amount: Decimal
     paid_amount: Decimal = Decimal("0")
     due_date: datetime
+    payment_terms: str | None = None
+    installment_count: int = 1
+    installments: list[PayableInstallmentOut] = Field(default_factory=list)
     status: str
     paid_at: datetime | None
     payment_method: str | None
@@ -477,6 +489,10 @@ class PayableUpdate(BaseModel):
     payment_method: str | None = Field(default=None, max_length=60)
     payment_notes: str | None = Field(default=None, max_length=255)
     paid_at: datetime | None = None
+    payment_type: Literal["cash", "installments", "entry"] | None = None
+    installment_count: int | None = Field(default=None, ge=1, le=36)
+    first_due_days: int | None = Field(default=None, ge=0, le=3650)
+    interval_days: int | None = Field(default=None, ge=1, le=3650)
 
 
 class PayablePaymentCreate(BaseModel):
@@ -485,6 +501,7 @@ class PayablePaymentCreate(BaseModel):
     method: str | None = Field(default=None, max_length=60)
     notes: str | None = Field(default=None, max_length=255)
     idempotency_key: str | None = Field(default=None, min_length=8, max_length=120)
+    installment_id: str | None = None
 
 
 class PayablePaymentOut(ORMModel):
@@ -517,6 +534,8 @@ class PayableListItem(ORMModel):
     paid_amount: Decimal
     balance: Decimal
     due_date: datetime
+    payment_terms: str | None = None
+    installment_count: int = 1
     status: str
     days_overdue: int
     payment_count: int
@@ -526,7 +545,11 @@ class PayableListItem(ORMModel):
 
 
 class PayableDetailOut(PayableListItem):
+    payment_type: str = "cash"
+    first_due_days: int = 0
+    interval_days: int = 30
     payments: list[PayablePaymentOut] = Field(default_factory=list)
+    installments: list[PayableInstallmentOut] = Field(default_factory=list)
 
 
 class PayableAgingBucket(BaseModel):
@@ -601,6 +624,10 @@ class PurchaseCreate(BaseModel):
     needed_by: datetime | None = None
     notes: str | None = Field(default=None, max_length=4000)
     source_import_id: str | None = Field(default=None, min_length=36, max_length=36)
+    payment_type: Literal["cash", "installments", "entry"] = "cash"
+    installment_count: int = Field(default=1, ge=1, le=36)
+    first_due_days: int = Field(default=0, ge=0, le=3650)
+    interval_days: int = Field(default=30, ge=1, le=3650)
     items: list[PurchaseItemCreate] = Field(default_factory=list, max_length=100)
 
     @model_validator(mode="after")
@@ -624,6 +651,10 @@ class PurchaseQuoteCreate(BaseModel):
     allocation_method: Literal["proportional", "quantity"] = "proportional"
     item_costs: dict[str, Decimal] = Field(min_length=1)
     delivery_days: int | None = Field(default=None, ge=0, le=3650)
+    payment_type: Literal["cash", "installments", "entry"] = "cash"
+    installment_count: int = Field(default=1, ge=1, le=36)
+    first_due_days: int = Field(default=30, ge=0, le=3650)
+    interval_days: int = Field(default=30, ge=1, le=3650)
     payment_terms: str | None = Field(default=None, max_length=200)
     notes: str | None = Field(default=None, max_length=2000)
 
@@ -676,6 +707,10 @@ class PurchaseQuoteOut(ORMModel):
     allocation_method: str = "proportional"
     item_costs: dict[str, Decimal] | None = None
     delivery_days: int | None
+    payment_type: str | None = "cash"
+    installment_count: int | None = 1
+    first_due_days: int | None = 30
+    interval_days: int | None = 30
     payment_terms: str | None
     notes: str | None
     created_at: datetime

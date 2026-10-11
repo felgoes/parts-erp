@@ -401,6 +401,10 @@ class PurchaseQuote(TimestampMixin, Base):
     allocation_method: Mapped[str] = mapped_column(String(30), default="proportional")
     item_costs: Mapped[dict[str, str]] = mapped_column(JSON, default=dict)
     delivery_days: Mapped[int | None] = mapped_column()
+    payment_type: Mapped[str] = mapped_column(String(20), default="cash")
+    installment_count: Mapped[int] = mapped_column(default=1)
+    first_due_days: Mapped[int] = mapped_column(default=30)
+    interval_days: Mapped[int] = mapped_column(default=30)
     payment_terms: Mapped[str | None] = mapped_column(String(200))
     notes: Mapped[str | None] = mapped_column(Text)
     purchase: Mapped[PurchaseCase] = relationship(
@@ -448,6 +452,11 @@ class PurchasePayable(TimestampMixin, Base):
     amount: Mapped[Decimal] = mapped_column(Numeric(14, 2), default=0)
     paid_amount: Mapped[Decimal] = mapped_column(Numeric(14, 2), default=0)
     due_date: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    payment_type: Mapped[str] = mapped_column(String(20), default="cash")
+    installment_count: Mapped[int] = mapped_column(default=1)
+    first_due_days: Mapped[int] = mapped_column(default=0)
+    interval_days: Mapped[int] = mapped_column(default=30)
+    payment_terms: Mapped[str | None] = mapped_column(String(120))
     status: Mapped[str] = mapped_column(String(20), default="open", index=True)
     paid_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     payment_method: Mapped[str | None] = mapped_column(String(60))
@@ -458,6 +467,36 @@ class PurchasePayable(TimestampMixin, Base):
     payments: Mapped[list["PayablePayment"]] = relationship(
         cascade="all, delete-orphan", back_populates="payable", lazy="selectin"
     )
+    installments: Mapped[list["PayableInstallment"]] = relationship(
+        cascade="all, delete-orphan",
+        back_populates="payable",
+        lazy="selectin",
+        order_by="PayableInstallment.number",
+    )
+
+
+class PayableInstallment(Base):
+    """Uma parcela do título a pagar, derivada da condição de pagamento combinada."""
+
+    __tablename__ = "payable_installments"
+    __table_args__ = (Index("ix_payable_installments_payable_number", "payable_id", "number"),)
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    payable_id: Mapped[str] = mapped_column(
+        ForeignKey("purchase_payables.id", ondelete="CASCADE"), index=True
+    )
+    number: Mapped[int] = mapped_column(default=1)
+    due_date: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    amount: Mapped[Decimal] = mapped_column(Numeric(14, 2))
+    paid_amount: Mapped[Decimal] = mapped_column(Numeric(14, 2), default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc)
+    payable: Mapped[PurchasePayable] = relationship(back_populates="installments")
+    payments: Mapped[list["PayablePayment"]] = relationship(
+        back_populates="installment", lazy="selectin"
+    )
+
+    @property
+    def balance(self) -> Decimal:
+        return (Decimal(self.amount) - Decimal(self.paid_amount or 0)).quantize(Decimal("0.01"))
 
 
 class PayablePayment(Base):
@@ -467,6 +506,9 @@ class PayablePayment(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
     payable_id: Mapped[str] = mapped_column(
         ForeignKey("purchase_payables.id", ondelete="CASCADE"), index=True
+    )
+    installment_id: Mapped[str | None] = mapped_column(
+        ForeignKey("payable_installments.id", ondelete="SET NULL"), index=True
     )
     amount: Mapped[Decimal] = mapped_column(Numeric(14, 2))
     paid_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc)
@@ -483,6 +525,7 @@ class PayablePayment(Base):
     )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc)
     payable: Mapped[PurchasePayable] = relationship(back_populates="payments")
+    installment: Mapped["PayableInstallment | None"] = relationship(back_populates="payments")
 
 
 class PurchaseDeletion(Base):

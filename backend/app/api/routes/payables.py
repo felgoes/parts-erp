@@ -14,10 +14,18 @@ from sqlalchemy.orm import Session, selectinload
 from app.api.deps import require_permission
 from app.core.permissions import Permission
 from app.db.session import get_db
-from app.models import PayablePayment, PurchaseCase, PurchaseEvent, PurchasePayable, User
+from app.models import (
+    PayableInstallment,
+    PayablePayment,
+    PurchaseCase,
+    PurchaseEvent,
+    PurchasePayable,
+    User,
+)
 from app.schemas.common import (
     PayableAgingBucket,
     PayableDetailOut,
+    PayableInstallmentOut,
     PayableListItem,
     PayableListResponse,
     PayableMonthReport,
@@ -29,7 +37,14 @@ from app.schemas.common import (
     PayableSupplierReport,
     PayableUpdate,
 )
-from app.services.payables import payable_balance, refresh_payable
+from app.services.payables import (
+    apply_payment_condition,
+    installment_balance,
+    installment_paid_total,
+    normalize_condition,
+    payable_balance,
+    refresh_payable,
+)
 
 router = APIRouter(prefix="/payables", tags=["Contas a pagar"])
 
@@ -90,6 +105,7 @@ def _load(db: Session, payable_id: str) -> PurchasePayable:
         .where(PurchasePayable.id == payable_id)
         .options(
             selectinload(PurchasePayable.payments),
+            selectinload(PurchasePayable.installments),
             selectinload(PurchasePayable.purchase),
         )
     )
@@ -104,6 +120,7 @@ def _all_payables(db: Session) -> list[PurchasePayable]:
             select(PurchasePayable)
             .options(
                 selectinload(PurchasePayable.payments),
+                selectinload(PurchasePayable.installments),
                 selectinload(PurchasePayable.purchase),
             )
             .order_by(PurchasePayable.due_date.asc())
@@ -142,12 +159,43 @@ def _item(payable: PurchasePayable) -> PayableListItem:
         paid_amount=Decimal(payable.paid_amount or 0),
         balance=payable_balance(payable),
         due_date=payable.due_date,
+        payment_terms=payable.payment_terms,
+        installment_count=len(payable.installments) or 1,
         status=payable.status,
         days_overdue=_days_overdue(payable),
         payment_count=len(payments),
         reconciled_payment_count=sum(1 for payment in payments if payment.reconciled),
         last_payment_at=last_payment,
         created_at=payable.created_at,
+    )
+
+
+def _installment_out(installment: PayableInstallment) -> PayableInstallmentOut:
+    return PayableInstallmentOut(
+        id=installment.id,
+        number=installment.number,
+        due_date=installment.due_date,
+        amount=Decimal(installment.amount),
+        paid_amount=installment_paid_total(installment),
+        balance=installment_balance(installment),
+    )
+
+
+def _detail(payable: PurchasePayable) -> PayableDetailOut:
+    return PayableDetailOut(
+        **_item(payable).model_dump(),
+        payment_type=payable.payment_type,
+        first_due_days=payable.first_due_days,
+        interval_days=payable.interval_days,
+        payments=[PayablePaymentOut.model_validate(payment) for payment in payable.payments],
+        installments=[_installment_out(installment) for installment in payable.installments],
+    )
+
+
+def _condition_requested(payload: PayableUpdate) -> bool:
+    return any(
+        getattr(payload, field) is not None
+        for field in ("payment_type", "installment_count", "first_due_days", "interval_days")
     )
 
 
@@ -441,7 +489,7 @@ def get_payable(
     _: User = Depends(require_permission(Permission.FINANCE_READ)),
 ) -> PayableDetailOut:
     payable = _load(db, payable_id)
-    return PayableDetailOut(**_item(payable).model_dump(), payments=[PayablePaymentOut.model_validate(payment) for payment in payable.payments])
+    return _detail(payable)
 
 
 @router.patch("/{payable_id}", response_model=PayableDetailOut)
@@ -460,10 +508,39 @@ def update_payable(
         payable.payment_method = payload.payment_method
     if payload.payment_notes:
         payable.payment_notes = payload.payment_notes
-    _event(db, payable.purchase, "payable_updated", f"Vencimento do título ajustado por {user.full_name}.", user)
+    if _condition_requested(payload):
+        # P12: mudar a condição recalcula apenas as parcelas em aberto; parcela paga não muda.
+        # Os novos vencimentos contam a partir de hoje, para o acordo novo não nascer vencido.
+        try:
+            condition = normalize_condition(
+                payload.payment_type or payable.payment_type,
+                payload.installment_count
+                if payload.installment_count is not None
+                else payable.installment_count,
+                payload.first_due_days
+                if payload.first_due_days is not None
+                else payable.first_due_days,
+                payload.interval_days
+                if payload.interval_days is not None
+                else payable.interval_days,
+            )
+            apply_payment_condition(payable, base_date=datetime.now(UTC), condition=condition)
+        except ValueError as error:
+            raise HTTPException(status_code=422, detail=str(error)) from error
+        refresh_payable(payable)
+        _event(
+            db,
+            payable.purchase,
+            "payable_terms_updated",
+            f"Condição de pagamento alterada para {payable.payment_terms} por {user.full_name}. "
+            "Parcelas em aberto foram recalculadas.",
+            user,
+        )
+    else:
+        _event(db, payable.purchase, "payable_updated", f"Vencimento do título ajustado por {user.full_name}.", user)
     db.commit()
     payable = _load(db, payable_id)
-    return PayableDetailOut(**_item(payable).model_dump(), payments=[PayablePaymentOut.model_validate(payment) for payment in payable.payments])
+    return _detail(payable)
 
 
 @router.post("/{payable_id}/payments", response_model=PayableDetailOut)
@@ -482,7 +559,7 @@ def create_payment(
             None,
         )
         if existing:
-            return PayableDetailOut(**_item(payable).model_dump(), payments=[PayablePaymentOut.model_validate(payment) for payment in payable.payments])
+            return _detail(payable)
     balance = payable_balance(payable)
     amount = Decimal(payload.amount).quantize(Decimal("0.01"))
     if amount <= 0:
@@ -492,8 +569,22 @@ def create_payment(
             status_code=422,
             detail=f"O saldo em aberto deste título é {balance:.2f}.",
         )
+    installment = None
+    if payload.installment_id:
+        installment = next(
+            (entry for entry in payable.installments if entry.id == payload.installment_id), None
+        )
+        if not installment:
+            raise HTTPException(status_code=404, detail="Parcela não encontrada neste título.")
+        installment_open = installment_balance(installment)
+        if amount > installment_open:
+            raise HTTPException(
+                status_code=422,
+                detail=f"O saldo desta parcela é {installment_open:.2f}.",
+            )
     payment = PayablePayment(
         payable_id=payable.id,
+        installment=installment,
         amount=amount,
         paid_at=_as_utc(payload.paid_at) or datetime.now(UTC),
         method=(payload.method or "").strip() or None,
@@ -516,7 +607,7 @@ def create_payment(
     )
     db.commit()
     payable = _load(db, payable_id)
-    return PayableDetailOut(**_item(payable).model_dump(), payments=[PayablePaymentOut.model_validate(payment) for payment in payable.payments])
+    return _detail(payable)
 
 
 @router.delete("/{payable_id}/payments/{payment_id}", response_model=PayableDetailOut)
@@ -548,7 +639,7 @@ def delete_payment(
     )
     db.commit()
     payable = _load(db, payable_id)
-    return PayableDetailOut(**_item(payable).model_dump(), payments=[PayablePaymentOut.model_validate(payment) for payment in payable.payments])
+    return _detail(payable)
 
 
 @router.post("/{payable_id}/payments/{payment_id}/reconcile", response_model=PayableDetailOut)
@@ -579,4 +670,4 @@ def reconcile_payment(
     )
     db.commit()
     payable = _load(db, payable_id)
-    return PayableDetailOut(**_item(payable).model_dump(), payments=[PayablePaymentOut.model_validate(payment) for payment in payable.payments])
+    return _detail(payable)

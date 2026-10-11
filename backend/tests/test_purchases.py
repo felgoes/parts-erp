@@ -279,7 +279,8 @@ def test_partial_receipt_cancel_returns_stock_and_closes_the_payable(db: Session
     )
     product = db.scalar(select(Product).where(Product.sku == "LR174890"))
     assert product is not None and product.current_stock == Decimal("3.000")
-    assert purchase.payables[0].amount == Decimal("78.00")
+    # P9/P12: o título nasce na aprovação com o valor acordado e o recebimento parcial não o altera.
+    assert purchase.payables[0].amount == Decimal("130.00")
 
     purchase = cancel_purchase(
         purchase.id,
@@ -356,6 +357,7 @@ def test_expense_payable_is_settled_and_reversed_when_cancelled(db: Session) -> 
             expense_amount=Decimal("120.50"),
             supplier_name="Loja X",
             needed_by=datetime(2026, 10, 20, tzinfo=UTC),
+            document_date=datetime(2026, 10, 5, tzinfo=UTC),
         ),
         db,
         user,
@@ -365,7 +367,8 @@ def test_expense_payable_is_settled_and_reversed_when_cancelled(db: Session) -> 
     assert len(expense.payables) == 1
     payable = expense.payables[0]
     assert payable.amount == Decimal("120.50")
-    assert payable.due_date.date().isoformat() == "2026-11-19"
+    # P12: despesa sem condição informada vence na data do documento.
+    assert payable.due_date.date().isoformat() == "2026-10-05"
 
     settled = settle_payable(expense.id, payable.id, PayableUpdate(payment_method="Pix"), db, user)
     assert settled.status == "paid"
@@ -690,3 +693,48 @@ def test_selected_quote_can_be_replaced_by_a_new_one(db: Session) -> None:
     assert len(purchase.quotes) == 2
     assert purchase.items[0].unit_cost == Decimal("8.00")
     assert purchase.total_amount == Decimal("16.00")
+
+
+def test_approved_quote_creates_the_title_with_the_agreed_condition(db: Session) -> None:
+    """P12: o título nasce na aprovação, com o total e a condição da cotação vencedora."""
+    user = _actor()
+    purchase = create_purchase(
+        PurchaseCreate(
+            document_date=datetime(2026, 10, 1, tzinfo=UTC),
+            items=[PurchaseItemCreate(sku="A", description="Peça A", quantity=2)],
+        ),
+        db,
+        user,
+    )
+    assert purchase.payables == []
+    line = purchase.items[0]
+
+    purchase = add_quote(
+        purchase.id,
+        PurchaseQuoteCreate(
+            supplier_name="Fornecedor",
+            total=200,
+            item_costs={line.id: Decimal("100")},
+            payment_type="installments",
+            installment_count=2,
+            first_due_days=30,
+            interval_days=30,
+        ),
+        db,
+        user,
+    )
+    assert purchase.payables == []
+
+    purchase = select_quote(purchase.id, purchase.quotes[0].id, db, user)
+
+    payable = purchase.payables[0]
+    assert payable.amount == Decimal("200.00")
+    assert payable.payment_terms == "30/60"
+    assert [item.amount for item in payable.installments] == [
+        Decimal("100.00"),
+        Decimal("100.00"),
+    ]
+    assert [item.due_date.date().isoformat() for item in payable.installments] == [
+        "2026-10-31",
+        "2026-11-30",
+    ]

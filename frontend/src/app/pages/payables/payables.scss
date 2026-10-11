@@ -52,5 +52,11 @@
 .danger-outline { border: 1px solid #d9b3ae; background: #fff; color: #984b43; font-size: 12px; font-weight: 600; padding: 9px 12px; border-radius: 9px; cursor: pointer; }
 .danger-outline:disabled { opacity: .55; cursor: default; }
 .payables-state { display: flex; align-items: center; gap: 10px; padding: 20px; }
+.installment-list { display: grid; gap: 6px; margin-top: 10px; }
+.installment-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.installment-row:last-child { border-bottom: 0; }
+.installment-row small { display: block; color: var(--muted); font-size: 11px; }
+.installment-condition { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); }
+@media (max-width: 620px) { .installment-row { flex-wrap: wrap; } }
 @media (max-width: 980px) { .payables-highlights { grid-template-columns: repeat(2, minmax(0, 1fr)); } .report-grid { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 620px) { .payables-highlights { grid-template-columns: minmax(0, 1fr); } .payables-filters > label { min-width: 100%; } .payment-row { align-items: flex-start; } }

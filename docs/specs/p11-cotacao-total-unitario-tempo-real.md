@@ -1,6 +1,6 @@
 # P11 — Cotação com total e custo unitário em tempo real
 
-**Status:** decidida — decisões do PO fechadas em 10/10/2026; pronta para implementação
+**Status:** concluída — decisões do PO fechadas em 10/10/2026 e implementadas; implantada em PRD no commit `35610c1` em 10/10/2026 (nota "Cotação com total e preço unitário em tempo real"), com site e ERP em HTTP 200
 **Prioridade:** P3
 
 ## Objetivo

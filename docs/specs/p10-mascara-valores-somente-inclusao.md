@@ -1,6 +1,6 @@
 # P10 — Máscara de valores forte, somente inclusão
 
-**Status:** decidida — decisões do PO fechadas em 10/10/2026; pronta para implementação
+**Status:** concluída — decisões do PO fechadas em 10/10/2026 e implementadas na `MoneyInputDirective` (`frontend/src/app/shared/money-input.directive.ts`); implantada em PRD no commit `35610c1` em 10/10/2026 (nota "Digitação de valores sem quebra"), com site e ERP em HTTP 200
 **Prioridade:** P2
 
 ## Objetivo

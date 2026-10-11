@@ -1,6 +1,6 @@
 # P0 — Receber itens de compras no almoxarifado
 
-**Status:** em andamento — fluxo atual mapeado; spec ajustada para o modelo financeiro e de estoque
+**Status:** concluída — implementada e implantada em PRD em 09/10/2026 (commit `747227f`, nota "Recebimento de materiais de despesas"), com site e ERP em HTTP 200; critérios de aceite e decisões conferidos no código em 11/10/2026
 **Prioridade:** P0
 
 ## Objetivo
@@ -62,10 +62,25 @@ Como responsável pela empresa e pelo estoque, quero registrar uma compra como d
 9. Produto ausente pode ser criado explicitamente pelo cadastro padrão e vinculado; não ocorre criação silenciosa nem duplicação.
 10. O fluxo atual de compra de peças para revenda continua recebendo itens no estoque.
 
-## Decisões a verificar no início da implementação
+## Decisões resolvidas na implementação
 
-- Como o lançamento financeiro de despesas é exibido/registrado atualmente; preservar seu momento e garantir vínculo único à compra.
-- O almoxarifado é único; não criar seleção nem suporte a múltiplos locais nesta tarefa. O saldo permanece associado ao produto.
-- Campos obrigatórios para cadastro rápido de produto, conforme o cadastro padrão.
-- Se o recebimento acima da quantidade comprada será permitido e por qual perfil.
-- Se o usuário precisa lançar uma única compra com itens de categorias financeiras diferentes. A primeira versão considera uma categoria por despesa; nesse caso, separar em lançamentos por categoria.
+- **Lançamento financeiro único:** a despesa gera um único título a pagar vinculado à compra, reconstruído por `_sync_payable` a partir do valor devido; recebimentos parciais não criam outro lançamento.
+- **Almoxarifado único:** materiais controlados usam `stock_type = warehouse`, sem seleção de local e sem múltiplos almoxarifados.
+- **Cadastro rápido de produto:** exige SKU e nome; os demais campos do cadastro padrão são opcionais e nenhum dado é inventado. O cadastro só acontece por ação explícita (cadastro no vínculo do item ou "Criar produto no catálogo ao receber").
+- **Recebimento acima do comprado:** bloqueado com HTTP 409 e mensagem informando que a quantidade excede o pedido, para todos os perfis.
+- **Uma categoria por despesa:** a compra carrega uma única categoria financeira; gastos de categorias diferentes devem ser lançados separadamente.
+
+## Resultado da implementação
+
+- A compra do tipo **Despesa da empresa** aceita itens opcionais de materiais controlados no almoxarifado, com produto, SKU, descrição, unidade, quantidade e custo unitário; a categoria **Materiais de consumo e embalagem** está na lista de categorias.
+- Recebimento total e parcial ficam disponíveis no detalhe da compra, com quantidade comprada, recebida, pendente e a deste recebimento; o saldo só muda na confirmação e a chave de idempotência por recebimento evita duplicidade em reenvio ou duplo clique.
+- Produto ausente pode ser criado explicitamente no fluxo de recebimento e vinculado ao item; o vínculo não pode ser trocado depois do primeiro recebimento.
+- Materiais de despesa só creditam itens do almoxarifado; peças para revenda mantêm o fluxo próprio de estoque e recebimento.
+- Cada movimento de estoque registra compra, item, quantidade, autor e horário, e o evento fica no histórico da compra.
+
+## Verificado em 11/10/2026
+
+- `backend/app/api/routes/purchases.py`: `_apply_receipt` (recebimento total/parcial, idempotência, limite de quantidade, criação e vínculo de produto, `stock_type = warehouse` para despesa) e `_sync_payable`.
+- `frontend/src/app/pages/purchases/purchases.ts`: campos de despesa (categoria, valor, condição de pagamento) e a seção "Materiais controlados no almoxarifado"; a lista de categorias inclui "Materiais de consumo e embalagem".
+- `RELEASE_NOTES.md`: nota "Recebimento de materiais de despesas · 747227f" na seção de 9 de outubro de 2026.
+- Nenhum trabalho novo é necessário para a P0. O que ficou fora do escopo original está registrado em specs próprias: devolução pontual ao fornecedor na P15 e contagem de estoque na P17; transferência entre almoxarifados e controle de lote seguem fora de escopo.

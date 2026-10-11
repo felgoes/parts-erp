@@ -129,9 +129,11 @@ import { dateOnlyLabel, dateOnlyValue } from '../../shared/date-only';
             <span>Valor efetivamente pago</span><label class="import-paid"><input appMoneyInput [appMoneyInput]="importDraft().paidAmount ?? 0" min="0" (moneyInput)="setImportPaid($event)" />@if (importDraft().paidAmount === null) { <small class="muted">não identificado</small> }</label>
             <span>Diferença paga ÷ total</span><strong [class.check-warn]="importPaidDifference() > 0.05 || importPaidDifference() < -0.05">{{ importPaidDifference() | currency:'BRL' }}</strong>
             <span>Fechamento: itens + frete + impostos − descontos − total</span>@if (importHasItemsToCheck()) { <strong [class.check-warn]="importClosingDifference() > 0.05 || importClosingDifference() < -0.05">{{ importClosingDifference() | currency:'BRL' }}</strong> } @else { <strong class="muted">sem itens lidos para conferir</strong> }
+            @if (importSubtotalDifference() !== null) { <span>Soma dos itens ÷ subtotal do documento</span><strong [class.check-warn]="(importSubtotalDifference() ?? 0) > 0.05 || (importSubtotalDifference() ?? 0) < -0.05">{{ importSubtotalDifference() | currency:'BRL' }}</strong> }
           </div>
           <details class="import-text"><summary>Ver o que foi lido</summary>@if (review.text) { <pre>{{ review.text }}</pre> } @else { <p class="muted">Este formato não devolve texto de leitura (por exemplo, XML de NF-e).</p> }</details>
         </section>
+        @if (importBlockers().length) { <ul class="import-blockers" role="status">@for (blocker of importBlockers(); track blocker) { <li>{{ blocker }}</li> }</ul> }
         <div class="purchase-form-actions"><span class="muted">O arquivo original será anexado. Nenhum estoque será movimentado.</span><div class="import-review-actions"><button type="button" class="secondary" (click)="closeImportReview()">Cancelar</button><button type="button" class="primary" [disabled]="creatingImport() || !canConfirmImport()" (click)="createImportedPurchase()">{{ creatingImport() ? 'Criando…' : 'Confirmar e criar compra' }}</button></div></div>
       </section></div>
     }
@@ -278,7 +280,7 @@ export class PurchasesPage implements OnInit {
   readonly importProfiles = signal<Array<{ profile_id: string; name: string; kind: string; version: number }>>([]);
   readonly importDraft = signal<{ supplier: string; orderNumber: string; documentDate: string; total: number | null; shipping: number | null; discount: number | null; tax: number | null; currency: string | null; exchangeRate: number | null; paidAmount: number | null; items: Array<{ description: string; sku: string; quantity: number; unit_cost: number; confidence: number; product_id: string | null; stock_controlled: boolean; line_total: number; discount_amount: number; source: string; quantityDerived: boolean }> }>({ supplier: '', orderNumber: '', documentDate: '', total: null, shipping: null, discount: null, tax: null, currency: null, exchangeRate: null, paidAmount: null, items: [] });
   readonly importDuplicate = signal<{ purchase_id: string; purchase_number: string; purchase_status: string; cancelled: boolean } | null>(null);
-  readonly importCheck = signal<{ items_total: number | null; closing_difference: number | null; subtotal_difference: number | null; balanced: boolean } | null>(null);
+  readonly importCheck = signal<{ items_total: number | null; subtotal?: number | null; closing_difference: number | null; subtotal_difference: number | null; balanced: boolean } | null>(null);
   readonly importType = signal<'parts' | 'expense'>('parts');
   readonly importCategory = signal('');
   readonly importPaidNow = signal(false);
@@ -416,13 +418,52 @@ export class PurchasesPage implements OnInit {
   setImportPaid(value: number | null) { this.importDraft.update((draft) => ({ ...draft, paidAmount: value })); }
   importItemsTotal() { return this.importDraft().items.reduce((sum, item) => sum + Number(item.line_total || 0), 0); }
   importClosingDifference() {
-    const check = this.importCheck();
-    if (check) return check.closing_difference ?? 0;
     const draft = this.importDraft();
     if (draft.total === null || !draft.items.length) return 0;
     return Number((this.importItemsTotal() + Number(draft.shipping || 0) + Number(draft.tax || 0) - Number(draft.discount || 0) - Number(draft.total)).toFixed(2));
   }
   importHasItemsToCheck() { return !!this.importCheck()?.items_total || this.importDraft().items.length > 0; }
+  importSubtotalDifference() {
+    const draft = this.importDraft();
+    const subtotal = this.importCheck()?.subtotal ?? null;
+    if (subtotal === null || !draft.items.length) return null;
+    return Number((this.importItemsTotal() - Number(subtotal)).toFixed(2));
+  }
+  /** Motivos visíveis que impedem a confirmação — ninguém fica preso sem saber por quê. */
+  importBlockers(): string[] {
+    const blockers: string[] = [];
+    const draft = this.importDraft();
+    const duplicate = this.importDuplicate();
+    if (duplicate && !duplicate.cancelled) {
+      blockers.push(`Este documento já foi importado na compra ${duplicate.purchase_number}.`);
+    }
+    if (this.importNeedsRate() && !(Number(draft.exchangeRate) > 0)) {
+      blockers.push('Informe a cotação usada na conversão para reais.');
+    }
+    if (Object.values(this.importMoneyValidity()).some(Boolean)) {
+      blockers.push('Há um campo de valor com formato inválido — corrija o valor destacado.');
+    }
+    if (this.importType() === 'expense') {
+      if (this.importCategory().trim().length < 2) blockers.push('Escolha a categoria da despesa.');
+      if (!(Number(draft.total) > 0)) blockers.push('Informe o valor total da despesa.');
+      return blockers;
+    }
+    if (!draft.items.length) {
+      blockers.push('Inclua pelo menos um item — ou marque uma linha candidata do documento.');
+    }
+    draft.items.forEach((item, index) => {
+      const label = `linha ${index + 1}`;
+      if (item.description.trim().length < 2) blockers.push(`Descreva a ${label}.`);
+      if (!(Number(item.quantity) > 0)) blockers.push(`Informe a quantidade da ${label}.`);
+      if (item.stock_controlled && !item.product_id) {
+        blockers.push(`Vincule um produto do catálogo na ${label} (ou desmarque "Controlado no estoque").`);
+      }
+      if (Number(item.discount_amount) > Number(item.quantity) * Number(item.unit_cost)) {
+        blockers.push(`O desconto da ${label} é maior que o valor da linha.`);
+      }
+    });
+    return [...new Set(blockers)];
+  }
   importPaidDifference() {
     const draft = this.importDraft();
     if (draft.paidAmount === null || draft.total === null) return 0;
@@ -478,14 +519,7 @@ export class PurchasesPage implements OnInit {
     return Math.round(total * weights[index] / weightSum * 100) / 100;
   }
   canConfirmImport() {
-    const items = this.importDraft().items;
-    const duplicate = this.importDuplicate();
-    if (duplicate && !duplicate.cancelled) return false;
-    if (this.importNeedsRate() && !(Number(this.importDraft().exchangeRate) > 0)) return false;
-    if (this.importType() === 'expense') {
-      return this.importCategory().trim().length > 1 && Number(this.importDraft().total) > 0 && !Object.values(this.importMoneyValidity()).some(Boolean);
-    }
-    return !Object.values(this.importMoneyValidity()).some(Boolean) && items.length > 0 && items.every((item) => (!item.stock_controlled || !!item.product_id) && item.description.trim().length >= 2 && Number.isFinite(item.quantity) && item.quantity > 0 && Number.isFinite(item.unit_cost) && item.unit_cost >= 0 && Number.isFinite(item.discount_amount) && item.discount_amount >= 0 && item.discount_amount <= item.quantity * item.unit_cost);
+    return this.importBlockers().length === 0;
   }
   setImportType(value: 'parts' | 'expense') {
     this.importType.set(value);

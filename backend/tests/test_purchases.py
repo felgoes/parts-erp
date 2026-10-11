@@ -369,6 +369,83 @@ def test_market_study_keeps_existing_and_only_loses_the_link(db: Session) -> Non
     assert stored.linked_purchase_id is None
 
 
+def test_foreign_currency_requires_the_exchange_rate(db: Session) -> None:
+    user = _actor()
+    with pytest.raises(Exception) as error:
+        create_purchase(
+            PurchaseCreate(
+                purchase_type="parts",
+                purchase_origin="alibaba",
+                supplier_order_number="ORDER-USD-1",
+                original_currency="USD",
+                original_total=Decimal("58.00"),
+                items=[PurchaseItemCreate(description="Peça importada", quantity=1)],
+            ),
+            db,
+            user,
+        )
+    assert "cotação" in str(error.value)
+
+    purchase = create_purchase(
+        PurchaseCreate(
+            purchase_type="parts",
+            purchase_origin="alibaba",
+            supplier_order_number="ORDER-USD-1",
+            original_currency="USD",
+            original_total=Decimal("58.00"),
+            exchange_rate=Decimal("5.350543"),
+            paid_amount=Decimal("319.65"),
+            items=[PurchaseItemCreate(description="Peça importada", quantity=1)],
+        ),
+        db,
+        user,
+    )
+    assert purchase.original_currency == "USD"
+    assert purchase.exchange_rate == Decimal("5.350543")
+    assert purchase.paid_amount == Decimal("319.65")
+
+
+def test_document_duplicate_is_blocked_but_cancelled_allows_proceeding(db: Session) -> None:
+    user = _actor()
+    payload = PurchaseCreate(
+        purchase_type="parts",
+        purchase_origin="aliexpress",
+        supplier_order_number="ORDER-DUP-1",
+        items=[PurchaseItemCreate(description="Peça repetida", quantity=1)],
+    )
+    first = create_purchase(payload, db, user)
+
+    with pytest.raises(HTTPException) as error:
+        create_purchase(payload, db, user)
+    assert error.value.status_code == 409
+    assert first.number in str(error.value.detail)
+
+    cancel_purchase(first.id, PurchaseCancelRequest(reason="Pedido cancelado no teste"), db, user)
+    again = create_purchase(payload, db, user)
+    assert again.number != first.number
+
+
+def test_nfe_document_identity_is_stored(db: Session) -> None:
+    user = _actor()
+    purchase = create_purchase(
+        PurchaseCreate(
+            purchase_type="parts",
+            purchase_origin="nfe_xml",
+            document_access_key="35260968608719000143550020000000021912749904",
+            document_number="219",
+            document_series="2",
+            issuer_cnpj="04.617.659/0001-42",
+            items=[PurchaseItemCreate(description="Peça nota", quantity=1)],
+        ),
+        db,
+        user,
+    )
+    assert purchase.document_number == "219"
+    assert purchase.document_series == "2"
+    assert purchase.issuer_cnpj == "04.617.659/0001-42"
+    assert purchase.document_access_key is not None
+
+
 def test_receive_all_marks_every_item_received(db: Session) -> None:
     user = _actor()
     purchase = _ordered_purchase(db, user)

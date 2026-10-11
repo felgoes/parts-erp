@@ -621,6 +621,15 @@ class PurchaseCreate(BaseModel):
     supplier_name: str | None = Field(default=None, max_length=200)
     supplier_id: str | None = None
     supplier_order_number: str | None = Field(default=None, max_length=80)
+    purchase_origin: str | None = Field(default=None, max_length=40)
+    document_access_key: str | None = Field(default=None, max_length=44)
+    document_number: str | None = Field(default=None, max_length=60)
+    document_series: str | None = Field(default=None, max_length=20)
+    issuer_cnpj: str | None = Field(default=None, max_length=20)
+    original_currency: str | None = Field(default=None, max_length=3)
+    original_total: Decimal | None = Field(default=None, ge=0)
+    exchange_rate: Decimal | None = Field(default=None, gt=0)
+    paid_amount: Decimal | None = Field(default=None, ge=0)
     document_date: datetime | None = None
     needed_by: datetime | None = None
     notes: str | None = Field(default=None, max_length=4000)
@@ -639,6 +648,10 @@ class PurchaseCreate(BaseModel):
             not self.expense_category or self.expense_amount is None
         ):
             raise ValueError("Informe a categoria e o valor da despesa")
+        if self.original_currency and self.original_currency.upper() != "BRL" and not self.exchange_rate:
+            raise ValueError(
+                "Documento em moeda estrangeira exige a cotação usada na conversão para reais."
+            )
         return self
 
 
@@ -744,6 +757,15 @@ class PurchaseOut(ORMModel):
     supplier_name: str | None
     supplier_id: str | None = None
     supplier_order_number: str | None = None
+    purchase_origin: str | None = None
+    document_access_key: str | None = None
+    document_number: str | None = None
+    document_series: str | None = None
+    issuer_cnpj: str | None = None
+    original_currency: str | None = None
+    original_total: Decimal | None = None
+    exchange_rate: Decimal | None = None
+    paid_amount: Decimal | None = None
     document_date: datetime | None = None
     selected_quote_id: str | None
     needed_by: datetime | None

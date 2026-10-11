@@ -346,6 +346,27 @@ def _payable_with_payments(purchase: PurchaseCase) -> PurchasePayable | None:
     return None
 
 
+def _find_duplicate_purchase(db: Session, payload) -> PurchaseCase | None:
+    """A chave de acesso identifica o documento fiscal; sem ela, número do pedido + origem."""
+    access_key = (payload.document_access_key or "").strip()
+    if access_key:
+        match = db.scalar(
+            select(PurchaseCase).where(PurchaseCase.document_access_key == access_key)
+        )
+        if match:
+            return match
+    number = (payload.supplier_order_number or "").strip()
+    origin = (payload.purchase_origin or "").strip()
+    if number and origin:
+        return db.scalar(
+            select(PurchaseCase).where(
+                PurchaseCase.supplier_order_number == number,
+                PurchaseCase.purchase_origin == origin,
+            )
+        )
+    return None
+
+
 def _deletion_effects(purchase: PurchaseCase) -> str:
     effects: list[str] = [f"{len(purchase.items)} item(ns)"]
     if purchase.quotes:
@@ -433,6 +454,20 @@ def create_purchase(
         supplier = db.scalar(
             select(Supplier).where(Supplier.name == payload.supplier_name.strip())
         )
+    duplicate = _find_duplicate_purchase(db, payload)
+    if duplicate and duplicate.status != "cancelled":
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "message": (
+                    f"Este documento já foi importado na compra {duplicate.number}."
+                    " Abra a compra existente ou marque a diferença no documento."
+                ),
+                "purchase_id": duplicate.id,
+                "purchase_number": duplicate.number,
+                "purchase_status": duplicate.status,
+            },
+        )
     purchase = PurchaseCase(
         number=f"COM-{datetime.now(UTC):%Y}-{uuid4().hex[:6].upper()}",
         status=("ordered" if payload.items else "received") if payload.purchase_type == "expense" else "negotiating",
@@ -442,6 +477,15 @@ def create_purchase(
         supplier_name=payload.supplier_name or (supplier.name if supplier else None),
         supplier_id=supplier.id if supplier else None,
         supplier_order_number=payload.supplier_order_number,
+        purchase_origin=payload.purchase_origin,
+        document_access_key=payload.document_access_key,
+        document_number=payload.document_number,
+        document_series=payload.document_series,
+        issuer_cnpj=payload.issuer_cnpj,
+        original_currency=payload.original_currency,
+        original_total=payload.original_total,
+        exchange_rate=payload.exchange_rate,
+        paid_amount=payload.paid_amount,
         document_date=payload.document_date,
         needed_by=payload.needed_by,
         notes=payload.notes,
@@ -569,6 +613,41 @@ def update_purchase_item(
     _event(db, purchase, "item_updated", f"Dados de {item.description} atualizados por {user.full_name}.")
     db.commit()
     return _present(_load(db, purchase.id), user)
+
+
+@router.get("/import-document/duplicates")
+def import_document_duplicates(
+    document_access_key: str | None = Query(default=None, max_length=44),
+    order_number: str | None = Query(default=None, max_length=80),
+    origin: str | None = Query(default=None, max_length=40),
+    db: Session = Depends(get_db),
+    _: User = Depends(require_permission(Permission.PURCHASE_MANAGE)),
+) -> dict[str, object]:
+    """Antes de criar a compra, a revisão confere se o documento já entrou no ERP."""
+    match: PurchaseCase | None = None
+    if document_access_key and document_access_key.strip():
+        match = db.scalar(
+            select(PurchaseCase).where(
+                PurchaseCase.document_access_key == document_access_key.strip()
+            )
+        )
+    if match is None and order_number and order_number.strip() and origin and origin.strip():
+        match = db.scalar(
+            select(PurchaseCase).where(
+                PurchaseCase.supplier_order_number == order_number.strip(),
+                PurchaseCase.purchase_origin == origin.strip(),
+            )
+        )
+    if match is None:
+        return {"match": None}
+    return {
+        "match": {
+            "purchase_id": match.id,
+            "purchase_number": match.number,
+            "purchase_status": match.status,
+            "cancelled": match.status == "cancelled",
+        }
+    }
 
 
 @router.post("/{purchase_id}/items", response_model=PurchaseOut, status_code=201)

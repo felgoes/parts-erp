@@ -56,6 +56,10 @@ export class ApiService {
     const params = profileId ? { profile_id: profileId } : undefined;
     return this.http.post<any>(`${this.base}/purchases/import-document`, form, { params });
   }
+
+  purchaseImportDuplicates(params: { document_access_key?: string; order_number?: string; origin?: string }): Observable<{ match: { purchase_id: string; purchase_number: string; purchase_status: string; cancelled: boolean } | null }> {
+    return this.http.get<{ match: { purchase_id: string; purchase_number: string; purchase_status: string; cancelled: boolean } | null }>(`${this.base}/purchases/import-document/duplicates`, { params: this.queryParams(params) });
+  }
   saveErpSettings(
     settings: Pick<ErpSettings, 'company_name' | 'company_short_name' | 'logo_data_url' | 'backup_enabled' | 'backup_frequency' | 'backup_time' | 'backup_retention_days' | 'backup_destination'> & { drive_client_id?: string | null; drive_client_secret?: string; drive_folder_id?: string | null },
   ): Observable<ErpSettings> {

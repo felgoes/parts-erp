@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import html
 import csv
 import io
 import json
@@ -33,6 +34,7 @@ MARKETPLACES: dict[str, dict[str, Any]] = {
             "shipping": ["custo de frete", "shipping fee", "frete", "delivery fee"],
             "discount": ["todos os descontos", "coupon", "discount", "desconto"],
             "tax": ["impostos", "taxes", "tax"],
+            "paid": ["você pagou", "voce pagou", "total pago", "amount paid"],
         },
     },
     "mercado_livre": {
@@ -75,6 +77,7 @@ MARKETPLACES: dict[str, dict[str, Any]] = {
             "subtotal": ["subtotal"],
             "total": ["order total"],
             "shipping": ["shipping fee", "shipping cost", "freight"],
+            "paid": ["amount paid", "payment total"],
         },
     },
 }
@@ -96,6 +99,12 @@ FIELD_LABELS: dict[str, list[str]] = {
     "tax": ["tax", "taxes", "taxa", "imposto", "impostos", "vat", "iva"],
 }
 MONEY = r"(?:(?:R\$|BRL|USD|US\$|\$)\s*)?-?\s*(?:\d{1,3}(?:[,.]\d{3})+|\d+)(?:,\d{2}|\.\d{2})"
+DATE_PATTERN = (
+    r"(\d{4}-\d{2}-\d{2}"
+    r"|\d{1,2}[/-]\d{1,2}[/-]\d{2,4}"
+    r"|\d{1,2}(?:st|nd|rd|th)?\s+(?:de\s+)?[a-z]{3,12}\.?,?\s+(?:de\s+)?\d{4}"
+    r"|[a-z]{3,12}\.?\s+\d{1,2}(?:st|nd|rd|th)?,?\s+\d{4})"
+)
 _OCR_SLOT = threading.BoundedSemaphore(1)
 
 
@@ -208,7 +217,22 @@ def _custom_profiles() -> list[dict[str, Any]]:
     return result
 
 
-def detect_profile(text: str, selected: str | None = None) -> dict[str, Any]:
+def _profile_from_filename(filename: str | None) -> dict[str, str] | None:
+    if not filename:
+        return None
+    stem = _normalize(Path(filename).stem.replace("_", " ").replace("-", " "))
+    for key, profile in MARKETPLACES.items():
+        if any(_normalize(term) in stem for term in profile["terms"] if len(term) > 3):
+            return {"profile_id": key, "name": profile["name"]}
+    for custom in _custom_profiles():
+        if any(_normalize(term) in stem for term in custom.get("match_terms", []) if len(term) > 3):
+            return {"profile_id": custom["profile_id"], "name": custom["name"]}
+    return None
+
+
+def detect_profile(
+    text: str, selected: str | None = None, filename: str | None = None
+) -> dict[str, Any]:
     norm = _normalize(text)
     candidates = [
         {
@@ -247,6 +271,15 @@ def detect_profile(text: str, selected: str | None = None) -> dict[str, Any]:
     second = scored[1][0] if len(scored) > 1 else 0
     min_hits = 1 if best.get("profile_id") in MARKETPLACES else 2
     if best_score < 0.7 or best_hits < min_hits or best_score - second < 0.2:
+        suggestion = _profile_from_filename(filename)
+        if suggestion:
+            return {
+                "profile_id": suggestion["profile_id"],
+                "name": suggestion["name"],
+                "confidence": best_score,
+                "selected": False,
+                "suggested_from": "filename",
+            }
         return {
             "profile_id": None,
             "name": "Não identificado",
@@ -296,6 +329,47 @@ def _money(value: str) -> float | None:
         return None
 
 
+def _document_currency(fields: dict[str, dict[str, Any]]) -> str | None:
+    for field in ("total", "paid", "subtotal", "shipping", "discount", "tax"):
+        currency = (fields.get(field) or {}).get("currency")
+        if currency:
+            return currency
+    return None
+
+
+def _exchange_rate(text: str) -> dict[str, Any] | None:
+    match = re.search(r"1\s*([A-Za-z]{3})\s*=\s*([\d.,]+)\s*([A-Za-z]{3})", text)
+    if not match:
+        return None
+    raw = match.group(2).replace(" ", "")
+    if "," in raw and "." in raw:
+        decimal_mark = "," if raw.rfind(",") > raw.rfind(".") else "."
+        raw = raw.replace("." if decimal_mark == "," else ",", "").replace(decimal_mark, ".")
+    elif "," in raw:
+        raw = raw.replace(",", ".")
+    try:
+        rate = float(raw)
+    except ValueError:
+        return None
+    if not rate or rate <= 0 or rate >= 1_000_000:
+        return None
+    return {
+        "rate": rate,
+        "from_currency": match.group(1).upper(),
+        "to_currency": match.group(3).upper(),
+    }
+
+
+def _paid_details(text: str) -> tuple[str | None, str | None]:
+    with_method = re.search(r"p(?:aid|ago)\s+(?:on|em)\s+([^()\n]+?)\s*\(([^)\n]+)\)", text, re.I)
+    if with_method:
+        return _normalize_order_date(with_method.group(1)), _clean_text(with_method.group(2))[:40]
+    plain = re.search(r"p(?:aid|ago)\s+(?:on|em)\s+([^\n]+)", text, re.I)
+    if plain:
+        return _normalize_order_date(plain.group(1)), None
+    return None, None
+
+
 def _normalize_order_date(value: str) -> str | None:
     months = {
         "jan": 1,
@@ -329,8 +403,23 @@ def _normalize_order_date(value: str) -> str | None:
         "dez": 12,
         "dec": 12,
         "december": 12,
+        "janeiro": 1,
+        "fevereiro": 2,
+        "marco": 3,
+        "abril": 4,
+        "maio": 5,
+        "junho": 6,
+        "julho": 7,
+        "agosto": 8,
+        "setembro": 9,
+        "outubro": 10,
+        "novembro": 11,
+        "dezembro": 12,
     }
-    text = _normalize(value).replace(",", " ")
+    text = _normalize(value).replace(",", " ").replace(" de ", " ")
+    text = re.sub(r"\b(\d{1,2})(st|nd|rd|th)\b", r"\1", text)
+    text = re.sub(r"\([a-z]{2,5}\)", " ", text)
+    text = " ".join(text.split())
     iso = re.fullmatch(r"(\d{4})-(\d{2})-(\d{2})", text)
     if iso:
         return text
@@ -338,14 +427,22 @@ def _normalize_order_date(value: str) -> str | None:
     if numeric:
         day, month, year = map(int, numeric.groups())
     else:
-        localized = re.fullmatch(r"(\d{1,2})\s+([a-z]+)\s+(\d{4})", text)
-        if not localized or localized.group(2) not in months:
+        month_first = re.fullmatch(r"([a-z]+)\s+(\d{1,2})\s+(\d{4})", text)
+        day_first = re.fullmatch(r"(\d{1,2})\s+([a-z]+)\s+(\d{4})", text)
+        if month_first and month_first.group(1) in months:
+            month, day, year = (
+                months[month_first.group(1)],
+                int(month_first.group(2)),
+                int(month_first.group(3)),
+            )
+        elif day_first and day_first.group(2) in months:
+            day, month, year = (
+                int(day_first.group(1)),
+                months[day_first.group(2)],
+                int(day_first.group(3)),
+            )
+        else:
             return None
-        day, month, year = (
-            int(localized.group(1)),
-            months[localized.group(2)],
-            int(localized.group(3)),
-        )
     if year < 100:
         year += 2000 if year < 70 else 1900
     try:
@@ -356,8 +453,37 @@ def _normalize_order_date(value: str) -> str | None:
         return None
 
 
+LABEL_ARTIFACT = (
+    "address",
+    "ship to",
+    "endereco",
+    "telefone",
+    "phone",
+    "email",
+    "cnpj",
+    "date",
+    "data",
+    "number",
+    "numero",
+    "total",
+    "qty",
+    "quantity",
+    "unit price",
+    "price",
+    "tax",
+)
+
+
+def _looks_like_column_label(value: str) -> bool:
+    """Evita gravar o rótulo da coluna vizinha como se fosse o dado do campo."""
+    normalized = _normalize(value)
+    return any(artifact in normalized for artifact in LABEL_ARTIFACT)
+
+
 def _extract_labeled(lines: list[str], labels: dict[str, list[str]]) -> dict[str, dict[str, Any]]:
     output: dict[str, dict[str, Any]] = {}
+    money_fields = {"total", "subtotal", "shipping", "discount", "tax", "paid"}
+    candidates: dict[str, list[dict[str, Any]]] = {}
     for field, variants in labels.items():
         normalized_variants = sorted((_normalize(x) for x in variants), key=len, reverse=True)
         for i, line in enumerate(lines):
@@ -377,23 +503,81 @@ def _extract_labeled(lines: list[str], labels: dict[str, list[str]]) -> dict[str
                 value_part = _normalize(lines[i + 1])
             if not value_part:
                 continue
-            if field in {"total", "subtotal", "shipping", "discount", "tax"}:
-                match = re.fullmatch(rf"\s*({MONEY})\s*", value_part, re.I)
-                value = _money(match.group(1)) if match else None
-            elif field == "date":
-                date_text = value_part.strip(" :#-")
-                date_match = re.fullmatch(
-                    r"(\d{4}-\d{2}-\d{2}|\d{1,2}[/-]\d{1,2}[/-]\d{2,4}|"
-                    r"\d{1,2}\s+[a-z]+,?\s+\d{4})",
-                    date_text,
-                )
+            if field in money_fields:
+                entry = _money_entry(value_part)
+                if entry is None and field == "paid" and i:
+                    entry = _money_entry(_normalize(lines[i - 1]))
+                if entry is None:
+                    continue
+                candidate = {
+                    "value": entry[0],
+                    "currency": entry[1],
+                    "confidence": 0.78,
+                    "source": "label",
+                }
+                candidates.setdefault(field, []).append(candidate)
+                continue
+            if field == "date":
+                date_match = re.search(DATE_PATTERN, value_part)
                 value = _normalize_order_date(date_match.group(1)) if date_match else None
             else:
-                value = line[len(matched) :].strip(" :#-\t")[:160]
+                raw_variant = next(
+                    (
+                        original
+                        for original in variants
+                        if _normalize(original) == matched
+                    ),
+                    None,
+                )
+                raw_remainder = line
+                if raw_variant:
+                    raw_match = re.match(
+                        rf"\s*{re.escape(raw_variant)}\s*[:\-#]?\s*", line, re.I
+                    )
+                    if raw_match:
+                        raw_remainder = line[raw_match.end() :]
+                # A segunda coluna do recibo vem depois de um vão largo: corta ali.
+                value = _clean_text(re.split(r"\s{3,}", raw_remainder)[0].strip(" :#-\t"))[:160]
+                if _looks_like_column_label(value):
+                    continue
             if value not in (None, ""):
                 output[field] = {"value": value, "confidence": 0.78, "source": "label"}
                 break
+    for field, found in candidates.items():
+        # O recibo da Alibaba traz o total em BRL e a mesma quantia em USD: a linha em reais vence.
+        best = next((entry for entry in found if entry.get("currency") == "BRL"), found[0])
+        if best.get("currency") is None:
+            best.pop("currency", None)
+        output[field] = best
     return output
+
+
+def _money_entry(value_part: str) -> tuple[float, str | None] | None:
+    match = re.match(rf"\s*({MONEY})\s*(?:\(([A-Za-z\$]{{2,9}})\))?", value_part, re.I)
+    if not match:
+        return None
+    amount = _money(match.group(1))
+    if amount is None:
+        return None
+    currency = _currency_of(match.group(1)) or _currency_of(match.group(2) or "")
+    return amount, currency
+
+
+def _currency_of(text: str) -> str | None:
+    upper = text.upper()
+    if re.search(r"R\$|\bBRL\b", upper):
+        return "BRL"
+    if re.search(r"US\$|\bUSD\b", upper):
+        return "USD"
+    if re.search(r"\bEUR\b|€", upper):
+        return "EUR"
+    if "$" in upper:
+        return "USD"
+    return None
+
+
+def _clean_text(value: str) -> str:
+    return html.unescape(value).strip()
 
 
 def _extract_items(lines: list[str], profile_id: str | None = None) -> list[dict[str, Any]]:
@@ -637,6 +821,22 @@ async def analyze_upload(upload: UploadFile, selected_profile: str | None = None
         raise ValueError("O documento deve ter conteúdo e até 15 MB.")
     if filename.lower().endswith(".xml"):
         parsed = _parse_nfe_xml(content)
+        total_field = parsed["fields"].get("total") or {}
+        shipping_field = parsed["fields"].get("shipping") or {}
+        tax_field = parsed["fields"].get("tax") or {}
+        discount_field = parsed["fields"].get("discount") or {}
+        items_total = round(sum(item["line_total"] for item in parsed["items"]), 2) if parsed["items"] else None
+        total_value = total_field.get("value")
+        closing = None
+        if total_value is not None and items_total is not None:
+            closing = round(
+                items_total
+                + (shipping_field.get("value") or 0)
+                + (tax_field.get("value") or 0)
+                - (discount_field.get("value") or 0)
+                - total_value,
+                2,
+            )
         return {
             "filename": filename,
             "profile": {
@@ -648,6 +848,23 @@ async def analyze_upload(upload: UploadFile, selected_profile: str | None = None
             "fields": parsed["fields"],
             "items": parsed["items"],
             "warnings": parsed["warnings"],
+            "currency": "BRL",
+            "exchange_rate": None,
+            "exchange_rate_from": None,
+            "exchange_rate_to": None,
+            "paid": None,
+            "check": {
+                "items_total": items_total,
+                "subtotal": (parsed["fields"].get("subtotal") or {}).get("value"),
+                "subtotal_difference": None,
+                "shipping": shipping_field.get("value"),
+                "tax": tax_field.get("value"),
+                "discount": discount_field.get("value"),
+                "total": total_value,
+                "closing_difference": closing,
+                "balanced": closing is not None and abs(closing) <= 0.05,
+            },
+            "text": None,
         }
     if filename.lower().endswith(".pdf") and not content.startswith(b"%PDF-"):
         raise ValueError("O arquivo não contém um PDF válido.")
@@ -670,7 +887,7 @@ async def analyze_upload(upload: UploadFile, selected_profile: str | None = None
             lines.remove(quality_line)
         except ValueError:
             pass
-    profile = detect_profile(text, selected_profile)
+    profile = detect_profile(text, selected_profile, filename)
     labels = _profile_labels(profile["profile_id"])
     fields = _extract_labeled(lines, labels)
     for field in fields.values():
@@ -688,15 +905,34 @@ async def analyze_upload(upload: UploadFile, selected_profile: str | None = None
         warnings.append(
             "Nenhum item foi identificado com confiança suficiente; adicione ou corrija as linhas."
         )
-    if "total" not in fields:
+    items_total = round(sum(item["line_total"] for item in items), 2) if items else None
+    shipping = (fields.get("shipping") or {}).get("value")
+    tax = (fields.get("tax") or {}).get("value")
+    discount = (fields.get("discount") or {}).get("value")
+    total = (fields.get("total") or {}).get("value")
+    subtotal = (fields.get("subtotal") or {}).get("value")
+    closing_difference = None
+    if total is not None and items_total is not None:
+        closing_difference = round(items_total + (shipping or 0) + (tax or 0) - (discount or 0) - total, 2)
+    subtotal_difference = None
+    if subtotal is not None and items_total is not None:
+        subtotal_difference = round(items_total - subtotal, 2)
+    if total is None:
         warnings.append("Total não identificado; confira o documento antes de continuar.")
-    elif items:
-        items_total = sum(item["line_total"] for item in items)
-        if abs(items_total - fields["total"]["value"]) > 0.03:
-            warnings.append(
-                "A soma dos itens não fecha com o total do documento; confira frete,"
-                " descontos e impostos."
-            )
+    elif closing_difference is not None and abs(closing_difference) > 0.05:
+        warnings.append(
+            "A conferência não fecha: itens + frete + impostos − descontos difere do total do "
+            f"documento em R$ {abs(closing_difference):.2f}."
+        )
+    if subtotal_difference is not None and abs(subtotal_difference) > 0.05:
+        warnings.append(
+            "A soma dos itens difere do subtotal do documento em "
+            f"R$ {abs(subtotal_difference):.2f}."
+        )
+    currency = _document_currency(fields)
+    rate = _exchange_rate(text)
+    paid_date, paid_method = _paid_details(text)
+    paid = fields.get("paid")
     return {
         "filename": filename,
         "source": source,
@@ -704,4 +940,30 @@ async def analyze_upload(upload: UploadFile, selected_profile: str | None = None
         "fields": fields,
         "items": items,
         "warnings": warnings,
+        "currency": currency,
+        "exchange_rate": rate["rate"] if rate else None,
+        "exchange_rate_from": rate["from_currency"] if rate else None,
+        "exchange_rate_to": rate["to_currency"] if rate else None,
+        "paid": {
+            "amount": paid["value"],
+            "currency": paid.get("currency") or currency,
+            "date": paid_date,
+            "method": paid_method,
+        } if paid else None,
+        "check": {
+            "items_total": items_total,
+            "subtotal": subtotal,
+            "subtotal_difference": subtotal_difference,
+            "shipping": shipping,
+            "tax": tax,
+            "discount": discount,
+            "total": total,
+            "closing_difference": closing_difference,
+            "balanced": (
+                closing_difference is not None
+                and abs(closing_difference) <= 0.05
+                and (subtotal_difference is None or abs(subtotal_difference) <= 0.05)
+            ),
+        },
+        "text": text,
     }

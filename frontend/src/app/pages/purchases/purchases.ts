@@ -106,6 +106,19 @@ import { dateOnlyLabel, dateOnlyValue } from '../../shared/date-only';
           } @empty { <p class="muted">Nenhum item detectado. Adicione as linhas manualmente para continuar.</p> }</div>
         </div>
         @if (importError()) { <p class="purchase-error" role="alert">{{ importError() }}</p> }
+        @if (importDuplicate(); as duplicate) { <p class="purchase-error" role="alert">Este documento já foi importado na compra <strong>{{ duplicate.purchase_number }}</strong>@if (duplicate.cancelled) { , que está cancelada — você pode continuar. } @else { . Abra a compra existente antes de criar outra. }</p> }
+        <section class="import-check">
+          <p class="eyebrow">Conferência do documento</p>
+          <div class="import-check-grid">
+            <span>Moeda lida</span><strong>{{ importDraft().currency || 'não identificada' }}</strong>
+            <span>Cotação usada (1 unidade da moeda em R$)</span>
+            @if (importNeedsRate() || importDraft().exchangeRate !== null) { <input type="number" min="0" step="0.000001" [value]="importDraft().exchangeRate ?? ''" (input)="setImportRateFromInput($any($event.target).value)" placeholder="Obrigatória" /> } @else { <strong>não se aplica</strong> }
+            <span>Valor efetivamente pago</span><label class="import-paid"><input appMoneyInput [appMoneyInput]="importDraft().paidAmount ?? 0" min="0" (moneyInput)="setImportPaid($event)" />@if (importDraft().paidAmount === null) { <small class="muted">não identificado</small> }</label>
+            <span>Diferença paga ÷ total</span><strong [class.check-warn]="importPaidDifference() > 0.05 || importPaidDifference() < -0.05">{{ importPaidDifference() | currency:'BRL' }}</strong>
+            <span>Fechamento: itens + frete + impostos − descontos − total</span>@if (importHasItemsToCheck()) { <strong [class.check-warn]="importClosingDifference() > 0.05 || importClosingDifference() < -0.05">{{ importClosingDifference() | currency:'BRL' }}</strong> } @else { <strong class="muted">sem itens lidos para conferir</strong> }
+          </div>
+          <details class="import-text"><summary>Ver o que foi lido</summary>@if (review.text) { <pre>{{ review.text }}</pre> } @else { <p class="muted">Este formato não devolve texto de leitura (por exemplo, XML de NF-e).</p> }</details>
+        </section>
         <div class="purchase-form-actions"><span class="muted">O arquivo original será anexado. Nenhum estoque será movimentado.</span><div class="import-review-actions"><button type="button" class="secondary" (click)="closeImportReview()">Cancelar</button><button type="button" class="primary" [disabled]="creatingImport() || !canConfirmImport()" (click)="createImportedPurchase()">{{ creatingImport() ? 'Criando…' : 'Confirmar e criar compra' }}</button></div></div>
       </section></div>
     }
@@ -250,7 +263,9 @@ export class PurchasesPage implements OnInit {
   readonly selectedFiles = signal<File[]>([]);
   readonly importReview = signal<any | null>(null);
   readonly importProfiles = signal<Array<{ profile_id: string; name: string; kind: string; version: number }>>([]);
-  readonly importDraft = signal<{ supplier: string; orderNumber: string; documentDate: string; total: number | null; shipping: number | null; discount: number | null; tax: number | null; items: Array<{ description: string; sku: string; quantity: number; unit_cost: number; confidence: number; product_id: string | null; stock_controlled: boolean; line_total: number; discount_amount: number }> }>({ supplier: '', orderNumber: '', documentDate: '', total: null, shipping: null, discount: null, tax: null, items: [] });
+  readonly importDraft = signal<{ supplier: string; orderNumber: string; documentDate: string; total: number | null; shipping: number | null; discount: number | null; tax: number | null; currency: string | null; exchangeRate: number | null; paidAmount: number | null; items: Array<{ description: string; sku: string; quantity: number; unit_cost: number; confidence: number; product_id: string | null; stock_controlled: boolean; line_total: number; discount_amount: number }> }>({ supplier: '', orderNumber: '', documentDate: '', total: null, shipping: null, discount: null, tax: null, currency: null, exchangeRate: null, paidAmount: null, items: [] });
+  readonly importDuplicate = signal<{ purchase_id: string; purchase_number: string; purchase_status: string; cancelled: boolean } | null>(null);
+  readonly importCheck = signal<{ items_total: number | null; closing_difference: number | null; subtotal_difference: number | null; balanced: boolean } | null>(null);
   readonly importFile = signal<File | null>(null);
   readonly importLoading = signal(false);
   readonly creatingImport = signal(false);
@@ -324,6 +339,9 @@ export class PurchasesPage implements OnInit {
       shipping: review.fields?.shipping?.value == null ? null : Number(review.fields.shipping.value),
       discount: review.fields?.discount?.value == null ? null : Number(review.fields.discount.value),
       tax: review.fields?.tax?.value == null ? null : Number(review.fields.tax.value),
+      currency: review.currency ? String(review.currency) : null,
+      exchangeRate: review.exchange_rate == null ? null : Number(review.exchange_rate),
+      paidAmount: review.paid?.amount == null ? null : Number(review.paid.amount),
       items: (review.items || []).map((item: any) => ({
         description: String(item.description || ''), sku: String(item.sku || ''), product_id: null, stock_controlled: true,
         quantity: Number(item.quantity ?? 0), unit_cost: Number(item.unit_cost ?? 0), line_total: Number(item.line_total ?? Number(item.quantity ?? 0) * Number(item.unit_cost ?? 0)), discount_amount: Number(item.discount_amount ?? 0),
@@ -331,6 +349,19 @@ export class PurchasesPage implements OnInit {
       })),
     });
     this.importError.set('');
+    this.importCheck.set(review.check || null);
+    this.checkImportDuplicate();
+  }
+  private checkImportDuplicate() {
+    const review = this.importReview();
+    const number = String(review?.fields?.order_number?.value || '').trim();
+    const origin = String(review?.profile?.profile_id || '').trim();
+    this.importDuplicate.set(null);
+    if (!number || !origin) return;
+    this.api.purchaseImportDuplicates({ order_number: number, origin }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: (result) => this.importDuplicate.set(result.match),
+      error: () => this.importDuplicate.set(null),
+    });
   }
   changeImportProfile(profileId: string) {
     const file = this.importFile(); if (!file) return;
@@ -341,6 +372,27 @@ export class PurchasesPage implements OnInit {
     });
   }
   updateImportField(field: 'supplier' | 'orderNumber' | 'documentDate', value: string) { this.importDraft.update((draft) => ({ ...draft, [field]: value })); }
+  setImportRate(value: number | null) { this.importDraft.update((draft) => ({ ...draft, exchangeRate: value })); }
+  setImportRateFromInput(value: string) { this.setImportRate(value === '' ? null : Number(value)); }
+  setImportPaid(value: number | null) { this.importDraft.update((draft) => ({ ...draft, paidAmount: value })); }
+  importItemsTotal() { return this.importDraft().items.reduce((sum, item) => sum + Number(item.line_total || 0), 0); }
+  importClosingDifference() {
+    const check = this.importCheck();
+    if (check) return check.closing_difference ?? 0;
+    const draft = this.importDraft();
+    if (draft.total === null || !draft.items.length) return 0;
+    return Number((this.importItemsTotal() + Number(draft.shipping || 0) + Number(draft.tax || 0) - Number(draft.discount || 0) - Number(draft.total)).toFixed(2));
+  }
+  importHasItemsToCheck() { return !!this.importCheck()?.items_total || this.importDraft().items.length > 0; }
+  importPaidDifference() {
+    const draft = this.importDraft();
+    if (draft.paidAmount === null || draft.total === null) return 0;
+    return Number((Number(draft.paidAmount) - Number(draft.total)).toFixed(2));
+  }
+  importNeedsRate() {
+    const currency = this.importDraft().currency;
+    return !!currency && currency.toUpperCase() !== 'BRL';
+  }
   updateImportNumber(field: 'total' | 'shipping' | 'discount' | 'tax', value: number | null) { this.importDraft.update((draft) => ({ ...draft, [field]: value })); }
   updateImportItem(index: number, field: 'description' | 'sku' | 'quantity' | 'unit_cost' | 'discount_amount', value: string | number | null) {
     this.importDraft.update((draft) => ({ ...draft, items: draft.items.map((item, i) => { if (i !== index) return item; const updated = { ...item, [field]: field === 'description' || field === 'sku' ? value : Number(value ?? 0) }; if (field === 'quantity' || field === 'unit_cost' || field === 'discount_amount') updated.line_total = Math.max(0, Number(updated.quantity) * Number(updated.unit_cost) - Number(updated.discount_amount)); return updated; }) }));
@@ -382,6 +434,9 @@ export class PurchasesPage implements OnInit {
   }
   canConfirmImport() {
     const items = this.importDraft().items;
+    const duplicate = this.importDuplicate();
+    if (duplicate && !duplicate.cancelled) return false;
+    if (this.importNeedsRate() && !(Number(this.importDraft().exchangeRate) > 0)) return false;
     return !Object.values(this.importMoneyValidity()).some(Boolean) && items.length > 0 && items.every((item) => (!item.stock_controlled || !!item.product_id) && item.description.trim().length >= 2 && Number.isFinite(item.quantity) && item.quantity > 0 && Number.isFinite(item.unit_cost) && item.unit_cost >= 0 && Number.isFinite(item.discount_amount) && item.discount_amount >= 0 && item.discount_amount <= item.quantity * item.unit_cost);
   }
   addImportLine() { this.importDraft.update((draft) => ({ ...draft, items: [...draft.items, { description: '', sku: '', quantity: 1, unit_cost: 0, confidence: 0, product_id: null, stock_controlled: true, line_total: 0, discount_amount: 0 }] })); }
@@ -395,6 +450,15 @@ export class PurchasesPage implements OnInit {
       purchase_type: 'parts', source_import_id: importId, supplier_name: draft.supplier.trim() || null,
       supplier_id: this.supplierByName(draft.supplier)?.id ?? null,
       supplier_order_number: draft.orderNumber.trim() || null,
+      purchase_origin: review.profile?.profile_id || null,
+      document_access_key: review.fields?.access_key?.value ?? null,
+      document_number: review.fields?.document_number?.value ?? null,
+      document_series: review.fields?.document_series?.value ?? null,
+      issuer_cnpj: review.fields?.issuer_cnpj?.value ?? null,
+      original_currency: draft.currency,
+      original_total: draft.total,
+      exchange_rate: draft.exchangeRate,
+      paid_amount: draft.paidAmount,
       document_date: draft.documentDate || null,
       notes: this.importNotes(review, draft),
       items: draft.items.map((item, index) => ({

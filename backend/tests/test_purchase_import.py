@@ -158,10 +158,10 @@ def test_custom_profile_has_limited_declarative_schema():
 
 def test_nfe_xml_reads_supplier_items_and_total():
     xml = b"""<nfeProc xmlns="http://www.portalfiscal.inf.br/nfe">
-      <NFe><infNFe><emit><xNome>Fornecedor Exemplo</xNome></emit>
+      <NFe><infNFe><emit><CNPJ>04617659000142</CNPJ><xNome>Fornecedor Exemplo</xNome></emit>
       <det nItem="1"><prod><cProd>A-1</cProd><xProd>Filtro oleo</xProd><qCom>2.0000</qCom>
       <vUnCom>10.5000</vUnCom><vProd>21.00</vProd></prod></det>
-      <ide><dhEmi>2026-10-09T10:30:00-03:00</dhEmi></ide>
+      <ide><nNF>219</nNF><serie>2</serie><dhEmi>2026-10-09T10:30:00-03:00</dhEmi></ide>
       <total><ICMSTot><vFrete>2.00</vFrete><vDesc>1.00</vDesc><vTotTrib>3.00</vTotTrib><vNF>21.00</vNF></ICMSTot></total></infNFe></NFe>
       <protNFe><infProt><chNFe>12345678901234567890123456789012345678901234</chNFe></infProt></protNFe>
     </nfeProc>"""
@@ -174,6 +174,11 @@ def test_nfe_xml_reads_supplier_items_and_total():
     assert parsed["fields"]["tax"]["value"] == 3.0
     assert parsed["items"][0]["sku"] == "A-1"
     assert parsed["items"][0]["quantity"] == 2
+    # P14: identidade do documento fiscal em campos próprios.
+    assert parsed["fields"]["access_key"]["value"] == "12345678901234567890123456789012345678901234"
+    assert parsed["fields"]["document_number"]["value"] == "219"
+    assert parsed["fields"]["document_series"]["value"] == "2"
+    assert parsed["fields"]["issuer_cnpj"]["value"] == "04617659000142"
 
 
 # --- P0: a compra importada nasce com a cotação do documento aceita e o pedido registrado ---

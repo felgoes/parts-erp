@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import html
 import csv
 import io
 import json
@@ -33,6 +34,7 @@ MARKETPLACES: dict[str, dict[str, Any]] = {
             "shipping": ["custo de frete", "shipping fee", "frete", "delivery fee"],
             "discount": ["todos os descontos", "coupon", "discount", "desconto"],
             "tax": ["impostos", "taxes", "tax"],
+            "paid": ["você pagou", "voce pagou", "total pago", "amount paid"],
         },
     },
     "mercado_livre": {
@@ -75,6 +77,7 @@ MARKETPLACES: dict[str, dict[str, Any]] = {
             "subtotal": ["subtotal"],
             "total": ["order total"],
             "shipping": ["shipping fee", "shipping cost", "freight"],
+            "paid": ["amount paid", "payment total"],
         },
     },
 }
@@ -96,6 +99,12 @@ FIELD_LABELS: dict[str, list[str]] = {
     "tax": ["tax", "taxes", "taxa", "imposto", "impostos", "vat", "iva"],
 }
 MONEY = r"(?:(?:R\$|BRL|USD|US\$|\$)\s*)?-?\s*(?:\d{1,3}(?:[,.]\d{3})+|\d+)(?:,\d{2}|\.\d{2})"
+DATE_PATTERN = (
+    r"(\d{4}-\d{2}-\d{2}"
+    r"|\d{1,2}[/-]\d{1,2}[/-]\d{2,4}"
+    r"|\d{1,2}(?:st|nd|rd|th)?\s+(?:de\s+)?[a-z]{3,12}\.?,?\s+(?:de\s+)?\d{4}"
+    r"|[a-z]{3,12}\.?\s+\d{1,2}(?:st|nd|rd|th)?,?\s+\d{4})"
+)
 _OCR_SLOT = threading.BoundedSemaphore(1)
 
 
@@ -208,7 +217,22 @@ def _custom_profiles() -> list[dict[str, Any]]:
     return result
 
 
-def detect_profile(text: str, selected: str | None = None) -> dict[str, Any]:
+def _profile_from_filename(filename: str | None) -> dict[str, str] | None:
+    if not filename:
+        return None
+    stem = _normalize(Path(filename).stem.replace("_", " ").replace("-", " "))
+    for key, profile in MARKETPLACES.items():
+        if any(_normalize(term) in stem for term in profile["terms"] if len(term) > 3):
+            return {"profile_id": key, "name": profile["name"]}
+    for custom in _custom_profiles():
+        if any(_normalize(term) in stem for term in custom.get("match_terms", []) if len(term) > 3):
+            return {"profile_id": custom["profile_id"], "name": custom["name"]}
+    return None
+
+
+def detect_profile(
+    text: str, selected: str | None = None, filename: str | None = None
+) -> dict[str, Any]:
     norm = _normalize(text)
     candidates = [
         {
@@ -247,6 +271,15 @@ def detect_profile(text: str, selected: str | None = None) -> dict[str, Any]:
     second = scored[1][0] if len(scored) > 1 else 0
     min_hits = 1 if best.get("profile_id") in MARKETPLACES else 2
     if best_score < 0.7 or best_hits < min_hits or best_score - second < 0.2:
+        suggestion = _profile_from_filename(filename)
+        if suggestion:
+            return {
+                "profile_id": suggestion["profile_id"],
+                "name": suggestion["name"],
+                "confidence": best_score,
+                "selected": False,
+                "suggested_from": "filename",
+            }
         return {
             "profile_id": None,
             "name": "Não identificado",
@@ -296,6 +329,47 @@ def _money(value: str) -> float | None:
         return None
 
 
+def _document_currency(fields: dict[str, dict[str, Any]]) -> str | None:
+    for field in ("total", "paid", "subtotal", "shipping", "discount", "tax"):
+        currency = (fields.get(field) or {}).get("currency")
+        if currency:
+            return currency
+    return None
+
+
+def _exchange_rate(text: str) -> dict[str, Any] | None:
+    match = re.search(r"1\s*([A-Za-z]{3})\s*=\s*([\d.,]+)\s*([A-Za-z]{3})", text)
+    if not match:
+        return None
+    raw = match.group(2).replace(" ", "")
+    if "," in raw and "." in raw:
+        decimal_mark = "," if raw.rfind(",") > raw.rfind(".") else "."
+        raw = raw.replace("." if decimal_mark == "," else ",", "").replace(decimal_mark, ".")
+    elif "," in raw:
+        raw = raw.replace(",", ".")
+    try:
+        rate = float(raw)
+    except ValueError:
+        return None
+    if not rate or rate <= 0 or rate >= 1_000_000:
+        return None
+    return {
+        "rate": rate,
+        "from_currency": match.group(1).upper(),
+        "to_currency": match.group(3).upper(),
+    }
+
+
+def _paid_details(text: str) -> tuple[str | None, str | None]:
+    with_method = re.search(r"p(?:aid|ago)\s+(?:on|em)\s+([^()\n]+?)\s*\(([^)\n]+)\)", text, re.I)
+    if with_method:
+        return _normalize_order_date(with_method.group(1)), _clean_text(with_method.group(2))[:40]
+    plain = re.search(r"p(?:aid|ago)\s+(?:on|em)\s+([^\n]+)", text, re.I)
+    if plain:
+        return _normalize_order_date(plain.group(1)), None
+    return None, None
+
+
 def _normalize_order_date(value: str) -> str | None:
     months = {
         "jan": 1,
@@ -329,8 +403,23 @@ def _normalize_order_date(value: str) -> str | None:
         "dez": 12,
         "dec": 12,
         "december": 12,
+        "janeiro": 1,
+        "fevereiro": 2,
+        "marco": 3,
+        "abril": 4,
+        "maio": 5,
+        "junho": 6,
+        "julho": 7,
+        "agosto": 8,
+        "setembro": 9,
+        "outubro": 10,
+        "novembro": 11,
+        "dezembro": 12,
     }
-    text = _normalize(value).replace(",", " ")
+    text = _normalize(value).replace(",", " ").replace(" de ", " ")
+    text = re.sub(r"\b(\d{1,2})(st|nd|rd|th)\b", r"\1", text)
+    text = re.sub(r"\([a-z]{2,5}\)", " ", text)
+    text = " ".join(text.split())
     iso = re.fullmatch(r"(\d{4})-(\d{2})-(\d{2})", text)
     if iso:
         return text
@@ -338,14 +427,22 @@ def _normalize_order_date(value: str) -> str | None:
     if numeric:
         day, month, year = map(int, numeric.groups())
     else:
-        localized = re.fullmatch(r"(\d{1,2})\s+([a-z]+)\s+(\d{4})", text)
-        if not localized or localized.group(2) not in months:
+        month_first = re.fullmatch(r"([a-z]+)\s+(\d{1,2})\s+(\d{4})", text)
+        day_first = re.fullmatch(r"(\d{1,2})\s+([a-z]+)\s+(\d{4})", text)
+        if month_first and month_first.group(1) in months:
+            month, day, year = (
+                months[month_first.group(1)],
+                int(month_first.group(2)),
+                int(month_first.group(3)),
+            )
+        elif day_first and day_first.group(2) in months:
+            day, month, year = (
+                int(day_first.group(1)),
+                months[day_first.group(2)],
+                int(day_first.group(3)),
+            )
+        else:
             return None
-        day, month, year = (
-            int(localized.group(1)),
-            months[localized.group(2)],
-            int(localized.group(3)),
-        )
     if year < 100:
         year += 2000 if year < 70 else 1900
     try:
@@ -356,8 +453,37 @@ def _normalize_order_date(value: str) -> str | None:
         return None
 
 
+LABEL_ARTIFACT = (
+    "address",
+    "ship to",
+    "endereco",
+    "telefone",
+    "phone",
+    "email",
+    "cnpj",
+    "date",
+    "data",
+    "number",
+    "numero",
+    "total",
+    "qty",
+    "quantity",
+    "unit price",
+    "price",
+    "tax",
+)
+
+
+def _looks_like_column_label(value: str) -> bool:
+    """Evita gravar o rótulo da coluna vizinha como se fosse o dado do campo."""
+    normalized = _normalize(value)
+    return any(artifact in normalized for artifact in LABEL_ARTIFACT)
+
+
 def _extract_labeled(lines: list[str], labels: dict[str, list[str]]) -> dict[str, dict[str, Any]]:
     output: dict[str, dict[str, Any]] = {}
+    money_fields = {"total", "subtotal", "shipping", "discount", "tax", "paid"}
+    candidates: dict[str, list[dict[str, Any]]] = {}
     for field, variants in labels.items():
         normalized_variants = sorted((_normalize(x) for x in variants), key=len, reverse=True)
         for i, line in enumerate(lines):
@@ -377,27 +503,141 @@ def _extract_labeled(lines: list[str], labels: dict[str, list[str]]) -> dict[str
                 value_part = _normalize(lines[i + 1])
             if not value_part:
                 continue
-            if field in {"total", "subtotal", "shipping", "discount", "tax"}:
-                match = re.fullmatch(rf"\s*({MONEY})\s*", value_part, re.I)
-                value = _money(match.group(1)) if match else None
-            elif field == "date":
-                date_text = value_part.strip(" :#-")
-                date_match = re.fullmatch(
-                    r"(\d{4}-\d{2}-\d{2}|\d{1,2}[/-]\d{1,2}[/-]\d{2,4}|"
-                    r"\d{1,2}\s+[a-z]+,?\s+\d{4})",
-                    date_text,
-                )
+            if field in money_fields:
+                entry = _money_entry(value_part)
+                if entry is None and field == "paid" and i:
+                    entry = _money_entry(_normalize(lines[i - 1]))
+                if entry is None:
+                    continue
+                candidate = {
+                    "value": entry[0],
+                    "currency": entry[1],
+                    "confidence": 0.78,
+                    "source": "label",
+                }
+                candidates.setdefault(field, []).append(candidate)
+                continue
+            if field == "date":
+                date_match = re.search(DATE_PATTERN, value_part)
                 value = _normalize_order_date(date_match.group(1)) if date_match else None
             else:
-                value = line[len(matched) :].strip(" :#-\t")[:160]
+                raw_variant = next(
+                    (
+                        original
+                        for original in variants
+                        if _normalize(original) == matched
+                    ),
+                    None,
+                )
+                raw_remainder = line
+                if raw_variant:
+                    raw_match = re.match(
+                        rf"\s*{re.escape(raw_variant)}\s*[:\-#]?\s*", line, re.I
+                    )
+                    if raw_match:
+                        raw_remainder = line[raw_match.end() :]
+                # A segunda coluna do recibo vem depois de um vão largo: corta ali.
+                value = _clean_text(re.split(r"\s{3,}", raw_remainder)[0].strip(" :#-\t"))[:160]
+                if _looks_like_column_label(value):
+                    continue
             if value not in (None, ""):
                 output[field] = {"value": value, "confidence": 0.78, "source": "label"}
                 break
+    for field, found in candidates.items():
+        # O recibo da Alibaba traz o total em BRL e a mesma quantia em USD: a linha em reais vence.
+        best = next((entry for entry in found if entry.get("currency") == "BRL"), found[0])
+        if best.get("currency") is None:
+            best.pop("currency", None)
+        output[field] = best
     return output
+
+
+def _money_entry(value_part: str) -> tuple[float, str | None] | None:
+    match = re.match(rf"\s*({MONEY})\s*(?:\(([A-Za-z\$]{{2,9}})\))?", value_part, re.I)
+    if not match:
+        return None
+    amount = _money(match.group(1))
+    if amount is None:
+        return None
+    currency = _currency_of(match.group(1)) or _currency_of(match.group(2) or "")
+    return amount, currency
+
+
+def _currency_of(text: str) -> str | None:
+    upper = text.upper()
+    if re.search(r"R\$|\bBRL\b", upper):
+        return "BRL"
+    if re.search(r"US\$|\bUSD\b", upper):
+        return "USD"
+    if re.search(r"\bEUR\b|€", upper):
+        return "EUR"
+    if "$" in upper:
+        return "USD"
+    return None
+
+
+def _clean_text(value: str) -> str:
+    return html.unescape(value).strip()
+
+
+QUANTITY_HINT = re.compile(r"\bx\s*(\d+)\b|\bqty\s*:?\s*(\d+)\b|\b(\d+)\s*un\b", re.I)
+
+
+def _extract_image_items(lines: list[str]) -> list[dict[str, Any]]:
+    """Item de recibo fotografado: o OCR não preserva colunas, então usa o bloco do item."""
+    start = next(
+        (index for index, line in enumerate(lines) if "detalhes do item" in _normalize(line)),
+        None,
+    )
+    if start is None:
+        return []
+    block = [line.strip() for line in lines[start + 1 : start + 8] if line.strip()]
+    price_index = next(
+        (index for index, line in enumerate(block) if re.search(r"(?:R\$|BRL)\s*\d", line, re.I)),
+        None,
+    )
+    if price_index is None:
+        return []
+    price_match = re.search(r"(R\$\s*\d[\d.,]*|BRL\s*\d[\d.,]*)", block[price_index], re.I)
+    unit_cost = _money(price_match.group(1)) if price_match else None
+    if unit_cost is None or unit_cost <= 0:
+        return []
+    quantity = 1.0
+    explicit = False
+    for line in block[: price_index + 1]:
+        hint = QUANTITY_HINT.search(_normalize(line))
+        if hint:
+            quantity = float(next(value for value in hint.groups() if value))
+            explicit = True
+            break
+    description_parts = []
+    for line in block[:price_index]:
+        # Marcador de ícone/checkbox do recibo não é descrição.
+        clean = re.sub(r"^[^\wÀ-ÿ]+", "", line).strip()
+        if clean:
+            description_parts.append(_clean_text(clean))
+    description = " ".join(description_parts).strip()
+    if len(description) < 3:
+        return []
+    return [
+        {
+            "description": description[:200],
+            "quantity": quantity,
+            "unit_cost": float(unit_cost),
+            "line_total": round(unit_cost * quantity, 2),
+            "confidence": 0.55,
+            "source": "ocr",
+            "quantity_derived": not explicit,
+        }
+    ]
 
 
 def _extract_items(lines: list[str], profile_id: str | None = None) -> list[dict[str, Any]]:
     items = []
+    if profile_id == "danfe" or _looks_like_danfe(lines):
+        danfe_items = _extract_danfe_items(lines)
+        if danfe_items:
+            return danfe_items
     # AliExpress order details place the product/variant, unit price, and xN quantity
     # on separate lines. Require that complete local sequence to avoid summary totals.
     if profile_id == "aliexpress":
@@ -420,7 +660,9 @@ def _extract_items(lines: list[str], profile_id: str | None = None) -> list[dict
                     "confidence": 0.58,
                 }
             )
-        return items[:100]
+        if items:
+            return items[:100]
+        return _extract_image_items(lines)
     # Deliberately conservative: only accept explicit quantity × price patterns.
     pattern = re.compile(
         rf"^(?P<description>.+?)\s+(?:x|×)\s*(?P<qty>\d+(?:[,.]\d+)?)\s+(?P<unit>{MONEY})(?:\s+(?P<total>{MONEY}))?\s*$",
@@ -442,6 +684,210 @@ def _extract_items(lines: list[str], profile_id: str | None = None) -> list[dict
                 "unit_cost": unit,
                 "line_total": total if total is not None else round(qty * unit, 2),
                 "confidence": 0.62,
+            }
+        )
+    if items:
+        return items[:100]
+    # Grades em coluna (recibos de Alibaba, DANFE e afins): última tentativa, conservadora.
+    return _extract_items_by_columns(lines)
+
+
+CELL_SPLIT = re.compile(r"\s{2,}")
+NUMBER_CELL = re.compile(r"^(?:R\$|BRL|USD|US\$|\$)?\s*-?\d+(?:[.,]\d{1,2})?$", re.I)
+
+
+def _split_cells(line: str) -> list[str]:
+    return [cell.strip() for cell in CELL_SPLIT.split(line.strip()) if cell.strip()]
+
+
+def _cell_number(cell: str) -> float | None:
+    if not NUMBER_CELL.match(cell.strip()):
+        return None
+    return _money(cell)
+
+
+def _extract_items_by_columns(lines: list[str]) -> list[dict[str, Any]]:
+    """Lê linhas com colunas alinhadas: descrição, quantidade, unitário e total da linha."""
+    items: list[dict[str, Any]] = []
+    pending: list[str] = []
+    for line in lines:
+        value = line.strip()
+        if not value:
+            continue
+        cells = _split_cells(value)
+        numbers = [_cell_number(cell) for cell in cells]
+        positions = [index for index, number in enumerate(numbers) if number is not None]
+        if len(cells) < 3 or not positions or positions[0] == 0 or len(positions) < 2:
+            # Linha de texto que pode ser a descrição (inclusive a segunda linha dela).
+            if ":" not in value and not _looks_like_column_label(value) and not NUMBER_CELL.match(value):
+                pending.append(value)
+            continue
+        description_cells = cells[: positions[0]]
+        values = [numbers[index] for index in positions]
+        if len(values) >= 3:
+            quantity, unit_cost, line_total = values[-3], values[-2], values[-1]
+            derived = False
+        else:
+            unit_cost, line_total = values
+            quantity = round(line_total / unit_cost, 3) if unit_cost else 0
+            derived = True
+        own_text = " ".join(description_cells).strip()
+        # A descrição vem da própria linha; as linhas acima só completam quando a linha é só de números.
+        description = own_text if len(own_text) >= 3 else " ".join(pending[-2:]).strip()
+        pending = []
+        if len(description) < 3 or not quantity or quantity <= 0 or unit_cost is None or unit_cost < 0:
+            continue
+        items.append(
+            {
+                "description": _clean_text(description)[:200],
+                "quantity": float(quantity),
+                "unit_cost": float(unit_cost),
+                "line_total": float(line_total),
+                "confidence": 0.7,
+                "source": "columns",
+                "quantity_derived": derived,
+            }
+        )
+    return items[:100]
+
+
+DANFE_VALUE_COLUMNS = {
+    "subtotal": "VALOR TOTAL DOS PRODUTOS",
+    "shipping": "VALOR DO FRETE",
+    "discount": "DESCONTO",
+    "total": "VALOR TOTAL DA NOTA",
+    "date": "DATA DA EMISSÃO",
+}
+
+
+def _looks_like_danfe(lines: list[str]) -> bool:
+    text = _normalize("\n".join(lines[:160]))
+    return ("vlr unit" in text and "valor total da nota" in text) or "documento auxiliar" in text
+
+
+def _extract_danfe_fields(lines: list[str]) -> dict[str, dict[str, Any]]:
+    """A DANFE escreve o rótulo em uma linha e o valor na linha de baixo, na mesma coluna."""
+    fields: dict[str, dict[str, Any]] = {}
+    joined = "\n".join(lines)
+    key_match = re.search(r"(\d{4}(?:\s\d{4}){10}|\d{44})", joined)
+    if key_match:
+        fields["access_key"] = {
+            "value": re.sub(r"\s", "", key_match.group(1)),
+            "confidence": 0.9,
+            "source": "documento",
+        }
+    issuer = re.search(r"RECEBEMOS DE (.+?) OS PRODUTOS", joined, re.I)
+    if issuer:
+        fields["supplier"] = {
+            "value": _clean_text(issuer.group(1))[:160],
+            "confidence": 0.85,
+            "source": "documento",
+        }
+    series = re.search(r"S[EÉ]RIE:?\s*(\w+)", joined, re.I)
+    if series:
+        fields["document_series"] = {
+            "value": series.group(1)[:20],
+            "confidence": 0.85,
+            "source": "documento",
+        }
+    document_number = re.search(r"N[ºo°]\s*([\d.]{3,20})", joined)
+    if document_number:
+        fields["document_number"] = {
+            "value": document_number.group(1),
+            "confidence": 0.85,
+            "source": "documento",
+        }
+    issuer_cnpj = re.search(r"(\d{2}\.\d{3}\.\d{3}/\d{4}-\d{2})", joined)
+    if not issuer_cnpj:
+        issuer_cnpj = re.search(r"CNPJ[:\s]*([\d./-]{14,20})", joined, re.I)
+    if issuer_cnpj:
+        fields["issuer_cnpj"] = {
+            "value": issuer_cnpj.group(1),
+            "confidence": 0.8,
+            "source": "documento",
+        }
+    for index, line in enumerate(lines):
+        cells = _split_cells(line)
+        if not cells:
+            continue
+        normalized = [_normalize(cell) for cell in cells]
+        next_cells = _split_cells(lines[index + 1]) if index + 1 < len(lines) else []
+        if len(next_cells) != len(cells):
+            continue
+        for field, label in DANFE_VALUE_COLUMNS.items():
+            if field in fields:
+                continue
+            target = _normalize(label)
+            if target not in normalized:
+                continue
+            raw = next_cells[normalized.index(target)]
+            value = _normalize_order_date(raw) if field == "date" else _money(raw)
+            if value not in (None, ""):
+                fields[field] = {"value": value, "confidence": 0.85, "source": "documento"}
+    return fields
+
+
+def _extract_danfe_items(lines: list[str]) -> list[dict[str, Any]]:
+    """A grade da DANFE separa a descrição (duas linhas) das colunas numéricas."""
+    items: list[dict[str, Any]] = []
+    header = next(
+        (
+            index
+            for index, line in enumerate(lines)
+            if "vlr unit" in _normalize(line) and "qtd" in _normalize(line)
+        ),
+        None,
+    )
+    if header is None:
+        return _extract_items_by_columns(lines)
+    description_buffer: list[str] = []
+    for index in range(header + 1, len(lines)):
+        cells = _split_cells(lines[index])
+        numeric_positions = [position for position, cell in enumerate(cells) if _cell_number(cell) is not None]
+        if not cells or len(numeric_positions) < 2:
+            text = lines[index].strip()
+            if cells and all(re.fullmatch(r"[A-Z]{2,10}", cell) for cell in cells):
+                continue
+            if text and not _looks_like_column_label(text) and ":" not in text:
+                description_buffer.append(text)
+            continue
+        money_values = [
+            _cell_number(cell)
+            for cell in cells
+            if _cell_number(cell) is not None and re.search(r"[.,]\d{2}$", cell)
+        ]
+        if len(money_values) < 2:
+            continue
+        code = cells[0] if numeric_positions[0] == 0 else ""
+        unit = next((cell for cell in cells if re.fullmatch(r"[A-Za-z]{1,6}", cell)), "")
+        unit_index = cells.index(unit) if unit else -1
+        quantity = _cell_number(cells[unit_index + 1]) if unit_index >= 0 and unit_index + 1 < len(cells) else None
+        unit_cost, line_total = money_values[0], money_values[1]
+        description = " ".join(description_buffer).strip()
+        description_buffer = []
+        # A DANFE continua a descrição na linha logo abaixo da linha de números.
+        if index + 1 < len(lines):
+            following = lines[index + 1].strip()
+            if (
+                following
+                and not NUMBER_CELL.match(following)
+                and not _looks_like_column_label(following)
+                and ":" not in following
+            ):
+                description = f"{description} {following}".strip()
+        if not description or quantity is None or quantity <= 0:
+            continue
+        items.append(
+            {
+                "description": _clean_text(description)[:200],
+                "sku": code if code.isdigit() else "",
+                "unit": unit.upper() if unit else "un",
+                "quantity": float(quantity),
+                "unit_cost": float(unit_cost),
+                "line_total": float(line_total),
+                "confidence": 0.72,
+                "source": "columns",
+                "quantity_derived": False,
             }
         )
     return items[:100]
@@ -507,10 +953,41 @@ def _parse_nfe_xml(data: bytes) -> dict[str, Any]:
         fields["access_key"] = {"value": access, "confidence": 1.0, "source": "xml"}
     if issue_date:
         fields["date"] = {"value": issue_date[:10], "confidence": 1.0, "source": "xml"}
+    issuer_cnpj = one("CNPJ")
+    series = one("serie")
+    if issuer_cnpj:
+        fields["issuer_cnpj"] = {"value": issuer_cnpj, "confidence": 1.0, "source": "xml"}
+    if series:
+        fields["document_series"] = {"value": series, "confidence": 1.0, "source": "xml"}
+    if number:
+        fields["document_number"] = {"value": number, "confidence": 1.0, "source": "xml"}
     for field, value in (("shipping", freight), ("discount", discount), ("tax", tax)):
         if value:
             fields[field] = {"value": round(float(value), 2), "confidence": 1.0, "source": "xml"}
     return {"fields": fields, "items": items, "warnings": []}
+
+
+def _item_candidates(lines: list[str]) -> list[dict[str, Any]]:
+    """Quando nada é reconhecido, devolve linhas do texto que podem ser o item."""
+    candidates: list[dict[str, Any]] = []
+    for line in lines:
+        value = line.strip()
+        if len(value) < 8 or ":" in value or _looks_like_column_label(value):
+            continue
+        money = re.findall(r"(?:R\$|BRL|USD|US\$|\$)\s*\d[\d.,]*", value, re.I)
+        numbers = re.findall(r"\b\d+(?:[.,]\d+)?\b", value)
+        if not money and len(numbers) < 2:
+            continue
+        entry: dict[str, Any] = {"text": _clean_text(value)[:200]}
+        if money:
+            entry["unit_cost"] = _money(money[0])
+        quantity = QUANTITY_HINT.search(_normalize(value))
+        if quantity:
+            entry["quantity"] = float(next(item for item in quantity.groups() if item))
+        candidates.append(entry)
+        if len(candidates) >= 8:
+            break
+    return candidates
 
 
 def _extract_text(filename: str, content: bytes) -> tuple[str, str]:
@@ -637,6 +1114,22 @@ async def analyze_upload(upload: UploadFile, selected_profile: str | None = None
         raise ValueError("O documento deve ter conteúdo e até 15 MB.")
     if filename.lower().endswith(".xml"):
         parsed = _parse_nfe_xml(content)
+        total_field = parsed["fields"].get("total") or {}
+        shipping_field = parsed["fields"].get("shipping") or {}
+        tax_field = parsed["fields"].get("tax") or {}
+        discount_field = parsed["fields"].get("discount") or {}
+        items_total = round(sum(item["line_total"] for item in parsed["items"]), 2) if parsed["items"] else None
+        total_value = total_field.get("value")
+        closing = None
+        if total_value is not None and items_total is not None:
+            closing = round(
+                items_total
+                + (shipping_field.get("value") or 0)
+                + (tax_field.get("value") or 0)
+                - (discount_field.get("value") or 0)
+                - total_value,
+                2,
+            )
         return {
             "filename": filename,
             "profile": {
@@ -648,6 +1141,24 @@ async def analyze_upload(upload: UploadFile, selected_profile: str | None = None
             "fields": parsed["fields"],
             "items": parsed["items"],
             "warnings": parsed["warnings"],
+            "currency": "BRL",
+            "exchange_rate": None,
+            "exchange_rate_from": None,
+            "exchange_rate_to": None,
+            "paid": None,
+            "check": {
+                "items_total": items_total,
+                "subtotal": (parsed["fields"].get("subtotal") or {}).get("value"),
+                "subtotal_difference": None,
+                "shipping": shipping_field.get("value"),
+                "tax": tax_field.get("value"),
+                "discount": discount_field.get("value"),
+                "total": total_value,
+                "closing_difference": closing,
+                "balanced": closing is not None and abs(closing) <= 0.05,
+            },
+            "text": None,
+            "candidates": [],
         }
     if filename.lower().endswith(".pdf") and not content.startswith(b"%PDF-"):
         raise ValueError("O arquivo não contém um PDF válido.")
@@ -670,9 +1181,12 @@ async def analyze_upload(upload: UploadFile, selected_profile: str | None = None
             lines.remove(quality_line)
         except ValueError:
             pass
-    profile = detect_profile(text, selected_profile)
+    profile = detect_profile(text, selected_profile, filename)
     labels = _profile_labels(profile["profile_id"])
     fields = _extract_labeled(lines, labels)
+    if _looks_like_danfe(lines):
+        for field, entry in _extract_danfe_fields(lines).items():
+            fields.setdefault(field, entry)
     for field in fields.values():
         field["confidence"] = round(field["confidence"] * ocr_quality, 2)
         field["source"] = source
@@ -688,15 +1202,34 @@ async def analyze_upload(upload: UploadFile, selected_profile: str | None = None
         warnings.append(
             "Nenhum item foi identificado com confiança suficiente; adicione ou corrija as linhas."
         )
-    if "total" not in fields:
+    items_total = round(sum(item["line_total"] for item in items), 2) if items else None
+    shipping = (fields.get("shipping") or {}).get("value")
+    tax = (fields.get("tax") or {}).get("value")
+    discount = (fields.get("discount") or {}).get("value")
+    total = (fields.get("total") or {}).get("value")
+    subtotal = (fields.get("subtotal") or {}).get("value")
+    closing_difference = None
+    if total is not None and items_total is not None:
+        closing_difference = round(items_total + (shipping or 0) + (tax or 0) - (discount or 0) - total, 2)
+    subtotal_difference = None
+    if subtotal is not None and items_total is not None:
+        subtotal_difference = round(items_total - subtotal, 2)
+    if total is None:
         warnings.append("Total não identificado; confira o documento antes de continuar.")
-    elif items:
-        items_total = sum(item["line_total"] for item in items)
-        if abs(items_total - fields["total"]["value"]) > 0.03:
-            warnings.append(
-                "A soma dos itens não fecha com o total do documento; confira frete,"
-                " descontos e impostos."
-            )
+    elif closing_difference is not None and abs(closing_difference) > 0.05:
+        warnings.append(
+            "A conferência não fecha: itens + frete + impostos − descontos difere do total do "
+            f"documento em R$ {abs(closing_difference):.2f}."
+        )
+    if subtotal_difference is not None and abs(subtotal_difference) > 0.05:
+        warnings.append(
+            "A soma dos itens difere do subtotal do documento em "
+            f"R$ {abs(subtotal_difference):.2f}."
+        )
+    currency = _document_currency(fields)
+    rate = _exchange_rate(text)
+    paid_date, paid_method = _paid_details(text)
+    paid = fields.get("paid")
     return {
         "filename": filename,
         "source": source,
@@ -704,4 +1237,31 @@ async def analyze_upload(upload: UploadFile, selected_profile: str | None = None
         "fields": fields,
         "items": items,
         "warnings": warnings,
+        "currency": currency,
+        "exchange_rate": rate["rate"] if rate else None,
+        "exchange_rate_from": rate["from_currency"] if rate else None,
+        "exchange_rate_to": rate["to_currency"] if rate else None,
+        "paid": {
+            "amount": paid["value"],
+            "currency": paid.get("currency") or currency,
+            "date": paid_date,
+            "method": paid_method,
+        } if paid else None,
+        "check": {
+            "items_total": items_total,
+            "subtotal": subtotal,
+            "subtotal_difference": subtotal_difference,
+            "shipping": shipping,
+            "tax": tax,
+            "discount": discount,
+            "total": total,
+            "closing_difference": closing_difference,
+            "balanced": (
+                closing_difference is not None
+                and abs(closing_difference) <= 0.05
+                and (subtotal_difference is None or abs(subtotal_difference) <= 0.05)
+            ),
+        },
+        "text": text,
+        "candidates": _item_candidates(lines) if not items else [],
     }

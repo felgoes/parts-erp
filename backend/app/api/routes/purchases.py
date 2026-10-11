@@ -3,9 +3,10 @@ from decimal import Decimal
 from pathlib import Path
 from uuid import uuid4
 
-from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
 from fastapi.responses import FileResponse
-from sqlalchemy import select
+from pydantic import ValidationError
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session, selectinload
 
 from app.api.deps import require_permission
@@ -14,6 +15,7 @@ from app.core.permissions import Permission, has_permission
 from app.db.session import get_db
 from app.models import (
     MovementType,
+    MarketStudy,
     PayablePayment,
     Product,
     PurchaseAttachment,
@@ -404,6 +406,99 @@ def _delete_blockers(purchase: PurchaseCase) -> list[str]:
     if purchase.status != "negotiating":
         blockers.append(f"etapa {purchase.status}")
     return blockers
+def _received_pending_return(item: PurchaseItem) -> Decimal:
+    return Decimal(item.received_quantity) - Decimal(item.returned_quantity)
+
+
+def _pay_purchase_now(
+    db: Session,
+    purchase: PurchaseCase,
+    payload: PurchaseCreate,
+    user: User,
+) -> None:
+    """Compra de marketplace paga no checkout: o título já nasce baixado."""
+    amount = (
+        Decimal(purchase.expense_amount or 0)
+        if purchase.purchase_type == "expense"
+        else _purchase_total(purchase)
+    )
+    if amount <= 0:
+        return
+    payable = _active_payable(purchase)
+    if payable is None:
+        payable = PurchasePayable(
+            supplier_id=purchase.supplier_id,
+            supplier_name=purchase.supplier_name
+            or (purchase.supplier.name if purchase.supplier else None),
+            amount=amount,
+            due_date=_payable_due_date(purchase),
+            status="open",
+        )
+        purchase.payables.append(payable)
+        db.flush()
+    payment = PayablePayment(
+        payable_id=payable.id,
+        amount=Decimal(payable.amount),
+        paid_at=_as_utc(payload.paid_date) or datetime.now(UTC),
+        method=(payload.paid_method or "").strip() or None,
+        notes="Pago no checkout da plataforma.",
+        created_by_id=user.id,
+    )
+    payable.payments.append(payment)
+    db.flush()
+    refresh_payable(payable)
+    _event(
+        db,
+        purchase,
+        "payable_settled",
+        f"Título a pagar de {Decimal(payable.amount):.2f} quitado no checkout por {user.full_name}.",
+        user=user,
+    )
+
+
+def _payable_with_payments(purchase: PurchaseCase) -> PurchasePayable | None:
+    for payable in purchase.payables:
+        if payable.status != "cancelled" and payable.payments:
+            return payable
+    return None
+
+
+def _find_duplicate_purchase(db: Session, payload) -> PurchaseCase | None:
+    """A chave de acesso identifica o documento fiscal; sem ela, número do pedido + origem."""
+    access_key = (payload.document_access_key or "").strip()
+    if access_key:
+        match = db.scalar(
+            select(PurchaseCase).where(PurchaseCase.document_access_key == access_key)
+        )
+        if match:
+            return match
+    number = (payload.supplier_order_number or "").strip()
+    origin = (payload.purchase_origin or "").strip()
+    if number and origin:
+        return db.scalar(
+            select(PurchaseCase).where(
+                PurchaseCase.supplier_order_number == number,
+                PurchaseCase.purchase_origin == origin,
+            )
+        )
+    return None
+
+
+def _deletion_effects(purchase: PurchaseCase) -> str:
+    effects: list[str] = [f"{len(purchase.items)} item(ns)"]
+    if purchase.quotes:
+        effects.append(f"{len(purchase.quotes)} cotação(ões)")
+    if purchase.attachments:
+        effects.append(f"{len(purchase.attachments)} anexo(s)")
+    received = [(item, _received_pending_return(item)) for item in purchase.items if _received_pending_return(item) > 0]
+    if received:
+        quantity = sum((entry[1] for entry in received), Decimal("0"))
+        effects.append(f"estorno de {quantity:g} unidade(s) recebida(s) em {len(received)} item(ns)")
+    payables = [payable for payable in purchase.payables if payable.status != "cancelled"]
+    if payables:
+        amount = sum((Decimal(payable.amount) for payable in payables), Decimal("0"))
+        effects.append(f"título a pagar de {amount:.2f} apagado")
+    return "; ".join(effects)
 
 
 @router.get("", response_model=list[PurchaseOut])
@@ -440,17 +535,19 @@ def create_purchase(
     if payload.source_import_id:
         if not (payload.notes or "").startswith("Importação de documento."):
             raise HTTPException(status_code=422, detail="Identificador de importação inválido.")
-        if payload.purchase_type != "parts" or not payload.items:
-            raise HTTPException(
-                status_code=422, detail="A importação de documento cria compras de peças."
-            )
         existing = db.scalar(
             select(PurchaseCase).where(PurchaseCase.source_import_id == payload.source_import_id)
         )
         if existing:
             return _present(_load(db, existing.id), user)
-        document = payload.import_document
-        if document is None:
+        # P0: a importação de peças nasce como compra feita (cotação do documento aceita). A
+        # importação lançada como despesa (P14) segue o fluxo de despesa mais abaixo.
+        if payload.purchase_type == "parts" and not payload.items:
+            raise HTTPException(
+                status_code=422, detail="Inclua pelo menos uma peça para importar o documento."
+            )
+        document = payload.import_document if payload.purchase_type == "parts" else None
+        if payload.purchase_type == "parts" and document is None:
             raise HTTPException(
                 status_code=422,
                 detail=(
@@ -458,46 +555,47 @@ def create_purchase(
                     "total, frete, impostos e desconto lidos do papel."
                 ),
             )
-        if any(
-            Decimal(item.freight_amount or 0)
-            or Decimal(item.tax_amount or 0)
-            or Decimal(item.discount_amount or 0)
-            or Decimal(item.discount_percent or 0)
-            for item in payload.items
-        ):
-            raise HTTPException(
-                status_code=422,
-                detail=(
-                    "Os valores do documento são informados uma única vez, no fechamento da "
-                    "importação, e rateados por peça."
-                ),
-            )
-        missing_identity = [
-            item for item in payload.items if not item.sku.strip() and not item.product_id
-        ]
-        if missing_identity:
-            raise HTTPException(
-                status_code=422,
-                detail=(
-                    "Informe o SKU ou vincule um produto antes de enviar o pedido: "
-                    + ", ".join(item.description[:60] for item in missing_identity[:5])
-                ),
-            )
-        try:
-            # P0: a compra importada nasce como compra feita — cotação do documento aceita,
-            # pedido registrado e título a pagar — e nada disso é criado se a proposta não fecha.
-            import_plan = build_import_plan(
-                [
-                    (item.quantity, item.unit_cost, item.line_discount_amount)
-                    for item in payload.items
-                ],
-                freight_amount=document.freight_amount,
-                tax_amount=document.tax_amount,
-                discount_amount=document.discount_amount,
-                document_total=document.total,
-            )
-        except ImportPlanError as error:
-            raise HTTPException(status_code=422, detail=str(error)) from error
+        if document is not None:
+            if any(
+                Decimal(item.freight_amount or 0)
+                or Decimal(item.tax_amount or 0)
+                or Decimal(item.discount_amount or 0)
+                or Decimal(item.discount_percent or 0)
+                for item in payload.items
+            ):
+                raise HTTPException(
+                    status_code=422,
+                    detail=(
+                        "Os valores do documento são informados uma única vez, no fechamento da "
+                        "importação, e rateados por peça."
+                    ),
+                )
+            missing_identity = [
+                item for item in payload.items if not item.sku.strip() and not item.product_id
+            ]
+            if missing_identity:
+                raise HTTPException(
+                    status_code=422,
+                    detail=(
+                        "Informe o SKU ou vincule um produto antes de enviar o pedido: "
+                        + ", ".join(item.description[:60] for item in missing_identity[:5])
+                    ),
+                )
+            try:
+                # A compra importada nasce como compra feita — cotação do documento aceita,
+                # pedido registrado e título a pagar — e nada é criado se a proposta não fecha.
+                import_plan = build_import_plan(
+                    [
+                        (item.quantity, item.unit_cost, item.line_discount_amount)
+                        for item in payload.items
+                    ],
+                    freight_amount=document.freight_amount,
+                    tax_amount=document.tax_amount,
+                    discount_amount=document.discount_amount,
+                    document_total=document.total,
+                )
+            except ImportPlanError as error:
+                raise HTTPException(status_code=422, detail=str(error)) from error
     elif payload.purchase_type == "parts" and any(
         Decimal(item.unit_cost or 0)
         or Decimal(item.freight_amount or 0)
@@ -531,6 +629,20 @@ def create_purchase(
         supplier = db.scalar(
             select(Supplier).where(Supplier.name == payload.supplier_name.strip())
         )
+    duplicate = _find_duplicate_purchase(db, payload)
+    if duplicate and duplicate.status != "cancelled":
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "message": (
+                    f"Este documento já foi importado na compra {duplicate.number}."
+                    " Abra a compra existente ou marque a diferença no documento."
+                ),
+                "purchase_id": duplicate.id,
+                "purchase_number": duplicate.number,
+                "purchase_status": duplicate.status,
+            },
+        )
     purchase = PurchaseCase(
         number=f"COM-{datetime.now(UTC):%Y}-{uuid4().hex[:6].upper()}",
         status=("ordered" if payload.items else "received") if payload.purchase_type == "expense" else "negotiating",
@@ -540,6 +652,15 @@ def create_purchase(
         supplier_name=payload.supplier_name or (supplier.name if supplier else None),
         supplier_id=supplier.id if supplier else None,
         supplier_order_number=payload.supplier_order_number,
+        purchase_origin=payload.purchase_origin,
+        document_access_key=payload.document_access_key,
+        document_number=payload.document_number,
+        document_series=payload.document_series,
+        issuer_cnpj=payload.issuer_cnpj,
+        original_currency=payload.original_currency,
+        original_total=payload.original_total,
+        exchange_rate=payload.exchange_rate,
+        paid_amount=payload.paid_amount,
         document_date=payload.document_date,
         needed_by=payload.needed_by,
         notes=payload.notes,
@@ -569,6 +690,8 @@ def create_purchase(
                 payload.interval_days,
             ),
         )
+    if payload.paid_now:
+        _pay_purchase_now(db, purchase, payload, user)
     db.commit()
     return _present(_load(db, purchase.id), user)
 
@@ -669,6 +792,97 @@ def update_purchase_item(
     _event(db, purchase, "item_updated", f"Dados de {item.description} atualizados por {user.full_name}.")
     db.commit()
     return _present(_load(db, purchase.id), user)
+
+
+@router.post("/import-document/confirm", response_model=PurchaseOut, status_code=201)
+async def confirm_imported_purchase(
+    file: UploadFile = File(...),
+    payload: str = Form(...),
+    db: Session = Depends(get_db),
+    user: User = Depends(require_permission(Permission.PURCHASE_MANAGE)),
+) -> PurchaseOut:
+    """Cria a compra importada e anexa o documento original na mesma operação."""
+    try:
+        data = PurchaseCreate.model_validate_json(payload)
+    except ValidationError as error:
+        message = " · ".join(
+            str(entry.get("msg", "")).strip() for entry in error.errors() if entry.get("msg")
+        )[:400]
+        raise HTTPException(
+            status_code=422, detail=message or "Confira os dados da compra importada."
+        ) from error
+    purchase = create_purchase(data, db, user)
+    stored: Path | None = None
+    try:
+        content = file.file.read(15 * 1024 * 1024 + 1)
+        if not content or len(content) > 15 * 1024 * 1024:
+            raise ValueError("O documento deve ter conteúdo e até 15 MB.")
+        filename = Path(file.filename or "documento").name[:255]
+        base_dir = Path(get_settings().documents_dir).resolve() / "purchases" / purchase.id
+        base_dir.mkdir(parents=True, exist_ok=True)
+        stored = (base_dir / f"{uuid4().hex}_{filename}").resolve()
+        stored.write_bytes(content)
+        db.add(
+            PurchaseAttachment(
+                purchase_id=purchase.id,
+                filename=filename,
+                content_type=file.content_type or "application/octet-stream",
+                size_bytes=len(content),
+                storage_path=str(stored),
+            )
+        )
+        _event(db, _load(db, purchase.id), "attachment_added", f"Documento original anexado por {user.full_name}.", user=user)
+        db.commit()
+    except Exception:
+        db.rollback()
+        if stored is not None:
+            stored.unlink(missing_ok=True)
+        orphan = db.get(PurchaseCase, purchase.id)
+        if orphan is not None:
+            db.delete(orphan)
+            db.commit()
+        raise HTTPException(
+            status_code=422,
+            detail="Não foi possível anexar o documento original; a compra não foi criada.",
+        ) from None
+    finally:
+        file.file.close()
+    return _present(_load(db, purchase.id), user)
+
+
+@router.get("/import-document/duplicates")
+def import_document_duplicates(
+    document_access_key: str | None = Query(default=None, max_length=44),
+    order_number: str | None = Query(default=None, max_length=80),
+    origin: str | None = Query(default=None, max_length=40),
+    db: Session = Depends(get_db),
+    _: User = Depends(require_permission(Permission.PURCHASE_MANAGE)),
+) -> dict[str, object]:
+    """Antes de criar a compra, a revisão confere se o documento já entrou no ERP."""
+    match: PurchaseCase | None = None
+    if document_access_key and document_access_key.strip():
+        match = db.scalar(
+            select(PurchaseCase).where(
+                PurchaseCase.document_access_key == document_access_key.strip()
+            )
+        )
+    if match is None and order_number and order_number.strip() and origin and origin.strip():
+        match = db.scalar(
+            select(PurchaseCase).where(
+                PurchaseCase.supplier_order_number == order_number.strip(),
+                PurchaseCase.purchase_origin == origin.strip(),
+            )
+        )
+    if match is None:
+        return {"match": None}
+    return {
+        "match": {
+            "purchase_id": match.id,
+            "purchase_number": match.number,
+            "purchase_status": match.status,
+            "cancelled": match.status == "cancelled",
+        }
+    }
 
 
 @router.post("/{purchase_id}/items", response_model=PurchaseOut, status_code=201)
@@ -1182,20 +1396,49 @@ def delete_purchase(
     user: User = Depends(require_permission(Permission.PURCHASE_MANAGE)),
 ) -> PurchaseDeletion:
     purchase = _load(db, purchase_id, for_update=True)
-    blockers = _delete_blockers(purchase)
-    if blockers:
+    paid = _payable_with_payments(purchase)
+    if paid:
         raise HTTPException(
             status_code=409,
             detail=(
-                "Só é possível excluir uma compra em rascunho sem efeitos. "
-                f"Impedimentos: {', '.join(blockers)}."
+                "Este pedido tem pagamento registrado no título a pagar; excluir apagaria uma saída "
+                "de dinheiro já feita. Cancele a compra com estorno para manter o registro financeiro."
             ),
         )
+    for item, quantity in [
+        (item, _received_pending_return(item))
+        for item in purchase.items
+        if _received_pending_return(item) > 0
+    ]:
+        if not item.product_id:
+            raise HTTPException(
+                status_code=409,
+                detail=(
+                    f"Vincule {item.sku or item.description} a um produto do catálogo antes de "
+                    "estornar o recebimento."
+                ),
+            )
+        move_stock(
+            db,
+            product_id=item.product_id,
+            quantity=-quantity,
+            movement_type=MovementType.cancellation,
+            reason=f"Estorno da exclusão da compra {purchase.number}",
+            reference=purchase.number,
+            idempotency_key=f"purchase:{purchase.id}:item:{item.id}:delete:{quantity:f}",
+            unit_cost=item.unit_cost,
+        )
+    db.execute(
+        update(MarketStudy)
+        .where(MarketStudy.linked_purchase_id == purchase.id)
+        .values(linked_purchase_id=None)
+    )
     total = (
         Decimal(purchase.expense_amount or 0)
         if purchase.purchase_type == "expense"
         else sum((Decimal(item.quantity) * Decimal(item.unit_cost) for item in purchase.items), Decimal("0"))
     )
+    children_summary = _deletion_effects(purchase)
     record = PurchaseDeletion(
         purchase_id=purchase.id,
         number=purchase.number,
@@ -1205,6 +1448,7 @@ def delete_purchase(
             f"{Decimal(item.quantity):g} x {item.sku or item.description}" for item in purchase.items
         )[:2000]
         or (purchase.expense_category or ""),
+        children_summary=children_summary,
         total_amount=Decimal(total).quantize(Decimal("0.01")),
         reason=(reason or "").strip() or None,
         user_id=user.id,

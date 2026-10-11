@@ -24,6 +24,7 @@ import { ImportPlanError, buildImportPlan } from '../../shared/purchase-import-m
       @if (canManagePurchases()) { <div class="purchase-header-actions"><button class="secondary" type="button" [disabled]="importLoading()" (click)="purchaseImportInput.click()">{{ importLoading() ? 'Analisando documento…' : 'Importar documento' }}</button><button class="primary" type="button" (click)="openNew()">+ Nova compra</button><input #purchaseImportInput hidden type="file" accept=".pdf,.xml,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png,application/xml,text/xml" (change)="onImportDocument($event)" /></div> }
     </app-page-header>
     @if (importError() && !importReview()) { <p class="purchase-error" role="alert">{{ importError() }}</p> }
+    @if (message()) { <p class="purchase-success" role="status">{{ message() }}</p> }
     <section class="purchase-summary">
       @for (card of summary(); track card.status) {
         <button type="button" class="purchase-stat" [class.active-stat]="statusFilter() === card.status" (click)="toggleStatus(card.status)">
@@ -53,7 +54,18 @@ import { ImportPlanError, buildImportPlan } from '../../shared/purchase-import-m
         } @empty { <tr><td colspan="9"><div class="purchase-empty"><strong>Nenhuma compra neste período</strong><span>Comece uma negociação para acompanhar propostas e recebimentos por aqui.</span>@if (canManagePurchases()) { <button class="secondary" (click)="openNew()">Criar compra</button> }</div></td></tr> }
       </tbody></table></div>
     </section>
-    @if (rowMenuPurchase(); as purchase) { <div class="purchase-row-menu-popover" role="menu" [style.top.px]="rowMenuPosition()?.top" [style.left.px]="rowMenuPosition()?.left"><button type="button" role="menuitem" (click)="copyPurchaseFromList(purchase, $event)">Copiar</button></div> }
+    @if (rowMenuPurchase(); as purchase) { <div class="purchase-row-menu-popover" role="menu" [style.top.px]="rowMenuPosition()?.top" [style.left.px]="rowMenuPosition()?.left"><button type="button" role="menuitem" (click)="copyPurchaseFromList(purchase, $event)">Copiar</button>@if (canManagePurchases()) { <button type="button" role="menuitem" class="menu-danger" (click)="requestDelete(purchase, $event)">Excluir compra</button> }</div> }
+    @if (deleteTarget(); as target) {
+      <div class="modal-backdrop" (click)="cancelDelete()"><section class="modal purchase-modal delete-modal" role="dialog" aria-modal="true" [attr.aria-label]="'Excluir compra ' + target.number" (click)="$event.stopPropagation()">
+        <div class="modal-head"><div><p class="eyebrow">Suprimentos · {{ target.number }}</p><h2>Excluir compra</h2><p class="modal-intro">{{ target.supplier_name || 'Sem fornecedor' }} · {{ purchaseTotal(target) | currency:'BRL' }} · esta ação não pode ser desfeita.</p></div><button class="close" aria-label="Fechar" (click)="cancelDelete()">×</button></div>
+        <p class="delete-lead">Serão apagados junto com o pedido:</p>
+        <ul class="delete-effects">@for (effect of deletionEffects(target); track effect) { <li>{{ effect }}</li> }</ul>
+        @if (deleteBlockedByPayment(target)) { <p class="purchase-error" role="alert">Este pedido tem pagamento registrado no título a pagar. Excluir apagaria uma saída de dinheiro já feita — use <strong>Cancelar compra</strong> com estorno para manter o registro financeiro.</p> }
+        <label>Motivo (opcional)<input type="text" maxlength="255" [value]="deleteReason()" (input)="deleteReason.set($any($event.target).value)" placeholder="Ex.: pedido criado por engano" /></label>
+        <p class="delete-note">A exclusão fica registrada na auditoria com número, fornecedor, itens, valor, autor e data. O estoque recebido volta por movimento de estorno.</p>
+        <div class="purchase-form-actions"><button type="button" class="secondary" (click)="cancelDelete()">Cancelar</button><button type="button" class="danger-outline" [disabled]="saving() || deleteBlockedByPayment(target)" (click)="confirmDelete(target)">{{ saving() ? 'Excluindo…' : 'Excluir compra' }}</button></div>
+      </section></div>
+    }
 
     @if (importReview(); as review) {
       <div class="modal-backdrop" (click)="closeImportReview()"><section class="modal wide purchase-modal purchase-import-review" role="dialog" aria-modal="true" aria-labelledby="purchase-import-title" (click)="$event.stopPropagation()">
@@ -61,13 +73,13 @@ import { ImportPlanError, buildImportPlan } from '../../shared/purchase-import-m
         @if (review.warnings?.length) { <div class="purchase-import-warnings" role="status"><strong>Confira estes pontos</strong><ul>@for (warning of review.warnings; track warning) { <li>{{ warning }}</li> }</ul></div> }
         <div class="purchase-form-meta import-meta">
           <label>Perfil do documento<select [ngModel]="review.profile.profile_id || ''" [ngModelOptions]="{standalone: true}" (ngModelChange)="changeImportProfile($event)"><option value="">Não identificado</option>@for (profile of importProfiles(); track profile.profile_id) { <option [value]="profile.profile_id">{{ profile.name }}</option> }</select><small>@if (review.profile.selected) { Perfil escolhido manualmente · sempre revise antes de salvar } @else { {{ review.profile.confidence * 100 | number:'1.0-0' }}% de evidência automática · sempre revise antes de salvar }</small>@if (importLoading()) { <small role="status">Reanalisando com o perfil selecionado…</small> }</label>
-          <label>Fornecedor<input [value]="importDraft().supplier" (input)="updateImportField('supplier', $any($event.target).value)" placeholder="Conferir fornecedor" />@if (review.fields.supplier) { <small>{{ review.fields.supplier.confidence * 100 | number:'1.0-0' }}% de confiança · {{ review.fields.supplier.source }}</small> }</label>
-          <label>Número do pedido<input [value]="importDraft().orderNumber" (input)="updateImportField('orderNumber', $any($event.target).value)" placeholder="Opcional" />@if (review.fields.order_number) { <small>{{ review.fields.order_number.confidence * 100 | number:'1.0-0' }}% de confiança · {{ review.fields.order_number.source }}</small> }</label>
-          <label>Data do documento<input [value]="importDraft().documentDate" (input)="updateImportField('documentDate', $any($event.target).value)" placeholder="Como aparece no recibo" />@if (review.fields.date) { <small>{{ review.fields.date.confidence * 100 | number:'1.0-0' }}% de confiança · {{ review.fields.date.source }}</small> }</label>
-          <label>Total do documento<input appMoneyInput [appMoneyInput]="importDraft().total" min="0" (moneyInput)="updateImportNumber('total', $event)" (moneyValidity)="setImportMoneyValidity('total', $event)" />@if (review.fields.total) { <small>{{ review.fields.total.confidence * 100 | number:'1.0-0' }}% de confiança · {{ review.fields.total.source }}</small> }</label>
-          <label>Frete identificado<input appMoneyInput [appMoneyInput]="importDraft().shipping" min="0" (moneyInput)="updateImportNumber('shipping', $event)" (moneyValidity)="setImportMoneyValidity('shipping', $event)" />@if (review.fields.shipping) { <small>{{ review.fields.shipping.confidence * 100 | number:'1.0-0' }}% de confiança · {{ review.fields.shipping.source }}</small> }</label>
-          <label>Desconto identificado<input appMoneyInput [appMoneyInput]="importDraft().discount" min="0" (moneyInput)="updateImportNumber('discount', $event)" (moneyValidity)="setImportMoneyValidity('discount', $event)" />@if (review.fields.discount) { <small>{{ review.fields.discount.confidence * 100 | number:'1.0-0' }}% de confiança · {{ review.fields.discount.source }}</small> }</label>
-          <label>Impostos identificados<input appMoneyInput [appMoneyInput]="importDraft().tax" min="0" (moneyInput)="updateImportNumber('tax', $event)" (moneyValidity)="setImportMoneyValidity('tax', $event)" />@if (review.fields.tax) { <small>{{ review.fields.tax.confidence * 100 | number:'1.0-0' }}% de confiança · {{ review.fields.tax.source }}</small> }</label>
+          <label>Fornecedor<input [value]="importDraft().supplier" (input)="updateImportField('supplier', $any($event.target).value)" placeholder="Conferir fornecedor" />@if (review.fields.supplier) { <small>{{ fieldOrigin(review.fields.supplier) }}</small> }</label>
+          <label>Número do pedido<input [value]="importDraft().orderNumber" (input)="updateImportField('orderNumber', $any($event.target).value)" placeholder="Opcional" />@if (review.fields.order_number) { <small>{{ fieldOrigin(review.fields.order_number) }}</small> }</label>
+          <label>Data do documento<input [value]="importDraft().documentDate" (input)="updateImportField('documentDate', $any($event.target).value)" placeholder="Como aparece no recibo" />@if (review.fields.date) { <small>{{ fieldOrigin(review.fields.date) }}</small> }</label>
+          <label>Total do documento<input appMoneyInput [appMoneyInput]="importDraft().total" min="0" (moneyInput)="updateImportNumber('total', $event)" (moneyValidity)="setImportMoneyValidity('total', $event)" />@if (review.fields.total) { <small>{{ fieldOrigin(review.fields.total) }}</small> }</label>
+          <label>Frete identificado<input appMoneyInput [appMoneyInput]="importDraft().shipping" min="0" (moneyInput)="updateImportNumber('shipping', $event)" (moneyValidity)="setImportMoneyValidity('shipping', $event)" />@if (review.fields.shipping) { <small>{{ fieldOrigin(review.fields.shipping) }}</small> }</label>
+          <label>Desconto identificado<input appMoneyInput [appMoneyInput]="importDraft().discount" min="0" (moneyInput)="updateImportNumber('discount', $event)" (moneyValidity)="setImportMoneyValidity('discount', $event)" />@if (review.fields.discount) { <small>{{ fieldOrigin(review.fields.discount) }}</small> }</label>
+          <label>Impostos identificados<input appMoneyInput [appMoneyInput]="importDraft().tax" min="0" (moneyInput)="updateImportNumber('tax', $event)" (moneyValidity)="setImportMoneyValidity('tax', $event)" />@if (review.fields.tax) { <small>{{ fieldOrigin(review.fields.tax) }}</small> }</label>
         </div>
         <div class="purchase-form-section"><div class="section-heading"><div><p class="eyebrow">Campos extraídos</p><h3>Itens da compra</h3></div><button type="button" class="secondary small" (click)="addImportLine()">+ Adicionar linha</button></div>
           <p class="purchase-flow-hint">Campos sem evidência não são inventados. Compare quantidade × unitário com o total da linha e com o total do recibo.</p>
@@ -77,6 +89,7 @@ import { ImportPlanError, buildImportPlan } from '../../shared/purchase-import-m
               <label>SKU / código<input [value]="item.sku" (input)="updateImportItem(i, 'sku', $any($event.target).value)" placeholder="Opcional" /></label>
               <label class="import-stock-control"><input type="checkbox" [checked]="item.stock_controlled" (change)="setImportStockControlled(i, $any($event.target).checked)" /> Controlado no estoque</label>
               <div class="import-product-search"><label>Produto do estoque<input [value]="importProductSearch()[i] || ''" (input)="searchImportProducts(i, $any($event.target).value)" placeholder="Buscar nome, SKU ou código de barras" autocomplete="off" /></label>
+                <label class="import-product-select">Selecionar existente<select [value]="item.product_id || ''" (change)="selectImportedProductById(i, $any($event.target).value)"><option value="">Escolher do catálogo…</option>@for (product of products(); track product.id) { <option [value]="product.id">{{ product.sku }} · {{ product.name }}</option> }</select></label>
                 <div class="import-product-results" [hidden]="!importProductSearch()[i]">
                   @for (product of importProductResults()[i] || []; track product.id) {
                     <button type="button" (click)="selectImportedProduct(i, product)"><strong>{{ product.name }}</strong><small>SKU {{ product.sku }} · EAN {{ product.barcode || 'sem código' }} · {{ product.current_stock | number:'1.0-3' }} un. em estoque</small></button>
@@ -90,7 +103,7 @@ import { ImportPlanError, buildImportPlan } from '../../shared/purchase-import-m
               <label>Valor unitário<input appMoneyInput [appMoneyInput]="item.unit_cost" min="0" (moneyInput)="updateImportItem(i, 'unit_cost', $event)" (moneyValidity)="setImportMoneyValidity('item-' + i, $event)" /></label>
               <label>Desconto da linha<input appMoneyInput [appMoneyInput]="item.discount_amount" min="0" (moneyInput)="updateImportItem(i, 'discount_amount', $event)" (moneyValidity)="setImportMoneyValidity('discount-' + i, $event)" /></label><small>Total da linha: {{ item.line_total | currency:'BRL' }}</small>
               @if (importPlanLine(i); as planLine) { <small class="import-landed-cost">Custo final: {{ planLine.unit_cost | currency:'BRL' }} / un. <span>base {{ planLine.base_unit_cost | currency:'BRL' }} · frete {{ planLine.freight_amount | currency:'BRL' }} · impostos {{ planLine.tax_amount | currency:'BRL' }} · desconto -{{ planLine.discount_amount | currency:'BRL' }}</span></small> }
-              <small class="import-confidence">Confiança OCR: {{ item.confidence * 100 | number:'1.0-0' }}%</small>
+              <small class="import-confidence">{{ itemOrigin(item) }}</small>
               <button type="button" class="remove-line" [attr.aria-label]="'Remover item ' + (i + 1)" (click)="removeImportLine(i)">×</button>
             </div>
           } @empty { <p class="muted">Nenhum item detectado. Adicione as linhas manualmente para continuar.</p> }</div>
@@ -98,6 +111,33 @@ import { ImportPlanError, buildImportPlan } from '../../shared/purchase-import-m
         @if (importPlan().plan; as plan) { <div class="purchase-import-closing"><div class="import-closing-line"><span>Itens {{ plan.items_subtotal | currency:'BRL' }}</span><span>+ frete {{ plan.freight_amount | currency:'BRL' }}</span><span>+ impostos {{ plan.tax_amount | currency:'BRL' }}</span><span>− descontos {{ plan.discount_amount | currency:'BRL' }}</span><strong>= {{ plan.total | currency:'BRL' }}</strong></div>@if (plan.document_total !== null && plan.difference !== 0) { <small>Total lido no documento {{ plan.document_total | currency:'BRL' }} · diferença de {{ plan.difference | currency:'BRL' }} dentro da tolerância de R$ 0,01 por item.</small> } @else if (plan.document_total === null) { <small>O documento não trouxe o total: o valor acima é a soma dos itens com frete e impostos menos descontos.</small> } <small>Ao confirmar, a compra nasce com esta cotação aceita, o pedido registrado e o título a pagar com vencimento em 30 dias da data do documento.</small></div> }
         @if (importPlan().error) { <p class="purchase-error" role="alert">{{ importPlan().error }}</p> }
         @if (importError()) { <p class="purchase-error" role="alert">{{ importError() }}</p> }
+        @if (importDuplicate(); as duplicate) { <p class="purchase-error" role="alert">Este documento já foi importado na compra <strong>{{ duplicate.purchase_number }}</strong>@if (duplicate.cancelled) { , que está cancelada — você pode continuar. } @else { . Abra a compra existente antes de criar outra. }</p> }
+        <section class="import-check">
+          <p class="eyebrow">Lançamento</p>
+          <div class="import-check-grid">
+            <span>Tipo</span><label><select [value]="importType()" (change)="setImportType($any($event.target).value)"><option value="parts">Peças para estoque</option><option value="expense">Despesa da empresa</option></select></label>
+            @if (importType() === 'expense') { <span>Categoria da despesa</span><label><select [value]="importCategory()" (change)="importCategory.set($any($event.target).value)">@for (category of expenseCategories; track category) { <option [value]="category">{{ category }}</option> }</select></label> }
+            <span>Já pago no checkout</span><label class="check-field"><input type="checkbox" [checked]="importPaidNow()" (change)="setImportPaidNow($any($event.target).checked)" /> o título nasce baixado</label>
+            @if (importPaidNow()) { <span>Data do pagamento</span><label><input type="date" [value]="importPaidDate()" (input)="importPaidDate.set($any($event.target).value)" /></label><span>Forma do pagamento</span><label><input type="text" [value]="importPaidMethod()" (input)="importPaidMethod.set($any($event.target).value)" placeholder="Visa, Google Pay…" /></label> }
+          </div>
+          @if (!importDraft().items.length && review.candidates?.length) {
+            <div class="import-candidates"><p class="eyebrow">Nenhum item reconhecido</p><p class="muted">Marque uma linha do documento como item para começar a revisão.</p><ul>@for (candidate of review.candidates; track candidate.text) { <li><span>{{ candidate.text }}</span><button type="button" class="secondary small" (click)="useImportCandidate(candidate)">Usar como item</button></li> }</ul></div>
+          }
+        </section>
+        <section class="import-check">
+          <p class="eyebrow">Conferência do documento</p>
+          <div class="import-check-grid">
+            <span>Moeda lida</span><strong>{{ importDraft().currency || 'não identificada' }}</strong>
+            <span>Cotação usada (1 unidade da moeda em R$)</span>
+            @if (importNeedsRate() || importDraft().exchangeRate !== null) { <input type="number" min="0" step="0.000001" [value]="importDraft().exchangeRate ?? ''" (input)="setImportRateFromInput($any($event.target).value)" placeholder="Obrigatória" /> } @else { <strong>não se aplica</strong> }
+            <span>Valor efetivamente pago</span><label class="import-paid"><input appMoneyInput [appMoneyInput]="importDraft().paidAmount ?? 0" min="0" (moneyInput)="setImportPaid($event)" />@if (importDraft().paidAmount === null) { <small class="muted">não identificado</small> }</label>
+            <span>Diferença paga ÷ total</span><strong [class.check-warn]="importPaidDifference() > 0.05 || importPaidDifference() < -0.05">{{ importPaidDifference() | currency:'BRL' }}</strong>
+            <span>Fechamento: itens + frete + impostos − descontos − total</span>@if (importHasItemsToCheck()) { <strong [class.check-warn]="importClosingDifference() > 0.05 || importClosingDifference() < -0.05">{{ importClosingDifference() | currency:'BRL' }}</strong> } @else { <strong class="muted">sem itens lidos para conferir</strong> }
+            @if (importSubtotalDifference() !== null) { <span>Soma dos itens ÷ subtotal do documento</span><strong [class.check-warn]="(importSubtotalDifference() ?? 0) > 0.05 || (importSubtotalDifference() ?? 0) < -0.05">{{ importSubtotalDifference() | currency:'BRL' }}</strong> }
+          </div>
+          <details class="import-text"><summary>Ver o que foi lido</summary>@if (review.text) { <pre>{{ review.text }}</pre> } @else { <p class="muted">Este formato não devolve texto de leitura (por exemplo, XML de NF-e).</p> }</details>
+        </section>
+        @if (importBlockers().length) { <ul class="import-blockers" role="status">@for (blocker of importBlockers(); track blocker) { <li>{{ blocker }}</li> }</ul> }
         <div class="purchase-form-actions"><span class="muted">O arquivo original será anexado. Nenhum estoque será movimentado.</span><div class="import-review-actions"><button type="button" class="secondary" (click)="closeImportReview()">Cancelar</button><button type="button" class="primary" [disabled]="creatingImport() || !canConfirmImport()" (click)="createImportedPurchase()">{{ creatingImport() ? 'Criando…' : 'Confirmar e criar compra' }}</button></div></div>
       </section></div>
     }
@@ -171,7 +211,7 @@ import { ImportPlanError, buildImportPlan } from '../../shared/purchase-import-m
               @if (purchase.status === 'ordered' || purchase.status === 'partially_received') { <button type="button" class="secondary" [disabled]="saving()" (click)="receiveAll(purchase)">Receber tudo</button> }
               @if (purchase.status === 'ordered' || purchase.status === 'partially_received') { <button type="button" class="secondary" [disabled]="saving()" (click)="openLifecycleForm('close')">Encerrar saldo</button> }
               <button type="button" class="cancel-purchase" [disabled]="saving()" (click)="openLifecycleForm('cancel')">Cancelar compra</button>
-              @if (purchase.status === 'negotiating') { <button type="button" class="danger-outline" [disabled]="saving()" (click)="deleteDraft(purchase)">Excluir rascunho</button> }
+              <button type="button" class="danger-outline" [disabled]="saving()" (click)="requestDelete(purchase)">Excluir compra</button>
             </div> }
             @if (lifecycleForm(); as form) { <section class="purchase-aside-card lifecycle-form">
               <p class="eyebrow">{{ form.mode === 'cancel' ? 'Cancelar compra' : 'Encerrar saldo pendente' }}</p>
@@ -217,6 +257,7 @@ export class PurchasesPage implements OnInit {
   readonly showNew = signal(false);
   readonly saving = signal(false);
   readonly error = signal('');
+  readonly message = signal('');
   readonly search = signal('');
   readonly statusFilter = signal('all');
   readonly receiveValues = signal<Record<string, { quantity: number; productId: string; create: boolean }>>({});
@@ -227,6 +268,8 @@ export class PurchasesPage implements OnInit {
   readonly quoteTotalValue = signal<number | null>(null);
   readonly quoteRounding = signal(0);
   readonly lifecycleForm = signal<{ mode: 'cancel' | 'close'; reason: string; resolution: 'keep_received' | 'return_received' } | null>(null);
+  readonly deleteTarget = signal<Purchase | null>(null);
+  readonly deleteReason = signal('');
   readonly importMoneyValidity = signal<Record<string, boolean>>({});
   readonly importProductSearch = signal<Record<number, string>>({});
   readonly importProductResults = signal<Record<number, Product[]>>({});
@@ -240,7 +283,14 @@ export class PurchasesPage implements OnInit {
   readonly selectedFiles = signal<File[]>([]);
   readonly importReview = signal<any | null>(null);
   readonly importProfiles = signal<Array<{ profile_id: string; name: string; kind: string; version: number }>>([]);
-  readonly importDraft = signal<{ supplier: string; orderNumber: string; documentDate: string; total: number | null; shipping: number | null; discount: number | null; tax: number | null; items: Array<{ description: string; sku: string; quantity: number; unit_cost: number; confidence: number; product_id: string | null; stock_controlled: boolean; line_total: number; discount_amount: number }> }>({ supplier: '', orderNumber: '', documentDate: '', total: null, shipping: null, discount: null, tax: null, items: [] });
+  readonly importDraft = signal<{ supplier: string; orderNumber: string; documentDate: string; total: number | null; shipping: number | null; discount: number | null; tax: number | null; currency: string | null; exchangeRate: number | null; paidAmount: number | null; items: Array<{ description: string; sku: string; quantity: number; unit_cost: number; confidence: number; product_id: string | null; stock_controlled: boolean; line_total: number; discount_amount: number; source: string; quantityDerived: boolean }> }>({ supplier: '', orderNumber: '', documentDate: '', total: null, shipping: null, discount: null, tax: null, currency: null, exchangeRate: null, paidAmount: null, items: [] });
+  readonly importDuplicate = signal<{ purchase_id: string; purchase_number: string; purchase_status: string; cancelled: boolean } | null>(null);
+  readonly importCheck = signal<{ items_total: number | null; subtotal?: number | null; closing_difference: number | null; subtotal_difference: number | null; balanced: boolean } | null>(null);
+  readonly importType = signal<'parts' | 'expense'>('parts');
+  readonly importCategory = signal('');
+  readonly importPaidNow = signal(false);
+  readonly importPaidDate = signal('');
+  readonly importPaidMethod = signal('');
   readonly importFile = signal<File | null>(null);
   readonly importLoading = signal(false);
   readonly creatingImport = signal(false);
@@ -330,13 +380,36 @@ export class PurchasesPage implements OnInit {
       shipping: review.fields?.shipping?.value == null ? null : Number(review.fields.shipping.value),
       discount: review.fields?.discount?.value == null ? null : Number(review.fields.discount.value),
       tax: review.fields?.tax?.value == null ? null : Number(review.fields.tax.value),
-      items: (review.items || []).map((item: any) => ({
-        description: String(item.description || ''), sku: String(item.sku || ''), product_id: null, stock_controlled: true,
-        quantity: Number(item.quantity ?? 0), unit_cost: Number(item.unit_cost ?? 0), line_total: Number(item.line_total ?? Number(item.quantity ?? 0) * Number(item.unit_cost ?? 0)), discount_amount: Number(item.discount_amount ?? 0),
-        confidence: Number(item.confidence ?? 0),
-      })),
+      currency: review.currency ? String(review.currency) : null,
+      exchangeRate: review.exchange_rate == null ? null : Number(review.exchange_rate),
+      paidAmount: review.paid?.amount == null ? null : Number(review.paid.amount),
+      items: (review.items || []).map((item: any) => {
+        const sku = String(item.sku || '').trim();
+        // Vínculo automático só com correspondência exata de SKU ou código de barras (P14).
+        const match = sku
+          ? this.products().find((product) => product.sku.toLowerCase() === sku.toLowerCase() || (!!product.barcode && product.barcode === sku))
+          : undefined;
+        return {
+          description: String(item.description || ''), sku, product_id: match ? match.id : null, stock_controlled: true,
+          quantity: Number(item.quantity ?? 0), unit_cost: Number(item.unit_cost ?? 0), line_total: Number(item.line_total ?? Number(item.quantity ?? 0) * Number(item.unit_cost ?? 0)), discount_amount: Number(item.discount_amount ?? 0),
+          confidence: Number(item.confidence ?? 0), source: String(item.source || ''), quantityDerived: !!item.quantity_derived,
+        };
+      }),
     });
     this.importError.set('');
+    this.importCheck.set(review.check || null);
+    this.checkImportDuplicate();
+  }
+  private checkImportDuplicate() {
+    const review = this.importReview();
+    const number = String(review?.fields?.order_number?.value || '').trim();
+    const origin = String(review?.profile?.profile_id || '').trim();
+    this.importDuplicate.set(null);
+    if (!number || !origin) return;
+    this.api.purchaseImportDuplicates({ order_number: number, origin }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: (result) => this.importDuplicate.set(result.match),
+      error: () => this.importDuplicate.set(null),
+    });
   }
   changeImportProfile(profileId: string) {
     const file = this.importFile(); if (!file) return;
@@ -347,6 +420,85 @@ export class PurchasesPage implements OnInit {
     });
   }
   updateImportField(field: 'supplier' | 'orderNumber' | 'documentDate', value: string) { this.importDraft.update((draft) => ({ ...draft, [field]: value })); }
+  setImportRate(value: number | null) { this.importDraft.update((draft) => ({ ...draft, exchangeRate: value })); }
+  setImportRateFromInput(value: string) { this.setImportRate(value === '' ? null : Number(value)); }
+  fieldOrigin(field: { source?: string; confidence?: number } | undefined): string {
+    if (!field) return 'não identificado';
+    const source = String(field.source || '');
+    if (source === 'xml') return 'XML da NF-e';
+    if (source === 'ocr') return `OCR · qualidade ${Math.round((Number(field.confidence) || 0) * 100)}%`;
+    if (source === 'pdf_text') return 'texto do documento';
+    if (source === 'columns') return 'grade do documento';
+    return 'documento';
+  }
+  itemOrigin(item: { source?: string; confidence?: number; quantity_derived?: boolean; quantityDerived?: boolean }): string {
+    const base = this.fieldOrigin(item);
+    const derived = item.quantity_derived ?? item.quantityDerived;
+    return derived ? `${base} · quantidade derivada` : base;
+  }
+  setImportPaid(value: number | null) { this.importDraft.update((draft) => ({ ...draft, paidAmount: value })); }
+  importItemsTotal() { return this.importDraft().items.reduce((sum, item) => sum + Number(item.line_total || 0), 0); }
+  importClosingDifference() {
+    const draft = this.importDraft();
+    if (draft.total === null || !draft.items.length) return 0;
+    return Number((this.importItemsTotal() + Number(draft.shipping || 0) + Number(draft.tax || 0) - Number(draft.discount || 0) - Number(draft.total)).toFixed(2));
+  }
+  importHasItemsToCheck() { return !!this.importCheck()?.items_total || this.importDraft().items.length > 0; }
+  importSubtotalDifference() {
+    const draft = this.importDraft();
+    const subtotal = this.importCheck()?.subtotal ?? null;
+    if (subtotal === null || !draft.items.length) return null;
+    return Number((this.importItemsTotal() - Number(subtotal)).toFixed(2));
+  }
+  /** Motivos visíveis que impedem a confirmação — ninguém fica preso sem saber por quê. */
+  importBlockers(): string[] {
+    const blockers: string[] = [];
+    const draft = this.importDraft();
+    const duplicate = this.importDuplicate();
+    if (duplicate && !duplicate.cancelled) {
+      blockers.push(`Este documento já foi importado na compra ${duplicate.purchase_number}.`);
+    }
+    if (this.importNeedsRate() && !(Number(draft.exchangeRate) > 0)) {
+      blockers.push('Informe a cotação usada na conversão para reais.');
+    }
+    if (Object.values(this.importMoneyValidity()).some(Boolean)) {
+      blockers.push('Há um campo de valor com formato inválido — corrija o valor destacado.');
+    }
+    if (this.importType() === 'expense') {
+      if (this.importCategory().trim().length < 2) blockers.push('Escolha a categoria da despesa.');
+      if (!(Number(draft.total) > 0)) blockers.push('Informe o valor total da despesa.');
+      return blockers;
+    }
+    if (!draft.items.length) {
+      blockers.push('Inclua pelo menos um item — ou marque uma linha candidata do documento.');
+    }
+    draft.items.forEach((item, index) => {
+      const label = `linha ${index + 1}`;
+      if (item.description.trim().length < 2) blockers.push(`Descreva a ${label}.`);
+      if (!(Number(item.quantity) > 0)) blockers.push(`Informe a quantidade da ${label}.`);
+      if (item.stock_controlled && !item.product_id) {
+        blockers.push(`Vincule um produto do catálogo na ${label} (ou desmarque "Controlado no estoque").`);
+      }
+      // P0, regra 6: a compra nasce com o pedido registrado, então cada linha precisa de SKU
+      // ou produto vinculado — a mesma exigência do envio manual do pedido.
+      if (!item.sku.trim() && !item.product_id) {
+        blockers.push(`Informe o SKU ou vincule um produto na ${label}: a compra já nasce como pedido registrado.`);
+      }
+      if (Number(item.discount_amount) > Number(item.quantity) * Number(item.unit_cost)) {
+        blockers.push(`O desconto da ${label} é maior que o valor da linha.`);
+      }
+    });
+    return [...new Set(blockers)];
+  }
+  importPaidDifference() {
+    const draft = this.importDraft();
+    if (draft.paidAmount === null || draft.total === null) return 0;
+    return Number((Number(draft.paidAmount) - Number(draft.total)).toFixed(2));
+  }
+  importNeedsRate() {
+    const currency = this.importDraft().currency;
+    return !!currency && currency.toUpperCase() !== 'BRL';
+  }
   updateImportNumber(field: 'total' | 'shipping' | 'discount' | 'tax', value: number | null) { this.importDraft.update((draft) => ({ ...draft, [field]: value })); }
   updateImportItem(index: number, field: 'description' | 'sku' | 'quantity' | 'unit_cost' | 'discount_amount', value: string | number | null) {
     this.importDraft.update((draft) => ({ ...draft, items: draft.items.map((item, i) => { if (i !== index) return item; const updated = { ...item, [field]: field === 'description' || field === 'sku' ? value : Number(value ?? 0) }; if (field === 'quantity' || field === 'unit_cost' || field === 'discount_amount') updated.line_total = Math.max(0, Number(updated.quantity) * Number(updated.unit_cost) - Number(updated.discount_amount)); return updated; }) }));
@@ -355,6 +507,12 @@ export class PurchasesPage implements OnInit {
   searchImportProducts(index: number, value: string) { this.importProductSearch.update((rows) => ({ ...rows, [index]: value })); const revision = (this.importSearchRevision()[index] || 0) + 1; this.importSearchRevision.update((rows) => ({ ...rows, [index]: revision })); if (!value.trim()) { this.importProductResults.update((rows) => ({ ...rows, [index]: [] })); return; } this.api.products(value.trim(), false).subscribe({ next: (products) => { if (this.importSearchRevision()[index] === revision) this.importProductResults.update((rows) => ({ ...rows, [index]: products.filter((product) => product.stock_type === 'product' || product.stock_type === 'warehouse') })); }, error: () => { if (this.importSearchRevision()[index] === revision) this.importProductResults.update((rows) => ({ ...rows, [index]: [] })); } }); }
   selectedImportProduct(id: string | null) { return id ? this.products().find((product) => product.id === id) || Object.values(this.importProductResults()).flat().find((product) => product.id === id) || null : null; }
   selectImportedProduct(index: number, product: Product) { this.importDraft.update((draft) => ({ ...draft, items: draft.items.map((item, i) => i === index ? { ...item, product_id: product.id, stock_controlled: true, sku: item.sku || product.sku } : item) })); this.products.update((items) => items.some((entry) => entry.id === product.id) ? items : [...items, product]); this.importProductSearch.update((rows) => ({ ...rows, [index]: '' })); this.importProductResults.update((rows) => ({ ...rows, [index]: [] })); }
+  selectImportedProductById(index: number, productId: string) {
+    if (!productId) { this.clearImportedProduct(index); return; }
+    const product = this.products().find((entry) => entry.id === productId)
+      ?? Object.values(this.importProductResults()).flat().find((entry) => entry.id === productId);
+    if (product) this.selectImportedProduct(index, product);
+  }
   setImportStockControlled(index: number, value: boolean) { this.importDraft.update((draft) => ({ ...draft, items: draft.items.map((item, i) => i === index ? { ...item, stock_controlled: value, product_id: value ? item.product_id : null } : item) })); }
   clearImportedProduct(index: number) { this.importDraft.update((draft) => ({ ...draft, items: draft.items.map((item, i) => i === index ? { ...item, product_id: null } : item) })); }
   openImportProductCreate(index: number) { const item = this.importDraft().items[index]; this.importProductLine.set(index); this.importProductError.set(''); this.importProductDraft.set({ sku: item.sku, stock_type: 'product', name: item.description, description: item.description, sale_price: 0, cost_price: 0, minimum_stock: 0, brand: '', manufacturer: '', manufacturer_part_number: '', barcode: '', category: '', item_condition: 'new', warranty_days: null, origin_country: '', weight_g: null, package_length_cm: null, package_width_cm: null, package_height_cm: null }); this.importProductModal.set(true); }
@@ -377,52 +535,108 @@ export class PurchasesPage implements OnInit {
   }
   importPlanLine(index: number) { return this.importPlan().plan?.lines[index] ?? null; }
   canConfirmImport() {
-    const items = this.importDraft().items;
-    // P0, regra 6: a compra já nasce como pedido registrado, então cada linha precisa de SKU
-    // ou produto vinculado — mesma exigência do envio manual do pedido.
-    return this.importPlan().error === '' && !Object.values(this.importMoneyValidity()).some(Boolean) && items.length > 0 && items.every((item) => (!!item.sku.trim() || !!item.product_id) && (!item.stock_controlled || !!item.product_id) && item.description.trim().length >= 2 && Number.isFinite(item.quantity) && item.quantity > 0 && Number.isFinite(item.unit_cost) && item.unit_cost >= 0 && Number.isFinite(item.discount_amount) && item.discount_amount >= 0 && item.discount_amount <= item.quantity * item.unit_cost);
+    // P0: além dos bloqueios da revisão (P14), o fechamento do documento precisa fechar — a
+    // compra já nasce com a cotação do papel aceita e o pedido registrado.
+    return this.importPlan().error === '' && this.importBlockers().length === 0;
   }
-  addImportLine() { this.importDraft.update((draft) => ({ ...draft, items: [...draft.items, { description: '', sku: '', quantity: 1, unit_cost: 0, confidence: 0, product_id: null, stock_controlled: true, line_total: 0, discount_amount: 0 }] })); }
+  setImportType(value: 'parts' | 'expense') {
+    this.importType.set(value);
+    if (value === 'expense' && !this.importCategory()) this.importCategory.set(this.expenseCategories[0]);
+  }
+  setImportPaidNow(value: boolean) {
+    this.importPaidNow.set(value);
+    if (value && !this.importPaidDate()) this.importPaidDate.set(this.today());
+  }
+  private today() {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  }
+  useImportCandidate(candidate: { text: string; quantity?: number; unit_cost?: number }) {
+    const quantity = Number(candidate.quantity ?? 1) || 1;
+    const unitCost = Number(candidate.unit_cost ?? 0);
+    this.importDraft.update((draft) => ({
+      ...draft,
+      items: [
+        ...draft.items,
+        {
+          description: candidate.text,
+          sku: '',
+          quantity,
+          unit_cost: unitCost,
+          line_total: Number((quantity * unitCost).toFixed(2)),
+          discount_amount: 0,
+          confidence: 0,
+          product_id: null,
+          stock_controlled: true,
+          source: 'candidato',
+          quantityDerived: candidate.quantity === undefined,
+        },
+      ],
+    }));
+  }
+  addImportLine() { this.importDraft.update((draft) => ({ ...draft, items: [...draft.items, { description: '', sku: '', quantity: 1, unit_cost: 0, confidence: 0, product_id: null, stock_controlled: true, line_total: 0, discount_amount: 0, source: '', quantityDerived: false }] })); }
   removeImportLine(index: number) { this.importDraft.update((draft) => ({ ...draft, items: draft.items.filter((_, i) => i !== index) })); this.importMoneyValidity.update((values) => Object.fromEntries(Object.entries(values).filter(([key]) => !key.startsWith('item-')))); }
   closeImportReview() { if (this.creatingImport()) return; this.importReview.set(null); this.importFile.set(null); this.importId.set(null); this.importError.set(''); this.importProductModal.set(false); }
   createImportedPurchase() {
     const review = this.importReview(), file = this.importFile(), draft = this.importDraft(), importId = this.importId();
     if (!review || !file || !importId || !this.canConfirmImport() || this.creatingImport()) return;
     this.creatingImport.set(true); this.importError.set('');
+    const isExpense = this.importType() === 'expense';
     const payload = {
-      purchase_type: 'parts', source_import_id: importId, supplier_name: draft.supplier.trim() || null,
+      purchase_type: this.importType(), source_import_id: importId, supplier_name: draft.supplier.trim() || null,
+      expense_category: isExpense ? this.importCategory().trim() || null : null,
+      expense_amount: isExpense ? draft.total : null,
       supplier_id: this.supplierByName(draft.supplier)?.id ?? null,
       supplier_order_number: draft.orderNumber.trim() || null,
+      purchase_origin: review.profile?.profile_id || null,
+      document_access_key: review.fields?.access_key?.value ?? null,
+      document_number: review.fields?.document_number?.value ?? null,
+      document_series: review.fields?.document_series?.value ?? null,
+      issuer_cnpj: review.fields?.issuer_cnpj?.value ?? null,
+      original_currency: draft.currency,
+      original_total: draft.total,
+      exchange_rate: draft.exchangeRate,
+      paid_amount: draft.paidAmount,
+      paid_now: this.importPaidNow(),
+      paid_date: this.importPaidNow() ? this.importPaidDate() || null : null,
+      paid_method: this.importPaidNow() ? this.importPaidMethod().trim() || null : null,
       document_date: draft.documentDate || null,
       notes: this.importNotes(review, draft),
       // P0: o documento é a cotação da compra — os valores do papel entram uma única vez e
-      // são rateados por peça no mesmo algoritmo mostrado na revisão.
-      import_document: {
-        filename: file.name,
-        total: draft.total,
-        freight_amount: draft.shipping ?? 0,
-        tax_amount: draft.tax ?? 0,
-        discount_amount: draft.discount ?? 0,
-      },
-      items: draft.items.map((item) => ({
+      // são rateados por peça no mesmo algoritmo mostrado na revisão. Lançamento de despesa
+      // segue o fluxo de despesa (P14) e não leva a cotação do documento.
+      import_document: isExpense
+        ? null
+        : {
+            filename: file.name,
+            total: draft.total,
+            freight_amount: draft.shipping ?? 0,
+            tax_amount: draft.tax ?? 0,
+            discount_amount: draft.discount ?? 0,
+          },
+      items: (isExpense ? draft.items.filter((item) => item.stock_controlled && item.product_id) : draft.items).map((item) => ({
         sku: item.sku.trim(), description: item.description.trim(), quantity: item.quantity,
         unit_cost: item.unit_cost, product_id: item.product_id,
         line_discount_amount: item.discount_amount,
       })),
     };
-    this.api.createPurchase(payload).pipe(finalize(() => this.creatingImport.set(false))).subscribe({
+    this.api.confirmImportedPurchase(file, payload).pipe(finalize(() => this.creatingImport.set(false))).subscribe({
       next: (purchase) => {
         this.importReview.set(null); this.importFile.set(null);
         this.purchases.update((list) => [purchase, ...list]);
         const alreadyAttached = purchase.attachments.some((attachment) => attachment.filename === file.name && attachment.size_bytes === file.size);
-        if (!alreadyAttached) this.api.uploadPurchaseAttachments(purchase.id, [file]).subscribe({
-          next: (updated) => this.setPurchase(updated),
-          error: () => this.error.set('Compra criada, mas o anexo não foi enviado. Anexe o documento na compra.'),
-        });
+        if (!alreadyAttached) this.error.set('O documento não voltou anexado; confira o anexo na compra.');
         this.openDetails(purchase);
       },
-      error: (err) => this.importError.set(err?.error?.detail || 'Não foi possível criar a compra revisada.'),
+      error: (err) => this.importError.set(this.importErrorText(err)),
     });
+  }
+  private importErrorText(err: any): string {
+    const detail = err?.error?.detail;
+    if (typeof detail === 'string') return detail;
+    if (Array.isArray(detail)) return detail.map((entry) => entry?.msg || '').filter(Boolean).join(' · ') || 'Confira os campos da revisão.';
+    if (detail?.message) return String(detail.message);
+    return 'Não foi possível criar a compra revisada.';
   }
 
   private newLine() { return this.fb.group({ product_id: [''], sku: [''], description: ['', Validators.required], unit: ['un', Validators.required], quantity: [1, [Validators.required, Validators.min(0.001)]], unit_cost: [0, [Validators.required, Validators.min(0)]] }); }
@@ -645,14 +859,43 @@ export class PurchasesPage implements OnInit {
       error: (err) => this.error.set(err.error?.detail || 'Não foi possível registrar o pagamento.'),
     });
   }
-  deleteDraft(purchase: Purchase) {
-    if (this.saving()) return;
-    const supplier = purchase.supplier_name || 'sem fornecedor';
-    if (!confirm(`Excluir definitivamente o rascunho ${purchase.number} de ${supplier}? Esta ação não pode ser desfeita.`)) return;
+  requestDelete(purchase: Purchase, event?: Event) {
+    event?.stopPropagation();
+    this.closeRowMenu();
+    this.error.set('');
+    this.deleteReason.set('');
+    this.deleteTarget.set(purchase);
+  }
+  cancelDelete() { this.deleteTarget.set(null); }
+  deleteBlockedByPayment(purchase: Purchase) {
+    return (purchase.payables ?? []).some((payable) => payable.status !== 'cancelled' && (payable.paid_amount ?? 0) > 0);
+  }
+  deletionEffects(purchase: Purchase) {
+    const effects: string[] = [`${purchase.items.length} item(ns) do pedido`];
+    if (purchase.quotes.length) effects.push(`${purchase.quotes.length} cotação(ões) registrada(s)`);
+    if (purchase.attachments.length) effects.push(`${purchase.attachments.length} anexo(s), inclusive o arquivo armazenado`);
+    const received = purchase.items.filter((item) => item.received_quantity - (item.returned_quantity ?? 0) > 0);
+    if (received.length) {
+      const quantity = received.reduce((sum, item) => sum + item.received_quantity - (item.returned_quantity ?? 0), 0);
+      effects.push(`estorno de ${quantity} unidade(s) recebida(s) no estoque, com movimentação rastreável`);
+    }
+    const payable = (purchase.payables ?? []).find((entry) => entry.status !== 'cancelled');
+    if (payable) effects.push(`título a pagar de ${Number(payable.amount).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`);
+    if (purchase.events.length) effects.push(`${purchase.events.length} evento(s) do histórico do pedido`);
+    return effects;
+  }
+  confirmDelete(purchase: Purchase) {
+    if (this.saving() || this.deleteBlockedByPayment(purchase)) return;
     this.saving.set(true); this.error.set('');
-    this.api.deletePurchase(purchase.id).pipe(finalize(() => this.saving.set(false))).subscribe({
-      next: () => { this.detail.set(null); this.purchases.update((items) => items.filter((item) => item.id !== purchase.id)); },
-      error: (err) => this.error.set(err.error?.detail || 'Não foi possível excluir o rascunho.'),
+    const reason = this.deleteReason().trim();
+    this.api.deletePurchase(purchase.id, reason || undefined).pipe(finalize(() => this.saving.set(false))).subscribe({
+      next: () => {
+        this.deleteTarget.set(null);
+        if (this.detail()?.id === purchase.id) this.detail.set(null);
+        this.purchases.update((items) => items.filter((item) => item.id !== purchase.id));
+        this.message.set(`${purchase.number} foi excluída com os registros ligados.`);
+      },
+      error: (err) => this.error.set(err.error?.detail || 'Não foi possível excluir a compra.'),
     });
   }
   supplierByName(name: string | null | undefined) {

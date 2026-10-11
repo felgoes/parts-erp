@@ -15,4 +15,4 @@
 ---
 
 Fila em 11 de outubro de 2026: **P0 é a única tarefa pendente e a primeira da fila** (prioridade alta).
-As specs anteriores (P0 a P17 do índice antigo) foram removidas a pedido do PO em 11/10/2026 e permanecem no histórico do Git e no `RELEASE_NOTES.md`.
+As specs que não estão no índice de `docs/specs/` foram removidas a pedido do PO em 11/10/2026 e permanecem no histórico do Git e no `RELEASE_NOTES.md`.

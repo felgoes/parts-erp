@@ -67,6 +67,25 @@ def test_image_receipt_uses_explicit_quantity_when_present():
     assert items[0]["quantity_derived"] is False
 
 
+def test_candidate_lines_are_offered_when_nothing_is_recognized():
+    from app.services.purchase_import import _item_candidates
+
+    found = _item_candidates(
+        [
+            "Produto sem leitura  R$ 45,00",
+            "Linha de texto sem número nenhum",
+            "Outro item 3 un  R$ 12,00",
+        ]
+    )
+
+    assert [entry["text"] for entry in found] == [
+        "Produto sem leitura  R$ 45,00",
+        "Outro item 3 un  R$ 12,00",
+    ]
+    assert found[0]["unit_cost"] == 45.0
+    assert found[1]["quantity"] == 3.0
+
+
 def test_danfe_reads_document_identity_and_item_with_two_line_description():
     lines = [
         "RECEBEMOS DE STARHOUSE MEGA STORE LTDA OS PRODUTOS CONSTANTES DA NOTA FISCAL INDICADA AO LADO",

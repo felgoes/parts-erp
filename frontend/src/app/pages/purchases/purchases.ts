@@ -108,6 +108,18 @@ import { dateOnlyLabel, dateOnlyValue } from '../../shared/date-only';
         @if (importError()) { <p class="purchase-error" role="alert">{{ importError() }}</p> }
         @if (importDuplicate(); as duplicate) { <p class="purchase-error" role="alert">Este documento já foi importado na compra <strong>{{ duplicate.purchase_number }}</strong>@if (duplicate.cancelled) { , que está cancelada — você pode continuar. } @else { . Abra a compra existente antes de criar outra. }</p> }
         <section class="import-check">
+          <p class="eyebrow">Lançamento</p>
+          <div class="import-check-grid">
+            <span>Tipo</span><label><select [value]="importType()" (change)="setImportType($any($event.target).value)"><option value="parts">Peças para estoque</option><option value="expense">Despesa da empresa</option></select></label>
+            @if (importType() === 'expense') { <span>Categoria da despesa</span><label><select [value]="importCategory()" (change)="importCategory.set($any($event.target).value)">@for (category of expenseCategories; track category) { <option [value]="category">{{ category }}</option> }</select></label> }
+            <span>Já pago no checkout</span><label class="check-field"><input type="checkbox" [checked]="importPaidNow()" (change)="setImportPaidNow($any($event.target).checked)" /> o título nasce baixado</label>
+            @if (importPaidNow()) { <span>Data do pagamento</span><label><input type="date" [value]="importPaidDate()" (input)="importPaidDate.set($any($event.target).value)" /></label><span>Forma do pagamento</span><label><input type="text" [value]="importPaidMethod()" (input)="importPaidMethod.set($any($event.target).value)" placeholder="Visa, Google Pay…" /></label> }
+          </div>
+          @if (!importDraft().items.length && review.candidates?.length) {
+            <div class="import-candidates"><p class="eyebrow">Nenhum item reconhecido</p><p class="muted">Marque uma linha do documento como item para começar a revisão.</p><ul>@for (candidate of review.candidates; track candidate.text) { <li><span>{{ candidate.text }}</span><button type="button" class="secondary small" (click)="useImportCandidate(candidate)">Usar como item</button></li> }</ul></div>
+          }
+        </section>
+        <section class="import-check">
           <p class="eyebrow">Conferência do documento</p>
           <div class="import-check-grid">
             <span>Moeda lida</span><strong>{{ importDraft().currency || 'não identificada' }}</strong>
@@ -266,6 +278,11 @@ export class PurchasesPage implements OnInit {
   readonly importDraft = signal<{ supplier: string; orderNumber: string; documentDate: string; total: number | null; shipping: number | null; discount: number | null; tax: number | null; currency: string | null; exchangeRate: number | null; paidAmount: number | null; items: Array<{ description: string; sku: string; quantity: number; unit_cost: number; confidence: number; product_id: string | null; stock_controlled: boolean; line_total: number; discount_amount: number; source: string; quantityDerived: boolean }> }>({ supplier: '', orderNumber: '', documentDate: '', total: null, shipping: null, discount: null, tax: null, currency: null, exchangeRate: null, paidAmount: null, items: [] });
   readonly importDuplicate = signal<{ purchase_id: string; purchase_number: string; purchase_status: string; cancelled: boolean } | null>(null);
   readonly importCheck = signal<{ items_total: number | null; closing_difference: number | null; subtotal_difference: number | null; balanced: boolean } | null>(null);
+  readonly importType = signal<'parts' | 'expense'>('parts');
+  readonly importCategory = signal('');
+  readonly importPaidNow = signal(false);
+  readonly importPaidDate = signal('');
+  readonly importPaidMethod = signal('');
   readonly importFile = signal<File | null>(null);
   readonly importLoading = signal(false);
   readonly creatingImport = signal(false);
@@ -458,7 +475,45 @@ export class PurchasesPage implements OnInit {
     const duplicate = this.importDuplicate();
     if (duplicate && !duplicate.cancelled) return false;
     if (this.importNeedsRate() && !(Number(this.importDraft().exchangeRate) > 0)) return false;
+    if (this.importType() === 'expense') {
+      return this.importCategory().trim().length > 1 && Number(this.importDraft().total) > 0 && !Object.values(this.importMoneyValidity()).some(Boolean);
+    }
     return !Object.values(this.importMoneyValidity()).some(Boolean) && items.length > 0 && items.every((item) => (!item.stock_controlled || !!item.product_id) && item.description.trim().length >= 2 && Number.isFinite(item.quantity) && item.quantity > 0 && Number.isFinite(item.unit_cost) && item.unit_cost >= 0 && Number.isFinite(item.discount_amount) && item.discount_amount >= 0 && item.discount_amount <= item.quantity * item.unit_cost);
+  }
+  setImportType(value: 'parts' | 'expense') {
+    this.importType.set(value);
+    if (value === 'expense' && !this.importCategory()) this.importCategory.set(this.expenseCategories[0]);
+  }
+  setImportPaidNow(value: boolean) {
+    this.importPaidNow.set(value);
+    if (value && !this.importPaidDate()) this.importPaidDate.set(this.today());
+  }
+  private today() {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  }
+  useImportCandidate(candidate: { text: string; quantity?: number; unit_cost?: number }) {
+    const quantity = Number(candidate.quantity ?? 1) || 1;
+    const unitCost = Number(candidate.unit_cost ?? 0);
+    this.importDraft.update((draft) => ({
+      ...draft,
+      items: [
+        ...draft.items,
+        {
+          description: candidate.text,
+          sku: '',
+          quantity,
+          unit_cost: unitCost,
+          line_total: Number((quantity * unitCost).toFixed(2)),
+          discount_amount: 0,
+          confidence: 0,
+          product_id: null,
+          stock_controlled: true,
+          source: 'candidato',
+          quantityDerived: candidate.quantity === undefined,
+        },
+      ],
+    }));
   }
   addImportLine() { this.importDraft.update((draft) => ({ ...draft, items: [...draft.items, { description: '', sku: '', quantity: 1, unit_cost: 0, confidence: 0, product_id: null, stock_controlled: true, line_total: 0, discount_amount: 0, source: '', quantityDerived: false }] })); }
   removeImportLine(index: number) { this.importDraft.update((draft) => ({ ...draft, items: draft.items.filter((_, i) => i !== index) })); this.importMoneyValidity.update((values) => Object.fromEntries(Object.entries(values).filter(([key]) => !key.startsWith('item-')))); }
@@ -467,8 +522,11 @@ export class PurchasesPage implements OnInit {
     const review = this.importReview(), file = this.importFile(), draft = this.importDraft(), importId = this.importId();
     if (!review || !file || !importId || !this.canConfirmImport() || this.creatingImport()) return;
     this.creatingImport.set(true); this.importError.set('');
+    const isExpense = this.importType() === 'expense';
     const payload = {
-      purchase_type: 'parts', source_import_id: importId, supplier_name: draft.supplier.trim() || null,
+      purchase_type: this.importType(), source_import_id: importId, supplier_name: draft.supplier.trim() || null,
+      expense_category: isExpense ? this.importCategory().trim() || null : null,
+      expense_amount: isExpense ? draft.total : null,
       supplier_id: this.supplierByName(draft.supplier)?.id ?? null,
       supplier_order_number: draft.orderNumber.trim() || null,
       purchase_origin: review.profile?.profile_id || null,
@@ -480,9 +538,12 @@ export class PurchasesPage implements OnInit {
       original_total: draft.total,
       exchange_rate: draft.exchangeRate,
       paid_amount: draft.paidAmount,
+      paid_now: this.importPaidNow(),
+      paid_date: this.importPaidNow() ? this.importPaidDate() || null : null,
+      paid_method: this.importPaidNow() ? this.importPaidMethod().trim() || null : null,
       document_date: draft.documentDate || null,
       notes: this.importNotes(review, draft),
-      items: draft.items.map((item, index) => ({
+      items: (isExpense ? draft.items.filter((item) => item.stock_controlled && item.product_id) : draft.items).map((item, index) => ({
         sku: item.sku.trim(), description: item.description.trim(), quantity: item.quantity,
         unit_cost: item.unit_cost, product_id: item.product_id,
         freight_amount: this.allocateImportTotal(draft.shipping, draft.items, index),

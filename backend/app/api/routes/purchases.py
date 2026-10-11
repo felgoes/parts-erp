@@ -340,6 +340,52 @@ def _received_pending_return(item: PurchaseItem) -> Decimal:
     return Decimal(item.received_quantity) - Decimal(item.returned_quantity)
 
 
+def _pay_purchase_now(
+    db: Session,
+    purchase: PurchaseCase,
+    payload: PurchaseCreate,
+    user: User,
+) -> None:
+    """Compra de marketplace paga no checkout: o título já nasce baixado."""
+    amount = (
+        Decimal(purchase.expense_amount or 0)
+        if purchase.purchase_type == "expense"
+        else _purchase_total(purchase)
+    )
+    if amount <= 0:
+        return
+    payable = _active_payable(purchase)
+    if payable is None:
+        payable = PurchasePayable(
+            supplier_id=purchase.supplier_id,
+            supplier_name=purchase.supplier_name
+            or (purchase.supplier.name if purchase.supplier else None),
+            amount=amount,
+            due_date=_payable_due_date(purchase),
+            status="open",
+        )
+        purchase.payables.append(payable)
+        db.flush()
+    payment = PayablePayment(
+        payable_id=payable.id,
+        amount=Decimal(payable.amount),
+        paid_at=_as_utc(payload.paid_date) or datetime.now(UTC),
+        method=(payload.paid_method or "").strip() or None,
+        notes="Pago no checkout da plataforma.",
+        created_by_id=user.id,
+    )
+    payable.payments.append(payment)
+    db.flush()
+    refresh_payable(payable)
+    _event(
+        db,
+        purchase,
+        "payable_settled",
+        f"Título a pagar de {Decimal(payable.amount):.2f} quitado no checkout por {user.full_name}.",
+        user=user,
+    )
+
+
 def _payable_with_payments(purchase: PurchaseCase) -> PurchasePayable | None:
     for payable in purchase.payables:
         if payable.status != "cancelled" and payable.payments:
@@ -514,6 +560,8 @@ def create_purchase(
                 payload.interval_days,
             ),
         )
+    if payload.paid_now:
+        _pay_purchase_now(db, purchase, payload, user)
     db.commit()
     return _present(_load(db, purchase.id), user)
 

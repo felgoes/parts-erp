@@ -967,6 +967,29 @@ def _parse_nfe_xml(data: bytes) -> dict[str, Any]:
     return {"fields": fields, "items": items, "warnings": []}
 
 
+def _item_candidates(lines: list[str]) -> list[dict[str, Any]]:
+    """Quando nada é reconhecido, devolve linhas do texto que podem ser o item."""
+    candidates: list[dict[str, Any]] = []
+    for line in lines:
+        value = line.strip()
+        if len(value) < 8 or ":" in value or _looks_like_column_label(value):
+            continue
+        money = re.findall(r"(?:R\$|BRL|USD|US\$|\$)\s*\d[\d.,]*", value, re.I)
+        numbers = re.findall(r"\b\d+(?:[.,]\d+)?\b", value)
+        if not money and len(numbers) < 2:
+            continue
+        entry: dict[str, Any] = {"text": _clean_text(value)[:200]}
+        if money:
+            entry["unit_cost"] = _money(money[0])
+        quantity = QUANTITY_HINT.search(_normalize(value))
+        if quantity:
+            entry["quantity"] = float(next(item for item in quantity.groups() if item))
+        candidates.append(entry)
+        if len(candidates) >= 8:
+            break
+    return candidates
+
+
 def _extract_text(filename: str, content: bytes) -> tuple[str, str]:
     ext = Path(filename).suffix.lower()
     if ext == ".xml":
@@ -1135,6 +1158,7 @@ async def analyze_upload(upload: UploadFile, selected_profile: str | None = None
                 "balanced": closing is not None and abs(closing) <= 0.05,
             },
             "text": None,
+            "candidates": [],
         }
     if filename.lower().endswith(".pdf") and not content.startswith(b"%PDF-"):
         raise ValueError("O arquivo não contém um PDF válido.")
@@ -1239,4 +1263,5 @@ async def analyze_upload(upload: UploadFile, selected_profile: str | None = None
             ),
         },
         "text": text,
+        "candidates": _item_candidates(lines) if not items else [],
     }

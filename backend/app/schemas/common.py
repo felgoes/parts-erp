@@ -630,6 +630,9 @@ class PurchaseCreate(BaseModel):
     original_total: Decimal | None = Field(default=None, ge=0)
     exchange_rate: Decimal | None = Field(default=None, gt=0)
     paid_amount: Decimal | None = Field(default=None, ge=0)
+    paid_now: bool = False
+    paid_date: datetime | None = None
+    paid_method: str | None = Field(default=None, max_length=60)
     document_date: datetime | None = None
     needed_by: datetime | None = None
     notes: str | None = Field(default=None, max_length=4000)

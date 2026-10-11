@@ -211,6 +211,38 @@ def test_cancelled_purchase_cannot_be_received(db: Session) -> None:
     assert db.scalar(select(func.count(StockMovement.id))) == 0
 
 
+def test_marketplace_purchase_can_be_created_already_paid(db: Session) -> None:
+    """P14: compra paga no checkout nasce com o título baixado, com data e forma."""
+    user = _actor()
+    purchase = create_purchase(
+        PurchaseCreate(
+            notes="Importação de documento. Documento revisado pelo usuário.",
+            source_import_id="0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
+            purchase_origin="aliexpress",
+            supplier_order_number="ORDER-PAID-1",
+            original_currency="BRL",
+            original_total=Decimal("205.03"),
+            paid_amount=Decimal("205.03"),
+            paid_now=True,
+            paid_date=datetime(2026, 9, 28, tzinfo=UTC),
+            paid_method="Visa",
+            items=[
+                PurchaseItemCreate(
+                    description="Peça paga no checkout", quantity=1, unit_cost=Decimal("205.03")
+                )
+            ],
+        ),
+        db,
+        user,
+    )
+
+    assert len(purchase.payables) == 1
+    payable = purchase.payables[0]
+    assert payable.status == "paid"
+    assert payable.paid_amount == Decimal("205.03")
+    assert payable.amount == Decimal("205.03")
+
+
 def test_draft_purchase_is_deleted_with_immutable_audit_record(db: Session) -> None:
     user = _actor()
     purchase = create_purchase(

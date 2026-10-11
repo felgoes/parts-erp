@@ -16,3 +16,4 @@ As specs descrevem comportamento e critérios de aceite de cada item. A lista of
 12. [P11 — Cotação com total e custo unitário em tempo real](p11-cotacao-total-unitario-tempo-real.md)
 13. [P12 — Condição de pagamento da cotação gera as parcelas do título a pagar](p12-condicao-pagamento-parcelas-titulo.md)
 14. [P13 — Excluir pedido de compra pelos três pontos, com os registros ligados](p13-exclusao-compra-relacionados.md)
+15. [P14 — Importação de documento de marketplace: conferência, moeda e leitura de itens](p14-importacao-documento-marketplace.md)

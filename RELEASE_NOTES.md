@@ -2,6 +2,14 @@
 
 ## 10 de outubro de 2026 — entregas confirmadas em PRD
 
+- [Título a pagar parcelado pela condição combinada · 701bef8](https://github.com/felgoes/parts-erp/commit/701bef8): escolha à vista, 30 dias, 30/60, 30/60/90 ou uma condição própria na cotação e na despesa; o título a pagar nasce na aprovação já parcelado, com vencimento e valor por parcela, baixa parcela a parcela e mudança de condição recalculando apenas o que está em aberto.
+
+- [Compras sem valor: o preço entra pela cotação · 35610c1](https://github.com/felgoes/parts-erp/commit/35610c1): a compra de peças nasce só com peças e quantidades; custo, frete, impostos e desconto entram na cotação do fornecedor e aparecem na peça somente para leitura depois da escolha.
+
+- [Cotação com total e preço unitário em tempo real · 35610c1](https://github.com/felgoes/parts-erp/commit/35610c1): digite o total que o fornecedor passou e veja o preço de cada peça — ou o contrário; a sobra de centavos fica visível e a cotação escolhida fica travada para edição.
+
+- [Digitação de valores sem quebra · 35610c1](https://github.com/felgoes/parts-erp/commit/35610c1): valor sempre no formato completo em reais, com vírgula, ponto de milhar e R$ intocáveis; digitar acrescenta dígito, apagar remove o último e colar um valor copiado da nota continua funcionando.
+
 - [Contas a pagar como módulo · 2e5a0f7](https://github.com/felgoes/parts-erp/commit/2e5a0f7): nova área com todos os títulos de compras e despesas — resumo de em aberto, vencido e pago no período, aging por faixa de atraso, baixa parcial com histórico de cada pagamento, conciliação, filtros, relatório por fornecedor e por mês e exportação em CSV.
 
 - [Edição do pedido de compra simplificada · bbb6fe9](https://github.com/felgoes/parts-erp/commit/bbb6fe9): edite fornecedor, previsão, observações, número do pedido e data do documento no rascunho, inclua ou remova peças (SKU pode ficar para depois), aplique desconto por linha, cadastre o fornecedor no próprio fluxo, veja o valor total com paginação na lista, exclua rascunhos em lote e acompanhe previsões vencidas.

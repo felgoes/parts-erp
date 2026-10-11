@@ -2,6 +2,8 @@
 
 ## 10 de outubro de 2026 — entregas confirmadas em PRD
 
+- [Escolher produto existente na importação · 1a17fbb](https://github.com/felgoes/parts-erp/commit/1a17fbb): cada item da revisão da importação tem, além da busca por nome/SKU/código de barras, um seletor com os produtos do catálogo — vincule com um clique e remova quando precisar.
+
 - [Importação de documento: escolha do lançamento, já pago e linhas candidatas · 8b07f1c](https://github.com/felgoes/parts-erp/commit/8b07f1c): na revisão você escolhe se o documento entra como peças para estoque (padrão) ou como despesa da empresa, com categoria e valor total; marcando "já pago no checkout", a compra nasce com o título a pagar baixado, com a data e a forma de pagamento informadas; e quando nenhum item é reconhecido, a revisão lista linhas candidatas do documento para virar item com um clique.
 
 - [Recibo em imagem e vínculo por SKU · d8f3bd1](https://github.com/felgoes/parts-erp/commit/d8f3bd1): o recibo fotografado do AliExpress passa a ser lido com o item, mantendo o texto de embalagem ("10PCS") na descrição e a quantidade comprada correta; quando a quantidade é deduzida, a revisão indica isso; e item cujo SKU ou código de barras bate exatamente com um produto do catálogo já entra vinculado, visível e removível.

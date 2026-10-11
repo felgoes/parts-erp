@@ -31,6 +31,7 @@ from app.schemas.common import (
     PurchaseCancelRequest,
     PurchaseCloseRequest,
     PurchaseCreate,
+    PurchaseImportDocument,
     PurchaseItemCreate,
     PurchaseOut,
     PurchaseQuoteCreate,
@@ -526,26 +527,31 @@ def test_parts_purchase_rejects_values_outside_the_quote(db: Session) -> None:
 
 
 def test_document_import_is_the_only_parts_purchase_born_with_values(db: Session) -> None:
-    """P9, decisão 2A: o documento importado traz os valores do papel e mantém a idempotência."""
+    """P0: o documento importado vira cotação aceita, pedido registrado e título a pagar."""
     user = _actor()
     payload = PurchaseCreate(
         source_import_id="11111111-2222-3333-4444-555555555555",
         notes="Importação de documento. Total no documento: 100.00",
+        supplier_name="Fornecedor do recibo",
+        document_date=datetime(2026, 10, 5, tzinfo=UTC),
+        import_document=PurchaseImportDocument(filename="recibo.pdf", total=Decimal("100")),
         items=[
             PurchaseItemCreate(
                 sku="DOC-1",
                 description="Peça do recibo",
                 quantity=2,
                 unit_cost=Decimal("50"),
-                freight_amount=Decimal("10"),
             )
         ],
     )
     purchase = create_purchase(payload, db, user)
     item = purchase.items[0]
 
+    assert purchase.status == "ordered"
+    assert purchase.ordered_at is not None
+    assert purchase.selected_quote_id == purchase.quotes[0].id
     assert item.base_unit_cost == Decimal("50.00")
-    assert item.freight_amount == Decimal("10.00")
+    assert item.freight_amount == Decimal("0.00")
     assert purchase.total_amount == Decimal("100.00")
 
     again = create_purchase(payload, db, user)

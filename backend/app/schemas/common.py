@@ -402,6 +402,8 @@ class PurchaseItemCreate(BaseModel):
     tax_amount: Decimal = Field(default=Decimal("0"), ge=0)
     discount_amount: Decimal = Field(default=Decimal("0"), ge=0)
     discount_percent: Decimal = Field(default=Decimal("0"), ge=0, le=100)
+    # P0: desconto da linha do documento importado. Vira o custo unitário líquido da peça.
+    line_discount_amount: Decimal = Field(default=Decimal("0"), ge=0)
 
 
 class PurchaseItemUpdate(BaseModel):
@@ -613,6 +615,16 @@ class PurchaseDeletionOut(ORMModel):
     created_at: datetime
 
 
+class PurchaseImportDocument(BaseModel):
+    """P0: valores do documento revisado que viram a cotação aceita da compra importada."""
+
+    filename: str = Field(min_length=1, max_length=255)
+    total: Decimal | None = Field(default=None, ge=0)
+    freight_amount: Decimal = Field(default=Decimal("0"), ge=0)
+    tax_amount: Decimal = Field(default=Decimal("0"), ge=0)
+    discount_amount: Decimal = Field(default=Decimal("0"), ge=0)
+
+
 class PurchaseCreate(BaseModel):
     purchase_type: Literal["parts", "expense"] = "parts"
     expense_category: str | None = Field(default=None, max_length=80)
@@ -624,6 +636,7 @@ class PurchaseCreate(BaseModel):
     needed_by: datetime | None = None
     notes: str | None = Field(default=None, max_length=4000)
     source_import_id: str | None = Field(default=None, min_length=36, max_length=36)
+    import_document: PurchaseImportDocument | None = None
     payment_type: Literal["cash", "installments", "entry"] = "cash"
     installment_count: int = Field(default=1, ge=1, le=36)
     first_due_days: int = Field(default=0, ge=0, le=3650)

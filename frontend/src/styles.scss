@@ -562,5 +562,14 @@ textarea:focus {
 .purchase-import-review .import-product-results button:hover { background: color-mix(in srgb, var(--primary) 8%, var(--surface)); }
 .purchase-import-review .import-product-results small, .purchase-import-review .import-product-search > small { color: var(--muted); }
 .purchase-import-review .import-stock-control { display: flex; align-items: center; gap: .5rem; }
+
+/* P0: fechamento do documento importado — custo final por peça e soma que vira a cotação. */
+.purchase-import-review .import-landed-cost { grid-column: 1 / -1; display: grid; gap: .15rem; color: var(--forest); font-size: .72rem; font-weight: 700; }
+.purchase-import-review .import-landed-cost span { color: var(--muted); font-size: .68rem; font-weight: 500; }
+.purchase-import-closing { display: grid; gap: .4rem; margin: .9rem 0; padding: .8rem .95rem; border: 1px solid var(--line); border-radius: 10px; background: color-mix(in srgb, var(--primary) 5%, var(--surface)); }
+.import-closing-line { display: flex; flex-wrap: wrap; align-items: baseline; gap: .35rem .8rem; font-size: .78rem; color: var(--muted); }
+.import-closing-line strong { color: var(--forest); font-size: .95rem; }
+.purchase-import-closing small { color: var(--muted); font-size: .68rem; line-height: 1.5; }
+.quote-summary-card .quote-cost-summary small { color: var(--muted); font-size: .65rem; }
 .import-product-backdrop { z-index: 1001; }
 .import-product-modal { width: min(54rem, calc(100vw - 2rem)); max-height: calc(100dvh - 2rem); overflow: auto; }

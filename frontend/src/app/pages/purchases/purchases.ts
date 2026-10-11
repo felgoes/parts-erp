@@ -14,6 +14,7 @@ import { PageHeader } from '../../shared/page-header';
 import { PeriodFilter } from '../../shared/period-filter';
 import { MoneyInputDirective } from '../../shared/money-input.directive';
 import { dateOnlyLabel, dateOnlyValue } from '../../shared/date-only';
+import { ImportPlanError, buildImportPlan } from '../../shared/purchase-import-math';
 
 @Component({
   selector: 'app-purchases',
@@ -88,11 +89,14 @@ import { dateOnlyLabel, dateOnlyValue } from '../../shared/date-only';
               <label>Quantidade<input type="number" min="0.001" step="0.001" [value]="item.quantity" (input)="updateImportItem(i, 'quantity', $any($event.target).value)" /></label>
               <label>Valor unitário<input appMoneyInput [appMoneyInput]="item.unit_cost" min="0" (moneyInput)="updateImportItem(i, 'unit_cost', $event)" (moneyValidity)="setImportMoneyValidity('item-' + i, $event)" /></label>
               <label>Desconto da linha<input appMoneyInput [appMoneyInput]="item.discount_amount" min="0" (moneyInput)="updateImportItem(i, 'discount_amount', $event)" (moneyValidity)="setImportMoneyValidity('discount-' + i, $event)" /></label><small>Total da linha: {{ item.line_total | currency:'BRL' }}</small>
+              @if (importPlanLine(i); as planLine) { <small class="import-landed-cost">Custo final: {{ planLine.unit_cost | currency:'BRL' }} / un. <span>base {{ planLine.base_unit_cost | currency:'BRL' }} · frete {{ planLine.freight_amount | currency:'BRL' }} · impostos {{ planLine.tax_amount | currency:'BRL' }} · desconto -{{ planLine.discount_amount | currency:'BRL' }}</span></small> }
               <small class="import-confidence">Confiança OCR: {{ item.confidence * 100 | number:'1.0-0' }}%</small>
               <button type="button" class="remove-line" [attr.aria-label]="'Remover item ' + (i + 1)" (click)="removeImportLine(i)">×</button>
             </div>
           } @empty { <p class="muted">Nenhum item detectado. Adicione as linhas manualmente para continuar.</p> }</div>
         </div>
+        @if (importPlan().plan; as plan) { <div class="purchase-import-closing"><div class="import-closing-line"><span>Itens {{ plan.items_subtotal | currency:'BRL' }}</span><span>+ frete {{ plan.freight_amount | currency:'BRL' }}</span><span>+ impostos {{ plan.tax_amount | currency:'BRL' }}</span><span>− descontos {{ plan.discount_amount | currency:'BRL' }}</span><strong>= {{ plan.total | currency:'BRL' }}</strong></div>@if (plan.document_total !== null && plan.difference !== 0) { <small>Total lido no documento {{ plan.document_total | currency:'BRL' }} · diferença de {{ plan.difference | currency:'BRL' }} dentro da tolerância de R$ 0,01 por item.</small> } @else if (plan.document_total === null) { <small>O documento não trouxe o total: o valor acima é a soma dos itens com frete e impostos menos descontos.</small> } <small>Ao confirmar, a compra nasce com esta cotação aceita, o pedido registrado e o título a pagar com vencimento em 30 dias da data do documento.</small></div> }
+        @if (importPlan().error) { <p class="purchase-error" role="alert">{{ importPlan().error }}</p> }
         @if (importError()) { <p class="purchase-error" role="alert">{{ importError() }}</p> }
         <div class="purchase-form-actions"><span class="muted">O arquivo original será anexado. Nenhum estoque será movimentado.</span><div class="import-review-actions"><button type="button" class="secondary" (click)="closeImportReview()">Cancelar</button><button type="button" class="primary" [disabled]="creatingImport() || !canConfirmImport()" (click)="createImportedPurchase()">{{ creatingImport() ? 'Criando…' : 'Confirmar e criar compra' }}</button></div></div>
       </section></div>
@@ -118,7 +122,7 @@ import { dateOnlyLabel, dateOnlyValue } from '../../shared/date-only';
     }
 
     @if (detail(); as purchase) {
-      <div class="modal-backdrop" (click)="detail.set(null)"><section class="modal wide purchase-modal purchase-detail" [class.restricted-costs]="!canReadCosts()" [class.read-only-purchases]="!canManagePurchases()" [class.no-receiving]="!canAdjustStock()" [class.costs-pending]="purchase.purchase_type === 'parts' && !purchase.selected_quote_id && !purchase.notes?.startsWith('Importação de documento.')" role="dialog" aria-modal="true" [attr.aria-label]="'Compra ' + purchase.number" (click)="$event.stopPropagation()">
+      <div class="modal-backdrop" (click)="detail.set(null)"><section class="modal wide purchase-modal purchase-detail" [class.restricted-costs]="!canReadCosts()" [class.read-only-purchases]="!canManagePurchases()" [class.no-receiving]="!canAdjustStock()" [class.costs-pending]="purchase.purchase_type === 'parts' && !purchase.selected_quote_id" role="dialog" aria-modal="true" [attr.aria-label]="'Compra ' + purchase.number" (click)="$event.stopPropagation()">
         <div class="modal-head"><div><p class="eyebrow">Suprimentos · {{ purchase.number }}</p><h2>{{ purchase.number }}</h2>@if (purchase.supplier_order_number || purchase.document_date) { <p class="modal-intro">Pedido do fornecedor {{ purchase.supplier_order_number || '—' }}@if (purchase.document_date) { · documento de {{ dateOnly(purchase.document_date) }} }</p> }<p class="modal-intro">Criada em {{ purchase.created_at | date:'dd/MM/yyyy HH:mm' }} @if (purchase.needed_by) { · Previsão {{ dateOnly(purchase.needed_by) }} } @if (isOverdue(purchase)) { <strong class="overdue-chip">previsão vencida</strong> }</p></div><div class="detail-head-actions"><span class="purchase-badge" [attr.data-status]="purchase.status">{{ purchaseStatusLabel(purchase) }}</span>@if (canManagePurchases() && (purchase.status === 'negotiating' || purchase.status === 'approved')) { <button type="button" class="secondary small" [disabled]="saving()" (click)="draftEditor() ? closeDraftEditor() : openDraftEditor()">{{ draftEditor() ? 'Fechar edição' : 'Editar dados' }}</button> }@if (canManagePurchases()) { <button type="button" class="secondary small" (click)="copyPurchase(purchase)">Copiar compra</button> }<button class="close" aria-label="Fechar" (click)="detail.set(null)">×</button></div></div>
         @if (purchase.purchase_type === 'parts') { <div class="purchase-steps" aria-label="Etapas da compra">@for (step of workflow; track step.value; let i = $index) { <div class="purchase-step" [class.step-done]="stepIndex(purchase.status) > i" [class.step-current]="stepIndex(purchase.status) === i"><span>{{ stepIndex(purchase.status) > i ? '✓' : i + 1 }}</span><small>{{ step.label }}</small></div> }</div> } @else { <div class="expense-banner"><strong>Despesa da empresa</strong><span>{{ purchase.expense_category }} · {{ purchase.expense_amount | currency:'BRL' }}</span></div> }
         <div class="purchase-detail-grid">
@@ -159,6 +163,7 @@ import { dateOnlyLabel, dateOnlyValue } from '../../shared/date-only';
             <section class="purchase-form-section"><div class="section-heading"><div><p class="eyebrow">Documentação</p><h3>Documentos anexados</h3></div>@if (canManagePurchases()) { <label class="attachment-inline">+ Anexar documentos<input type="file" multiple (change)="uploadAttachments(purchase, $any($event.target).files)" /></label> }</div>@if (purchase.attachments.length) { <div class="attachment-list">@for (attachment of purchase.attachments; track attachment.id) { <button type="button" class="attachment-row" (click)="downloadAttachment(purchase, attachment)"><span>📎 {{ attachment.filename }}</span><small>{{ formatBytes(attachment.size_bytes) }}</small></button> }</div> } @else { <p class="muted">Nenhum documento anexado ainda.</p> }</section>
           </div>
           <aside class="purchase-aside"><section class="purchase-aside-card"><p class="eyebrow">Resumo</p><div><span>Itens</span><strong>{{ purchase.items.length }}</strong></div>@if (purchase.purchase_type === 'parts') { <div><span>Unidades pedidas</span><strong>{{ totalUnits(purchase) | number:'1.0-3' }}</strong></div><div><span>Recebidas</span><strong>{{ receivedUnits(purchase) | number:'1.0-3' }}</strong></div> }@if (selectedQuote(purchase); as quote) { <div><span>Fornecedor escolhido</span><strong>{{ quote.supplier_name }}</strong></div><div><span>Valor acordado</span><strong>{{ quote.total | currency:'BRL' }}</strong></div> }</section>
+            @if (selectedQuote(purchase); as chosen) { <section class="purchase-aside-card quote-summary-card"><p class="eyebrow">Cotação escolhida</p><div><span>Fornecedor</span><strong>{{ chosen.supplier_name }}</strong></div><div><span>Condição</span><strong>{{ quoteConditionLabel(chosen) }}</strong></div><div class="quote-cost-summary">@for (item of purchase.items; track item.id) { <small>{{ item.sku }} · base {{ chosen.item_costs?.[item.id] | currency:'BRL' }} → final {{ item.unit_cost | currency:'BRL' }}/un.</small> }</div><small class="quote-locked">Cotação escolhida · valores travados</small>@if (chosen.notes) { <small>{{ chosen.notes }}</small> }</section> }
             @if (purchase.payables?.length) { <section class="purchase-aside-card payable-card"><p class="eyebrow">Contas a pagar</p>@for (payable of purchase.payables; track payable.id) { <div class="payable-row"><div><strong>{{ payable.amount | currency:'BRL' }}</strong><small>{{ payableLabel(payable) }}</small>@if (payable.payment_terms) { <small>Condição {{ payable.payment_terms }}</small> }@if (payable.installments?.length) { <div class="payable-installments">@for (installment of payable.installments; track installment.id) { <small>{{ installment.number }}ª · {{ dateOnly(installment.due_date) }} · {{ installment.amount | currency:'BRL' }}@if ((installment.paid_amount ?? 0) > 0) { · pago {{ installment.paid_amount | currency:'BRL' }} }</small> }</div> }@if ((payable.paid_amount ?? 0) > 0) { <small>Pago {{ payable.paid_amount | currency:'BRL' }} · saldo {{ payable.amount - (payable.paid_amount ?? 0) | currency:'BRL' }}</small> }</div>@if (canManagePurchases() && (payable.status === 'open' || payable.status === 'partial')) { <button type="button" class="secondary small" [disabled]="saving()" (click)="settlePayable(purchase, payable)">Registrar pagamento</button> }</div> }</section> }
             <section class="purchase-aside-card timeline-card"><p class="eyebrow">Histórico da compra</p>@for (event of purchase.events; track event.id) { <div class="purchase-event"><i></i><div><strong>{{ event.detail }}</strong><small>{{ event.created_at | date:'dd/MM/yyyy HH:mm' }}</small></div></div> }</section>
             @if (purchaseStatusNote(purchase); as note) { <p class="purchase-status-note">{{ note }}</p> }
@@ -240,6 +245,22 @@ export class PurchasesPage implements OnInit {
   readonly importLoading = signal(false);
   readonly creatingImport = signal(false);
   readonly importError = signal('');
+  // P0: mesmo rateio que o backend grava — a revisão mostra o custo final por peça e o fechamento.
+  readonly importPlan = computed(() => {
+    const draft = this.importDraft();
+    try {
+      return { plan: buildImportPlan(draft.items, draft), error: '' };
+    } catch (error) {
+      return {
+        // A revisão continua mostrando o rateio quando só o fechamento do documento falha.
+        plan: error instanceof ImportPlanError ? error.plan : null,
+        error:
+          error instanceof ImportPlanError
+            ? error.message
+            : 'Não foi possível fechar os valores do documento. Revise os campos.',
+      };
+    }
+  });
   readonly expenseCategories = ['Aluguel', 'Energia e água', 'Internet e telefonia', 'Contabilidade', 'Marketing', 'Frete e transporte', 'Material de escritório', 'Materiais de consumo e embalagem', 'Impostos e taxas', 'Serviços', 'Outros'];
   private readonly initialRange = quickDateRange('last30');
   readonly startDate = signal(this.initialRange.startDate);
@@ -354,20 +375,12 @@ export class PurchasesPage implements OnInit {
     ].filter(Boolean);
     return `Importação de documento. ${metadata.join(' · ')}`.slice(0, 4000);
   }
-  private allocateImportTotal(total: number | null, items: Array<{ quantity: number; unit_cost: number }>, index: number) {
-    if (total == null || !Number.isFinite(total) || total <= 0) return 0;
-    const weights = items.map((item) => Math.max(0, item.quantity * item.unit_cost));
-    const weightSum = weights.reduce((sum, weight) => sum + weight, 0);
-    if (!weightSum) return index === 0 ? Number(total.toFixed(2)) : 0;
-    if (index === items.length - 1) {
-      const allocated = weights.slice(0, index).reduce((sum, weight) => sum + Math.round(total * weight / weightSum * 100) / 100, 0);
-      return Number((total - allocated).toFixed(2));
-    }
-    return Math.round(total * weights[index] / weightSum * 100) / 100;
-  }
+  importPlanLine(index: number) { return this.importPlan().plan?.lines[index] ?? null; }
   canConfirmImport() {
     const items = this.importDraft().items;
-    return !Object.values(this.importMoneyValidity()).some(Boolean) && items.length > 0 && items.every((item) => (!item.stock_controlled || !!item.product_id) && item.description.trim().length >= 2 && Number.isFinite(item.quantity) && item.quantity > 0 && Number.isFinite(item.unit_cost) && item.unit_cost >= 0 && Number.isFinite(item.discount_amount) && item.discount_amount >= 0 && item.discount_amount <= item.quantity * item.unit_cost);
+    // P0, regra 6: a compra já nasce como pedido registrado, então cada linha precisa de SKU
+    // ou produto vinculado — mesma exigência do envio manual do pedido.
+    return this.importPlan().error === '' && !Object.values(this.importMoneyValidity()).some(Boolean) && items.length > 0 && items.every((item) => (!!item.sku.trim() || !!item.product_id) && (!item.stock_controlled || !!item.product_id) && item.description.trim().length >= 2 && Number.isFinite(item.quantity) && item.quantity > 0 && Number.isFinite(item.unit_cost) && item.unit_cost >= 0 && Number.isFinite(item.discount_amount) && item.discount_amount >= 0 && item.discount_amount <= item.quantity * item.unit_cost);
   }
   addImportLine() { this.importDraft.update((draft) => ({ ...draft, items: [...draft.items, { description: '', sku: '', quantity: 1, unit_cost: 0, confidence: 0, product_id: null, stock_controlled: true, line_total: 0, discount_amount: 0 }] })); }
   removeImportLine(index: number) { this.importDraft.update((draft) => ({ ...draft, items: draft.items.filter((_, i) => i !== index) })); this.importMoneyValidity.update((values) => Object.fromEntries(Object.entries(values).filter(([key]) => !key.startsWith('item-')))); }
@@ -382,12 +395,19 @@ export class PurchasesPage implements OnInit {
       supplier_order_number: draft.orderNumber.trim() || null,
       document_date: draft.documentDate || null,
       notes: this.importNotes(review, draft),
-      items: draft.items.map((item, index) => ({
+      // P0: o documento é a cotação da compra — os valores do papel entram uma única vez e
+      // são rateados por peça no mesmo algoritmo mostrado na revisão.
+      import_document: {
+        filename: file.name,
+        total: draft.total,
+        freight_amount: draft.shipping ?? 0,
+        tax_amount: draft.tax ?? 0,
+        discount_amount: draft.discount ?? 0,
+      },
+      items: draft.items.map((item) => ({
         sku: item.sku.trim(), description: item.description.trim(), quantity: item.quantity,
         unit_cost: item.unit_cost, product_id: item.product_id,
-        freight_amount: this.allocateImportTotal(draft.shipping, draft.items, index),
-        tax_amount: this.allocateImportTotal(draft.tax, draft.items, index),
-        discount_amount: item.discount_amount + this.allocateImportTotal(draft.discount, draft.items, index),
+        line_discount_amount: item.discount_amount,
       })),
     };
     this.api.createPurchase(payload).pipe(finalize(() => this.creatingImport.set(false))).subscribe({
@@ -481,14 +501,15 @@ export class PurchasesPage implements OnInit {
     if (payable.status === 'partial') return `Baixa parcial · vence ${this.dateLabel(payable.due_date)}`;
     return `Vence ${this.dateLabel(payable.due_date)}`;
   }
-  dateLabel(value: string) { return new Date(value).toLocaleDateString('pt-BR'); }
+  dateLabel(value: string) { return dateOnlyLabel(value); }
   dateOnly(value: string | null | undefined) { return dateOnlyLabel(value); }
   isActive(purchase: Purchase) { return purchase.status !== 'cancelled' && purchase.status !== 'closed'; }
   hasReceived(purchase: Purchase) { return purchase.items.some((item) => item.received_quantity - (item.returned_quantity ?? 0) > 0); }
   stepIndex(status: PurchaseStatus) { if (status === 'cancelled') return -1; if (status === 'received' || status === 'closed') return 4; if (status === 'partially_received') return 3; return ['negotiating', 'approved', 'ordered'].indexOf(status); }
-  progress(item: PurchaseItem) { return item.quantity ? Math.min(100, item.received_quantity / item.quantity * 100) : 0; }
-  totalUnits(purchase: Purchase) { return purchase.items.reduce((sum, item) => sum + item.quantity, 0); }
-  receivedUnits(purchase: Purchase) { return purchase.items.reduce((sum, item) => sum + item.received_quantity, 0); }
+  // A API serializa Decimal como string: some sempre com Number para não concatenar.
+  progress(item: PurchaseItem) { const quantity = Number(item.quantity ?? 0); return quantity ? Math.min(100, Number(item.received_quantity ?? 0) / quantity * 100) : 0; }
+  totalUnits(purchase: Purchase) { return purchase.items.reduce((sum, item) => sum + Number(item.quantity ?? 0), 0); }
+  receivedUnits(purchase: Purchase) { return purchase.items.reduce((sum, item) => sum + Number(item.received_quantity ?? 0), 0); }
   receiveQty(item: PurchaseItem) { return this.receiveValues()[item.id]?.quantity ?? 0; }
   receiveObservation(item: PurchaseItem) { return this.receiveObservations()[item.id] ?? ''; }
   setReceiveObservation(item: PurchaseItem, value: string) { this.receiveObservations.update((values) => ({ ...values, [item.id]: value })); this.clearReceiptId(item); }

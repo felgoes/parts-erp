@@ -1,5 +1,5 @@
 from datetime import UTC, datetime, timedelta
-from decimal import ROUND_HALF_UP, Decimal
+from decimal import Decimal
 from pathlib import Path
 from uuid import uuid4
 
@@ -35,6 +35,7 @@ from app.schemas.common import (
     PurchaseCloseRequest,
     PurchaseCreate,
     PurchaseDeletionOut,
+    PurchaseImportDocument,
     PurchaseItemCreate,
     PurchaseItemUpdate,
     PurchaseOut,
@@ -42,6 +43,17 @@ from app.schemas.common import (
     PurchaseReceive,
     PurchaseReceiveItem,
     PurchaseUpdate,
+)
+from app.services.purchase_allocation import (
+    ImportPlan,
+    ImportPlanError,
+    MILLI,
+    build_import_plan,
+    from_cents,
+    half_up_div,
+    split_cents,
+    to_cents,
+    to_milli,
 )
 from app.services.purchase_import import analyze_upload
 from app.services.payables import apply_payment_condition, normalize_condition, payable_balance, refresh_payable
@@ -128,52 +140,43 @@ def _event(
     ))
 
 
-def _split_amount(amount: Decimal, weights: dict[str, Decimal]) -> dict[str, Decimal]:
-    """Rateia um valor monetário por peso, fechando a sobra de centavos no maior item."""
-    total_weight = sum(weights.values(), Decimal("0"))
-    if total_weight <= 0:
-        return {key: Decimal("0") for key in weights}
-    shares = {
-        key: (amount * weight / total_weight).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-        for key, weight in weights.items()
-    }
-    residual = (amount - sum(shares.values(), Decimal("0"))).quantize(Decimal("0.01"))
-    if residual:
-        largest = max(weights, key=lambda key: weights[key])
-        shares[largest] = (shares[largest] + residual).quantize(Decimal("0.01"))
-    return shares
-
-
 def _recompute_purchase_costs(purchase: PurchaseCase, quote: PurchaseQuote | None = None) -> None:
     """Aplica no item os valores da cotação vencedora; sem cotação, o custo fica pendente.
 
     A P9 tirou a digitação de valor da compra: nenhum custo nasce fora da cotação e os
     valores já gravados em compras antigas permanecem exatamente como estão.
+
+    P0: o rateio roda em inteiros (centavos e milésimos de unidade) pelo mesmo algoritmo
+    usado no preview da revisão da importação, para o valor exibido e o gravado fecharem
+    centavo a centavo.
     """
     if not quote:
         return
-    weights = {
-        item.id: item.quantity
-        if quote.allocation_method == "quantity"
-        else Decimal(quote.item_costs[item.id]) * item.quantity
-        for item in purchase.items
-    }
-    if quote.allocation_method != "quantity" and not any(weight > 0 for weight in weights.values()):
+    quantities = {item.id: to_milli(item.quantity) for item in purchase.items}
+    base_cents = {item.id: to_cents(quote.item_costs[item.id]) for item in purchase.items}
+    proportional = quote.allocation_method != "quantity" and any(
+        base_cents[item.id] * quantities[item.id] > 0 for item in purchase.items
+    )
+    if proportional:
+        weights = [
+            (item.id, base_cents[item.id] * quantities[item.id]) for item in purchase.items
+        ]
+    else:
         # Sem preço informado em nenhum item não existe base proporcional: cai para quantidade.
-        weights = {item.id: item.quantity for item in purchase.items}
-    freight = _split_amount(Decimal(quote.freight_amount), weights)
-    tax = _split_amount(Decimal(quote.tax_amount), weights)
-    discount = _split_amount(Decimal(quote.discount_amount), weights)
+        weights = [(item.id, quantities[item.id]) for item in purchase.items]
+    freight = split_cents(to_cents(quote.freight_amount), weights)
+    tax = split_cents(to_cents(quote.tax_amount), weights)
+    discount = split_cents(to_cents(quote.discount_amount), weights)
     for item in purchase.items:
-        base_cost = Decimal(quote.item_costs[item.id])
-        item.freight_amount = freight[item.id]
-        item.tax_amount = tax[item.id]
-        item.discount_amount = discount[item.id]
-        landed = base_cost + (freight[item.id] + tax[item.id] - discount[item.id]) / item.quantity
-        if landed < 0:
+        extra_cents = freight[item.id] + tax[item.id] - discount[item.id]
+        landed_cents = base_cents[item.id] + half_up_div(extra_cents * MILLI, quantities[item.id])
+        if landed_cents < 0:
             raise HTTPException(status_code=422, detail="Os descontos deixam o custo de alguma peça negativo.")
-        item.base_unit_cost = base_cost
-        item.unit_cost = landed.quantize(Decimal("0.01"))
+        item.freight_amount = from_cents(freight[item.id])
+        item.tax_amount = from_cents(tax[item.id])
+        item.discount_amount = from_cents(discount[item.id])
+        item.base_unit_cost = from_cents(base_cents[item.id])
+        item.unit_cost = from_cents(landed_cents)
 
 
 def _load(db: Session, purchase_id: str, *, for_update: bool = False) -> PurchaseCase:
@@ -334,6 +337,60 @@ def _sync_payable(
     return payable
 
 
+def _register_import_document(
+    db: Session,
+    purchase: PurchaseCase,
+    plan: ImportPlan,
+    document: PurchaseImportDocument,
+    user: User,
+) -> None:
+    """P0: a compra importada nasce com a cotação do documento aceita e o pedido registrado.
+
+    O documento é a prova de que a compra já foi feita: os valores revisados viram a
+    proposta vencedora, o título a pagar nasce na aprovação e o pedido é registrado na
+    mesma transação. Nada aqui movimenta estoque.
+    """
+    quote = PurchaseQuote(
+        supplier_name=(purchase.supplier_name or "").strip() or "Fornecedor do documento",
+        total=plan.total,
+        freight_amount=plan.freight_amount,
+        tax_amount=plan.tax_amount,
+        discount_amount=plan.discount_amount,
+        allocation_method="proportional",
+        item_costs={
+            item.id: str(line.base_unit_cost)
+            for item, line in zip(purchase.items, plan.lines, strict=True)
+        },
+        # P12, regra 7: à vista, primeiro vencimento em 30 dias corridos da data do documento.
+        payment_type="cash",
+        installment_count=1,
+        first_due_days=PAYABLE_TERM_DAYS,
+        interval_days=PAYABLE_TERM_DAYS,
+        notes=f"Cotação do documento importado · {document.filename}"[:2000],
+    )
+    purchase.quotes.append(quote)
+    db.flush()
+    _event(
+        db,
+        purchase,
+        "quote_received",
+        f"Cotação do documento importado de {quote.supplier_name} registrada.",
+    )
+    purchase.selected_quote_id = quote.id
+    purchase.status = "approved"
+    _recompute_purchase_costs(purchase, quote)
+    _event(db, purchase, "quote_selected", "Cotação do documento aceita na importação.")
+    _sync_payable(db, purchase)
+    purchase.status = "ordered"
+    purchase.ordered_at = datetime.now(UTC)
+    _event(
+        db,
+        purchase,
+        "ordered",
+        f"Pedido já realizado — registrado na importação do documento por {user.full_name}.",
+    )
+
+
 def _delete_blockers(purchase: PurchaseCase) -> list[str]:
     blockers: list[str] = []
     if purchase.selected_quote_id:
@@ -379,19 +436,74 @@ def create_purchase(
     db: Session = Depends(get_db),
     user: User = Depends(require_permission(Permission.PURCHASE_MANAGE)),
 ) -> PurchaseOut:
+    import_plan = None
     if payload.source_import_id:
         if not (payload.notes or "").startswith("Importação de documento."):
             raise HTTPException(status_code=422, detail="Identificador de importação inválido.")
+        if payload.purchase_type != "parts" or not payload.items:
+            raise HTTPException(
+                status_code=422, detail="A importação de documento cria compras de peças."
+            )
         existing = db.scalar(
             select(PurchaseCase).where(PurchaseCase.source_import_id == payload.source_import_id)
         )
         if existing:
             return _present(_load(db, existing.id), user)
+        document = payload.import_document
+        if document is None:
+            raise HTTPException(
+                status_code=422,
+                detail=(
+                    "Importação sem os dados do documento revisado. Reenvie a revisão com o "
+                    "total, frete, impostos e desconto lidos do papel."
+                ),
+            )
+        if any(
+            Decimal(item.freight_amount or 0)
+            or Decimal(item.tax_amount or 0)
+            or Decimal(item.discount_amount or 0)
+            or Decimal(item.discount_percent or 0)
+            for item in payload.items
+        ):
+            raise HTTPException(
+                status_code=422,
+                detail=(
+                    "Os valores do documento são informados uma única vez, no fechamento da "
+                    "importação, e rateados por peça."
+                ),
+            )
+        missing_identity = [
+            item for item in payload.items if not item.sku.strip() and not item.product_id
+        ]
+        if missing_identity:
+            raise HTTPException(
+                status_code=422,
+                detail=(
+                    "Informe o SKU ou vincule um produto antes de enviar o pedido: "
+                    + ", ".join(item.description[:60] for item in missing_identity[:5])
+                ),
+            )
+        try:
+            # P0: a compra importada nasce como compra feita — cotação do documento aceita,
+            # pedido registrado e título a pagar — e nada disso é criado se a proposta não fecha.
+            import_plan = build_import_plan(
+                [
+                    (item.quantity, item.unit_cost, item.line_discount_amount)
+                    for item in payload.items
+                ],
+                freight_amount=document.freight_amount,
+                tax_amount=document.tax_amount,
+                discount_amount=document.discount_amount,
+                document_total=document.total,
+            )
+        except ImportPlanError as error:
+            raise HTTPException(status_code=422, detail=str(error)) from error
     elif payload.purchase_type == "parts" and any(
         Decimal(item.unit_cost or 0)
         or Decimal(item.freight_amount or 0)
         or Decimal(item.tax_amount or 0)
         or Decimal(item.discount_amount or 0)
+        or Decimal(item.line_discount_amount or 0)
         for item in payload.items
     ):
         # P9: a compra de peças nasce sem valor; o custo entra pela cotação ou pela
@@ -434,7 +546,7 @@ def create_purchase(
         source_import_id=payload.source_import_id,
         items=[
             PurchaseItem(
-                **item.model_dump(),
+                **item.model_dump(exclude={"line_discount_amount"}),
                 base_unit_cost=item.unit_cost,
             )
             for item in payload.items
@@ -444,7 +556,9 @@ def create_purchase(
     db.add(purchase)
     db.flush()
     _event(db, purchase, "created", f"Compra criada por {user.full_name}.", user=user)
-    if payload.purchase_type == "expense":
+    if import_plan is not None and payload.import_document is not None:
+        _register_import_document(db, purchase, import_plan, payload.import_document, user)
+    elif payload.purchase_type == "expense":
         _sync_payable(
             db,
             purchase,

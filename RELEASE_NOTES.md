@@ -1,5 +1,11 @@
 # Notas de atualização — Parts ERP
 
+## 11 de outubro de 2026 — entregas confirmadas em PRD
+
+- [Compra importada entra como compra já feita · 25a365e](https://github.com/felgoes/parts-erp/commit/25a365e): ao confirmar a revisão de um documento, a compra nasce com a cotação do documento aceita, o pedido registrado e o título a pagar criado (à vista, vencimento em 30 dias corridos da data do documento), pronta para receber — sem cadastrar uma cotação manual só para destravar. A revisão mostra o custo final por peça, com base, frete, impostos e desconto rateados, e o fechamento `itens + frete + impostos − descontos = total`; a confirmação é bloqueada, com o motivo na tela, quando a soma não fecha, quando frete e impostos superam o total, quando o desconto passa do valor da linha e quando falta SKU ou produto na linha.
+
+- [Recebimento e datas no detalhe da compra · 25a365e](https://github.com/felgoes/parts-erp/commit/25a365e): o resumo da compra não soma mais texto no lugar de números — o que travava a tela e impedia registrar o recebimento — e o vencimento do título aparece como a data combinada, sem pular um dia na conversão de fuso.
+
 ## 10 de outubro de 2026 — entregas confirmadas em PRD
 
 - [Conferência da importação recalcula e explica o bloqueio · 28049d4](https://github.com/felgoes/parts-erp/commit/28049d4): ao corrigir total, frete, impostos, desconto ou qualquer item, a conferência recalcula na hora (com a comparação contra o subtotal do documento); quando o botão de confirmar está bloqueado, a revisão lista o motivo — produto sem vínculo, cotação ausente, valor inválido ou desconto maior que a linha — em vez de deixar você sem saber o que falta.

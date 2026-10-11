@@ -1,6 +1,6 @@
 # P0 — Compra importada entra com a cotação do documento aceita e o pedido registrado
 
-**Status:** decidida — decisão do PO fechada em 11/10/2026, com uma decisão pendente do PO registrada abaixo; pendente de implementação (ver TASKS.md)
+**Status:** concluída — implementada e implantada em PRD no commit `25a365e` em 11/10/2026, com smoke público ok no site e no ERP (HTTP 200 na página e no bundle). A regra 13 segue como decisão pendente do PO (extrair ou digitar condição de pagamento e previsão de entrega na revisão); enquanto isso vale a condição padrão da regra 7.
 **Prioridade:** alta — única tarefa da fila
 
 ## Objetivo

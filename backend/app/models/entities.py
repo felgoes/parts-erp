@@ -538,6 +538,7 @@ class PurchaseDeletion(Base):
     purchase_type: Mapped[str] = mapped_column(String(30))
     supplier_name: Mapped[str | None] = mapped_column(String(200))
     items_summary: Mapped[str] = mapped_column(Text, default="")
+    children_summary: Mapped[str] = mapped_column(Text, default="")
     total_amount: Mapped[Decimal] = mapped_column(Numeric(14, 2), default=0)
     reason: Mapped[str | None] = mapped_column(String(255))
     user_id: Mapped[str | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))

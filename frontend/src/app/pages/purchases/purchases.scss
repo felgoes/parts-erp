@@ -156,6 +156,14 @@
 .lifecycle-resolution legend { padding: 0 4px; color: var(--muted); font-size: 10px; }
 .lifecycle-resolution label { display: flex; align-items: flex-start; gap: 7px; color: var(--ink); font-size: 11px; line-height: 1.4; }
 .lifecycle-actions { display: flex; justify-content: space-between; gap: 8px; }
+.purchase-success { margin: 0 0 14px; padding: 12px 14px; border: 1px solid #bcd2b4; border-radius: 10px; background: #f4faf0; color: #3f5c37; font-size: 12px; }
+.delete-modal { width: min(520px, 100%); }
+.delete-lead { margin: 0 0 8px; font-size: 13px; }
+.delete-effects { display: grid; gap: 6px; margin: 0 0 14px; padding-left: 18px; color: #4b4a42; font-size: 12px; line-height: 1.5; }
+.delete-modal > label { display: grid; gap: 5px; margin-bottom: 12px; color: var(--muted); font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+.delete-modal > label input { height: 38px; }
+.delete-note { margin: 0 0 14px; color: var(--muted); font-size: 11px; line-height: 1.5; }
+.purchase-row-menu-popover .menu-danger { color: #984b43; font-weight: 600; }
 .overdue-chip { display: inline-block; margin-left: 6px; padding: 2px 6px; border-radius: 6px; background: #f6dedb; color: #984b43; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
 .row-select { width: 34px; text-align: center; }
 .row-select input { width: 15px; height: 15px; }

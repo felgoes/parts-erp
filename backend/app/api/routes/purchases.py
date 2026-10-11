@@ -5,7 +5,7 @@ from uuid import uuid4
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from fastapi.responses import FileResponse
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session, selectinload
 
 from app.api.deps import require_permission
@@ -14,6 +14,7 @@ from app.core.permissions import Permission, has_permission
 from app.db.session import get_db
 from app.models import (
     MovementType,
+    MarketStudy,
     PayablePayment,
     Product,
     PurchaseAttachment,
@@ -334,19 +335,32 @@ def _sync_payable(
     return payable
 
 
-def _delete_blockers(purchase: PurchaseCase) -> list[str]:
-    blockers: list[str] = []
-    if purchase.selected_quote_id:
-        blockers.append("cotação escolhida")
-    if purchase.ordered_at:
-        blockers.append("pedido enviado ao fornecedor")
-    if any(Decimal(item.received_quantity) > 0 for item in purchase.items):
-        blockers.append("recebimento registrado")
-    if _active_payable(purchase):
-        blockers.append("título a pagar")
-    if purchase.status != "negotiating":
-        blockers.append(f"etapa {purchase.status}")
-    return blockers
+def _received_pending_return(item: PurchaseItem) -> Decimal:
+    return Decimal(item.received_quantity) - Decimal(item.returned_quantity)
+
+
+def _payable_with_payments(purchase: PurchaseCase) -> PurchasePayable | None:
+    for payable in purchase.payables:
+        if payable.status != "cancelled" and payable.payments:
+            return payable
+    return None
+
+
+def _deletion_effects(purchase: PurchaseCase) -> str:
+    effects: list[str] = [f"{len(purchase.items)} item(ns)"]
+    if purchase.quotes:
+        effects.append(f"{len(purchase.quotes)} cotação(ões)")
+    if purchase.attachments:
+        effects.append(f"{len(purchase.attachments)} anexo(s)")
+    received = [(item, _received_pending_return(item)) for item in purchase.items if _received_pending_return(item) > 0]
+    if received:
+        quantity = sum((entry[1] for entry in received), Decimal("0"))
+        effects.append(f"estorno de {quantity:g} unidade(s) recebida(s) em {len(received)} item(ns)")
+    payables = [payable for payable in purchase.payables if payable.status != "cancelled"]
+    if payables:
+        amount = sum((Decimal(payable.amount) for payable in payables), Decimal("0"))
+        effects.append(f"título a pagar de {amount:.2f} apagado")
+    return "; ".join(effects)
 
 
 @router.get("", response_model=list[PurchaseOut])
@@ -1068,20 +1082,49 @@ def delete_purchase(
     user: User = Depends(require_permission(Permission.PURCHASE_MANAGE)),
 ) -> PurchaseDeletion:
     purchase = _load(db, purchase_id, for_update=True)
-    blockers = _delete_blockers(purchase)
-    if blockers:
+    paid = _payable_with_payments(purchase)
+    if paid:
         raise HTTPException(
             status_code=409,
             detail=(
-                "Só é possível excluir uma compra em rascunho sem efeitos. "
-                f"Impedimentos: {', '.join(blockers)}."
+                "Este pedido tem pagamento registrado no título a pagar; excluir apagaria uma saída "
+                "de dinheiro já feita. Cancele a compra com estorno para manter o registro financeiro."
             ),
         )
+    for item, quantity in [
+        (item, _received_pending_return(item))
+        for item in purchase.items
+        if _received_pending_return(item) > 0
+    ]:
+        if not item.product_id:
+            raise HTTPException(
+                status_code=409,
+                detail=(
+                    f"Vincule {item.sku or item.description} a um produto do catálogo antes de "
+                    "estornar o recebimento."
+                ),
+            )
+        move_stock(
+            db,
+            product_id=item.product_id,
+            quantity=-quantity,
+            movement_type=MovementType.cancellation,
+            reason=f"Estorno da exclusão da compra {purchase.number}",
+            reference=purchase.number,
+            idempotency_key=f"purchase:{purchase.id}:item:{item.id}:delete:{quantity:f}",
+            unit_cost=item.unit_cost,
+        )
+    db.execute(
+        update(MarketStudy)
+        .where(MarketStudy.linked_purchase_id == purchase.id)
+        .values(linked_purchase_id=None)
+    )
     total = (
         Decimal(purchase.expense_amount or 0)
         if purchase.purchase_type == "expense"
         else sum((Decimal(item.quantity) * Decimal(item.unit_cost) for item in purchase.items), Decimal("0"))
     )
+    children_summary = _deletion_effects(purchase)
     record = PurchaseDeletion(
         purchase_id=purchase.id,
         number=purchase.number,
@@ -1091,6 +1134,7 @@ def delete_purchase(
             f"{Decimal(item.quantity):g} x {item.sku or item.description}" for item in purchase.items
         )[:2000]
         or (purchase.expense_category or ""),
+        children_summary=children_summary,
         total_amount=Decimal(total).quantize(Decimal("0.01")),
         reason=(reason or "").strip() or None,
         user_id=user.id,

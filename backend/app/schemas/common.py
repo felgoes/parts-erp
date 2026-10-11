@@ -607,6 +607,7 @@ class PurchaseDeletionOut(ORMModel):
     purchase_type: str
     supplier_name: str | None
     items_summary: str
+    children_summary: str = ""
     total_amount: Decimal
     reason: str | None
     user_id: str | None

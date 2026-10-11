@@ -23,6 +23,7 @@ import { dateOnlyLabel, dateOnlyValue } from '../../shared/date-only';
       @if (canManagePurchases()) { <div class="purchase-header-actions"><button class="secondary" type="button" [disabled]="importLoading()" (click)="purchaseImportInput.click()">{{ importLoading() ? 'Analisando documento…' : 'Importar documento' }}</button><button class="primary" type="button" (click)="openNew()">+ Nova compra</button><input #purchaseImportInput hidden type="file" accept=".pdf,.xml,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png,application/xml,text/xml" (change)="onImportDocument($event)" /></div> }
     </app-page-header>
     @if (importError() && !importReview()) { <p class="purchase-error" role="alert">{{ importError() }}</p> }
+    @if (message()) { <p class="purchase-success" role="status">{{ message() }}</p> }
     <section class="purchase-summary">
       @for (card of summary(); track card.status) {
         <button type="button" class="purchase-stat" [class.active-stat]="statusFilter() === card.status" (click)="toggleStatus(card.status)">
@@ -52,7 +53,18 @@ import { dateOnlyLabel, dateOnlyValue } from '../../shared/date-only';
         } @empty { <tr><td colspan="9"><div class="purchase-empty"><strong>Nenhuma compra neste período</strong><span>Comece uma negociação para acompanhar propostas e recebimentos por aqui.</span>@if (canManagePurchases()) { <button class="secondary" (click)="openNew()">Criar compra</button> }</div></td></tr> }
       </tbody></table></div>
     </section>
-    @if (rowMenuPurchase(); as purchase) { <div class="purchase-row-menu-popover" role="menu" [style.top.px]="rowMenuPosition()?.top" [style.left.px]="rowMenuPosition()?.left"><button type="button" role="menuitem" (click)="copyPurchaseFromList(purchase, $event)">Copiar</button></div> }
+    @if (rowMenuPurchase(); as purchase) { <div class="purchase-row-menu-popover" role="menu" [style.top.px]="rowMenuPosition()?.top" [style.left.px]="rowMenuPosition()?.left"><button type="button" role="menuitem" (click)="copyPurchaseFromList(purchase, $event)">Copiar</button>@if (canManagePurchases()) { <button type="button" role="menuitem" class="menu-danger" (click)="requestDelete(purchase, $event)">Excluir compra</button> }</div> }
+    @if (deleteTarget(); as target) {
+      <div class="modal-backdrop" (click)="cancelDelete()"><section class="modal purchase-modal delete-modal" role="dialog" aria-modal="true" [attr.aria-label]="'Excluir compra ' + target.number" (click)="$event.stopPropagation()">
+        <div class="modal-head"><div><p class="eyebrow">Suprimentos · {{ target.number }}</p><h2>Excluir compra</h2><p class="modal-intro">{{ target.supplier_name || 'Sem fornecedor' }} · {{ purchaseTotal(target) | currency:'BRL' }} · esta ação não pode ser desfeita.</p></div><button class="close" aria-label="Fechar" (click)="cancelDelete()">×</button></div>
+        <p class="delete-lead">Serão apagados junto com o pedido:</p>
+        <ul class="delete-effects">@for (effect of deletionEffects(target); track effect) { <li>{{ effect }}</li> }</ul>
+        @if (deleteBlockedByPayment(target)) { <p class="purchase-error" role="alert">Este pedido tem pagamento registrado no título a pagar. Excluir apagaria uma saída de dinheiro já feita — use <strong>Cancelar compra</strong> com estorno para manter o registro financeiro.</p> }
+        <label>Motivo (opcional)<input type="text" maxlength="255" [value]="deleteReason()" (input)="deleteReason.set($any($event.target).value)" placeholder="Ex.: pedido criado por engano" /></label>
+        <p class="delete-note">A exclusão fica registrada na auditoria com número, fornecedor, itens, valor, autor e data. O estoque recebido volta por movimento de estorno.</p>
+        <div class="purchase-form-actions"><button type="button" class="secondary" (click)="cancelDelete()">Cancelar</button><button type="button" class="danger-outline" [disabled]="saving() || deleteBlockedByPayment(target)" (click)="confirmDelete(target)">{{ saving() ? 'Excluindo…' : 'Excluir compra' }}</button></div>
+      </section></div>
+    }
 
     @if (importReview(); as review) {
       <div class="modal-backdrop" (click)="closeImportReview()"><section class="modal wide purchase-modal purchase-import-review" role="dialog" aria-modal="true" aria-labelledby="purchase-import-title" (click)="$event.stopPropagation()">
@@ -166,7 +178,7 @@ import { dateOnlyLabel, dateOnlyValue } from '../../shared/date-only';
               @if (purchase.status === 'ordered' || purchase.status === 'partially_received') { <button type="button" class="secondary" [disabled]="saving()" (click)="receiveAll(purchase)">Receber tudo</button> }
               @if (purchase.status === 'ordered' || purchase.status === 'partially_received') { <button type="button" class="secondary" [disabled]="saving()" (click)="openLifecycleForm('close')">Encerrar saldo</button> }
               <button type="button" class="cancel-purchase" [disabled]="saving()" (click)="openLifecycleForm('cancel')">Cancelar compra</button>
-              @if (purchase.status === 'negotiating') { <button type="button" class="danger-outline" [disabled]="saving()" (click)="deleteDraft(purchase)">Excluir rascunho</button> }
+              <button type="button" class="danger-outline" [disabled]="saving()" (click)="requestDelete(purchase)">Excluir compra</button>
             </div> }
             @if (lifecycleForm(); as form) { <section class="purchase-aside-card lifecycle-form">
               <p class="eyebrow">{{ form.mode === 'cancel' ? 'Cancelar compra' : 'Encerrar saldo pendente' }}</p>
@@ -212,6 +224,7 @@ export class PurchasesPage implements OnInit {
   readonly showNew = signal(false);
   readonly saving = signal(false);
   readonly error = signal('');
+  readonly message = signal('');
   readonly search = signal('');
   readonly statusFilter = signal('all');
   readonly receiveValues = signal<Record<string, { quantity: number; productId: string; create: boolean }>>({});
@@ -222,6 +235,8 @@ export class PurchasesPage implements OnInit {
   readonly quoteTotalValue = signal<number | null>(null);
   readonly quoteRounding = signal(0);
   readonly lifecycleForm = signal<{ mode: 'cancel' | 'close'; reason: string; resolution: 'keep_received' | 'return_received' } | null>(null);
+  readonly deleteTarget = signal<Purchase | null>(null);
+  readonly deleteReason = signal('');
   readonly importMoneyValidity = signal<Record<string, boolean>>({});
   readonly importProductSearch = signal<Record<number, string>>({});
   readonly importProductResults = signal<Record<number, Product[]>>({});
@@ -624,14 +639,43 @@ export class PurchasesPage implements OnInit {
       error: (err) => this.error.set(err.error?.detail || 'Não foi possível registrar o pagamento.'),
     });
   }
-  deleteDraft(purchase: Purchase) {
-    if (this.saving()) return;
-    const supplier = purchase.supplier_name || 'sem fornecedor';
-    if (!confirm(`Excluir definitivamente o rascunho ${purchase.number} de ${supplier}? Esta ação não pode ser desfeita.`)) return;
+  requestDelete(purchase: Purchase, event?: Event) {
+    event?.stopPropagation();
+    this.closeRowMenu();
+    this.error.set('');
+    this.deleteReason.set('');
+    this.deleteTarget.set(purchase);
+  }
+  cancelDelete() { this.deleteTarget.set(null); }
+  deleteBlockedByPayment(purchase: Purchase) {
+    return (purchase.payables ?? []).some((payable) => payable.status !== 'cancelled' && (payable.paid_amount ?? 0) > 0);
+  }
+  deletionEffects(purchase: Purchase) {
+    const effects: string[] = [`${purchase.items.length} item(ns) do pedido`];
+    if (purchase.quotes.length) effects.push(`${purchase.quotes.length} cotação(ões) registrada(s)`);
+    if (purchase.attachments.length) effects.push(`${purchase.attachments.length} anexo(s), inclusive o arquivo armazenado`);
+    const received = purchase.items.filter((item) => item.received_quantity - (item.returned_quantity ?? 0) > 0);
+    if (received.length) {
+      const quantity = received.reduce((sum, item) => sum + item.received_quantity - (item.returned_quantity ?? 0), 0);
+      effects.push(`estorno de ${quantity} unidade(s) recebida(s) no estoque, com movimentação rastreável`);
+    }
+    const payable = (purchase.payables ?? []).find((entry) => entry.status !== 'cancelled');
+    if (payable) effects.push(`título a pagar de ${Number(payable.amount).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`);
+    if (purchase.events.length) effects.push(`${purchase.events.length} evento(s) do histórico do pedido`);
+    return effects;
+  }
+  confirmDelete(purchase: Purchase) {
+    if (this.saving() || this.deleteBlockedByPayment(purchase)) return;
     this.saving.set(true); this.error.set('');
-    this.api.deletePurchase(purchase.id).pipe(finalize(() => this.saving.set(false))).subscribe({
-      next: () => { this.detail.set(null); this.purchases.update((items) => items.filter((item) => item.id !== purchase.id)); },
-      error: (err) => this.error.set(err.error?.detail || 'Não foi possível excluir o rascunho.'),
+    const reason = this.deleteReason().trim();
+    this.api.deletePurchase(purchase.id, reason || undefined).pipe(finalize(() => this.saving.set(false))).subscribe({
+      next: () => {
+        this.deleteTarget.set(null);
+        if (this.detail()?.id === purchase.id) this.detail.set(null);
+        this.purchases.update((items) => items.filter((item) => item.id !== purchase.id));
+        this.message.set(`${purchase.number} foi excluída com os registros ligados.`);
+      },
+      error: (err) => this.error.set(err.error?.detail || 'Não foi possível excluir a compra.'),
     });
   }
   supplierByName(name: string | null | undefined) {

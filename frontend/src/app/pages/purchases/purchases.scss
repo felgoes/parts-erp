@@ -165,6 +165,8 @@
 .delete-note { margin: 0 0 14px; color: var(--muted); font-size: 11px; line-height: 1.5; }
 .purchase-row-menu-popover .menu-danger { color: #984b43; font-weight: 600; }
 .import-check { margin: 14px 0; padding: 14px; border: 1px solid var(--line); border-radius: 11px; background: #fbfcf9; }
+.import-product-select { display: grid; gap: 4px; margin-top: 6px; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+.import-product-select select { width: 100%; }
 .import-check > .eyebrow { margin: 0 0 10px; }
 .import-check-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px 14px; align-items: center; font-size: 12px; }
 .import-check-grid > span { color: var(--muted); }

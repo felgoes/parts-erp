@@ -2,6 +2,8 @@
 
 ## 10 de outubro de 2026 — entregas confirmadas em PRD
 
+- [Conferência da importação recalcula e explica o bloqueio · 28049d4](https://github.com/felgoes/parts-erp/commit/28049d4): ao corrigir total, frete, impostos, desconto ou qualquer item, a conferência recalcula na hora (com a comparação contra o subtotal do documento); quando o botão de confirmar está bloqueado, a revisão lista o motivo — produto sem vínculo, cotação ausente, valor inválido ou desconto maior que a linha — em vez de deixar você sem saber o que falta.
+
 - [Escolher produto existente na importação · 1a17fbb](https://github.com/felgoes/parts-erp/commit/1a17fbb): cada item da revisão da importação tem, além da busca por nome/SKU/código de barras, um seletor com os produtos do catálogo — vincule com um clique e remova quando precisar.
 
 - [Importação de documento: escolha do lançamento, já pago e linhas candidatas · 8b07f1c](https://github.com/felgoes/parts-erp/commit/8b07f1c): na revisão você escolhe se o documento entra como peças para estoque (padrão) ou como despesa da empresa, com categoria e valor total; marcando "já pago no checkout", a compra nasce com o título a pagar baixado, com a data e a forma de pagamento informadas; e quando nenhum item é reconhecido, a revisão lista linhas candidatas do documento para virar item com um clique.

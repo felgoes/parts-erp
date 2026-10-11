@@ -10,6 +10,10 @@
 
 ## Canonical development environment
 
+- Duas máquinas, um operador: o trabalho alterna entre PCs, nunca ao mesmo tempo. A regra é nenhuma máquina guardar commit sem publicar — comece com `./scripts/dev/sync.sh start` (busca o que a outra máquina publicou e recusa trabalho local pendente) e encerre com `./scripts/dev/sync.sh finish` (alinhamento, portão de checks e push). Se divergir, o script rebaseia; preserve as duas entregas ao resolver conflito. Detalhes em `docs/duas-maquinas.md`.
+- Esteira rápida: durante a implementação use `./scripts/dev/checks.sh backend <filtro>` e `./scripts/dev/checks.sh frontend <filtro>`; o portão antes do push é `./scripts/dev/checks.sh all`. Depois de mexer na importação de compra, rode `./backend/.venv/bin/python scripts/dev/import_smoke.py` com o HML local de pé.
+- Documentação compartilhada (`TASKS.md`, `docs/specs/`, `RELEASE_NOTES.md`) tem um dono por vez: quem edita, publica na hora.
+
 - Before running a WSL command, list installed distributions from Windows with wsl.exe --list --quiet and pass the exact installed name to wsl.exe -d. Do not assume the distro is named Ubuntu; on the current PC it is Ubuntu-24.04. If WSL reports WSL_E_DISTRO_NOT_FOUND, re-list names and retry with the exact match instead of switching to the Windows mirror.
 - Use the WSL Ubuntu checkout as the canonical working copy. Make source changes, builds, Git commits, and GitHub pushes from WSL; do not develop in the Windows mirror.
 - Preserve branch refs; remove only auxiliary checkouts that are clean, task-owned, and no longer needed after delivery.

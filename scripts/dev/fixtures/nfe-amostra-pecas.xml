@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Documento de amostra (sintético) para revisar a importação no HML local pelo navegador.
+     Peças 3 × 20,00 + 2 × 25,00 = 110,00 · frete 5,00 · impostos 4,00 · desconto 2,00 · total 117,00.
+     Use com a conta de QA local; nenhum dado real de fornecedor ou cliente. -->
+<nfeProc xmlns="http://www.portalfiscal.inf.br/nfe">
+  <NFe>
+    <infNFe Id="NFe35261011223344556677889900112233445566778899">
+      <ide>
+        <nNF>9001</nNF>
+        <dhEmi>2026-10-09T08:40:00-03:00</dhEmi>
+      </ide>
+      <emit>
+        <xNome>Distribuidora Exemplo de Autopecas</xNome>
+      </emit>
+      <det nItem="1">
+        <prod>
+          <cProd>AMOSTRA-1</cProd>
+          <xProd>Correia dentada</xProd>
+          <qCom>3.0000</qCom>
+          <vUnCom>20.0000</vUnCom>
+          <vProd>60.00</vProd>
+        </prod>
+      </det>
+      <det nItem="2">
+        <prod>
+          <cProd>AMOSTRA-2</cProd>
+          <xProd>Vela de ignicao</xProd>
+          <qCom>2.0000</qCom>
+          <vUnCom>25.0000</vUnCom>
+          <vProd>50.00</vProd>
+        </prod>
+      </det>
+      <total>
+        <ICMSTot>
+          <vFrete>5.00</vFrete>
+          <vDesc>2.00</vDesc>
+          <vTotTrib>4.00</vTotTrib>
+          <vNF>117.00</vNF>
+        </ICMSTot>
+      </total>
+    </infNFe>
+  </NFe>
+  <protNFe>
+    <infProt>
+      <chNFe>35261011223344556677889900112233445566778899</chNFe>
+    </infProt>
+  </protNFe>
+</nfeProc>

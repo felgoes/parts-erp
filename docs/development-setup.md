@@ -1,6 +1,6 @@
 # Ambiente local reproduzível (WSL Ubuntu)
 
-Use WSL Ubuntu e mantenha o checkout público do app em `~/workspace/garagista/parts-erp-main`. O checkout privado de infraestrutura é configurado localmente em cada máquina; não publique seu nome ou caminho.
+Use WSL Ubuntu e mantenha o checkout do app em `~/workspace/garagista/parts-erp-main`. O repositório do app é privado (clone e pull exigem credencial). O checkout privado de infraestrutura é configurado localmente em cada máquina; não publique seu nome ou caminho.
 
 Não use pasta sincronizada por OneDrive/Dropbox para checkouts, bancos ou backups. Não copie `.env`, bancos, backups, chaves SSH ou tokens entre máquinas.
 
@@ -41,6 +41,7 @@ Também é possível subir cada serviço manualmente com `cd frontend && npm sta
 ./scripts/dev/checks.sh all                             # portão antes do push: backend + frontend + build
 ./scripts/dev/sync.sh start | finish | status           # alternância entre as duas máquinas (veja docs/duas-maquinas.md)
 ./backend/.venv/bin/python scripts/dev/import_smoke.py  # smoke do fluxo de importação de compra no HML local
+./scripts/dev/secret-scan.sh                            # varredura de segredo antes do push (o finish já roda)
 ```
 
 O `setup-local.sh` só roda `npm ci` quando o `package-lock.json` mudou (use `--force-deps` para

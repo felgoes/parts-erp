@@ -109,11 +109,12 @@ publish() {
 }
 
 finish_work() {
-  local run_checks=1 allow_dirty=0
+  local run_checks=1 allow_dirty=0 run_scan=1
   for arg in "$@"; do
     case "$arg" in
       --no-checks) run_checks=0 ;;
       --allow-dirty) allow_dirty=1 ;;
+      --no-scan) run_scan=0 ;;
     esac
   done
   fetch_remote
@@ -139,6 +140,10 @@ finish_work() {
   if [ "$run_checks" -eq 1 ]; then
     say "rodando o portão completo antes de publicar…"
     bash "$ROOT/scripts/dev/checks.sh" all
+  fi
+  if [ "$run_scan" -eq 1 ]; then
+    say "varrendo segredo antes de publicar…"
+    bash "$ROOT/scripts/dev/secret-scan.sh" || fail "scan de segredo reprovou; corrija antes de publicar (escapes: --no-scan)."
   fi
   git -C "$ROOT" push "$REMOTE" "$BRANCH"
   say "publicado: $(short_sha "$REMOTE/$BRANCH") — pode trocar de máquina."

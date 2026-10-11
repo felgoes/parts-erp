@@ -11,3 +11,7 @@ As specs descrevem comportamento e critérios de aceite de cada item. A lista of
 7. [P6 — Vincular itens importados aos produtos do estoque](p6-vincular-itens-importados-a-produtos.md)
 8. [P7 — Simplificar o pedido de compra e permitir exclusão segura](p7-simplificar-pedido-compra-exclusao.md)
 9. [P8 — Contas a pagar como módulo](p8-contas-a-pagar-modulo.md)
+10. [P9 — Compra pede peças e quantidades; valores somente nas cotações](p9-compra-valores-somente-em-cotacoes.md)
+11. [P10 — Máscara de valores forte, somente inclusão](p10-mascara-valores-somente-inclusao.md)
+12. [P11 — Cotação com total e custo unitário em tempo real](p11-cotacao-total-unitario-tempo-real.md)
+13. [P12 — Condição de pagamento da cotação gera as parcelas do título a pagar](p12-condicao-pagamento-parcelas-titulo.md)

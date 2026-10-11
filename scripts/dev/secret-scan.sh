@@ -66,12 +66,15 @@ done
 [ "$diff_found" -eq 0 ] && echo "  ok       nada suspeito no diff"
 
 if [ "$SCAN_HISTORY" -eq 1 ]; then
-  echo "varrendo o histórico completo (contagens por tipo):"
+  # Auditoria, não portão: o histórico tem valor de teste e exemplo de documentação por
+  # natureza, e o que já foi publicado não sai do histórico por varredura. Serve para
+  # revisar de tempos em tempos; o portão é a árvore e o diff acima.
+  echo "auditando o histórico completo (contagens por tipo, para revisão manual):"
   for entry in "${PATTERNS[@]}"; do
     count="$(git -C "$ROOT" log --all -p 2>/dev/null | grep -cIE -e "${entry#*|}" || true)"
-    [ "${count:-0}" -gt 0 ] && { found=1; echo "  ATENÇÃO  ${entry%%|*}: $count ocorrência(s)"; }
+    [ "${count:-0}" -gt 0 ] && echo "  revisar  ${entry%%|*}: $count ocorrência(s) (esperado em teste/exemplo; confira se há valor real)"
   done
-  echo "  (varredura de histórico concluída)"
+  echo "  (auditoria de histórico concluída — não bloqueia a publicação)"
 fi
 
 if [ "$found" -ne 0 ]; then

@@ -1,6 +1,6 @@
 # Ambiente local reproduzível (WSL Ubuntu)
 
-Use WSL Ubuntu e mantenha o checkout do app em `~/workspace/garagista/parts-erp-main`. O repositório do app é privado (clone e pull exigem credencial). O checkout privado de infraestrutura é configurado localmente em cada máquina; não publique seu nome ou caminho.
+Use WSL Ubuntu e mantenha o checkout do app em `~/workspace/garagista/parts-erp-main`. O repositório do app é público (portfólio) — clone e pull não pedem credencial, o push pede; escreva sempre pensando que tudo aqui é visível e permanente. O checkout privado de infraestrutura é configurado localmente em cada máquina; não publique seu nome ou caminho.
 
 Não use pasta sincronizada por OneDrive/Dropbox para checkouts, bancos ou backups. Não copie `.env`, bancos, backups, chaves SSH ou tokens entre máquinas.
 

@@ -47,10 +47,11 @@ validada, com `git merge --no-ff`.
 
 ## Documentação: um dono por arquivo
 
-`TASKS.md`, `docs/specs/` e `RELEASE_NOTES.md` são a fonte de verdade compartilhada. Quem
-edita, publica na hora — inclusive o agente de PO. Evite duas conversas editando o mesmo
-`TASKS.md` ou o índice de specs: foi assim que nasceu um conflito de "arquivo apagado de um
-lado, alterado do outro".
+A fonte de verdade compartilhada é a fila do repositório privado de infraestrutura (`TASKS.md`,
+com as specs de trabalho pendente). Este repositório do app é público e guarda o que já existe:
+as specs entregues (`docs/specs/`) e as notas de produção (`RELEASE_NOTES.md`). Quem edita,
+publica na hora — inclusive o agente de PO. Evite duas conversas editando o mesmo arquivo de
+fila: foi assim que nasceu um conflito de "arquivo apagado de um lado, alterado do outro".
 
 ## Checklist ao trocar de máquina
 

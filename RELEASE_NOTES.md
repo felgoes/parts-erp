@@ -2,6 +2,8 @@
 
 ## 10 de outubro de 2026 — entregas confirmadas em PRD
 
+- [Recibo em imagem e vínculo por SKU · d8f3bd1](https://github.com/felgoes/parts-erp/commit/d8f3bd1): o recibo fotografado do AliExpress passa a ser lido com o item, mantendo o texto de embalagem ("10PCS") na descrição e a quantidade comprada correta; quando a quantidade é deduzida, a revisão indica isso; e item cujo SKU ou código de barras bate exatamente com um produto do catálogo já entra vinculado, visível e removível.
+
 - [Origem do dado, anexo na mesma operação e NF-e XML · d9db8f1](https://github.com/felgoes/parts-erp/commit/d9db8f1): a revisão da importação mostra de onde veio cada valor (documento, XML da NF-e ou OCR com a qualidade lida) em vez de porcentagens fixas; a compra importada é criada e anexada na mesma operação, então falha no anexo não deixa compra sem documento; e a NF-e XML passa a registrar CNPJ do emitente, série e número em campos próprios.
 
 - [Leitura de recibo por coluna (Alibaba e DANFE) · bec502c](https://github.com/felgoes/parts-erp/commit/bec502c): os itens de recibos com colunas agora são lidos — descrição (inclusive em duas linhas), quantidade, valor unitário e total da linha, com código do produto e unidade; a DANFE passa a entregar chave de acesso, número, série, emitente, CNPJ, data de emissão, valor dos produtos, frete, desconto e total da nota.

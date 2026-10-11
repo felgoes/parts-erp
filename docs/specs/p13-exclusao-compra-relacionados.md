@@ -1,6 +1,6 @@
 # P13 — Excluir pedido de compra pelos três pontos, com os registros ligados
 
-**Status:** decidida — decisões do PO fechadas em 10/10/2026; pronta para implementação
+**Status:** concluída — implementada no commit 24983c7 (10/10/2026), validada em HML local (menu, confirmação com efeitos, exclusão com estorno e bloqueio por pagamento) e implantada em PRD com smoke checks públicos do site e ERP em HTTP 200
 **Prioridade:** P2
 
 ## Contexto

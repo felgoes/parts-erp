@@ -2,6 +2,8 @@
 
 ## 10 de outubro de 2026 — entregas confirmadas em PRD
 
+- [Excluir compra pelos três pontos · 24983c7](https://github.com/felgoes/parts-erp/commit/24983c7): a ação agora está no menu de cada pedido e no detalhe, com confirmação mostrando número, fornecedor, valor e o que será apagado; a exclusão remove itens, cotações, anexos, histórico e título a pagar, devolve o estoque recebido por movimento de estorno e fica registrada na auditoria. Bloqueia quando há pagamento ao fornecedor ou quando o estorno deixaria saldo negativo, explicando o caminho correto.
+
 - [Título a pagar parcelado pela condição combinada · 701bef8](https://github.com/felgoes/parts-erp/commit/701bef8): escolha à vista, 30 dias, 30/60, 30/60/90 ou uma condição própria na cotação e na despesa; o título a pagar nasce na aprovação já parcelado, com vencimento e valor por parcela, baixa parcela a parcela e mudança de condição recalculando apenas o que está em aberto.
 
 - [Compras sem valor: o preço entra pela cotação · 35610c1](https://github.com/felgoes/parts-erp/commit/35610c1): a compra de peças nasce só com peças e quantidades; custo, frete, impostos e desconto entram na cotação do fornecedor e aparecem na peça somente para leitura depois da escolha.

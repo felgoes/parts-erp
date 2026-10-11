@@ -1,6 +1,6 @@
 # P10 — Máscara de valores forte, somente inclusão
 
-**Status:** decidida — decisões do PO fechadas em 10/10/2026; pronta para implementação
+**Status:** concluída — implementada no commit 35610c1 (10/10/2026) e registrada nas notas de atualização daquele deploy
 **Prioridade:** P2
 
 ## Objetivo

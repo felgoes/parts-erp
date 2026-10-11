@@ -899,6 +899,14 @@ def _parse_nfe_xml(data: bytes) -> dict[str, Any]:
         fields["access_key"] = {"value": access, "confidence": 1.0, "source": "xml"}
     if issue_date:
         fields["date"] = {"value": issue_date[:10], "confidence": 1.0, "source": "xml"}
+    issuer_cnpj = one("CNPJ")
+    series = one("serie")
+    if issuer_cnpj:
+        fields["issuer_cnpj"] = {"value": issuer_cnpj, "confidence": 1.0, "source": "xml"}
+    if series:
+        fields["document_series"] = {"value": series, "confidence": 1.0, "source": "xml"}
+    if number:
+        fields["document_number"] = {"value": number, "confidence": 1.0, "source": "xml"}
     for field, value in (("shipping", freight), ("discount", discount), ("tax", tax)):
         if value:
             fields[field] = {"value": round(float(value), 2), "confidence": 1.0, "source": "xml"}

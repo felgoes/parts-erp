@@ -72,13 +72,13 @@ import { dateOnlyLabel, dateOnlyValue } from '../../shared/date-only';
         @if (review.warnings?.length) { <div class="purchase-import-warnings" role="status"><strong>Confira estes pontos</strong><ul>@for (warning of review.warnings; track warning) { <li>{{ warning }}</li> }</ul></div> }
         <div class="purchase-form-meta import-meta">
           <label>Perfil do documento<select [ngModel]="review.profile.profile_id || ''" [ngModelOptions]="{standalone: true}" (ngModelChange)="changeImportProfile($event)"><option value="">Não identificado</option>@for (profile of importProfiles(); track profile.profile_id) { <option [value]="profile.profile_id">{{ profile.name }}</option> }</select><small>@if (review.profile.selected) { Perfil escolhido manualmente · sempre revise antes de salvar } @else { {{ review.profile.confidence * 100 | number:'1.0-0' }}% de evidência automática · sempre revise antes de salvar }</small>@if (importLoading()) { <small role="status">Reanalisando com o perfil selecionado…</small> }</label>
-          <label>Fornecedor<input [value]="importDraft().supplier" (input)="updateImportField('supplier', $any($event.target).value)" placeholder="Conferir fornecedor" />@if (review.fields.supplier) { <small>{{ review.fields.supplier.confidence * 100 | number:'1.0-0' }}% de confiança · {{ review.fields.supplier.source }}</small> }</label>
-          <label>Número do pedido<input [value]="importDraft().orderNumber" (input)="updateImportField('orderNumber', $any($event.target).value)" placeholder="Opcional" />@if (review.fields.order_number) { <small>{{ review.fields.order_number.confidence * 100 | number:'1.0-0' }}% de confiança · {{ review.fields.order_number.source }}</small> }</label>
-          <label>Data do documento<input [value]="importDraft().documentDate" (input)="updateImportField('documentDate', $any($event.target).value)" placeholder="Como aparece no recibo" />@if (review.fields.date) { <small>{{ review.fields.date.confidence * 100 | number:'1.0-0' }}% de confiança · {{ review.fields.date.source }}</small> }</label>
-          <label>Total do documento<input appMoneyInput [appMoneyInput]="importDraft().total" min="0" (moneyInput)="updateImportNumber('total', $event)" (moneyValidity)="setImportMoneyValidity('total', $event)" />@if (review.fields.total) { <small>{{ review.fields.total.confidence * 100 | number:'1.0-0' }}% de confiança · {{ review.fields.total.source }}</small> }</label>
-          <label>Frete identificado<input appMoneyInput [appMoneyInput]="importDraft().shipping" min="0" (moneyInput)="updateImportNumber('shipping', $event)" (moneyValidity)="setImportMoneyValidity('shipping', $event)" />@if (review.fields.shipping) { <small>{{ review.fields.shipping.confidence * 100 | number:'1.0-0' }}% de confiança · {{ review.fields.shipping.source }}</small> }</label>
-          <label>Desconto identificado<input appMoneyInput [appMoneyInput]="importDraft().discount" min="0" (moneyInput)="updateImportNumber('discount', $event)" (moneyValidity)="setImportMoneyValidity('discount', $event)" />@if (review.fields.discount) { <small>{{ review.fields.discount.confidence * 100 | number:'1.0-0' }}% de confiança · {{ review.fields.discount.source }}</small> }</label>
-          <label>Impostos identificados<input appMoneyInput [appMoneyInput]="importDraft().tax" min="0" (moneyInput)="updateImportNumber('tax', $event)" (moneyValidity)="setImportMoneyValidity('tax', $event)" />@if (review.fields.tax) { <small>{{ review.fields.tax.confidence * 100 | number:'1.0-0' }}% de confiança · {{ review.fields.tax.source }}</small> }</label>
+          <label>Fornecedor<input [value]="importDraft().supplier" (input)="updateImportField('supplier', $any($event.target).value)" placeholder="Conferir fornecedor" />@if (review.fields.supplier) { <small>{{ fieldOrigin(review.fields.supplier) }}</small> }</label>
+          <label>Número do pedido<input [value]="importDraft().orderNumber" (input)="updateImportField('orderNumber', $any($event.target).value)" placeholder="Opcional" />@if (review.fields.order_number) { <small>{{ fieldOrigin(review.fields.order_number) }}</small> }</label>
+          <label>Data do documento<input [value]="importDraft().documentDate" (input)="updateImportField('documentDate', $any($event.target).value)" placeholder="Como aparece no recibo" />@if (review.fields.date) { <small>{{ fieldOrigin(review.fields.date) }}</small> }</label>
+          <label>Total do documento<input appMoneyInput [appMoneyInput]="importDraft().total" min="0" (moneyInput)="updateImportNumber('total', $event)" (moneyValidity)="setImportMoneyValidity('total', $event)" />@if (review.fields.total) { <small>{{ fieldOrigin(review.fields.total) }}</small> }</label>
+          <label>Frete identificado<input appMoneyInput [appMoneyInput]="importDraft().shipping" min="0" (moneyInput)="updateImportNumber('shipping', $event)" (moneyValidity)="setImportMoneyValidity('shipping', $event)" />@if (review.fields.shipping) { <small>{{ fieldOrigin(review.fields.shipping) }}</small> }</label>
+          <label>Desconto identificado<input appMoneyInput [appMoneyInput]="importDraft().discount" min="0" (moneyInput)="updateImportNumber('discount', $event)" (moneyValidity)="setImportMoneyValidity('discount', $event)" />@if (review.fields.discount) { <small>{{ fieldOrigin(review.fields.discount) }}</small> }</label>
+          <label>Impostos identificados<input appMoneyInput [appMoneyInput]="importDraft().tax" min="0" (moneyInput)="updateImportNumber('tax', $event)" (moneyValidity)="setImportMoneyValidity('tax', $event)" />@if (review.fields.tax) { <small>{{ fieldOrigin(review.fields.tax) }}</small> }</label>
         </div>
         <div class="purchase-form-section"><div class="section-heading"><div><p class="eyebrow">Campos extraídos</p><h3>Itens da compra</h3></div><button type="button" class="secondary small" (click)="addImportLine()">+ Adicionar linha</button></div>
           <p class="purchase-flow-hint">Campos sem evidência não são inventados. Compare quantidade × unitário com o total da linha e com o total do recibo.</p>
@@ -100,7 +100,7 @@ import { dateOnlyLabel, dateOnlyValue } from '../../shared/date-only';
               <label>Quantidade<input type="number" min="0.001" step="0.001" [value]="item.quantity" (input)="updateImportItem(i, 'quantity', $any($event.target).value)" /></label>
               <label>Valor unitário<input appMoneyInput [appMoneyInput]="item.unit_cost" min="0" (moneyInput)="updateImportItem(i, 'unit_cost', $event)" (moneyValidity)="setImportMoneyValidity('item-' + i, $event)" /></label>
               <label>Desconto da linha<input appMoneyInput [appMoneyInput]="item.discount_amount" min="0" (moneyInput)="updateImportItem(i, 'discount_amount', $event)" (moneyValidity)="setImportMoneyValidity('discount-' + i, $event)" /></label><small>Total da linha: {{ item.line_total | currency:'BRL' }}</small>
-              <small class="import-confidence">Confiança OCR: {{ item.confidence * 100 | number:'1.0-0' }}%</small>
+              <small class="import-confidence">{{ itemOrigin(item) }}</small>
               <button type="button" class="remove-line" [attr.aria-label]="'Remover item ' + (i + 1)" (click)="removeImportLine(i)">×</button>
             </div>
           } @empty { <p class="muted">Nenhum item detectado. Adicione as linhas manualmente para continuar.</p> }</div>
@@ -374,6 +374,19 @@ export class PurchasesPage implements OnInit {
   updateImportField(field: 'supplier' | 'orderNumber' | 'documentDate', value: string) { this.importDraft.update((draft) => ({ ...draft, [field]: value })); }
   setImportRate(value: number | null) { this.importDraft.update((draft) => ({ ...draft, exchangeRate: value })); }
   setImportRateFromInput(value: string) { this.setImportRate(value === '' ? null : Number(value)); }
+  fieldOrigin(field: { source?: string; confidence?: number } | undefined): string {
+    if (!field) return 'não identificado';
+    const source = String(field.source || '');
+    if (source === 'xml') return 'XML da NF-e';
+    if (source === 'ocr') return `OCR · qualidade ${Math.round((Number(field.confidence) || 0) * 100)}%`;
+    if (source === 'pdf_text') return 'texto do documento';
+    if (source === 'columns') return 'grade do documento';
+    return 'documento';
+  }
+  itemOrigin(item: { source?: string; confidence?: number; quantity_derived?: boolean }): string {
+    const base = this.fieldOrigin(item);
+    return item.quantity_derived ? `${base} · quantidade derivada` : base;
+  }
   setImportPaid(value: number | null) { this.importDraft.update((draft) => ({ ...draft, paidAmount: value })); }
   importItemsTotal() { return this.importDraft().items.reduce((sum, item) => sum + Number(item.line_total || 0), 0); }
   importClosingDifference() {
@@ -469,19 +482,23 @@ export class PurchasesPage implements OnInit {
         discount_amount: item.discount_amount + this.allocateImportTotal(draft.discount, draft.items, index),
       })),
     };
-    this.api.createPurchase(payload).pipe(finalize(() => this.creatingImport.set(false))).subscribe({
+    this.api.confirmImportedPurchase(file, payload).pipe(finalize(() => this.creatingImport.set(false))).subscribe({
       next: (purchase) => {
         this.importReview.set(null); this.importFile.set(null);
         this.purchases.update((list) => [purchase, ...list]);
         const alreadyAttached = purchase.attachments.some((attachment) => attachment.filename === file.name && attachment.size_bytes === file.size);
-        if (!alreadyAttached) this.api.uploadPurchaseAttachments(purchase.id, [file]).subscribe({
-          next: (updated) => this.setPurchase(updated),
-          error: () => this.error.set('Compra criada, mas o anexo não foi enviado. Anexe o documento na compra.'),
-        });
+        if (!alreadyAttached) this.error.set('O documento não voltou anexado; confira o anexo na compra.');
         this.openDetails(purchase);
       },
-      error: (err) => this.importError.set(err?.error?.detail || 'Não foi possível criar a compra revisada.'),
+      error: (err) => this.importError.set(this.importErrorText(err)),
     });
+  }
+  private importErrorText(err: any): string {
+    const detail = err?.error?.detail;
+    if (typeof detail === 'string') return detail;
+    if (Array.isArray(detail)) return detail.map((entry) => entry?.msg || '').filter(Boolean).join(' · ') || 'Confira os campos da revisão.';
+    if (detail?.message) return String(detail.message);
+    return 'Não foi possível criar a compra revisada.';
   }
 
   private newLine() { return this.fb.group({ product_id: [''], sku: [''], description: ['', Validators.required], unit: ['un', Validators.required], quantity: [1, [Validators.required, Validators.min(0.001)]], unit_cost: [0, [Validators.required, Validators.min(0)]] }); }

@@ -60,6 +60,13 @@ export class ApiService {
   purchaseImportDuplicates(params: { document_access_key?: string; order_number?: string; origin?: string }): Observable<{ match: { purchase_id: string; purchase_number: string; purchase_status: string; cancelled: boolean } | null }> {
     return this.http.get<{ match: { purchase_id: string; purchase_number: string; purchase_status: string; cancelled: boolean } | null }>(`${this.base}/purchases/import-document/duplicates`, { params: this.queryParams(params) });
   }
+
+  confirmImportedPurchase(file: File, payload: unknown): Observable<Purchase> {
+    const form = new FormData();
+    form.append('file', file);
+    form.append('payload', JSON.stringify(payload));
+    return this.http.post<Purchase>(`${this.base}/purchases/import-document/confirm`, form);
+  }
   saveErpSettings(
     settings: Pick<ErpSettings, 'company_name' | 'company_short_name' | 'logo_data_url' | 'backup_enabled' | 'backup_frequency' | 'backup_time' | 'backup_retention_days' | 'backup_destination'> & { drive_client_id?: string | null; drive_client_secret?: string; drive_folder_id?: string | null },
   ): Observable<ErpSettings> {

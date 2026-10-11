@@ -3,8 +3,9 @@ from decimal import ROUND_HALF_UP, Decimal
 from pathlib import Path
 from uuid import uuid4
 
-from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
 from fastapi.responses import FileResponse
+from pydantic import ValidationError
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session, selectinload
 
@@ -612,6 +613,62 @@ def update_purchase_item(
     _recompute_purchase_costs(purchase, selected)
     _event(db, purchase, "item_updated", f"Dados de {item.description} atualizados por {user.full_name}.")
     db.commit()
+    return _present(_load(db, purchase.id), user)
+
+
+@router.post("/import-document/confirm", response_model=PurchaseOut, status_code=201)
+async def confirm_imported_purchase(
+    file: UploadFile = File(...),
+    payload: str = Form(...),
+    db: Session = Depends(get_db),
+    user: User = Depends(require_permission(Permission.PURCHASE_MANAGE)),
+) -> PurchaseOut:
+    """Cria a compra importada e anexa o documento original na mesma operação."""
+    try:
+        data = PurchaseCreate.model_validate_json(payload)
+    except ValidationError as error:
+        message = " · ".join(
+            str(entry.get("msg", "")).strip() for entry in error.errors() if entry.get("msg")
+        )[:400]
+        raise HTTPException(
+            status_code=422, detail=message or "Confira os dados da compra importada."
+        ) from error
+    purchase = create_purchase(data, db, user)
+    stored: Path | None = None
+    try:
+        content = file.file.read(15 * 1024 * 1024 + 1)
+        if not content or len(content) > 15 * 1024 * 1024:
+            raise ValueError("O documento deve ter conteúdo e até 15 MB.")
+        filename = Path(file.filename or "documento").name[:255]
+        base_dir = Path(get_settings().documents_dir).resolve() / "purchases" / purchase.id
+        base_dir.mkdir(parents=True, exist_ok=True)
+        stored = (base_dir / f"{uuid4().hex}_{filename}").resolve()
+        stored.write_bytes(content)
+        db.add(
+            PurchaseAttachment(
+                purchase_id=purchase.id,
+                filename=filename,
+                content_type=file.content_type or "application/octet-stream",
+                size_bytes=len(content),
+                storage_path=str(stored),
+            )
+        )
+        _event(db, _load(db, purchase.id), "attachment_added", f"Documento original anexado por {user.full_name}.", user=user)
+        db.commit()
+    except Exception:
+        db.rollback()
+        if stored is not None:
+            stored.unlink(missing_ok=True)
+        orphan = db.get(PurchaseCase, purchase.id)
+        if orphan is not None:
+            db.delete(orphan)
+            db.commit()
+        raise HTTPException(
+            status_code=422,
+            detail="Não foi possível anexar o documento original; a compra não foi criada.",
+        ) from None
+    finally:
+        file.file.close()
     return _present(_load(db, purchase.id), user)
 
 

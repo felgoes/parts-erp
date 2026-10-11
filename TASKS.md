@@ -2,6 +2,10 @@
 
 ## Pendentes
 
+- [ ] [P18] Compra importada entra com a cotação do documento aceita e o pedido registrado.
+  Confirmar a importação hoje cria a compra "em negociação" com os valores lidos do papel nos itens, mas sem nenhuma cotação: o pedido não pode ser enviado, o recebimento fica bloqueado e o título não aparece no contas a pagar, obrigando o comprador a cadastrar uma cotação de mentira só para destravar o fluxo. A entrega registra a cotação do documento já aceita, cria o título com a condição padrão e registra o pedido na mesma transação, deixando a compra pronta para receber, com a revisão mostrando o custo final por peça e o fechamento do total.
+  Spec: docs/specs/p18-compra-importada-cotacao-aceita.md
+
 - [ ] [P13] Estoque publicado coerente em cada canal.
   Receber compra, devolver ao fornecedor, ajustar o saldo e vender já movimentam estoque, mas só parte desses eventos publica a nova quantidade nos anúncios do Mercado Livre e da Shopee: o recebimento de compra e o retorno de devolução ao estoque não publicam e a falha de canal é descartada em silêncio. O anúncio fica com menos peças do que existem, a venda se perde e não há como saber qual anúncio está desatualizado. A entrega publica em todo ponto que altera saldo, registra pendência e erro por anúncio, retenta pelo worker e mostra a lista de divergências com "Publicar agora".
   Spec: docs/specs/p13-estoque-publicado-canais.md
@@ -30,6 +34,6 @@
 
 ---
 
-Fila priorizada em 11 de outubro de 2026 (ordem de execução): **P13 → P14 → P15 → P16 → P17**.
-Primeira tarefa da fila: **P13 — Estoque publicado coerente em cada canal** (prioridade alta).
-Prioridades: P13 e P14 altas; P15 e P16 médias; P17 baixa. Itens anteriores, concluídos ou encerrados, permanecem no histórico do Git e no `RELEASE_NOTES.md`.
+Fila priorizada em 11 de outubro de 2026 (ordem de execução): **P18 → P13 → P14 → P15 → P16 → P17**.
+Primeira tarefa da fila: **P18 — Compra importada entra com a cotação do documento aceita e o pedido registrado** (prioridade alta).
+Prioridades: P18, P13 e P14 altas; P15 e P16 médias; P17 baixa. Itens anteriores, concluídos ou encerrados, permanecem no histórico do Git e no `RELEASE_NOTES.md`.

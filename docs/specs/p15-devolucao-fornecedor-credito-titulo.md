@@ -1,7 +1,7 @@
 # P15 — Devolução pontual ao fornecedor com crédito no título a pagar
 
 **Status:** decidida — decisões do PO fechadas em 11/10/2026; pendente de implementação (ver TASKS.md)
-**Prioridade:** P3 da fila — média
+**Prioridade:** P4 da fila — média
 
 ## Objetivo
 

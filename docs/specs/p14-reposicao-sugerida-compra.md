@@ -1,7 +1,7 @@
 # P14 — Reposição sugerida que gera o rascunho da compra
 
 **Status:** decidida — decisões do PO fechadas em 11/10/2026, com uma decisão pendente do PO registrada abaixo; pendente de implementação (ver TASKS.md)
-**Prioridade:** P2 da fila — alta
+**Prioridade:** P3 da fila — alta
 
 ## Objetivo
 

@@ -1,7 +1,7 @@
 # P13 — Estoque publicado coerente em cada canal
 
 **Status:** decidida — decisões do PO fechadas em 11/10/2026; pendente de implementação (ver TASKS.md)
-**Prioridade:** P1 da fila — alta
+**Prioridade:** P2 da fila — alta
 
 ## Objetivo
 

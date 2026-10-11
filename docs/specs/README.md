@@ -20,6 +20,7 @@ As specs descrevem comportamento e critérios de aceite de cada item. A lista of
 16. [P15 — Devolução pontual ao fornecedor com crédito no título a pagar](p15-devolucao-fornecedor-credito-titulo.md)
 17. [P16 — Catálogo público com disponibilidade e preço do anúncio](p16-catalogo-publico-disponibilidade-preco.md)
 18. [P17 — Contagem de estoque com ajuste auditado](p17-contagem-estoque-sessao.md)
+19. [P18 — Compra importada entra com a cotação do documento aceita e o pedido registrado](p18-compra-importada-cotacao-aceita.md)
 
 ## Fila priorizada
 
@@ -27,10 +28,11 @@ Ordem de execução definida em 11 de outubro de 2026, com a prioridade de cada 
 
 | Ordem | Spec | Prioridade | Tema |
 | --- | --- | --- | --- |
-| 1ª | [P13](p13-estoque-publicado-canais.md) | alta | Estoque publicado igual ao saldo em todos os canais |
-| 2ª | [P14](p14-reposicao-sugerida-compra.md) | alta | Sugestão de reposição que gera o rascunho da compra |
-| 3ª | [P15](p15-devolucao-fornecedor-credito-titulo.md) | média | Devolução ao fornecedor com crédito no título |
-| 4ª | [P16](p16-catalogo-publico-disponibilidade-preco.md) | média | Disponibilidade e preço do anúncio no catálogo público |
-| 5ª | [P17](p17-contagem-estoque-sessao.md) | baixa | Contagem de estoque com ajuste auditado |
+| 1ª | [P18](p18-compra-importada-cotacao-aceita.md) | alta | Compra importada entra com a cotação aceita e o pedido registrado |
+| 2ª | [P13](p13-estoque-publicado-canais.md) | alta | Estoque publicado igual ao saldo em todos os canais |
+| 3ª | [P14](p14-reposicao-sugerida-compra.md) | alta | Sugestão de reposição que gera o rascunho da compra |
+| 4ª | [P15](p15-devolucao-fornecedor-credito-titulo.md) | média | Devolução ao fornecedor com crédito no título |
+| 5ª | [P16](p16-catalogo-publico-disponibilidade-preco.md) | média | Disponibilidade e preço do anúncio no catálogo público |
+| 6ª | [P17](p17-contagem-estoque-sessao.md) | baixa | Contagem de estoque com ajuste auditado |
 
-Primeira tarefa da fila: **P13 — Estoque publicado coerente em cada canal**. O `TASKS.md` é a lista oficial do que está pendente.
+Primeira tarefa da fila: **P18 — Compra importada entra com a cotação do documento aceita e o pedido registrado**. O `TASKS.md` é a lista oficial do que está pendente.

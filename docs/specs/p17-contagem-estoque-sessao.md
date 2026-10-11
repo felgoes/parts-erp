@@ -1,7 +1,7 @@
 # P17 — Contagem de estoque com ajuste auditado
 
 **Status:** decidida — decisões do PO fechadas em 11/10/2026; pendente de implementação (ver TASKS.md)
-**Prioridade:** P5 da fila — baixa
+**Prioridade:** P6 da fila — baixa
 
 ## Objetivo
 

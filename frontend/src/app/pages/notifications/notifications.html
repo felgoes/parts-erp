@@ -1,32 +1,101 @@
-<app-page-header eyebrow="Central de alertas" title="Notificações" subtitle="Escolha o que merece sua atenção e consulte o histórico do ERP." />
-    <article class="panel device-status" [class.ok]="pushState().status === 'registered'" [class.failed]="pushState().status === 'error'">
-      <span class="device-status-icon" aria-hidden="true">{{ pushState().status === 'registered' ? '✓' : pushState().status === 'error' ? '!' : '•' }}</span>
-      <div><p class="eyebrow">Este dispositivo</p><h2>{{ pushStatusTitle() }}</h2><small>{{ pushState().message }}</small></div>
-      @if (pushState().status === 'error') { <button type="button" class="refresh" (click)="retryPush()">Tentar novamente</button> }
-    </article>
-    <section class="notification-grid">
-      <article class="panel preferences">
-        <div class="section-head"><div><p class="eyebrow">Preferências</p><h2>O que você quer receber?</h2></div><span class="muted">Por usuário</span></div>
-        @for (preference of preferences(); track preference.category) {
-          <div class="preference" [class.saving]="saving() === preference.category">
-            <span class="preference-copy"><strong>{{ preference.label }}</strong><small>{{ preference.description }}</small></span>
-            <div class="preference-controls">
-              <label class="receive-control"><input type="checkbox" [checked]="preference.enabled" [disabled]="saving() === preference.category" (change)="toggle(preference, $event)" /> Receber</label>
-              <label class="sound-control" [for]="'sound-' + preference.category">Som
-                <select [id]="'sound-' + preference.category" [disabled]="saving() === preference.category" (change)="setSound(preference, $event)">
-                  @for (sound of sounds; track sound.value) { <option [value]="sound.value" [selected]="sound.value === preference.sound">{{ sound.label }}</option> }
-                </select>
-              </label>
-              <button class="preview" type="button" [disabled]="!canPreview(preference.sound)" (click)="preview(preference.sound)" [attr.aria-label]="'Ouvir prévia: ' + preference.label">▶</button>
-            </div>
-          </div>
-        }
-      </article>
-      <article class="panel history">
-        <div class="section-head"><div><p class="eyebrow">Atividade recente</p><h2>Histórico de pushs</h2></div><button type="button" class="refresh" (click)="load()">Atualizar</button></div>
-        @if (loading()) { <p class="empty">Carregando notificações…</p> }
-        @for (item of history(); track item.id) {
-          <div class="history-item"><span class="dot" [class.failed]="item.status === 'failed'"></span><div><strong>{{ item.title }}</strong><p>{{ item.body }}</p><small>{{ item.created_at | date:'dd/MM/yyyy HH:mm' }} · {{ status(item.status) }}</small></div></div>
-        } @empty { @if (!loading()) { <p class="empty">Nenhuma notificação registrada ainda.</p> } }
-      </article>
-    </section>
+<app-page-header
+  eyebrow="Central de alertas"
+  title="Notificações"
+  subtitle="Escolha o que merece sua atenção e consulte o histórico do ERP."
+/>
+<article
+  class="panel device-status"
+  [class.ok]="pushState().status === 'registered'"
+  [class.failed]="pushState().status === 'error'"
+>
+  <span class="device-status-icon" aria-hidden="true">{{
+    pushState().status === 'registered' ? '✓' : pushState().status === 'error' ? '!' : '•'
+  }}</span>
+  <div>
+    <p class="eyebrow">Este dispositivo</p>
+    <h2>{{ pushStatusTitle() }}</h2>
+    <small>{{ pushState().message }}</small>
+  </div>
+  @if (pushState().status === 'error') {
+    <button type="button" class="refresh" (click)="retryPush()">Tentar novamente</button>
+  }
+</article>
+<section class="notification-grid">
+  <article class="panel preferences">
+    <div class="section-head">
+      <div>
+        <p class="eyebrow">Preferências</p>
+        <h2>O que você quer receber?</h2>
+      </div>
+      <span class="muted">Por usuário</span>
+    </div>
+    @for (preference of preferences(); track preference.category) {
+      <div class="preference" [class.saving]="saving() === preference.category">
+        <span class="preference-copy"
+          ><strong>{{ preference.label }}</strong
+          ><small>{{ preference.description }}</small></span
+        >
+        <div class="preference-controls">
+          <label class="receive-control"
+            ><input
+              type="checkbox"
+              [checked]="preference.enabled"
+              [disabled]="saving() === preference.category"
+              (change)="toggle(preference, $event)"
+            />
+            Receber</label
+          >
+          <label class="sound-control" [for]="'sound-' + preference.category"
+            >Som
+            <select
+              [id]="'sound-' + preference.category"
+              [disabled]="saving() === preference.category"
+              (change)="setSound(preference, $event)"
+            >
+              @for (sound of sounds; track sound.value) {
+                <option [value]="sound.value" [selected]="sound.value === preference.sound">
+                  {{ sound.label }}
+                </option>
+              }
+            </select>
+          </label>
+          <button
+            class="preview"
+            type="button"
+            [disabled]="!canPreview(preference.sound)"
+            (click)="preview(preference.sound)"
+            [attr.aria-label]="'Ouvir prévia: ' + preference.label"
+          >
+            ▶
+          </button>
+        </div>
+      </div>
+    }
+  </article>
+  <article class="panel history">
+    <div class="section-head">
+      <div>
+        <p class="eyebrow">Atividade recente</p>
+        <h2>Histórico de pushs</h2>
+      </div>
+      <button type="button" class="refresh" (click)="load()">Atualizar</button>
+    </div>
+    @if (loading()) {
+      <p class="empty">Carregando notificações…</p>
+    }
+    @for (item of history(); track item.id) {
+      <div class="history-item">
+        <span class="dot" [class.failed]="item.status === 'failed'"></span>
+        <div>
+          <strong>{{ item.title }}</strong>
+          <p>{{ item.body }}</p>
+          <small>{{ item.created_at | date: 'dd/MM/yyyy HH:mm' }} · {{ status(item.status) }}</small>
+        </div>
+      </div>
+    } @empty {
+      @if (!loading()) {
+        <p class="empty">Nenhuma notificação registrada ainda.</p>
+      }
+    }
+  </article>
+</section>

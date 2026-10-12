@@ -1,207 +1,1949 @@
-<app-page-header eyebrow="Suprimentos" title="Compras" subtitle="Peças para o estoque e despesas operacionais da empresa.">
-      @if (canManagePurchases()) { <div class="purchase-header-actions"><button class="secondary" type="button" [disabled]="importLoading()" (click)="purchaseImportInput.click()">{{ importLoading() ? 'Analisando documento…' : 'Importar documento' }}</button><button class="primary" type="button" (click)="openNew()">+ Nova compra</button><input #purchaseImportInput hidden type="file" accept=".pdf,.xml,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png,application/xml,text/xml" (change)="onImportDocument($event)" /></div> }
-    </app-page-header>
-    @if (importError() && !importReview()) { <p class="purchase-error" role="alert">{{ importError() }}</p> }
-    @if (message()) { <p class="purchase-success" role="status">{{ message() }}</p> }
-    <section class="purchase-summary">
-      @for (card of summary(); track card.status) {
-        <button type="button" class="purchase-stat" [class.active-stat]="statusFilter() === card.status" (click)="toggleStatus(card.status)">
-          <span>{{ card.label }}</span><strong>{{ card.count }}</strong><small>{{ card.note }}</small>
-        </button>
+<app-page-header
+  eyebrow="Suprimentos"
+  title="Compras"
+  subtitle="Peças para o estoque e despesas operacionais da empresa."
+>
+  @if (canManagePurchases()) {
+    <div class="purchase-header-actions">
+      <button
+        class="secondary"
+        type="button"
+        [disabled]="importLoading()"
+        (click)="purchaseImportInput.click()"
+      >
+        {{ importLoading() ? 'Analisando documento…' : 'Importar documento' }}</button
+      ><button class="primary" type="button" (click)="openNew()">+ Nova compra</button
+      ><input
+        #purchaseImportInput
+        hidden
+        type="file"
+        accept=".pdf,.xml,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png,application/xml,text/xml"
+        (change)="onImportDocument($event)"
+      />
+    </div>
+  }
+</app-page-header>
+@if (importError() && !importReview()) {
+  <p class="purchase-error" role="alert">{{ importError() }}</p>
+}
+@if (message()) {
+  <p class="purchase-success" role="status">{{ message() }}</p>
+}
+<section class="purchase-summary">
+  @for (card of summary(); track card.status) {
+    <button
+      type="button"
+      class="purchase-stat"
+      [class.active-stat]="statusFilter() === card.status"
+      (click)="toggleStatus(card.status)"
+    >
+      <span>{{ card.label }}</span
+      ><strong>{{ card.count }}</strong
+      ><small>{{ card.note }}</small>
+    </button>
+  }
+</section>
+<app-period-filter
+  heading="Período das compras"
+  description="Filtra pela data de abertura da negociação."
+  ariaLabel="Filtrar compras por período"
+  initialPreset="last30"
+  [initialStartDate]="startDate()"
+  [initialEndDate]="endDate()"
+  (rangeChange)="applyPeriod($event)"
+/>
+<section class="purchase-toolbar">
+  <label class="purchase-search"
+    ><span>⌕</span
+    ><input
+      aria-label="Buscar compras"
+      placeholder="Buscar número, peça ou fornecedor…"
+      [value]="search()"
+      (input)="search.set($any($event.target).value)"
+  /></label>
+  <label class="purchase-select"
+    >Etapa
+    <select [value]="statusFilter()" (change)="statusFilter.set($any($event.target).value)">
+      <option value="all">Todas</option>
+      @for (status of statuses; track status.value) {
+        <option [value]="status.value">{{ status.label }}</option>
       }
-    </section>
-    <app-period-filter heading="Período das compras" description="Filtra pela data de abertura da negociação." ariaLabel="Filtrar compras por período" initialPreset="last30" [initialStartDate]="startDate()" [initialEndDate]="endDate()" (rangeChange)="applyPeriod($event)" />
-    <section class="purchase-toolbar">
-      <label class="purchase-search"><span>⌕</span><input aria-label="Buscar compras" placeholder="Buscar número, peça ou fornecedor…" [value]="search()" (input)="search.set($any($event.target).value)" /></label>
-      <label class="purchase-select">Etapa <select [value]="statusFilter()" (change)="statusFilter.set($any($event.target).value)"><option value="all">Todas</option>@for (status of statuses; track status.value) { <option [value]="status.value">{{ status.label }}</option> }</select></label>
-      <span class="muted">{{ filtered().length }} compras</span>
-      @if (selectedPurchases().length) { <button type="button" class="danger-outline" [disabled]="saving()" (click)="deleteSelectedDrafts()">Excluir {{ selectedPurchases().length }} rascunho(s)</button> }
-      @if (totalPages() > 1) { <span class="purchase-pages"><button type="button" class="secondary small" [disabled]="page() <= 1" (click)="goToPage(-1)">Anterior</button><small>página {{ page() }} de {{ totalPages() }}</small><button type="button" class="secondary small" [disabled]="page() >= totalPages()" (click)="goToPage(1)">Próxima</button></span> }
-    </section>
-    <section class="card purchase-table-card" [class.restricted-costs]="!canReadCosts()">
-      <div class="table-wrap" (scroll)="closeRowMenu()"><table><thead><tr><th></th><th>COMPRA</th><th>PEÇAS</th><th>FORNECEDOR / COTAÇÕES</th><th>ETAPA</th><th>PREVISÃO</th><th>VALOR</th><th>ABERTA EM</th><th></th></tr></thead><tbody>
+    </select></label
+  >
+  <span class="muted">{{ filtered().length }} compras</span>
+  @if (selectedPurchases().length) {
+    <button type="button" class="danger-outline" [disabled]="saving()" (click)="deleteSelectedDrafts()">
+      Excluir {{ selectedPurchases().length }} rascunho(s)
+    </button>
+  }
+  @if (totalPages() > 1) {
+    <span class="purchase-pages"
+      ><button type="button" class="secondary small" [disabled]="page() <= 1" (click)="goToPage(-1)">
+        Anterior</button
+      ><small>página {{ page() }} de {{ totalPages() }}</small
+      ><button
+        type="button"
+        class="secondary small"
+        [disabled]="page() >= totalPages()"
+        (click)="goToPage(1)"
+      >
+        Próxima
+      </button></span
+    >
+  }
+</section>
+<section class="card purchase-table-card" [class.restricted-costs]="!canReadCosts()">
+  <div class="table-wrap" (scroll)="closeRowMenu()">
+    <table>
+      <thead>
+        <tr>
+          <th></th>
+          <th>COMPRA</th>
+          <th>PEÇAS</th>
+          <th>FORNECEDOR / COTAÇÕES</th>
+          <th>ETAPA</th>
+          <th>PREVISÃO</th>
+          <th>VALOR</th>
+          <th>ABERTA EM</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
         @for (purchase of pagedPurchases(); track purchase.id) {
-          <tr class="purchase-row" tabindex="0" (click)="openDetails(purchase)" (keydown.enter)="openDetails(purchase)">
-            <td class="row-select">@if (isSelectable(purchase)) { <input type="checkbox" [checked]="isSelected(purchase.id)" [attr.aria-label]="'Selecionar ' + purchase.number" (click)="$event.stopPropagation()" (change)="toggleSelection(purchase.id)" /> }</td>
-            <td><strong>{{ purchase.number }}</strong><small>{{ purchase.purchase_type === 'expense' ? 'Despesa da empresa' : (purchase.items.length + (purchase.items.length === 1 ? ' item' : ' itens')) }}</small></td>
-            <td><div class="purchase-products">@if (purchase.purchase_type === 'expense') { <span>{{ purchase.expense_category }}</span><small>{{ purchase.expense_amount | currency:'BRL' }}</small> } @else { @for (item of purchase.items.slice(0, 2); track item.id) { <span>{{ item.description }}</span> } @if (purchase.items.length > 2) { <small>+{{ purchase.items.length - 2 }} outras</small> } }</div></td>
-            <td>@if (purchase.purchase_type === 'expense') { <strong>{{ purchase.supplier_name || 'Sem fornecedor' }}</strong><small>Despesa lançada</small> } @else if (selectedQuote(purchase); as quote) { <strong>{{ quote.supplier_name }}</strong><small>{{ quote.total | currency:'BRL' }} · cotação escolhida</small> } @else { <strong [class.muted]="!purchase.supplier_name">{{ purchase.supplier_name || 'Em cotação' }}</strong><small>{{ purchase.supplier_name ? 'Fornecedor informado' : purchase.quotes.length + (purchase.quotes.length === 1 ? ' proposta registrada' : ' propostas registradas') }}</small> }</td>
-            <td><span class="purchase-badge" [attr.data-status]="purchase.status">{{ purchaseStatusLabel(purchase) }}</span></td>
-            <td>{{ purchase.needed_by ? dateOnly(purchase.needed_by) : '—' }}@if (isOverdue(purchase)) { <small class="overdue-chip">Atrasada</small> }</td><td>{{ purchaseTotal(purchase) | currency:'BRL' }}</td><td>{{ purchase.created_at | date:'dd/MM/yyyy' }}</td><td class="row-action"><button type="button" class="row-open" (click)="$event.stopPropagation(); openDetails(purchase)">Abrir <span>→</span></button><div class="purchase-row-menu"><button type="button" class="row-menu-trigger" [attr.aria-label]="'Ações da compra ' + purchase.number" [attr.aria-expanded]="rowMenuId() === purchase.id" aria-haspopup="menu" (click)="toggleRowMenu(purchase.id, $event)">⋮</button></div></td>
+          <tr
+            class="purchase-row"
+            tabindex="0"
+            (click)="openDetails(purchase)"
+            (keydown.enter)="openDetails(purchase)"
+          >
+            <td class="row-select">
+              @if (isSelectable(purchase)) {
+                <input
+                  type="checkbox"
+                  [checked]="isSelected(purchase.id)"
+                  [attr.aria-label]="'Selecionar ' + purchase.number"
+                  (click)="$event.stopPropagation()"
+                  (change)="toggleSelection(purchase.id)"
+                />
+              }
+            </td>
+            <td>
+              <strong>{{ purchase.number }}</strong
+              ><small>{{
+                purchase.purchase_type === 'expense'
+                  ? 'Despesa da empresa'
+                  : purchase.items.length + (purchase.items.length === 1 ? ' item' : ' itens')
+              }}</small>
+            </td>
+            <td>
+              <div class="purchase-products">
+                @if (purchase.purchase_type === 'expense') {
+                  <span>{{ purchase.expense_category }}</span
+                  ><small>{{ purchase.expense_amount | currency: 'BRL' }}</small>
+                } @else {
+                  @for (item of purchase.items.slice(0, 2); track item.id) {
+                    <span>{{ item.description }}</span>
+                  }
+                  @if (purchase.items.length > 2) {
+                    <small>+{{ purchase.items.length - 2 }} outras</small>
+                  }
+                }
+              </div>
+            </td>
+            <td>
+              @if (purchase.purchase_type === 'expense') {
+                <strong>{{ purchase.supplier_name || 'Sem fornecedor' }}</strong
+                ><small>Despesa lançada</small>
+              } @else if (selectedQuote(purchase); as quote) {
+                <strong>{{ quote.supplier_name }}</strong
+                ><small>{{ quote.total | currency: 'BRL' }} · cotação escolhida</small>
+              } @else {
+                <strong [class.muted]="!purchase.supplier_name">{{
+                  purchase.supplier_name || 'Em cotação'
+                }}</strong
+                ><small>{{
+                  purchase.supplier_name
+                    ? 'Fornecedor informado'
+                    : purchase.quotes.length +
+                      (purchase.quotes.length === 1 ? ' proposta registrada' : ' propostas registradas')
+                }}</small>
+              }
+            </td>
+            <td>
+              <span class="purchase-badge" [attr.data-status]="purchase.status">{{
+                purchaseStatusLabel(purchase)
+              }}</span>
+            </td>
+            <td>
+              {{ purchase.needed_by ? dateOnly(purchase.needed_by) : '—' }}
+              @if (isOverdue(purchase)) {
+                <small class="overdue-chip">Atrasada</small>
+              }
+            </td>
+            <td>{{ purchaseTotal(purchase) | currency: 'BRL' }}</td>
+            <td>{{ purchase.created_at | date: 'dd/MM/yyyy' }}</td>
+            <td class="row-action">
+              <button
+                type="button"
+                class="row-open"
+                (click)="$event.stopPropagation(); openDetails(purchase)"
+              >
+                Abrir <span>→</span>
+              </button>
+              <div class="purchase-row-menu">
+                <button
+                  type="button"
+                  class="row-menu-trigger"
+                  [attr.aria-label]="'Ações da compra ' + purchase.number"
+                  [attr.aria-expanded]="rowMenuId() === purchase.id"
+                  aria-haspopup="menu"
+                  (click)="toggleRowMenu(purchase.id, $event)"
+                >
+                  ⋮
+                </button>
+              </div>
+            </td>
           </tr>
-        } @empty { <tr><td colspan="9"><div class="purchase-empty"><strong>Nenhuma compra neste período</strong><span>Comece uma negociação para acompanhar propostas e recebimentos por aqui.</span>@if (canManagePurchases()) { <button class="secondary" (click)="openNew()">Criar compra</button> }</div></td></tr> }
-      </tbody></table></div>
-    </section>
-    @if (rowMenuPurchase(); as purchase) { <div class="purchase-row-menu-popover" role="menu" [style.top.px]="rowMenuPosition()?.top" [style.left.px]="rowMenuPosition()?.left"><button type="button" role="menuitem" (click)="copyPurchaseFromList(purchase, $event)">Copiar</button>@if (canManagePurchases()) { <button type="button" role="menuitem" class="menu-danger" (click)="requestDelete(purchase, $event)">Excluir compra</button> }</div> }
-    @if (deleteTarget(); as target) {
-      <div class="modal-backdrop" (click)="cancelDelete()"><section class="modal purchase-modal delete-modal" role="dialog" aria-modal="true" [attr.aria-label]="'Excluir compra ' + target.number" (click)="$event.stopPropagation()">
-        <div class="modal-head"><div><p class="eyebrow">Suprimentos · {{ target.number }}</p><h2>Excluir compra</h2><p class="modal-intro">{{ target.supplier_name || 'Sem fornecedor' }} · {{ purchaseTotal(target) | currency:'BRL' }} · esta ação não pode ser desfeita.</p></div><button class="close" aria-label="Fechar" (click)="cancelDelete()">×</button></div>
-        <p class="delete-lead">Serão apagados junto com o pedido:</p>
-        <ul class="delete-effects">@for (effect of deletionEffects(target); track effect) { <li>{{ effect }}</li> }</ul>
-        @if (deleteBlockedByPayment(target)) { <p class="purchase-error" role="alert">Este pedido tem pagamento registrado no título a pagar. Excluir apagaria uma saída de dinheiro já feita — use <strong>Cancelar compra</strong> com estorno para manter o registro financeiro.</p> }
-        <label>Motivo (opcional)<input type="text" maxlength="255" [value]="deleteReason()" (input)="deleteReason.set($any($event.target).value)" placeholder="Ex.: pedido criado por engano" /></label>
-        <p class="delete-note">A exclusão fica registrada na auditoria com número, fornecedor, itens, valor, autor e data. O estoque recebido volta por movimento de estorno.</p>
-        <div class="purchase-form-actions"><button type="button" class="secondary" (click)="cancelDelete()">Cancelar</button><button type="button" class="danger-outline" [disabled]="saving() || deleteBlockedByPayment(target)" (click)="confirmDelete(target)">{{ saving() ? 'Excluindo…' : 'Excluir compra' }}</button></div>
-      </section></div>
+        } @empty {
+          <tr>
+            <td colspan="9">
+              <div class="purchase-empty">
+                <strong>Nenhuma compra neste período</strong
+                ><span>Comece uma negociação para acompanhar propostas e recebimentos por aqui.</span>
+                @if (canManagePurchases()) {
+                  <button class="secondary" (click)="openNew()">Criar compra</button>
+                }
+              </div>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</section>
+@if (rowMenuPurchase(); as purchase) {
+  <div
+    class="purchase-row-menu-popover"
+    role="menu"
+    [style.top.px]="rowMenuPosition()?.top"
+    [style.left.px]="rowMenuPosition()?.left"
+  >
+    <button type="button" role="menuitem" (click)="copyPurchaseFromList(purchase, $event)">Copiar</button>
+    @if (canManagePurchases()) {
+      <button type="button" role="menuitem" class="menu-danger" (click)="requestDelete(purchase, $event)">
+        Excluir compra
+      </button>
     }
-
-    @if (importReview(); as review) {
-      <div class="modal-backdrop" (click)="closeImportReview()"><section class="modal wide purchase-modal purchase-import-review" role="dialog" aria-modal="true" aria-labelledby="purchase-import-title" (click)="$event.stopPropagation()">
-        <div class="modal-head"><div><p class="eyebrow">Importação assistida · {{ review.filename }}</p><h2 id="purchase-import-title">Revise antes de criar a compra</h2><p class="modal-intro">A extração é uma sugestão. Confira os campos e valores no documento original.</p></div><button class="close" aria-label="Fechar revisão" (click)="closeImportReview()">×</button></div>
-        @if (review.warnings?.length) { <div class="purchase-import-warnings" role="status"><strong>Confira estes pontos</strong><ul>@for (warning of review.warnings; track warning) { <li>{{ warning }}</li> }</ul></div> }
-        <div class="purchase-form-meta import-meta">
-          <label>Perfil do documento<select [ngModel]="review.profile.profile_id || ''" [ngModelOptions]="{standalone: true}" (ngModelChange)="changeImportProfile($event)"><option value="">Não identificado</option>@for (profile of importProfiles(); track profile.profile_id) { <option [value]="profile.profile_id">{{ profile.name }}</option> }</select><small>@if (review.profile.selected) { Perfil escolhido manualmente · sempre revise antes de salvar } @else { {{ review.profile.confidence * 100 | number:'1.0-0' }}% de evidência automática · sempre revise antes de salvar }</small>@if (importLoading()) { <small role="status">Reanalisando com o perfil selecionado…</small> }</label>
-          <label>Fornecedor<input [value]="importDraft().supplier" (input)="updateImportField('supplier', $any($event.target).value)" placeholder="Conferir fornecedor" />@if (review.fields.supplier) { <small>{{ fieldOrigin(review.fields.supplier) }}</small> }</label>
-          <label>Número do pedido<input [value]="importDraft().orderNumber" (input)="updateImportField('orderNumber', $any($event.target).value)" placeholder="Opcional" />@if (review.fields.order_number) { <small>{{ fieldOrigin(review.fields.order_number) }}</small> }</label>
-          <label>Data do documento<input [value]="importDraft().documentDate" (input)="updateImportField('documentDate', $any($event.target).value)" placeholder="Como aparece no recibo" />@if (review.fields.date) { <small>{{ fieldOrigin(review.fields.date) }}</small> }</label>
-          <label>Total do documento<input appMoneyInput [appMoneyInput]="importDraft().total" min="0" (moneyInput)="updateImportNumber('total', $event)" (moneyValidity)="setImportMoneyValidity('total', $event)" />@if (review.fields.total) { <small>{{ fieldOrigin(review.fields.total) }}</small> }</label>
-          <label>Frete identificado<input appMoneyInput [appMoneyInput]="importDraft().shipping" min="0" (moneyInput)="updateImportNumber('shipping', $event)" (moneyValidity)="setImportMoneyValidity('shipping', $event)" />@if (review.fields.shipping) { <small>{{ fieldOrigin(review.fields.shipping) }}</small> }</label>
-          <label>Desconto identificado<input appMoneyInput [appMoneyInput]="importDraft().discount" min="0" (moneyInput)="updateImportNumber('discount', $event)" (moneyValidity)="setImportMoneyValidity('discount', $event)" />@if (review.fields.discount) { <small>{{ fieldOrigin(review.fields.discount) }}</small> }</label>
-          <label>Impostos identificados<input appMoneyInput [appMoneyInput]="importDraft().tax" min="0" (moneyInput)="updateImportNumber('tax', $event)" (moneyValidity)="setImportMoneyValidity('tax', $event)" />@if (review.fields.tax) { <small>{{ fieldOrigin(review.fields.tax) }}</small> }</label>
+  </div>
+}
+@if (deleteTarget(); as target) {
+  <div class="modal-backdrop" (click)="cancelDelete()">
+    <section
+      class="modal purchase-modal delete-modal"
+      role="dialog"
+      aria-modal="true"
+      [attr.aria-label]="'Excluir compra ' + target.number"
+      (click)="$event.stopPropagation()"
+    >
+      <div class="modal-head">
+        <div>
+          <p class="eyebrow">Suprimentos · {{ target.number }}</p>
+          <h2>Excluir compra</h2>
+          <p class="modal-intro">
+            {{ target.supplier_name || 'Sem fornecedor' }} · {{ purchaseTotal(target) | currency: 'BRL' }} ·
+            esta ação não pode ser desfeita.
+          </p>
         </div>
-        <div class="purchase-form-section"><div class="section-heading"><div><p class="eyebrow">Campos extraídos</p><h3>Itens da compra</h3></div><button type="button" class="secondary small" (click)="addImportLine()">+ Adicionar linha</button></div>
-          <p class="purchase-flow-hint">Campos sem evidência não são inventados. Compare quantidade × unitário com o total da linha e com o total do recibo.</p>
-          <div class="purchase-line-list import-line-list">@for (item of importDraft().items; track $index; let i = $index) {
+        <button class="close" aria-label="Fechar" (click)="cancelDelete()">×</button>
+      </div>
+      <p class="delete-lead">Serão apagados junto com o pedido:</p>
+      <ul class="delete-effects">
+        @for (effect of deletionEffects(target); track effect) {
+          <li>{{ effect }}</li>
+        }
+      </ul>
+      @if (deleteBlockedByPayment(target)) {
+        <p class="purchase-error" role="alert">
+          Este pedido tem pagamento registrado no título a pagar. Excluir apagaria uma saída de dinheiro já
+          feita — use <strong>Cancelar compra</strong> com estorno para manter o registro financeiro.
+        </p>
+      }
+      <label
+        >Motivo (opcional)<input
+          type="text"
+          maxlength="255"
+          [value]="deleteReason()"
+          (input)="deleteReason.set($any($event.target).value)"
+          placeholder="Ex.: pedido criado por engano"
+      /></label>
+      <p class="delete-note">
+        A exclusão fica registrada na auditoria com número, fornecedor, itens, valor, autor e data. O estoque
+        recebido volta por movimento de estorno.
+      </p>
+      <div class="purchase-form-actions">
+        <button type="button" class="secondary" (click)="cancelDelete()">Cancelar</button
+        ><button
+          type="button"
+          class="danger-outline"
+          [disabled]="saving() || deleteBlockedByPayment(target)"
+          (click)="confirmDelete(target)"
+        >
+          {{ saving() ? 'Excluindo…' : 'Excluir compra' }}
+        </button>
+      </div>
+    </section>
+  </div>
+}
+
+@if (importReview(); as review) {
+  <div class="modal-backdrop" (click)="closeImportReview()">
+    <section
+      class="modal wide purchase-modal purchase-import-review"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="purchase-import-title"
+      (click)="$event.stopPropagation()"
+    >
+      <div class="modal-head">
+        <div>
+          <p class="eyebrow">Importação assistida · {{ review.filename }}</p>
+          <h2 id="purchase-import-title">Revise antes de criar a compra</h2>
+          <p class="modal-intro">
+            A extração é uma sugestão. Confira os campos e valores no documento original.
+          </p>
+        </div>
+        <button class="close" aria-label="Fechar revisão" (click)="closeImportReview()">×</button>
+      </div>
+      @if (review.warnings?.length) {
+        <div class="purchase-import-warnings" role="status">
+          <strong>Confira estes pontos</strong>
+          <ul>
+            @for (warning of review.warnings; track warning) {
+              <li>{{ warning }}</li>
+            }
+          </ul>
+        </div>
+      }
+      <div class="purchase-form-meta import-meta">
+        <label
+          >Perfil do documento<select
+            [ngModel]="review.profile.profile_id || ''"
+            [ngModelOptions]="{ standalone: true }"
+            (ngModelChange)="changeImportProfile($event)"
+          >
+            <option value="">Não identificado</option>
+            @for (profile of importProfiles(); track profile.profile_id) {
+              <option [value]="profile.profile_id">{{ profile.name }}</option>
+            }</select
+          ><small>
+            @if (review.profile.selected) {
+              Perfil escolhido manualmente · sempre revise antes de salvar
+            } @else {
+              {{ review.profile.confidence * 100 | number: '1.0-0' }}% de evidência automática · sempre revise
+              antes de salvar
+            }
+          </small>
+          @if (importLoading()) {
+            <small role="status">Reanalisando com o perfil selecionado…</small>
+          }
+        </label>
+        <label
+          >Fornecedor<input
+            [value]="importDraft().supplier"
+            (input)="updateImportField('supplier', $any($event.target).value)"
+            placeholder="Conferir fornecedor"
+          />
+          @if (review.fields.supplier) {
+            <small>{{ fieldOrigin(review.fields.supplier) }}</small>
+          }
+        </label>
+        <label
+          >Número do pedido<input
+            [value]="importDraft().orderNumber"
+            (input)="updateImportField('orderNumber', $any($event.target).value)"
+            placeholder="Opcional"
+          />
+          @if (review.fields.order_number) {
+            <small>{{ fieldOrigin(review.fields.order_number) }}</small>
+          }
+        </label>
+        <label
+          >Data do documento<input
+            [value]="importDraft().documentDate"
+            (input)="updateImportField('documentDate', $any($event.target).value)"
+            placeholder="Como aparece no recibo"
+          />
+          @if (review.fields.date) {
+            <small>{{ fieldOrigin(review.fields.date) }}</small>
+          }
+        </label>
+        <label
+          >Total do documento<input
+            appMoneyInput
+            [appMoneyInput]="importDraft().total"
+            min="0"
+            (moneyInput)="updateImportNumber('total', $event)"
+            (moneyValidity)="setImportMoneyValidity('total', $event)"
+          />
+          @if (review.fields.total) {
+            <small>{{ fieldOrigin(review.fields.total) }}</small>
+          }
+        </label>
+        <label
+          >Frete identificado<input
+            appMoneyInput
+            [appMoneyInput]="importDraft().shipping"
+            min="0"
+            (moneyInput)="updateImportNumber('shipping', $event)"
+            (moneyValidity)="setImportMoneyValidity('shipping', $event)"
+          />
+          @if (review.fields.shipping) {
+            <small>{{ fieldOrigin(review.fields.shipping) }}</small>
+          }
+        </label>
+        <label
+          >Desconto identificado<input
+            appMoneyInput
+            [appMoneyInput]="importDraft().discount"
+            min="0"
+            (moneyInput)="updateImportNumber('discount', $event)"
+            (moneyValidity)="setImportMoneyValidity('discount', $event)"
+          />
+          @if (review.fields.discount) {
+            <small>{{ fieldOrigin(review.fields.discount) }}</small>
+          }
+        </label>
+        <label
+          >Impostos identificados<input
+            appMoneyInput
+            [appMoneyInput]="importDraft().tax"
+            min="0"
+            (moneyInput)="updateImportNumber('tax', $event)"
+            (moneyValidity)="setImportMoneyValidity('tax', $event)"
+          />
+          @if (review.fields.tax) {
+            <small>{{ fieldOrigin(review.fields.tax) }}</small>
+          }
+        </label>
+      </div>
+      <div class="purchase-form-section">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Campos extraídos</p>
+            <h3>Itens da compra</h3>
+          </div>
+          <button type="button" class="secondary small" (click)="addImportLine()">+ Adicionar linha</button>
+        </div>
+        <p class="purchase-flow-hint">
+          Campos sem evidência não são inventados. Compare quantidade × unitário com o total da linha e com o
+          total do recibo.
+        </p>
+        <div class="purchase-line-list import-line-list">
+          @for (item of importDraft().items; track $index; let i = $index) {
             <div class="purchase-line-form import-line">
-              <label class="line-description">Descrição<input [value]="item.description" (input)="updateImportItem(i, 'description', $any($event.target).value)" /></label>
-              <label>SKU / código<input [value]="item.sku" (input)="updateImportItem(i, 'sku', $any($event.target).value)" placeholder="Opcional" /></label>
-              <label class="import-stock-control"><input type="checkbox" [checked]="item.stock_controlled" (change)="setImportStockControlled(i, $any($event.target).checked)" /> Controlado no estoque</label>
-              <div class="import-product-search"><label>Produto do estoque<input [value]="importProductSearch()[i] || ''" (input)="searchImportProducts(i, $any($event.target).value)" placeholder="Buscar nome, SKU ou código de barras" autocomplete="off" /></label>
-                <label class="import-product-select">Selecionar existente<select [value]="item.product_id || ''" (change)="selectImportedProductById(i, $any($event.target).value)"><option value="">Escolher do catálogo…</option>@for (product of products(); track product.id) { <option [value]="product.id">{{ product.sku }} · {{ product.name }}</option> }</select></label>
+              <label class="line-description"
+                >Descrição<input
+                  [value]="item.description"
+                  (input)="updateImportItem(i, 'description', $any($event.target).value)"
+              /></label>
+              <label
+                >SKU / código<input
+                  [value]="item.sku"
+                  (input)="updateImportItem(i, 'sku', $any($event.target).value)"
+                  placeholder="Opcional"
+              /></label>
+              <label class="import-stock-control"
+                ><input
+                  type="checkbox"
+                  [checked]="item.stock_controlled"
+                  (change)="setImportStockControlled(i, $any($event.target).checked)"
+                />
+                Controlado no estoque</label
+              >
+              <div class="import-product-search">
+                <label
+                  >Produto do estoque<input
+                    [value]="importProductSearch()[i] || ''"
+                    (input)="searchImportProducts(i, $any($event.target).value)"
+                    placeholder="Buscar nome, SKU ou código de barras"
+                    autocomplete="off"
+                /></label>
+                <label class="import-product-select"
+                  >Selecionar existente<select
+                    [value]="item.product_id || ''"
+                    (change)="selectImportedProductById(i, $any($event.target).value)"
+                  >
+                    <option value="">Escolher do catálogo…</option>
+                    @for (product of products(); track product.id) {
+                      <option [value]="product.id">{{ product.sku }} · {{ product.name }}</option>
+                    }
+                  </select></label
+                >
                 <div class="import-product-results" [hidden]="!importProductSearch()[i]">
                   @for (product of importProductResults()[i] || []; track product.id) {
-                    <button type="button" (click)="selectImportedProduct(i, product)"><strong>{{ product.name }}</strong><small>SKU {{ product.sku }} · EAN {{ product.barcode || 'sem código' }} · {{ product.current_stock | number:'1.0-3' }} un. em estoque</small></button>
+                    <button type="button" (click)="selectImportedProduct(i, product)">
+                      <strong>{{ product.name }}</strong
+                      ><small
+                        >SKU {{ product.sku }} · EAN {{ product.barcode || 'sem código' }} ·
+                        {{ product.current_stock | number: '1.0-3' }} un. em estoque</small
+                      >
+                    </button>
                   }
-                  @if (importProductSearch()[i] && !(importProductResults()[i] || []).length) { <small>Nenhum produto encontrado. Confira nome, SKU e código.</small> }
+                  @if (importProductSearch()[i] && !(importProductResults()[i] || []).length) {
+                    <small>Nenhum produto encontrado. Confira nome, SKU e código.</small>
+                  }
                 </div>
-                @if (item.stock_controlled && item.product_id) { <small>Vinculado: {{ selectedImportProduct(item.product_id)?.sku }} · {{ selectedImportProduct(item.product_id)?.name }} <button type="button" class="text-button" (click)="clearImportedProduct(i)">Remover vínculo</button></small> }
-                @if (canManageCatalog()) { <button type="button" class="secondary small" [disabled]="!item.stock_controlled" (click)="openImportProductCreate(i)">+ Cadastrar produto</button> }
+                @if (item.stock_controlled && item.product_id) {
+                  <small
+                    >Vinculado: {{ selectedImportProduct(item.product_id)?.sku }} ·
+                    {{ selectedImportProduct(item.product_id)?.name }}
+                    <button type="button" class="text-button" (click)="clearImportedProduct(i)">
+                      Remover vínculo
+                    </button></small
+                  >
+                }
+                @if (canManageCatalog()) {
+                  <button
+                    type="button"
+                    class="secondary small"
+                    [disabled]="!item.stock_controlled"
+                    (click)="openImportProductCreate(i)"
+                  >
+                    + Cadastrar produto
+                  </button>
+                }
               </div>
-              <label>Quantidade<input type="number" min="0.001" step="0.001" [value]="item.quantity" (input)="updateImportItem(i, 'quantity', $any($event.target).value)" /></label>
-              <label>Valor unitário<input appMoneyInput [appMoneyInput]="item.unit_cost" min="0" (moneyInput)="updateImportItem(i, 'unit_cost', $event)" (moneyValidity)="setImportMoneyValidity('item-' + i, $event)" /></label>
-              <label>Desconto da linha<input appMoneyInput [appMoneyInput]="item.discount_amount" min="0" (moneyInput)="updateImportItem(i, 'discount_amount', $event)" (moneyValidity)="setImportMoneyValidity('discount-' + i, $event)" /></label><small>Total da linha: {{ item.line_total | currency:'BRL' }}</small>
-              @if (importPlanLine(i); as planLine) { <small class="import-landed-cost">Custo final: {{ planLine.unit_cost | currency:'BRL' }} / un. <span>base {{ planLine.base_unit_cost | currency:'BRL' }} · frete {{ planLine.freight_amount | currency:'BRL' }} · impostos {{ planLine.tax_amount | currency:'BRL' }} · desconto -{{ planLine.discount_amount | currency:'BRL' }}</span></small> }
+              <label
+                >Quantidade<input
+                  type="number"
+                  min="0.001"
+                  step="0.001"
+                  [value]="item.quantity"
+                  (input)="updateImportItem(i, 'quantity', $any($event.target).value)"
+              /></label>
+              <label
+                >Valor unitário<input
+                  appMoneyInput
+                  [appMoneyInput]="item.unit_cost"
+                  min="0"
+                  (moneyInput)="updateImportItem(i, 'unit_cost', $event)"
+                  (moneyValidity)="setImportMoneyValidity('item-' + i, $event)"
+              /></label>
+              <label
+                >Desconto da linha<input
+                  appMoneyInput
+                  [appMoneyInput]="item.discount_amount"
+                  min="0"
+                  (moneyInput)="updateImportItem(i, 'discount_amount', $event)"
+                  (moneyValidity)="setImportMoneyValidity('discount-' + i, $event)" /></label
+              ><small>Total da linha: {{ item.line_total | currency: 'BRL' }}</small>
+              @if (importPlanLine(i); as planLine) {
+                <small class="import-landed-cost"
+                  >Custo final: {{ planLine.unit_cost | currency: 'BRL' }} / un.
+                  <span
+                    >base {{ planLine.base_unit_cost | currency: 'BRL' }} · frete
+                    {{ planLine.freight_amount | currency: 'BRL' }} · impostos
+                    {{ planLine.tax_amount | currency: 'BRL' }} · desconto -{{
+                      planLine.discount_amount | currency: 'BRL'
+                    }}</span
+                  ></small
+                >
+              }
               <small class="import-confidence">{{ itemOrigin(item) }}</small>
-              <button type="button" class="remove-line" [attr.aria-label]="'Remover item ' + (i + 1)" (click)="removeImportLine(i)">×</button>
+              <button
+                type="button"
+                class="remove-line"
+                [attr.aria-label]="'Remover item ' + (i + 1)"
+                (click)="removeImportLine(i)"
+              >
+                ×
+              </button>
             </div>
-          } @empty { <p class="muted">Nenhum item detectado. Adicione as linhas manualmente para continuar.</p> }</div>
-        </div>
-        @if (importPlan().plan; as plan) { <div class="purchase-import-closing"><div class="import-closing-line"><span>Itens {{ plan.items_subtotal | currency:'BRL' }}</span><span>+ frete {{ plan.freight_amount | currency:'BRL' }}</span><span>+ impostos {{ plan.tax_amount | currency:'BRL' }}</span><span>− descontos {{ plan.discount_amount | currency:'BRL' }}</span><strong>= {{ plan.total | currency:'BRL' }}</strong></div>@if (plan.document_total !== null && plan.difference !== 0) { <small>Total lido no documento {{ plan.document_total | currency:'BRL' }} · diferença de {{ plan.difference | currency:'BRL' }} dentro da tolerância de R$ 0,01 por item.</small> } @else if (plan.document_total === null) { <small>O documento não trouxe o total: o valor acima é a soma dos itens com frete e impostos menos descontos.</small> } <small>Ao confirmar, a compra nasce com esta cotação aceita, o pedido registrado e o título a pagar com vencimento em 30 dias da data do documento.</small></div> }
-        @if (importPlan().error) { <p class="purchase-error" role="alert">{{ importPlan().error }}</p> }
-        @if (importError()) { <p class="purchase-error" role="alert">{{ importError() }}</p> }
-        @if (importDuplicate(); as duplicate) { <p class="purchase-error" role="alert">Este documento já foi importado na compra <strong>{{ duplicate.purchase_number }}</strong>@if (duplicate.cancelled) { , que está cancelada — você pode continuar. } @else { . Abra a compra existente antes de criar outra. }</p> }
-        <section class="import-check">
-          <p class="eyebrow">Lançamento</p>
-          <div class="import-check-grid">
-            <span>Tipo</span><label><select [value]="importType()" (change)="setImportType($any($event.target).value)"><option value="parts">Peças para estoque</option><option value="expense">Despesa da empresa</option></select></label>
-            @if (importType() === 'expense') { <span>Categoria da despesa</span><label><select [value]="importCategory()" (change)="importCategory.set($any($event.target).value)">@for (category of expenseCategories; track category) { <option [value]="category">{{ category }}</option> }</select></label> }
-            <span>Já pago no checkout</span><label class="check-field"><input type="checkbox" [checked]="importPaidNow()" (change)="setImportPaidNow($any($event.target).checked)" /> o título nasce baixado</label>
-            @if (importPaidNow()) { <span>Data do pagamento</span><label><input type="date" [value]="importPaidDate()" (input)="importPaidDate.set($any($event.target).value)" /></label><span>Forma do pagamento</span><label><input type="text" [value]="importPaidMethod()" (input)="importPaidMethod.set($any($event.target).value)" placeholder="Visa, Google Pay…" /></label> }
-          </div>
-          @if (!importDraft().items.length && review.candidates?.length) {
-            <div class="import-candidates"><p class="eyebrow">Nenhum item reconhecido</p><p class="muted">Marque uma linha do documento como item para começar a revisão.</p><ul>@for (candidate of review.candidates; track candidate.text) { <li><span>{{ candidate.text }}</span><button type="button" class="secondary small" (click)="useImportCandidate(candidate)">Usar como item</button></li> }</ul></div>
+          } @empty {
+            <p class="muted">Nenhum item detectado. Adicione as linhas manualmente para continuar.</p>
           }
-        </section>
-        <section class="import-check">
-          <p class="eyebrow">Conferência do documento</p>
-          <div class="import-check-grid">
-            <span>Moeda lida</span><strong>{{ importDraft().currency || 'não identificada' }}</strong>
-            <span>Cotação usada (1 unidade da moeda em R$)</span>
-            @if (importNeedsRate() || importDraft().exchangeRate !== null) { <input type="number" min="0" step="0.000001" [value]="importDraft().exchangeRate ?? ''" (input)="setImportRateFromInput($any($event.target).value)" placeholder="Obrigatória" /> } @else { <strong>não se aplica</strong> }
-            <span>Valor efetivamente pago</span><label class="import-paid"><input appMoneyInput [appMoneyInput]="importDraft().paidAmount ?? 0" min="0" (moneyInput)="setImportPaid($event)" />@if (importDraft().paidAmount === null) { <small class="muted">não identificado</small> }</label>
-            <span>Diferença paga ÷ total</span><strong [class.check-warn]="importPaidDifference() > 0.05 || importPaidDifference() < -0.05">{{ importPaidDifference() | currency:'BRL' }}</strong>
-            <span>Fechamento: itens + frete + impostos − descontos − total</span>@if (importHasItemsToCheck()) { <strong [class.check-warn]="importClosingDifference() > 0.05 || importClosingDifference() < -0.05">{{ importClosingDifference() | currency:'BRL' }}</strong> } @else { <strong class="muted">sem itens lidos para conferir</strong> }
-            @if (importSubtotalDifference() !== null) { <span>Soma dos itens ÷ subtotal do documento</span><strong [class.check-warn]="(importSubtotalDifference() ?? 0) > 0.05 || (importSubtotalDifference() ?? 0) < -0.05">{{ importSubtotalDifference() | currency:'BRL' }}</strong> }
-          </div>
-          <details class="import-text"><summary>Ver o que foi lido</summary>@if (review.text) { <pre>{{ review.text }}</pre> } @else { <p class="muted">Este formato não devolve texto de leitura (por exemplo, XML de NF-e).</p> }</details>
-        </section>
-        @if (importBlockers().length) { <ul class="import-blockers" role="status">@for (blocker of importBlockers(); track blocker) { <li>{{ blocker }}</li> }</ul> }
-        <div class="purchase-form-actions"><span class="muted">O arquivo original será anexado. Nenhum estoque será movimentado.</span><div class="import-review-actions"><button type="button" class="secondary" (click)="closeImportReview()">Cancelar</button><button type="button" class="primary" [disabled]="creatingImport() || !canConfirmImport()" (click)="createImportedPurchase()">{{ creatingImport() ? 'Criando…' : 'Confirmar e criar compra' }}</button></div></div>
-      </section></div>
-    }
-
-    @if (importProductModal()) {
-      <div class="modal-backdrop import-product-backdrop" (click)="closeImportProductCreate()"><section class="modal purchase-modal import-product-modal" role="dialog" aria-modal="true" aria-labelledby="import-product-title" (click)="$event.stopPropagation()"><div class="modal-head"><div><p class="eyebrow">Catálogo · nova peça</p><h2 id="import-product-title">Cadastrar e vincular produto</h2><p class="modal-intro">Preencha os mesmos dados básicos exigidos no catálogo. O cadastro só será criado ao confirmar.</p></div><button class="close" type="button" aria-label="Fechar" (click)="closeImportProductCreate()">×</button></div><div class="purchase-form-meta"><label>Tipo de estoque<select [value]="importProductDraft().stock_type" (change)="updateImportProduct('stock_type', $any($event.target).value)"><option value="product">Produto</option><option value="warehouse">Almoxarifado</option></select></label><label>SKU *<input [value]="importProductDraft().sku" (input)="updateImportProduct('sku', $any($event.target).value)" /></label><label>Nome *<input [value]="importProductDraft().name" (input)="updateImportProduct('name', $any($event.target).value)" /></label><label>Marca<input [value]="importProductDraft().brand" (input)="updateImportProduct('brand', $any($event.target).value)" /></label><label>Fabricante<input [value]="importProductDraft().manufacturer" (input)="updateImportProduct('manufacturer', $any($event.target).value)" /></label><label>Número OEM / MPN<input [value]="importProductDraft().manufacturer_part_number" (input)="updateImportProduct('manufacturer_part_number', $any($event.target).value)" /></label><label>GTIN / código de barras<input [value]="importProductDraft().barcode" (input)="updateImportProduct('barcode', $any($event.target).value)" /></label><label>Categoria<input [value]="importProductDraft().category" (input)="updateImportProduct('category', $any($event.target).value)" /></label><label>Condição<select [value]="importProductDraft().item_condition" (change)="updateImportProduct('item_condition', $any($event.target).value)"><option value="new">Nova</option><option value="used">Usada</option><option value="refurbished">Recondicionada</option></select></label><label>Garantia (dias)<input type="number" min="0" max="3650" [value]="importProductDraft().warranty_days ?? ''" (input)="updateImportProduct('warranty_days', $any($event.target).value)" /></label><label>País de origem<input [value]="importProductDraft().origin_country" (input)="updateImportProduct('origin_country', $any($event.target).value)" /></label><label>Preço de venda<input appMoneyInput [appMoneyInput]="importProductDraft().sale_price" min="0" (moneyInput)="updateImportProduct('sale_price', $event)" /></label>@if (canReadCosts()) { <label>Custo<input appMoneyInput [appMoneyInput]="importProductDraft().cost_price" min="0" (moneyInput)="updateImportProduct('cost_price', $event)" /></label> }<label>Estoque mínimo<input type="number" min="0" step="0.001" [value]="importProductDraft().minimum_stock" (input)="updateImportProduct('minimum_stock', $any($event.target).value)" /></label><label>Peso embalado (g)<input type="number" min="0" step="0.001" [value]="importProductDraft().weight_g ?? ''" (input)="updateImportProduct('weight_g', $any($event.target).value)" /></label><label>Comprimento (cm)<input type="number" min="0" step="0.01" [value]="importProductDraft().package_length_cm ?? ''" (input)="updateImportProduct('package_length_cm', $any($event.target).value)" /></label><label>Largura (cm)<input type="number" min="0" step="0.01" [value]="importProductDraft().package_width_cm ?? ''" (input)="updateImportProduct('package_width_cm', $any($event.target).value)" /></label><label>Altura (cm)<input type="number" min="0" step="0.01" [value]="importProductDraft().package_height_cm ?? ''" (input)="updateImportProduct('package_height_cm', $any($event.target).value)" /></label><label class="notes-field">Descrição<textarea rows="2" [value]="importProductDraft().description" (input)="updateImportProduct('description', $any($event.target).value)"></textarea></label></div>@if (importProductError()) { <p class="purchase-error" role="alert">{{ importProductError() }}</p> }<div class="purchase-form-actions"><span class="muted">Estoque inicial zero · sem movimentação.</span><button type="button" class="primary" [disabled]="savingImportProduct() || !canSaveImportProduct()" (click)="saveImportProduct()">{{ savingImportProduct() ? 'Salvando…' : 'Criar e vincular à linha' }}</button></div></section></div>
-    }
-
-    @if (showNew()) {
-      <div class="modal-backdrop" (click)="showNew.set(false)"><section class="modal wide purchase-modal" role="dialog" aria-modal="true" aria-labelledby="new-purchase-title" (click)="$event.stopPropagation()">
-        <div class="modal-head"><div><p class="eyebrow">Suprimentos</p><h2 id="new-purchase-title">Nova compra</h2><p class="modal-intro">Cadastre peças para o estoque ou uma despesa da empresa com seus documentos.</p></div><button class="close" aria-label="Fechar" (click)="showNew.set(false)">×</button></div>
-        <form [formGroup]="form" (ngSubmit)="create()">
-<div class="purchase-form-meta"><label>Tipo de lançamento<select formControlName="purchase_type"><option value="parts">Peças para estoque</option><option value="expense">Despesa da empresa</option></select></label><label>Fornecedor / favorecido<input formControlName="supplier_name" list="supplierOptions" placeholder="Nome da empresa ou pessoa" (change)="applySupplierDefaults()" /><datalist id="supplierOptions">@for (supplier of suppliers(); track supplier.id) { <option [value]="supplier.name"></option> }</datalist>@if (supplierByName(form.controls.supplier_name.value); as known) { <small>Cadastrado · {{ known.default_delivery_days ? known.default_delivery_days + ' dias de prazo padrão' : 'sem prazo padrão' }}{{ known.default_payment_terms ? ' · ' + known.default_payment_terms : '' }}</small> } @else if (form.controls.supplier_name.value) { <button type="button" class="secondary small" [disabled]="saving()" (click)="registerSupplier(form.controls.supplier_name.value)">Cadastrar fornecedor</button> }</label><label>Previsão desejada<input type="date" formControlName="needed_by" /></label><label>Nº do pedido do fornecedor<input formControlName="supplier_order_number" placeholder="Opcional" /></label><label>Data do documento<input type="date" formControlName="document_date" /></label><label class="notes-field">Observações<textarea rows="2" formControlName="notes" placeholder="Detalhes do lançamento"></textarea></label></div>
-          @if (form.controls.purchase_type.value === 'expense') { <div class="purchase-form-section expense-fields"><div class="section-heading"><div><p class="eyebrow">Despesa operacional</p><h3>Dados do gasto</h3></div></div><div class="purchase-form-meta"><label>Categoria<select formControlName="expense_category"><option value="">Selecione…</option>@for (category of expenseCategories; track category) { <option [value]="category">{{ category }}</option> }</select></label><label>Valor total<input appMoneyInput formControlName="expense_amount" min="0" /></label><label>Condição de pagamento<select formControlName="payment_type"><option value="cash">À vista (na data do documento)</option><option value="installments">Parcelado</option><option value="entry">Entrada + parcelas</option></select></label>@if (form.controls.payment_type.value !== 'cash') { <label>Parcelas<input type="number" min="1" max="36" formControlName="installment_count" /></label><label>1º vencimento (dias)<input type="number" min="0" max="3650" formControlName="first_due_days" /></label><label>Intervalo (dias)<input type="number" min="1" max="3650" formControlName="interval_days" /></label> }</div><div class="section-heading"><div><p class="eyebrow">Estoque opcional</p><h3>Materiais controlados no almoxarifado</h3></div><button type="button" class="secondary small" (click)="addLine()">+ Adicionar material</button></div><p class="purchase-flow-hint">Inclua somente materiais que deseja controlar no estoque. O saldo só muda quando o recebimento for confirmado.</p><div formArrayName="items" class="purchase-line-list">@for (line of lines.controls; track $index; let i = $index) { <div class="purchase-line-form expense-line" [formGroupName]="i"><label>Produto existente<select formControlName="product_id" (change)="selectProduct(i, $any($event.target).value)"><option value="">Vincular no recebimento</option>@for (product of availableProducts('warehouse'); track product.id) { <option [value]="product.id">{{ product.sku }} · {{ product.name }}</option> }</select></label><label>SKU<input formControlName="sku" placeholder="SKU do material" /></label><label class="line-description">Material / descrição<input formControlName="description" placeholder="Ex.: Fita crepe" /></label><label>Unidade<input formControlName="unit" placeholder="un, cx, rolo…" /></label><label>Quantidade<input type="number" min="0.001" step="0.001" formControlName="quantity" /></label><label class="money-field">Custo unitário (R$)<input appMoneyInput formControlName="unit_cost" min="0" inputmode="decimal" /></label>@if (lines.length > 1) { <button type="button" class="remove-line" aria-label="Remover material" (click)="removeLine(i)">×</button> }</div> }</div></div> } @else { <div class="purchase-form-section"><div class="section-heading"><div><p class="eyebrow">Lista de compra</p><h3>Peças em negociação</h3></div><button type="button" class="secondary small" (click)="addLine()">+ Adicionar peça</button></div>
-            <p class="purchase-flow-hint">Nesta etapa, informe somente as peças e quantidades. Preços, frete, impostos e descontos entram em cada cotação de fornecedor.</p><div formArrayName="items" class="purchase-line-list">@for (line of lines.controls; track $index; let i = $index) { <div class="purchase-line-form" [formGroupName]="i"><label>Produto cadastrado<select formControlName="product_id" (change)="selectProduct(i, $any($event.target).value)"><option value="">Cadastrar/vincular depois</option>@for (product of availableProducts('product'); track product.id) { <option [value]="product.id">{{ product.sku }} · {{ product.name }}</option> }</select></label><label>SKU<input formControlName="sku" placeholder="Ex.: LR174890" /></label><label class="line-description">Peça / descrição<input formControlName="description" placeholder="Nome da peça" /></label><label>Quantidade<input type="number" min="0.001" step="0.001" formControlName="quantity" /></label>@if (lines.length > 1) { <button type="button" class="remove-line" aria-label="Remover peça" (click)="removeLine(i)">×</button> }</div> }</div>
-          </div> }
-          <label class="attachment-picker">Documentos <input type="file" multiple accept=".pdf,.xml,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx" (change)="setAttachments($any($event.target).files)" /><small>{{ selectedFiles().length ? selectedFiles().length + ' arquivo(s) selecionado(s)' : 'Nota fiscal, recibo, boleto ou comprovante (até 10 arquivos)' }}</small></label>
-          @if (error()) { <p class="purchase-error" role="alert">{{ error() }}</p> }
-          <div class="purchase-form-actions"><span class="muted">{{ form.controls.purchase_type.value === 'expense' ? 'Itens físicos só alteram o estoque após o recebimento' : lines.length + (lines.length === 1 ? ' peça' : ' peças') + ' · estoque só muda no recebimento' }}</span><button class="primary" [disabled]="saving() || (form.controls.purchase_type.value === 'parts' && form.invalid) || (form.controls.purchase_type.value === 'expense' && (!form.controls.expense_category.value || form.controls.expense_amount.value === null || lines.controls.some((line) => line.value.description && line.invalid)))">{{ saving() ? 'Salvando…' : 'Salvar compra' }}</button></div>
-        </form>
-      </section></div>
-    }
-
-    @if (detail(); as purchase) {
-      <div class="modal-backdrop" (click)="detail.set(null)"><section class="modal wide purchase-modal purchase-detail" [class.restricted-costs]="!canReadCosts()" [class.read-only-purchases]="!canManagePurchases()" [class.no-receiving]="!canAdjustStock()" [class.costs-pending]="purchase.purchase_type === 'parts' && !purchase.selected_quote_id" role="dialog" aria-modal="true" [attr.aria-label]="'Compra ' + purchase.number" (click)="$event.stopPropagation()">
-        <div class="modal-head"><div><p class="eyebrow">Suprimentos · {{ purchase.number }}</p><h2>{{ purchase.number }}</h2>@if (purchase.supplier_order_number || purchase.document_date) { <p class="modal-intro">Pedido do fornecedor {{ purchase.supplier_order_number || '—' }}@if (purchase.document_date) { · documento de {{ dateOnly(purchase.document_date) }} }</p> }<p class="modal-intro">Criada em {{ purchase.created_at | date:'dd/MM/yyyy HH:mm' }} @if (purchase.needed_by) { · Previsão {{ dateOnly(purchase.needed_by) }} } @if (isOverdue(purchase)) { <strong class="overdue-chip">previsão vencida</strong> }</p></div><div class="detail-head-actions"><span class="purchase-badge" [attr.data-status]="purchase.status">{{ purchaseStatusLabel(purchase) }}</span>@if (canManagePurchases() && (purchase.status === 'negotiating' || purchase.status === 'approved')) { <button type="button" class="secondary small" [disabled]="saving()" (click)="draftEditor() ? closeDraftEditor() : openDraftEditor()">{{ draftEditor() ? 'Fechar edição' : 'Editar dados' }}</button> }@if (canManagePurchases()) { <button type="button" class="secondary small" (click)="copyPurchase(purchase)">Copiar compra</button> }<button class="close" aria-label="Fechar" (click)="detail.set(null)">×</button></div></div>
-        @if (purchase.purchase_type === 'parts') { <div class="purchase-steps" aria-label="Etapas da compra">@for (step of workflow; track step.value; let i = $index) { <div class="purchase-step" [class.step-done]="stepIndex(purchase.status) > i" [class.step-current]="stepIndex(purchase.status) === i"><span>{{ stepIndex(purchase.status) > i ? '✓' : i + 1 }}</span><small>{{ step.label }}</small></div> }</div> } @else { <div class="expense-banner"><strong>Despesa da empresa</strong><span>{{ purchase.expense_category }} · {{ purchase.expense_amount | currency:'BRL' }}</span></div> }
-        <div class="purchase-detail-grid">
-          <div class="purchase-detail-main">
-            @if (draftEditor() && canManagePurchases() && (purchase.status === 'negotiating' || purchase.status === 'approved')) { <section class="purchase-form-section draft-editor">
-              <div class="section-heading"><div><p class="eyebrow">Rascunho</p><h3>Dados do pedido</h3></div><button type="button" class="secondary small" [disabled]="saving()" (click)="saveDraftHeader(purchase)">Salvar dados</button></div>
-              <div class="purchase-form-meta">
-                <label>Fornecedor<input type="text" list="supplierOptionsDetail" [value]="draftHeader().supplier_name" (input)="setDraftHeader('supplier_name', $any($event.target).value)" placeholder="Nome da empresa ou pessoa" /><datalist id="supplierOptionsDetail">@for (supplier of suppliers(); track supplier.id) { <option [value]="supplier.name"></option> }</datalist></label>
-                <label>Previsão desejada<input type="date" [value]="draftHeader().needed_by" (input)="setDraftHeader('needed_by', $any($event.target).value)" /></label>
-                <label>Nº do pedido do fornecedor<input type="text" [value]="draftHeader().supplier_order_number" (input)="setDraftHeader('supplier_order_number', $any($event.target).value)" placeholder="Opcional" /></label>
-                <label>Data do documento<input type="date" [value]="draftHeader().document_date" (input)="setDraftHeader('document_date', $any($event.target).value)" /></label>
-                <label class="notes-field">Observações<textarea rows="2" [value]="draftHeader().notes" (input)="setDraftHeader('notes', $any($event.target).value)"></textarea></label>
-              </div>
-              <div class="section-heading"><div><p class="eyebrow">Peças da negociação</p><h3>Editar linhas</h3></div></div>
-              <div class="draft-lines">
-                @for (item of purchase.items; track item.id) { <div class="draft-line">
-                  <label>Descrição<input type="text" [value]="lineDrafts()[item.id]?.description ?? item.description" (input)="setLineDraft(item.id, 'description', $any($event.target).value)" /></label>
-                  <label>SKU<input type="text" [value]="lineDrafts()[item.id]?.sku ?? item.sku" (input)="setLineDraft(item.id, 'sku', $any($event.target).value)" placeholder="Opcional no rascunho" /></label>
-                  <label>Unidade<input type="text" [value]="lineDrafts()[item.id]?.unit ?? item.unit" (input)="setLineDraft(item.id, 'unit', $any($event.target).value)" /></label>
-                  <label>Quantidade<input type="number" min="0.001" step="0.001" [value]="lineDrafts()[item.id]?.quantity ?? item.quantity" (input)="setLineDraft(item.id, 'quantity', $any($event.target).value)" /></label>
-                  <div class="draft-line-actions"><button type="button" class="secondary small" [disabled]="saving()" (click)="saveLine(purchase, item)">Salvar peça</button>@if (purchase.status === 'negotiating' && purchase.items.length > 1) { <button type="button" class="danger-outline" [disabled]="saving()" (click)="removePurchaseLine(purchase, item)">Remover</button> }</div>
-                </div> }
-                @if (purchase.status === 'negotiating') { <div class="draft-line draft-line-new">
-                  <label>Descrição<input type="text" [value]="newLineDraft().description" (input)="setNewLineDraft('description', $any($event.target).value)" placeholder="Nova peça" /></label>
-                  <label>SKU<input type="text" [value]="newLineDraft().sku" (input)="setNewLineDraft('sku', $any($event.target).value)" placeholder="Opcional no rascunho" /></label>
-                  <label>Unidade<input type="text" [value]="newLineDraft().unit" (input)="setNewLineDraft('unit', $any($event.target).value)" /></label>
-                  <label>Quantidade<input type="number" min="0.001" step="0.001" [value]="newLineDraft().quantity" (input)="setNewLineDraft('quantity', $any($event.target).value)" /></label>
-                  <div class="draft-line-actions"><button type="button" class="primary small" [disabled]="saving() || !newLineDraft().description.trim()" (click)="addDraftLine(purchase)">+ Adicionar peça</button></div>
-                </div> }
-              </div>
-            </section> }
-            @if (purchase.items.length) { <section class="purchase-form-section"><div class="section-heading"><div><p class="eyebrow">Itens e recebimento</p><h3>{{ purchase.purchase_type === 'expense' ? 'Materiais da despesa' : 'Peças da compra' }}</h3></div></div><div class="purchase-item-cards">@for (item of purchase.items; track item.id) { <article class="purchase-item-card"><div class="item-title"><div><strong>{{ item.description }}</strong><small><code>{{ item.sku }}</code>@if (item.product_id) { · vinculada ao catálogo } @else { · ainda sem produto no catálogo }</small></div><strong>{{ item.unit_cost | currency:'BRL' }} <small>/ {{ item.unit }} final</small></strong></div><div class="item-cost-breakdown"><span>Base: {{ item.base_unit_cost | currency:'BRL' }}</span><span>Frete: {{ item.freight_amount | currency:'BRL' }}</span><span>Impostos: {{ item.tax_amount | currency:'BRL' }}</span><span>Desconto: -{{ item.discount_amount | currency:'BRL' }}</span></div><div class="receipt-progress"><span>Recebido <b>{{ item.received_quantity | number:'1.0-3' }} / {{ item.quantity | number:'1.0-3' }} {{ item.unit }} · {{ item.quantity - item.received_quantity | number:'1.0-3' }} pendente</b></span><div><i [style.width.%]="progress(item)"></i></div></div>@if (purchase.status === 'ordered' || purchase.status === 'partially_received') { <div class="receive-controls"><label>Receber agora<input type="number" min="0.001" [max]="item.quantity - item.received_quantity" step="0.001" [value]="receiveQty(item)" (input)="setReceiveQty(item, $any($event.target).value)" /></label>@if (!item.product_id) { <label class="map-product">Vincular produto existente<select [value]="receiveProduct(item)" (change)="setReceiveProduct(item, $any($event.target).value)"><option value="">Selecione um produto…</option>@for (product of availableProducts(purchase.purchase_type === 'expense' ? 'warehouse' : 'product'); track product.id) { <option [value]="product.id">{{ product.sku }} · {{ product.name }}</option> }</select></label><label class="create-product-check"><input type="checkbox" [checked]="createNewProduct(item)" (change)="setCreateNewProduct(item, $any($event.target).checked)" /> Criar produto no catálogo ao receber</label> }<label class="receipt-note">Observação (avaria/divergência)<input type="text" maxlength="160" [value]="receiveObservation(item)" (input)="setReceiveObservation(item, $any($event.target).value)" placeholder="Opcional" /></label><button type="button" class="secondary small" [disabled]="saving() || receiveQty(item) <= 0" (click)="receive(item)">Registrar recebimento</button></div> }</article> }</div></section> }
-            @if (purchase.purchase_type === 'parts' && (purchase.status === 'negotiating' || purchase.status === 'approved')) { <section class="purchase-form-section"><div class="section-heading"><div><p class="eyebrow">Concorrência</p><h3>Cotações de fornecedores</h3></div></div>@if (purchase.selected_quote_id) { <p class="muted">A cotação escolhida está travada. Registre uma nova proposta e escolha de novo para trocar preço ou prazo.</p> }@if (purchase.quotes.length) { <div class="quote-cards">@for (quote of purchase.quotes; track quote.id) { <article class="quote-card" [class.quote-selected]="purchase.selected_quote_id === quote.id"><div><strong>{{ quote.supplier_name }}</strong><b>{{ quote.total | currency:'BRL' }}</b></div><p>{{ quote.delivery_days !== null ? quote.delivery_days + ' dias para entrega' : 'Prazo não informado' }} @if (quote.payment_terms) { · {{ quote.payment_terms }} }</p><div class="quote-cost-summary">@for (item of purchase.items; track item.id) { <small>{{ item.sku }} · {{ quote.item_costs?.[item.id] | currency:'BRL' }}/un.</small> }</div><small>Condição: {{ quoteConditionLabel(quote) }}</small>@if (quote.notes) { <small>{{ quote.notes }}</small> }@if (purchase.selected_quote_id === quote.id) { <small class="quote-locked">Cotação escolhida · valores travados</small> } @else { <button type="button" class="secondary small" (click)="selectQuote(quote.id)">Escolher esta cotação</button> }</article> }</div> } @else { <p class="muted">Registre as propostas recebidas para comparar preço e prazo.</p> }
-              <form class="quote-form" [formGroup]="quoteForm" (ngSubmit)="addQuote()"><div class="quote-item-costs"><strong>Custo unitário dos itens</strong>@for (item of purchase.items; track item.id) { <label class="money-field">Custo unitário (R$) &#183; {{ item.sku }} &#183; {{ item.description }}<input appMoneyInput [appMoneyInput]="quoteUnitCost(item)" min="0" (moneyInput)="setQuoteUnitCost(item, $event)" (moneyValidity)="setQuoteCostValidity(item.id, $event)" /></label> }</div><label>Fornecedor<input formControlName="supplier_name" placeholder="Nome do fornecedor" /></label><label>Contato<input formControlName="supplier_contact" placeholder="Telefone ou e-mail" /></label><label>Frete<input appMoneyInput formControlName="freight_amount" min="0" /></label><label>Impostos<input appMoneyInput formControlName="tax_amount" min="0" /></label><label>Desconto<input appMoneyInput formControlName="discount_amount" min="0" /></label><label>Ratear acréscimos/desconto<select formControlName="allocation_method"><option value="proportional">Proporcional ao subtotal de cada item</option><option value="quantity">Por quantidade de peças</option></select></label><label>Total final da proposta<input appMoneyInput [appMoneyInput]="quoteTotal(purchase)" min="0" (moneyInput)="setQuoteTotal($event)" /></label><label>Prazo (dias)<input type="number" min="0" formControlName="delivery_days" /></label><label>Condição de pagamento<select [value]="quoteForm.controls.payment_type.value" (change)="setQuoteConditionType($any($event.target).value)"><option value="cash">À vista</option><option value="installments">Parcelado</option><option value="entry">Entrada + parcelas</option></select></label>@if (quoteForm.controls.payment_type.value !== 'cash') { <label>Parcelas<input type="number" min="1" max="36" [value]="quoteForm.controls.installment_count.value" (input)="setQuoteConditionNumber('installment_count', $any($event.target).value)" /></label><label>1º vencimento (dias)<input type="number" min="0" max="3650" [value]="quoteForm.controls.first_due_days.value" (input)="setQuoteConditionNumber('first_due_days', $any($event.target).value)" /></label><label>Intervalo (dias)<input type="number" min="1" max="3650" [value]="quoteForm.controls.interval_days.value" (input)="setQuoteConditionNumber('interval_days', $any($event.target).value)" /></label> }<div class="quote-presets"><span>Atalhos</span><button type="button" class="secondary small" (click)="applyQuoteConditionPreset('cash')">À vista</button><button type="button" class="secondary small" (click)="applyQuoteConditionPreset('30')">30 dias</button><button type="button" class="secondary small" (click)="applyQuoteConditionPreset('30/60')">30/60</button><button type="button" class="secondary small" (click)="applyQuoteConditionPreset('30/60/90')">30/60/90</button></div><label class="quote-notes">Observação da condição<input formControlName="payment_terms" placeholder="Ex.: boleto combinado com o fornecedor" /></label><small class="quote-cost-hint">Parcelas do título: {{ quoteConditionPreview() }}</small><label class="quote-notes">Observações<input formControlName="notes" placeholder="Validade ou detalhes da proposta…" /></label><small class="quote-cost-hint">Custo considerado: {{ quoteTotal(purchase) | currency:'BRL' }} · {{ quoteDirectionNote() }}</small>@if (quoteRounding() !== 0) { <small class="quote-cost-hint">Ajuste de centavos de {{ quoteRounding() | currency:'BRL' }} aplicado no maior item para fechar o total.</small> }@if (quoteNet(purchase) < 0) { <p class="purchase-error" role="alert">O total da proposta é menor que o frete e os impostos menos o desconto.</p> }@if (quoteMismatch(purchase)) { <p class="purchase-error" role="alert">A soma dos itens não fecha com o total da proposta. Revise o rateio ou os valores.</p> }<button class="primary" [disabled]="quoteForm.invalid || quoteCostHasErrors() || !quoteCostsComplete(purchase) || quoteNet(purchase) < 0 || quoteMismatch(purchase) || saving()">Registrar cotação</button></form>
-            </section> }
-            @if (purchase.status === 'approved' && canManagePurchases()) { <div class="workflow-action"><div><strong>Cotação aprovada</strong><span>A compra ainda não altera o estoque.</span></div><button class="primary" [disabled]="saving()" (click)="placeOrder()">Registrar pedido ao fornecedor</button></div> }
-            @if (purchase.notes) { <section class="purchase-notes"><span class="eyebrow">Observações internas</span><p>{{ purchase.notes }}</p></section> }
-            <section class="purchase-form-section"><div class="section-heading"><div><p class="eyebrow">Documentação</p><h3>Documentos anexados</h3></div>@if (canManagePurchases()) { <label class="attachment-inline">+ Anexar documentos<input type="file" multiple (change)="uploadAttachments(purchase, $any($event.target).files)" /></label> }</div>@if (purchase.attachments.length) { <div class="attachment-list">@for (attachment of purchase.attachments; track attachment.id) { <button type="button" class="attachment-row" (click)="downloadAttachment(purchase, attachment)"><span>📎 {{ attachment.filename }}</span><small>{{ formatBytes(attachment.size_bytes) }}</small></button> }</div> } @else { <p class="muted">Nenhum documento anexado ainda.</p> }</section>
-          </div>
-          <aside class="purchase-aside"><section class="purchase-aside-card"><p class="eyebrow">Resumo</p><div><span>Itens</span><strong>{{ purchase.items.length }}</strong></div>@if (purchase.purchase_type === 'parts') { <div><span>Unidades pedidas</span><strong>{{ totalUnits(purchase) | number:'1.0-3' }}</strong></div><div><span>Recebidas</span><strong>{{ receivedUnits(purchase) | number:'1.0-3' }}</strong></div> }@if (selectedQuote(purchase); as quote) { <div><span>Fornecedor escolhido</span><strong>{{ quote.supplier_name }}</strong></div><div><span>Valor acordado</span><strong>{{ quote.total | currency:'BRL' }}</strong></div> }</section>
-            @if (selectedQuote(purchase); as chosen) { <section class="purchase-aside-card quote-summary-card"><p class="eyebrow">Cotação escolhida</p><div><span>Fornecedor</span><strong>{{ chosen.supplier_name }}</strong></div><div><span>Condição</span><strong>{{ quoteConditionLabel(chosen) }}</strong></div><div class="quote-cost-summary">@for (item of purchase.items; track item.id) { <small>{{ item.sku }} · base {{ chosen.item_costs?.[item.id] | currency:'BRL' }} → final {{ item.unit_cost | currency:'BRL' }}/un.</small> }</div><small class="quote-locked">Cotação escolhida · valores travados</small>@if (chosen.notes) { <small>{{ chosen.notes }}</small> }</section> }
-            @if (purchase.payables?.length) { <section class="purchase-aside-card payable-card"><p class="eyebrow">Contas a pagar</p>@for (payable of purchase.payables; track payable.id) { <div class="payable-row"><div><strong>{{ payable.amount | currency:'BRL' }}</strong><small>{{ payableLabel(payable) }}</small>@if (payable.payment_terms) { <small>Condição {{ payable.payment_terms }}</small> }@if (payable.installments?.length) { <div class="payable-installments">@for (installment of payable.installments; track installment.id) { <small>{{ installment.number }}ª · {{ dateOnly(installment.due_date) }} · {{ installment.amount | currency:'BRL' }}@if ((installment.paid_amount ?? 0) > 0) { · pago {{ installment.paid_amount | currency:'BRL' }} }</small> }</div> }@if ((payable.paid_amount ?? 0) > 0) { <small>Pago {{ payable.paid_amount | currency:'BRL' }} · saldo {{ payable.amount - (payable.paid_amount ?? 0) | currency:'BRL' }}</small> }</div>@if (canManagePurchases() && (payable.status === 'open' || payable.status === 'partial')) { <button type="button" class="secondary small" [disabled]="saving()" (click)="settlePayable(purchase, payable)">Registrar pagamento</button> }</div> }</section> }
-            <section class="purchase-aside-card timeline-card"><p class="eyebrow">Histórico da compra</p>@for (event of purchase.events; track event.id) { <div class="purchase-event"><i></i><div><strong>{{ event.detail }}</strong><small>{{ event.created_at | date:'dd/MM/yyyy HH:mm' }}</small></div></div> }</section>
-            @if (purchaseStatusNote(purchase); as note) { <p class="purchase-status-note">{{ note }}</p> }
-            @if (canManagePurchases() && isActive(purchase)) { <div class="purchase-lifecycle-actions">
-              @if (purchase.status === 'ordered' || purchase.status === 'partially_received') { <button type="button" class="secondary" [disabled]="saving()" (click)="receiveAll(purchase)">Receber tudo</button> }
-              @if (purchase.status === 'ordered' || purchase.status === 'partially_received') { <button type="button" class="secondary" [disabled]="saving()" (click)="openLifecycleForm('close')">Encerrar saldo</button> }
-              <button type="button" class="cancel-purchase" [disabled]="saving()" (click)="openLifecycleForm('cancel')">Cancelar compra</button>
-              <button type="button" class="danger-outline" [disabled]="saving()" (click)="requestDelete(purchase)">Excluir compra</button>
-            </div> }
-            @if (lifecycleForm(); as form) { <section class="purchase-aside-card lifecycle-form">
-              <p class="eyebrow">{{ form.mode === 'cancel' ? 'Cancelar compra' : 'Encerrar saldo pendente' }}</p>
-              <label>Motivo<input type="text" maxlength="255" [value]="form.reason" (input)="setLifecycleReason($any($event.target).value)" placeholder="Ex.: fornecedor não entregou o restante" /></label>
-              @if (form.mode === 'cancel' && hasReceived(purchase)) { <fieldset class="lifecycle-resolution"><legend>O que fazer com o material já recebido?</legend>
-                <label><input type="radio" name="resolution" [checked]="form.resolution === 'keep_received'" (change)="setLifecycleResolution('keep_received')" /> Manter o recebido e encerrar o saldo</label>
-                <label><input type="radio" name="resolution" [checked]="form.resolution === 'return_received'" (change)="setLifecycleResolution('return_received')" /> Registrar devolução ao fornecedor (saída de estoque)</label>
-              </fieldset> }
-              <div class="lifecycle-actions"><button type="button" class="secondary small" (click)="lifecycleForm.set(null)">Voltar</button><button type="button" class="primary small" [disabled]="saving() || form.reason.trim().length < 3" (click)="submitLifecycle(purchase)">Confirmar</button></div>
-            </section> }
-          </aside>
         </div>
-        @if (error()) { <p class="purchase-error" role="alert">{{ error() }}</p> }
-      </section></div>
-    }
+      </div>
+      @if (importPlan().plan; as plan) {
+        <div class="purchase-import-closing">
+          <div class="import-closing-line">
+            <span>Itens {{ plan.items_subtotal | currency: 'BRL' }}</span
+            ><span>+ frete {{ plan.freight_amount | currency: 'BRL' }}</span
+            ><span>+ impostos {{ plan.tax_amount | currency: 'BRL' }}</span
+            ><span>− descontos {{ plan.discount_amount | currency: 'BRL' }}</span
+            ><strong>= {{ plan.total | currency: 'BRL' }}</strong>
+          </div>
+          @if (plan.document_total !== null && plan.difference !== 0) {
+            <small
+              >Total lido no documento {{ plan.document_total | currency: 'BRL' }} · diferença de
+              {{ plan.difference | currency: 'BRL' }} dentro da tolerância de R$ 0,01 por item.</small
+            >
+          } @else if (plan.document_total === null) {
+            <small
+              >O documento não trouxe o total: o valor acima é a soma dos itens com frete e impostos menos
+              descontos.</small
+            >
+          }
+          <small
+            >Ao confirmar, a compra nasce com esta cotação aceita, o pedido registrado e o título a pagar com
+            vencimento em 30 dias da data do documento.</small
+          >
+        </div>
+      }
+      @if (importPlan().error) {
+        <p class="purchase-error" role="alert">{{ importPlan().error }}</p>
+      }
+      @if (importError()) {
+        <p class="purchase-error" role="alert">{{ importError() }}</p>
+      }
+      @if (importDuplicate(); as duplicate) {
+        <p class="purchase-error" role="alert">
+          Este documento já foi importado na compra <strong>{{ duplicate.purchase_number }}</strong>
+          @if (duplicate.cancelled) {
+            , que está cancelada — você pode continuar.
+          } @else {
+            . Abra a compra existente antes de criar outra.
+          }
+        </p>
+      }
+      <section class="import-check">
+        <p class="eyebrow">Lançamento</p>
+        <div class="import-check-grid">
+          <span>Tipo</span
+          ><label
+            ><select [value]="importType()" (change)="setImportType($any($event.target).value)">
+              <option value="parts">Peças para estoque</option>
+              <option value="expense">Despesa da empresa</option>
+            </select></label
+          >
+          @if (importType() === 'expense') {
+            <span>Categoria da despesa</span
+            ><label
+              ><select [value]="importCategory()" (change)="importCategory.set($any($event.target).value)">
+                @for (category of expenseCategories; track category) {
+                  <option [value]="category">{{ category }}</option>
+                }
+              </select></label
+            >
+          }
+          <span>Já pago no checkout</span
+          ><label class="check-field"
+            ><input
+              type="checkbox"
+              [checked]="importPaidNow()"
+              (change)="setImportPaidNow($any($event.target).checked)"
+            />
+            o título nasce baixado</label
+          >
+          @if (importPaidNow()) {
+            <span>Data do pagamento</span
+            ><label
+              ><input
+                type="date"
+                [value]="importPaidDate()"
+                (input)="importPaidDate.set($any($event.target).value)" /></label
+            ><span>Forma do pagamento</span
+            ><label
+              ><input
+                type="text"
+                [value]="importPaidMethod()"
+                (input)="importPaidMethod.set($any($event.target).value)"
+                placeholder="Visa, Google Pay…"
+            /></label>
+          }
+        </div>
+        @if (!importDraft().items.length && review.candidates?.length) {
+          <div class="import-candidates">
+            <p class="eyebrow">Nenhum item reconhecido</p>
+            <p class="muted">Marque uma linha do documento como item para começar a revisão.</p>
+            <ul>
+              @for (candidate of review.candidates; track candidate.text) {
+                <li>
+                  <span>{{ candidate.text }}</span
+                  ><button type="button" class="secondary small" (click)="useImportCandidate(candidate)">
+                    Usar como item
+                  </button>
+                </li>
+              }
+            </ul>
+          </div>
+        }
+      </section>
+      <section class="import-check">
+        <p class="eyebrow">Conferência do documento</p>
+        <div class="import-check-grid">
+          <span>Moeda lida</span><strong>{{ importDraft().currency || 'não identificada' }}</strong>
+          <span>Cotação usada (1 unidade da moeda em R$)</span>
+          @if (importNeedsRate() || importDraft().exchangeRate !== null) {
+            <input
+              type="number"
+              min="0"
+              step="0.000001"
+              [value]="importDraft().exchangeRate ?? ''"
+              (input)="setImportRateFromInput($any($event.target).value)"
+              placeholder="Obrigatória"
+            />
+          } @else {
+            <strong>não se aplica</strong>
+          }
+          <span>Valor efetivamente pago</span
+          ><label class="import-paid"
+            ><input
+              appMoneyInput
+              [appMoneyInput]="importDraft().paidAmount ?? 0"
+              min="0"
+              (moneyInput)="setImportPaid($event)"
+            />
+            @if (importDraft().paidAmount === null) {
+              <small class="muted">não identificado</small>
+            }
+          </label>
+          <span>Diferença paga ÷ total</span
+          ><strong [class.check-warn]="importPaidDifference() > 0.05 || importPaidDifference() < -0.05">{{
+            importPaidDifference() | currency: 'BRL'
+          }}</strong>
+          <span>Fechamento: itens + frete + impostos − descontos − total</span>
+          @if (importHasItemsToCheck()) {
+            <strong
+              [class.check-warn]="importClosingDifference() > 0.05 || importClosingDifference() < -0.05"
+              >{{ importClosingDifference() | currency: 'BRL' }}</strong
+            >
+          } @else {
+            <strong class="muted">sem itens lidos para conferir</strong>
+          }
+          @if (importSubtotalDifference() !== null) {
+            <span>Soma dos itens ÷ subtotal do documento</span
+            ><strong
+              [class.check-warn]="
+                (importSubtotalDifference() ?? 0) > 0.05 || (importSubtotalDifference() ?? 0) < -0.05
+              "
+              >{{ importSubtotalDifference() | currency: 'BRL' }}</strong
+            >
+          }
+        </div>
+        <details class="import-text">
+          <summary>Ver o que foi lido</summary>
+          @if (review.text) {
+            <pre>{{ review.text }}</pre>
+          } @else {
+            <p class="muted">Este formato não devolve texto de leitura (por exemplo, XML de NF-e).</p>
+          }
+        </details>
+      </section>
+      @if (importBlockers().length) {
+        <ul class="import-blockers" role="status">
+          @for (blocker of importBlockers(); track blocker) {
+            <li>{{ blocker }}</li>
+          }
+        </ul>
+      }
+      <div class="purchase-form-actions">
+        <span class="muted">O arquivo original será anexado. Nenhum estoque será movimentado.</span>
+        <div class="import-review-actions">
+          <button type="button" class="secondary" (click)="closeImportReview()">Cancelar</button
+          ><button
+            type="button"
+            class="primary"
+            [disabled]="creatingImport() || !canConfirmImport()"
+            (click)="createImportedPurchase()"
+          >
+            {{ creatingImport() ? 'Criando…' : 'Confirmar e criar compra' }}
+          </button>
+        </div>
+      </div>
+    </section>
+  </div>
+}
+
+@if (importProductModal()) {
+  <div class="modal-backdrop import-product-backdrop" (click)="closeImportProductCreate()">
+    <section
+      class="modal purchase-modal import-product-modal"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="import-product-title"
+      (click)="$event.stopPropagation()"
+    >
+      <div class="modal-head">
+        <div>
+          <p class="eyebrow">Catálogo · nova peça</p>
+          <h2 id="import-product-title">Cadastrar e vincular produto</h2>
+          <p class="modal-intro">
+            Preencha os mesmos dados básicos exigidos no catálogo. O cadastro só será criado ao confirmar.
+          </p>
+        </div>
+        <button class="close" type="button" aria-label="Fechar" (click)="closeImportProductCreate()">
+          ×
+        </button>
+      </div>
+      <div class="purchase-form-meta">
+        <label
+          >Tipo de estoque<select
+            [value]="importProductDraft().stock_type"
+            (change)="updateImportProduct('stock_type', $any($event.target).value)"
+          >
+            <option value="product">Produto</option>
+            <option value="warehouse">Almoxarifado</option>
+          </select></label
+        ><label
+          >SKU *<input
+            [value]="importProductDraft().sku"
+            (input)="updateImportProduct('sku', $any($event.target).value)" /></label
+        ><label
+          >Nome *<input
+            [value]="importProductDraft().name"
+            (input)="updateImportProduct('name', $any($event.target).value)" /></label
+        ><label
+          >Marca<input
+            [value]="importProductDraft().brand"
+            (input)="updateImportProduct('brand', $any($event.target).value)" /></label
+        ><label
+          >Fabricante<input
+            [value]="importProductDraft().manufacturer"
+            (input)="updateImportProduct('manufacturer', $any($event.target).value)" /></label
+        ><label
+          >Número OEM / MPN<input
+            [value]="importProductDraft().manufacturer_part_number"
+            (input)="updateImportProduct('manufacturer_part_number', $any($event.target).value)" /></label
+        ><label
+          >GTIN / código de barras<input
+            [value]="importProductDraft().barcode"
+            (input)="updateImportProduct('barcode', $any($event.target).value)" /></label
+        ><label
+          >Categoria<input
+            [value]="importProductDraft().category"
+            (input)="updateImportProduct('category', $any($event.target).value)" /></label
+        ><label
+          >Condição<select
+            [value]="importProductDraft().item_condition"
+            (change)="updateImportProduct('item_condition', $any($event.target).value)"
+          >
+            <option value="new">Nova</option>
+            <option value="used">Usada</option>
+            <option value="refurbished">Recondicionada</option>
+          </select></label
+        ><label
+          >Garantia (dias)<input
+            type="number"
+            min="0"
+            max="3650"
+            [value]="importProductDraft().warranty_days ?? ''"
+            (input)="updateImportProduct('warranty_days', $any($event.target).value)" /></label
+        ><label
+          >País de origem<input
+            [value]="importProductDraft().origin_country"
+            (input)="updateImportProduct('origin_country', $any($event.target).value)" /></label
+        ><label
+          >Preço de venda<input
+            appMoneyInput
+            [appMoneyInput]="importProductDraft().sale_price"
+            min="0"
+            (moneyInput)="updateImportProduct('sale_price', $event)"
+        /></label>
+        @if (canReadCosts()) {
+          <label
+            >Custo<input
+              appMoneyInput
+              [appMoneyInput]="importProductDraft().cost_price"
+              min="0"
+              (moneyInput)="updateImportProduct('cost_price', $event)"
+          /></label>
+        }
+        <label
+          >Estoque mínimo<input
+            type="number"
+            min="0"
+            step="0.001"
+            [value]="importProductDraft().minimum_stock"
+            (input)="updateImportProduct('minimum_stock', $any($event.target).value)" /></label
+        ><label
+          >Peso embalado (g)<input
+            type="number"
+            min="0"
+            step="0.001"
+            [value]="importProductDraft().weight_g ?? ''"
+            (input)="updateImportProduct('weight_g', $any($event.target).value)" /></label
+        ><label
+          >Comprimento (cm)<input
+            type="number"
+            min="0"
+            step="0.01"
+            [value]="importProductDraft().package_length_cm ?? ''"
+            (input)="updateImportProduct('package_length_cm', $any($event.target).value)" /></label
+        ><label
+          >Largura (cm)<input
+            type="number"
+            min="0"
+            step="0.01"
+            [value]="importProductDraft().package_width_cm ?? ''"
+            (input)="updateImportProduct('package_width_cm', $any($event.target).value)" /></label
+        ><label
+          >Altura (cm)<input
+            type="number"
+            min="0"
+            step="0.01"
+            [value]="importProductDraft().package_height_cm ?? ''"
+            (input)="updateImportProduct('package_height_cm', $any($event.target).value)" /></label
+        ><label class="notes-field"
+          >Descrição<textarea
+            rows="2"
+            [value]="importProductDraft().description"
+            (input)="updateImportProduct('description', $any($event.target).value)"
+          ></textarea>
+        </label>
+      </div>
+      @if (importProductError()) {
+        <p class="purchase-error" role="alert">{{ importProductError() }}</p>
+      }
+      <div class="purchase-form-actions">
+        <span class="muted">Estoque inicial zero · sem movimentação.</span
+        ><button
+          type="button"
+          class="primary"
+          [disabled]="savingImportProduct() || !canSaveImportProduct()"
+          (click)="saveImportProduct()"
+        >
+          {{ savingImportProduct() ? 'Salvando…' : 'Criar e vincular à linha' }}
+        </button>
+      </div>
+    </section>
+  </div>
+}
+
+@if (showNew()) {
+  <div class="modal-backdrop" (click)="showNew.set(false)">
+    <section
+      class="modal wide purchase-modal"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="new-purchase-title"
+      (click)="$event.stopPropagation()"
+    >
+      <div class="modal-head">
+        <div>
+          <p class="eyebrow">Suprimentos</p>
+          <h2 id="new-purchase-title">Nova compra</h2>
+          <p class="modal-intro">
+            Cadastre peças para o estoque ou uma despesa da empresa com seus documentos.
+          </p>
+        </div>
+        <button class="close" aria-label="Fechar" (click)="showNew.set(false)">×</button>
+      </div>
+      <form [formGroup]="form" (ngSubmit)="create()">
+        <div class="purchase-form-meta">
+          <label
+            >Tipo de lançamento<select formControlName="purchase_type">
+              <option value="parts">Peças para estoque</option>
+              <option value="expense">Despesa da empresa</option>
+            </select></label
+          ><label
+            >Fornecedor / favorecido<input
+              formControlName="supplier_name"
+              list="supplierOptions"
+              placeholder="Nome da empresa ou pessoa"
+              (change)="applySupplierDefaults()"
+            /><datalist id="supplierOptions">
+              @for (supplier of suppliers(); track supplier.id) {
+                <option [value]="supplier.name"></option>
+              }
+            </datalist>
+            @if (supplierByName(form.controls.supplier_name.value); as known) {
+              <small
+                >Cadastrado ·
+                {{
+                  known.default_delivery_days
+                    ? known.default_delivery_days + ' dias de prazo padrão'
+                    : 'sem prazo padrão'
+                }}{{ known.default_payment_terms ? ' · ' + known.default_payment_terms : '' }}</small
+              >
+            } @else if (form.controls.supplier_name.value) {
+              <button
+                type="button"
+                class="secondary small"
+                [disabled]="saving()"
+                (click)="registerSupplier(form.controls.supplier_name.value)"
+              >
+                Cadastrar fornecedor
+              </button>
+            }</label
+          ><label>Previsão desejada<input type="date" formControlName="needed_by" /></label
+          ><label
+            >Nº do pedido do fornecedor<input
+              formControlName="supplier_order_number"
+              placeholder="Opcional" /></label
+          ><label>Data do documento<input type="date" formControlName="document_date" /></label
+          ><label class="notes-field"
+            >Observações<textarea
+              rows="2"
+              formControlName="notes"
+              placeholder="Detalhes do lançamento"
+            ></textarea>
+          </label>
+        </div>
+        @if (form.controls.purchase_type.value === 'expense') {
+          <div class="purchase-form-section expense-fields">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">Despesa operacional</p>
+                <h3>Dados do gasto</h3>
+              </div>
+            </div>
+            <div class="purchase-form-meta">
+              <label
+                >Categoria<select formControlName="expense_category">
+                  <option value="">Selecione…</option>
+                  @for (category of expenseCategories; track category) {
+                    <option [value]="category">{{ category }}</option>
+                  }
+                </select></label
+              ><label>Valor total<input appMoneyInput formControlName="expense_amount" min="0" /></label
+              ><label
+                >Condição de pagamento<select formControlName="payment_type">
+                  <option value="cash">À vista (na data do documento)</option>
+                  <option value="installments">Parcelado</option>
+                  <option value="entry">Entrada + parcelas</option>
+                </select></label
+              >
+              @if (form.controls.payment_type.value !== 'cash') {
+                <label
+                  >Parcelas<input type="number" min="1" max="36" formControlName="installment_count" /></label
+                ><label
+                  >1º vencimento (dias)<input
+                    type="number"
+                    min="0"
+                    max="3650"
+                    formControlName="first_due_days" /></label
+                ><label
+                  >Intervalo (dias)<input type="number" min="1" max="3650" formControlName="interval_days"
+                /></label>
+              }
+            </div>
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">Estoque opcional</p>
+                <h3>Materiais controlados no almoxarifado</h3>
+              </div>
+              <button type="button" class="secondary small" (click)="addLine()">+ Adicionar material</button>
+            </div>
+            <p class="purchase-flow-hint">
+              Inclua somente materiais que deseja controlar no estoque. O saldo só muda quando o recebimento
+              for confirmado.
+            </p>
+            <div formArrayName="items" class="purchase-line-list">
+              @for (line of lines.controls; track $index; let i = $index) {
+                <div class="purchase-line-form expense-line" [formGroupName]="i">
+                  <label
+                    >Produto existente<select
+                      formControlName="product_id"
+                      (change)="selectProduct(i, $any($event.target).value)"
+                    >
+                      <option value="">Vincular no recebimento</option>
+                      @for (product of availableProducts('warehouse'); track product.id) {
+                        <option [value]="product.id">{{ product.sku }} · {{ product.name }}</option>
+                      }
+                    </select></label
+                  ><label>SKU<input formControlName="sku" placeholder="SKU do material" /></label
+                  ><label class="line-description"
+                    >Material / descrição<input
+                      formControlName="description"
+                      placeholder="Ex.: Fita crepe" /></label
+                  ><label>Unidade<input formControlName="unit" placeholder="un, cx, rolo…" /></label
+                  ><label
+                    >Quantidade<input
+                      type="number"
+                      min="0.001"
+                      step="0.001"
+                      formControlName="quantity" /></label
+                  ><label class="money-field"
+                    >Custo unitário (R$)<input
+                      appMoneyInput
+                      formControlName="unit_cost"
+                      min="0"
+                      inputmode="decimal"
+                  /></label>
+                  @if (lines.length > 1) {
+                    <button
+                      type="button"
+                      class="remove-line"
+                      aria-label="Remover material"
+                      (click)="removeLine(i)"
+                    >
+                      ×
+                    </button>
+                  }
+                </div>
+              }
+            </div>
+          </div>
+        } @else {
+          <div class="purchase-form-section">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">Lista de compra</p>
+                <h3>Peças em negociação</h3>
+              </div>
+              <button type="button" class="secondary small" (click)="addLine()">+ Adicionar peça</button>
+            </div>
+            <p class="purchase-flow-hint">
+              Nesta etapa, informe somente as peças e quantidades. Preços, frete, impostos e descontos entram
+              em cada cotação de fornecedor.
+            </p>
+            <div formArrayName="items" class="purchase-line-list">
+              @for (line of lines.controls; track $index; let i = $index) {
+                <div class="purchase-line-form" [formGroupName]="i">
+                  <label
+                    >Produto cadastrado<select
+                      formControlName="product_id"
+                      (change)="selectProduct(i, $any($event.target).value)"
+                    >
+                      <option value="">Cadastrar/vincular depois</option>
+                      @for (product of availableProducts('product'); track product.id) {
+                        <option [value]="product.id">{{ product.sku }} · {{ product.name }}</option>
+                      }
+                    </select></label
+                  ><label>SKU<input formControlName="sku" placeholder="Ex.: LR174890" /></label
+                  ><label class="line-description"
+                    >Peça / descrição<input formControlName="description" placeholder="Nome da peça" /></label
+                  ><label
+                    >Quantidade<input type="number" min="0.001" step="0.001" formControlName="quantity"
+                  /></label>
+                  @if (lines.length > 1) {
+                    <button
+                      type="button"
+                      class="remove-line"
+                      aria-label="Remover peça"
+                      (click)="removeLine(i)"
+                    >
+                      ×
+                    </button>
+                  }
+                </div>
+              }
+            </div>
+          </div>
+        }
+        <label class="attachment-picker"
+          >Documentos
+          <input
+            type="file"
+            multiple
+            accept=".pdf,.xml,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx"
+            (change)="setAttachments($any($event.target).files)"
+          /><small>{{
+            selectedFiles().length
+              ? selectedFiles().length + ' arquivo(s) selecionado(s)'
+              : 'Nota fiscal, recibo, boleto ou comprovante (até 10 arquivos)'
+          }}</small></label
+        >
+        @if (error()) {
+          <p class="purchase-error" role="alert">{{ error() }}</p>
+        }
+        <div class="purchase-form-actions">
+          <span class="muted">{{
+            form.controls.purchase_type.value === 'expense'
+              ? 'Itens físicos só alteram o estoque após o recebimento'
+              : lines.length + (lines.length === 1 ? ' peça' : ' peças') + ' · estoque só muda no recebimento'
+          }}</span
+          ><button
+            class="primary"
+            [disabled]="
+              saving() ||
+              (form.controls.purchase_type.value === 'parts' && form.invalid) ||
+              (form.controls.purchase_type.value === 'expense' &&
+                (!form.controls.expense_category.value ||
+                  form.controls.expense_amount.value === null ||
+                  lines.controls.some((line) => line.value.description && line.invalid)))
+            "
+          >
+            {{ saving() ? 'Salvando…' : 'Salvar compra' }}
+          </button>
+        </div>
+      </form>
+    </section>
+  </div>
+}
+
+@if (detail(); as purchase) {
+  <div class="modal-backdrop" (click)="detail.set(null)">
+    <section
+      class="modal wide purchase-modal purchase-detail"
+      [class.restricted-costs]="!canReadCosts()"
+      [class.read-only-purchases]="!canManagePurchases()"
+      [class.no-receiving]="!canAdjustStock()"
+      [class.costs-pending]="purchase.purchase_type === 'parts' && !purchase.selected_quote_id"
+      role="dialog"
+      aria-modal="true"
+      [attr.aria-label]="'Compra ' + purchase.number"
+      (click)="$event.stopPropagation()"
+    >
+      <div class="modal-head">
+        <div>
+          <p class="eyebrow">Suprimentos · {{ purchase.number }}</p>
+          <h2>{{ purchase.number }}</h2>
+          @if (purchase.supplier_order_number || purchase.document_date) {
+            <p class="modal-intro">
+              Pedido do fornecedor {{ purchase.supplier_order_number || '—' }}
+              @if (purchase.document_date) {
+                · documento de {{ dateOnly(purchase.document_date) }}
+              }
+            </p>
+          }
+          <p class="modal-intro">
+            Criada em {{ purchase.created_at | date: 'dd/MM/yyyy HH:mm' }}
+            @if (purchase.needed_by) {
+              · Previsão {{ dateOnly(purchase.needed_by) }}
+            }
+            @if (isOverdue(purchase)) {
+              <strong class="overdue-chip">previsão vencida</strong>
+            }
+          </p>
+        </div>
+        <div class="detail-head-actions">
+          <span class="purchase-badge" [attr.data-status]="purchase.status">{{
+            purchaseStatusLabel(purchase)
+          }}</span>
+          @if (
+            canManagePurchases() && (purchase.status === 'negotiating' || purchase.status === 'approved')
+          ) {
+            <button
+              type="button"
+              class="secondary small"
+              [disabled]="saving()"
+              (click)="draftEditor() ? closeDraftEditor() : openDraftEditor()"
+            >
+              {{ draftEditor() ? 'Fechar edição' : 'Editar dados' }}
+            </button>
+          }
+          @if (canManagePurchases()) {
+            <button type="button" class="secondary small" (click)="copyPurchase(purchase)">
+              Copiar compra
+            </button>
+          }
+          <button class="close" aria-label="Fechar" (click)="detail.set(null)">×</button>
+        </div>
+      </div>
+      @if (purchase.purchase_type === 'parts') {
+        <div class="purchase-steps" aria-label="Etapas da compra">
+          @for (step of workflow; track step.value; let i = $index) {
+            <div
+              class="purchase-step"
+              [class.step-done]="stepIndex(purchase.status) > i"
+              [class.step-current]="stepIndex(purchase.status) === i"
+            >
+              <span>{{ stepIndex(purchase.status) > i ? '✓' : i + 1 }}</span
+              ><small>{{ step.label }}</small>
+            </div>
+          }
+        </div>
+      } @else {
+        <div class="expense-banner">
+          <strong>Despesa da empresa</strong
+          ><span>{{ purchase.expense_category }} · {{ purchase.expense_amount | currency: 'BRL' }}</span>
+        </div>
+      }
+      <div class="purchase-detail-grid">
+        <div class="purchase-detail-main">
+          @if (
+            draftEditor() &&
+            canManagePurchases() &&
+            (purchase.status === 'negotiating' || purchase.status === 'approved')
+          ) {
+            <section class="purchase-form-section draft-editor">
+              <div class="section-heading">
+                <div>
+                  <p class="eyebrow">Rascunho</p>
+                  <h3>Dados do pedido</h3>
+                </div>
+                <button
+                  type="button"
+                  class="secondary small"
+                  [disabled]="saving()"
+                  (click)="saveDraftHeader(purchase)"
+                >
+                  Salvar dados
+                </button>
+              </div>
+              <div class="purchase-form-meta">
+                <label
+                  >Fornecedor<input
+                    type="text"
+                    list="supplierOptionsDetail"
+                    [value]="draftHeader().supplier_name"
+                    (input)="setDraftHeader('supplier_name', $any($event.target).value)"
+                    placeholder="Nome da empresa ou pessoa" /><datalist id="supplierOptionsDetail">
+                    @for (supplier of suppliers(); track supplier.id) {
+                      <option [value]="supplier.name"></option>
+                    }</datalist
+                ></label>
+                <label
+                  >Previsão desejada<input
+                    type="date"
+                    [value]="draftHeader().needed_by"
+                    (input)="setDraftHeader('needed_by', $any($event.target).value)"
+                /></label>
+                <label
+                  >Nº do pedido do fornecedor<input
+                    type="text"
+                    [value]="draftHeader().supplier_order_number"
+                    (input)="setDraftHeader('supplier_order_number', $any($event.target).value)"
+                    placeholder="Opcional"
+                /></label>
+                <label
+                  >Data do documento<input
+                    type="date"
+                    [value]="draftHeader().document_date"
+                    (input)="setDraftHeader('document_date', $any($event.target).value)"
+                /></label>
+                <label class="notes-field"
+                  >Observações<textarea
+                    rows="2"
+                    [value]="draftHeader().notes"
+                    (input)="setDraftHeader('notes', $any($event.target).value)"
+                  ></textarea>
+                </label>
+              </div>
+              <div class="section-heading">
+                <div>
+                  <p class="eyebrow">Peças da negociação</p>
+                  <h3>Editar linhas</h3>
+                </div>
+              </div>
+              <div class="draft-lines">
+                @for (item of purchase.items; track item.id) {
+                  <div class="draft-line">
+                    <label
+                      >Descrição<input
+                        type="text"
+                        [value]="lineDrafts()[item.id]?.description ?? item.description"
+                        (input)="setLineDraft(item.id, 'description', $any($event.target).value)"
+                    /></label>
+                    <label
+                      >SKU<input
+                        type="text"
+                        [value]="lineDrafts()[item.id]?.sku ?? item.sku"
+                        (input)="setLineDraft(item.id, 'sku', $any($event.target).value)"
+                        placeholder="Opcional no rascunho"
+                    /></label>
+                    <label
+                      >Unidade<input
+                        type="text"
+                        [value]="lineDrafts()[item.id]?.unit ?? item.unit"
+                        (input)="setLineDraft(item.id, 'unit', $any($event.target).value)"
+                    /></label>
+                    <label
+                      >Quantidade<input
+                        type="number"
+                        min="0.001"
+                        step="0.001"
+                        [value]="lineDrafts()[item.id]?.quantity ?? item.quantity"
+                        (input)="setLineDraft(item.id, 'quantity', $any($event.target).value)"
+                    /></label>
+                    <div class="draft-line-actions">
+                      <button
+                        type="button"
+                        class="secondary small"
+                        [disabled]="saving()"
+                        (click)="saveLine(purchase, item)"
+                      >
+                        Salvar peça
+                      </button>
+                      @if (purchase.status === 'negotiating' && purchase.items.length > 1) {
+                        <button
+                          type="button"
+                          class="danger-outline"
+                          [disabled]="saving()"
+                          (click)="removePurchaseLine(purchase, item)"
+                        >
+                          Remover
+                        </button>
+                      }
+                    </div>
+                  </div>
+                }
+                @if (purchase.status === 'negotiating') {
+                  <div class="draft-line draft-line-new">
+                    <label
+                      >Descrição<input
+                        type="text"
+                        [value]="newLineDraft().description"
+                        (input)="setNewLineDraft('description', $any($event.target).value)"
+                        placeholder="Nova peça"
+                    /></label>
+                    <label
+                      >SKU<input
+                        type="text"
+                        [value]="newLineDraft().sku"
+                        (input)="setNewLineDraft('sku', $any($event.target).value)"
+                        placeholder="Opcional no rascunho"
+                    /></label>
+                    <label
+                      >Unidade<input
+                        type="text"
+                        [value]="newLineDraft().unit"
+                        (input)="setNewLineDraft('unit', $any($event.target).value)"
+                    /></label>
+                    <label
+                      >Quantidade<input
+                        type="number"
+                        min="0.001"
+                        step="0.001"
+                        [value]="newLineDraft().quantity"
+                        (input)="setNewLineDraft('quantity', $any($event.target).value)"
+                    /></label>
+                    <div class="draft-line-actions">
+                      <button
+                        type="button"
+                        class="primary small"
+                        [disabled]="saving() || !newLineDraft().description.trim()"
+                        (click)="addDraftLine(purchase)"
+                      >
+                        + Adicionar peça
+                      </button>
+                    </div>
+                  </div>
+                }
+              </div>
+            </section>
+          }
+          @if (purchase.items.length) {
+            <section class="purchase-form-section">
+              <div class="section-heading">
+                <div>
+                  <p class="eyebrow">Itens e recebimento</p>
+                  <h3>
+                    {{ purchase.purchase_type === 'expense' ? 'Materiais da despesa' : 'Peças da compra' }}
+                  </h3>
+                </div>
+              </div>
+              <div class="purchase-item-cards">
+                @for (item of purchase.items; track item.id) {
+                  <article class="purchase-item-card">
+                    <div class="item-title">
+                      <div>
+                        <strong>{{ item.description }}</strong
+                        ><small
+                          ><code>{{ item.sku }}</code>
+                          @if (item.product_id) {
+                            · vinculada ao catálogo
+                          } @else {
+                            · ainda sem produto no catálogo
+                          }
+                        </small>
+                      </div>
+                      <strong
+                        >{{ item.unit_cost | currency: 'BRL' }} <small>/ {{ item.unit }} final</small></strong
+                      >
+                    </div>
+                    <div class="item-cost-breakdown">
+                      <span>Base: {{ item.base_unit_cost | currency: 'BRL' }}</span
+                      ><span>Frete: {{ item.freight_amount | currency: 'BRL' }}</span
+                      ><span>Impostos: {{ item.tax_amount | currency: 'BRL' }}</span
+                      ><span>Desconto: -{{ item.discount_amount | currency: 'BRL' }}</span>
+                    </div>
+                    <div class="receipt-progress">
+                      <span
+                        >Recebido
+                        <b
+                          >{{ item.received_quantity | number: '1.0-3' }} /
+                          {{ item.quantity | number: '1.0-3' }} {{ item.unit }} ·
+                          {{ item.quantity - item.received_quantity | number: '1.0-3' }} pendente</b
+                        ></span
+                      >
+                      <div><i [style.width.%]="progress(item)"></i></div>
+                    </div>
+                    @if (purchase.status === 'ordered' || purchase.status === 'partially_received') {
+                      <div class="receive-controls">
+                        <label
+                          >Receber agora<input
+                            type="number"
+                            min="0.001"
+                            [max]="item.quantity - item.received_quantity"
+                            step="0.001"
+                            [value]="receiveQty(item)"
+                            (input)="setReceiveQty(item, $any($event.target).value)"
+                        /></label>
+                        @if (!item.product_id) {
+                          <label class="map-product"
+                            >Vincular produto existente<select
+                              [value]="receiveProduct(item)"
+                              (change)="setReceiveProduct(item, $any($event.target).value)"
+                            >
+                              <option value="">Selecione um produto…</option>
+                              @for (
+                                product of availableProducts(
+                                  purchase.purchase_type === 'expense' ? 'warehouse' : 'product'
+                                );
+                                track product.id
+                              ) {
+                                <option [value]="product.id">{{ product.sku }} · {{ product.name }}</option>
+                              }
+                            </select></label
+                          ><label class="create-product-check"
+                            ><input
+                              type="checkbox"
+                              [checked]="createNewProduct(item)"
+                              (change)="setCreateNewProduct(item, $any($event.target).checked)"
+                            />
+                            Criar produto no catálogo ao receber</label
+                          >
+                        }
+                        <label class="receipt-note"
+                          >Observação (avaria/divergência)<input
+                            type="text"
+                            maxlength="160"
+                            [value]="receiveObservation(item)"
+                            (input)="setReceiveObservation(item, $any($event.target).value)"
+                            placeholder="Opcional" /></label
+                        ><button
+                          type="button"
+                          class="secondary small"
+                          [disabled]="saving() || receiveQty(item) <= 0"
+                          (click)="receive(item)"
+                        >
+                          Registrar recebimento
+                        </button>
+                      </div>
+                    }
+                  </article>
+                }
+              </div>
+            </section>
+          }
+          @if (
+            purchase.purchase_type === 'parts' &&
+            (purchase.status === 'negotiating' || purchase.status === 'approved')
+          ) {
+            <section class="purchase-form-section">
+              <div class="section-heading">
+                <div>
+                  <p class="eyebrow">Concorrência</p>
+                  <h3>Cotações de fornecedores</h3>
+                </div>
+              </div>
+              @if (purchase.selected_quote_id) {
+                <p class="muted">
+                  A cotação escolhida está travada. Registre uma nova proposta e escolha de novo para trocar
+                  preço ou prazo.
+                </p>
+              }
+              @if (purchase.quotes.length) {
+                <div class="quote-cards">
+                  @for (quote of purchase.quotes; track quote.id) {
+                    <article
+                      class="quote-card"
+                      [class.quote-selected]="purchase.selected_quote_id === quote.id"
+                    >
+                      <div>
+                        <strong>{{ quote.supplier_name }}</strong
+                        ><b>{{ quote.total | currency: 'BRL' }}</b>
+                      </div>
+                      <p>
+                        {{
+                          quote.delivery_days !== null
+                            ? quote.delivery_days + ' dias para entrega'
+                            : 'Prazo não informado'
+                        }}
+                        @if (quote.payment_terms) {
+                          · {{ quote.payment_terms }}
+                        }
+                      </p>
+                      <div class="quote-cost-summary">
+                        @for (item of purchase.items; track item.id) {
+                          <small
+                            >{{ item.sku }} · {{ quote.item_costs?.[item.id] | currency: 'BRL' }}/un.</small
+                          >
+                        }
+                      </div>
+                      <small>Condição: {{ quoteConditionLabel(quote) }}</small>
+                      @if (quote.notes) {
+                        <small>{{ quote.notes }}</small>
+                      }
+                      @if (purchase.selected_quote_id === quote.id) {
+                        <small class="quote-locked">Cotação escolhida · valores travados</small>
+                      } @else {
+                        <button type="button" class="secondary small" (click)="selectQuote(quote.id)">
+                          Escolher esta cotação
+                        </button>
+                      }
+                    </article>
+                  }
+                </div>
+              } @else {
+                <p class="muted">Registre as propostas recebidas para comparar preço e prazo.</p>
+              }
+              <form class="quote-form" [formGroup]="quoteForm" (ngSubmit)="addQuote()">
+                <div class="quote-item-costs">
+                  <strong>Custo unitário dos itens</strong>
+                  @for (item of purchase.items; track item.id) {
+                    <label class="money-field"
+                      >Custo unitário (R$) &#183; {{ item.sku }} &#183; {{ item.description
+                      }}<input
+                        appMoneyInput
+                        [appMoneyInput]="quoteUnitCost(item)"
+                        min="0"
+                        (moneyInput)="setQuoteUnitCost(item, $event)"
+                        (moneyValidity)="setQuoteCostValidity(item.id, $event)"
+                    /></label>
+                  }
+                </div>
+                <label
+                  >Fornecedor<input formControlName="supplier_name" placeholder="Nome do fornecedor" /></label
+                ><label
+                  >Contato<input formControlName="supplier_contact" placeholder="Telefone ou e-mail" /></label
+                ><label>Frete<input appMoneyInput formControlName="freight_amount" min="0" /></label
+                ><label>Impostos<input appMoneyInput formControlName="tax_amount" min="0" /></label
+                ><label>Desconto<input appMoneyInput formControlName="discount_amount" min="0" /></label
+                ><label
+                  >Ratear acréscimos/desconto<select formControlName="allocation_method">
+                    <option value="proportional">Proporcional ao subtotal de cada item</option>
+                    <option value="quantity">Por quantidade de peças</option>
+                  </select></label
+                ><label
+                  >Total final da proposta<input
+                    appMoneyInput
+                    [appMoneyInput]="quoteTotal(purchase)"
+                    min="0"
+                    (moneyInput)="setQuoteTotal($event)" /></label
+                ><label>Prazo (dias)<input type="number" min="0" formControlName="delivery_days" /></label
+                ><label
+                  >Condição de pagamento<select
+                    [value]="quoteForm.controls.payment_type.value"
+                    (change)="setQuoteConditionType($any($event.target).value)"
+                  >
+                    <option value="cash">À vista</option>
+                    <option value="installments">Parcelado</option>
+                    <option value="entry">Entrada + parcelas</option>
+                  </select></label
+                >
+                @if (quoteForm.controls.payment_type.value !== 'cash') {
+                  <label
+                    >Parcelas<input
+                      type="number"
+                      min="1"
+                      max="36"
+                      [value]="quoteForm.controls.installment_count.value"
+                      (input)="
+                        setQuoteConditionNumber('installment_count', $any($event.target).value)
+                      " /></label
+                  ><label
+                    >1º vencimento (dias)<input
+                      type="number"
+                      min="0"
+                      max="3650"
+                      [value]="quoteForm.controls.first_due_days.value"
+                      (input)="setQuoteConditionNumber('first_due_days', $any($event.target).value)" /></label
+                  ><label
+                    >Intervalo (dias)<input
+                      type="number"
+                      min="1"
+                      max="3650"
+                      [value]="quoteForm.controls.interval_days.value"
+                      (input)="setQuoteConditionNumber('interval_days', $any($event.target).value)"
+                  /></label>
+                }
+                <div class="quote-presets">
+                  <span>Atalhos</span
+                  ><button type="button" class="secondary small" (click)="applyQuoteConditionPreset('cash')">
+                    À vista</button
+                  ><button type="button" class="secondary small" (click)="applyQuoteConditionPreset('30')">
+                    30 dias</button
+                  ><button type="button" class="secondary small" (click)="applyQuoteConditionPreset('30/60')">
+                    30/60</button
+                  ><button
+                    type="button"
+                    class="secondary small"
+                    (click)="applyQuoteConditionPreset('30/60/90')"
+                  >
+                    30/60/90
+                  </button>
+                </div>
+                <label class="quote-notes"
+                  >Observação da condição<input
+                    formControlName="payment_terms"
+                    placeholder="Ex.: boleto combinado com o fornecedor" /></label
+                ><small class="quote-cost-hint">Parcelas do título: {{ quoteConditionPreview() }}</small
+                ><label class="quote-notes"
+                  >Observações<input
+                    formControlName="notes"
+                    placeholder="Validade ou detalhes da proposta…" /></label
+                ><small class="quote-cost-hint"
+                  >Custo considerado: {{ quoteTotal(purchase) | currency: 'BRL' }} ·
+                  {{ quoteDirectionNote() }}</small
+                >
+                @if (quoteRounding() !== 0) {
+                  <small class="quote-cost-hint"
+                    >Ajuste de centavos de {{ quoteRounding() | currency: 'BRL' }} aplicado no maior item para
+                    fechar o total.</small
+                  >
+                }
+                @if (quoteNet(purchase) < 0) {
+                  <p class="purchase-error" role="alert">
+                    O total da proposta é menor que o frete e os impostos menos o desconto.
+                  </p>
+                }
+                @if (quoteMismatch(purchase)) {
+                  <p class="purchase-error" role="alert">
+                    A soma dos itens não fecha com o total da proposta. Revise o rateio ou os valores.
+                  </p>
+                }
+                <button
+                  class="primary"
+                  [disabled]="
+                    quoteForm.invalid ||
+                    quoteCostHasErrors() ||
+                    !quoteCostsComplete(purchase) ||
+                    quoteNet(purchase) < 0 ||
+                    quoteMismatch(purchase) ||
+                    saving()
+                  "
+                >
+                  Registrar cotação
+                </button>
+              </form>
+            </section>
+          }
+          @if (purchase.status === 'approved' && canManagePurchases()) {
+            <div class="workflow-action">
+              <div><strong>Cotação aprovada</strong><span>A compra ainda não altera o estoque.</span></div>
+              <button class="primary" [disabled]="saving()" (click)="placeOrder()">
+                Registrar pedido ao fornecedor
+              </button>
+            </div>
+          }
+          @if (purchase.notes) {
+            <section class="purchase-notes">
+              <span class="eyebrow">Observações internas</span>
+              <p>{{ purchase.notes }}</p>
+            </section>
+          }
+          <section class="purchase-form-section">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">Documentação</p>
+                <h3>Documentos anexados</h3>
+              </div>
+              @if (canManagePurchases()) {
+                <label class="attachment-inline"
+                  >+ Anexar documentos<input
+                    type="file"
+                    multiple
+                    (change)="uploadAttachments(purchase, $any($event.target).files)"
+                /></label>
+              }
+            </div>
+            @if (purchase.attachments.length) {
+              <div class="attachment-list">
+                @for (attachment of purchase.attachments; track attachment.id) {
+                  <button
+                    type="button"
+                    class="attachment-row"
+                    (click)="downloadAttachment(purchase, attachment)"
+                  >
+                    <span>📎 {{ attachment.filename }}</span
+                    ><small>{{ formatBytes(attachment.size_bytes) }}</small>
+                  </button>
+                }
+              </div>
+            } @else {
+              <p class="muted">Nenhum documento anexado ainda.</p>
+            }
+          </section>
+        </div>
+        <aside class="purchase-aside">
+          <section class="purchase-aside-card">
+            <p class="eyebrow">Resumo</p>
+            <div>
+              <span>Itens</span><strong>{{ purchase.items.length }}</strong>
+            </div>
+            @if (purchase.purchase_type === 'parts') {
+              <div>
+                <span>Unidades pedidas</span><strong>{{ totalUnits(purchase) | number: '1.0-3' }}</strong>
+              </div>
+              <div>
+                <span>Recebidas</span><strong>{{ receivedUnits(purchase) | number: '1.0-3' }}</strong>
+              </div>
+            }
+            @if (selectedQuote(purchase); as quote) {
+              <div>
+                <span>Fornecedor escolhido</span><strong>{{ quote.supplier_name }}</strong>
+              </div>
+              <div>
+                <span>Valor acordado</span><strong>{{ quote.total | currency: 'BRL' }}</strong>
+              </div>
+            }
+          </section>
+          @if (selectedQuote(purchase); as chosen) {
+            <section class="purchase-aside-card quote-summary-card">
+              <p class="eyebrow">Cotação escolhida</p>
+              <div>
+                <span>Fornecedor</span><strong>{{ chosen.supplier_name }}</strong>
+              </div>
+              <div>
+                <span>Condição</span><strong>{{ quoteConditionLabel(chosen) }}</strong>
+              </div>
+              <div class="quote-cost-summary">
+                @for (item of purchase.items; track item.id) {
+                  <small
+                    >{{ item.sku }} · base {{ chosen.item_costs?.[item.id] | currency: 'BRL' }} → final
+                    {{ item.unit_cost | currency: 'BRL' }}/un.</small
+                  >
+                }
+              </div>
+              <small class="quote-locked">Cotação escolhida · valores travados</small>
+              @if (chosen.notes) {
+                <small>{{ chosen.notes }}</small>
+              }
+            </section>
+          }
+          @if (purchase.payables?.length) {
+            <section class="purchase-aside-card payable-card">
+              <p class="eyebrow">Contas a pagar</p>
+              @for (payable of purchase.payables; track payable.id) {
+                <div class="payable-row">
+                  <div>
+                    <strong>{{ payable.amount | currency: 'BRL' }}</strong
+                    ><small>{{ payableLabel(payable) }}</small>
+                    @if (payable.payment_terms) {
+                      <small>Condição {{ payable.payment_terms }}</small>
+                    }
+                    @if (payable.installments?.length) {
+                      <div class="payable-installments">
+                        @for (installment of payable.installments; track installment.id) {
+                          <small
+                            >{{ installment.number }}ª · {{ dateOnly(installment.due_date) }} ·
+                            {{ installment.amount | currency: 'BRL' }}
+                            @if ((installment.paid_amount ?? 0) > 0) {
+                              · pago {{ installment.paid_amount | currency: 'BRL' }}
+                            }
+                          </small>
+                        }
+                      </div>
+                    }
+                    @if ((payable.paid_amount ?? 0) > 0) {
+                      <small
+                        >Pago {{ payable.paid_amount | currency: 'BRL' }} · saldo
+                        {{ payable.amount - (payable.paid_amount ?? 0) | currency: 'BRL' }}</small
+                      >
+                    }
+                  </div>
+                  @if (canManagePurchases() && (payable.status === 'open' || payable.status === 'partial')) {
+                    <button
+                      type="button"
+                      class="secondary small"
+                      [disabled]="saving()"
+                      (click)="settlePayable(purchase, payable)"
+                    >
+                      Registrar pagamento
+                    </button>
+                  }
+                </div>
+              }
+            </section>
+          }
+          <section class="purchase-aside-card timeline-card">
+            <p class="eyebrow">Histórico da compra</p>
+            @for (event of purchase.events; track event.id) {
+              <div class="purchase-event">
+                <i></i>
+                <div>
+                  <strong>{{ event.detail }}</strong
+                  ><small>{{ event.created_at | date: 'dd/MM/yyyy HH:mm' }}</small>
+                </div>
+              </div>
+            }
+          </section>
+          @if (purchaseStatusNote(purchase); as note) {
+            <p class="purchase-status-note">{{ note }}</p>
+          }
+          @if (canManagePurchases() && isActive(purchase)) {
+            <div class="purchase-lifecycle-actions">
+              @if (purchase.status === 'ordered' || purchase.status === 'partially_received') {
+                <button type="button" class="secondary" [disabled]="saving()" (click)="receiveAll(purchase)">
+                  Receber tudo
+                </button>
+              }
+              @if (purchase.status === 'ordered' || purchase.status === 'partially_received') {
+                <button
+                  type="button"
+                  class="secondary"
+                  [disabled]="saving()"
+                  (click)="openLifecycleForm('close')"
+                >
+                  Encerrar saldo
+                </button>
+              }
+              <button
+                type="button"
+                class="cancel-purchase"
+                [disabled]="saving()"
+                (click)="openLifecycleForm('cancel')"
+              >
+                Cancelar compra
+              </button>
+              <button
+                type="button"
+                class="danger-outline"
+                [disabled]="saving()"
+                (click)="requestDelete(purchase)"
+              >
+                Excluir compra
+              </button>
+            </div>
+          }
+          @if (lifecycleForm(); as form) {
+            <section class="purchase-aside-card lifecycle-form">
+              <p class="eyebrow">
+                {{ form.mode === 'cancel' ? 'Cancelar compra' : 'Encerrar saldo pendente' }}
+              </p>
+              <label
+                >Motivo<input
+                  type="text"
+                  maxlength="255"
+                  [value]="form.reason"
+                  (input)="setLifecycleReason($any($event.target).value)"
+                  placeholder="Ex.: fornecedor não entregou o restante"
+              /></label>
+              @if (form.mode === 'cancel' && hasReceived(purchase)) {
+                <fieldset class="lifecycle-resolution">
+                  <legend>O que fazer com o material já recebido?</legend>
+                  <label
+                    ><input
+                      type="radio"
+                      name="resolution"
+                      [checked]="form.resolution === 'keep_received'"
+                      (change)="setLifecycleResolution('keep_received')"
+                    />
+                    Manter o recebido e encerrar o saldo</label
+                  >
+                  <label
+                    ><input
+                      type="radio"
+                      name="resolution"
+                      [checked]="form.resolution === 'return_received'"
+                      (change)="setLifecycleResolution('return_received')"
+                    />
+                    Registrar devolução ao fornecedor (saída de estoque)</label
+                  >
+                </fieldset>
+              }
+              <div class="lifecycle-actions">
+                <button type="button" class="secondary small" (click)="lifecycleForm.set(null)">Voltar</button
+                ><button
+                  type="button"
+                  class="primary small"
+                  [disabled]="saving() || form.reason.trim().length < 3"
+                  (click)="submitLifecycle(purchase)"
+                >
+                  Confirmar
+                </button>
+              </div>
+            </section>
+          }
+        </aside>
+      </div>
+      @if (error()) {
+        <p class="purchase-error" role="alert">{{ error() }}</p>
+      }
+    </section>
+  </div>
+}

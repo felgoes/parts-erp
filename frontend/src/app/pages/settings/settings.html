@@ -1,70 +1,292 @@
-<app-page-header eyebrow="Sistema" title="Configurações" subtitle="Dê ao ERP a identidade da sua empresa e ajuste como prefere trabalhar."></app-page-header>
+<app-page-header
+  eyebrow="Sistema"
+  title="Configurações"
+  subtitle="Dê ao ERP a identidade da sua empresa e ajuste como prefere trabalhar."
+></app-page-header>
 
 @if (loading()) {
   <div class="settings-loading" role="status">Carregando suas configurações…</div>
 } @else {
-  @if (error()) { <p class="settings-message is-error" role="alert">{{ error() }}</p> }
-  @if (message()) { <p class="settings-message" role="status">{{ message() }}</p> }
+  @if (error()) {
+    <p class="settings-message is-error" role="alert">{{ error() }}</p>
+  }
+  @if (message()) {
+    <p class="settings-message" role="status">{{ message() }}</p>
+  }
 
   <form class="settings-form" (ngSubmit)="save()">
     <section class="settings-card">
-      <div class="settings-heading"><span class="section-icon">✳</span><div><p class="eyebrow">Identidade</p><h2>Sua empresa no ERP</h2><p>O nome e o símbolo aparecem no menu para toda a equipe. Se apagar os campos, o ERP volta para a identidade padrão.</p></div></div>
+      <div class="settings-heading">
+        <span class="section-icon">✳</span>
+        <div>
+          <p class="eyebrow">Identidade</p>
+          <h2>Sua empresa no ERP</h2>
+          <p>
+            O nome e o símbolo aparecem no menu para toda a equipe. Se apagar os campos, o ERP volta para a
+            identidade padrão.
+          </p>
+        </div>
+      </div>
       <div class="identity-layout">
         <div class="logo-preview" aria-label="Prévia do logotipo">
-          @if (draft.logo_data_url) { <img [src]="draft.logo_data_url" alt="Prévia do logotipo da empresa" /> }
-          @else { <span>{{ draft.company_short_name.slice(0, 1).toUpperCase() || 'P' }}</span> }
+          @if (draft.logo_data_url) {
+            <img [src]="draft.logo_data_url" alt="Prévia do logotipo da empresa" />
+          } @else {
+            <span>{{ draft.company_short_name.slice(0, 1).toUpperCase() || 'P' }}</span>
+          }
         </div>
         <div class="identity-fields">
-          <label>Nome da empresa<input name="company_name" [(ngModel)]="draft.company_name" maxlength="120" placeholder="Parts ERP" /></label>
-          <label>Nome curto no menu<input name="company_short_name" [(ngModel)]="draft.company_short_name" maxlength="40" placeholder="Parts" /></label>
-          <div class="logo-controls"><label class="secondary upload-button">{{ draft.logo_data_url ? 'Trocar logotipo' : 'Enviar logotipo' }}<input type="file" accept="image/png,image/jpeg,image/webp" (change)="selectLogo($event)" /></label>@if (draft.logo_data_url) { <button class="quiet-button" type="button" (click)="removeLogo()">Remover</button> }<small>PNG, JPEG ou WebP · até 2 MB</small></div>
-          @if (logoError()) { <small class="field-error" role="alert">{{ logoError() }}</small> }
+          <label
+            >Nome da empresa<input
+              name="company_name"
+              [(ngModel)]="draft.company_name"
+              maxlength="120"
+              placeholder="Parts ERP"
+          /></label>
+          <label
+            >Nome curto no menu<input
+              name="company_short_name"
+              [(ngModel)]="draft.company_short_name"
+              maxlength="40"
+              placeholder="Parts"
+          /></label>
+          <div class="logo-controls">
+            <label class="secondary upload-button"
+              >{{ draft.logo_data_url ? 'Trocar logotipo' : 'Enviar logotipo'
+              }}<input type="file" accept="image/png,image/jpeg,image/webp" (change)="selectLogo($event)"
+            /></label>
+            @if (draft.logo_data_url) {
+              <button class="quiet-button" type="button" (click)="removeLogo()">Remover</button>
+            }
+            <small>PNG, JPEG ou WebP · até 2 MB</small>
+          </div>
+          @if (logoError()) {
+            <small class="field-error" role="alert">{{ logoError() }}</small>
+          }
         </div>
       </div>
     </section>
 
     <section class="settings-card">
-      <div class="settings-heading"><span class="section-icon">◐</span><div><p class="eyebrow">Aparência</p><h2>Escolha seu tema</h2><p>Preferência salva neste dispositivo e aplicada imediatamente.</p></div></div>
+      <div class="settings-heading">
+        <span class="section-icon">◐</span>
+        <div>
+          <p class="eyebrow">Aparência</p>
+          <h2>Escolha seu tema</h2>
+          <p>Preferência salva neste dispositivo e aplicada imediatamente.</p>
+        </div>
+      </div>
       <div class="theme-options" role="group" aria-label="Tema do ERP">
-        <button type="button" class="theme-option" [class.is-selected]="appearance.theme() === 'light'" [attr.aria-pressed]="appearance.theme() === 'light'" (click)="chooseTheme('light')"><span class="theme-swatch light-swatch"><i></i><i></i><i></i></span><span><strong>Claro</strong><small>Leve e familiar</small></span><span class="radio-mark"></span></button>
-        <button type="button" class="theme-option" [class.is-selected]="appearance.theme() === 'dark'" [attr.aria-pressed]="appearance.theme() === 'dark'" (click)="chooseTheme('dark')"><span class="theme-swatch dark-swatch"><i></i><i></i><i></i></span><span><strong>Escuro</strong><small>Confortável em pouca luz</small></span><span class="radio-mark"></span></button>
+        <button
+          type="button"
+          class="theme-option"
+          [class.is-selected]="appearance.theme() === 'light'"
+          [attr.aria-pressed]="appearance.theme() === 'light'"
+          (click)="chooseTheme('light')"
+        >
+          <span class="theme-swatch light-swatch"><i></i><i></i><i></i></span
+          ><span><strong>Claro</strong><small>Leve e familiar</small></span
+          ><span class="radio-mark"></span>
+        </button>
+        <button
+          type="button"
+          class="theme-option"
+          [class.is-selected]="appearance.theme() === 'dark'"
+          [attr.aria-pressed]="appearance.theme() === 'dark'"
+          (click)="chooseTheme('dark')"
+        >
+          <span class="theme-swatch dark-swatch"><i></i><i></i><i></i></span
+          ><span><strong>Escuro</strong><small>Confortável em pouca luz</small></span
+          ><span class="radio-mark"></span>
+        </button>
       </div>
     </section>
 
     <section class="settings-card backup-card">
-      <div class="settings-heading"><span class="section-icon">↻</span><div><p class="eyebrow">Proteção de dados</p><h2>Backups</h2><p>Defina sua política de cópias e retenção.</p></div><span class="status-pill" [class.is-ready]="settings().backup_ready">{{ settings().backup_ready ? 'Em execução' : 'Configuração pendente' }}</span></div>
-      <div class="backup-notice"><strong>{{ settings().drive_connected ? 'Google Drive conectado.' : 'Configure a conexão com o Google Drive.' }}</strong><span>O Client ID, o segredo OAuth e a pasta de destino ficam protegidos no servidor. A autorização acontece na sua conta Google e não exige chave dentro do APK.</span></div>
-      <div class="backup-grid">
-        <label>Client ID OAuth<input name="drive_client_id" [(ngModel)]="draft.drive_client_id" placeholder="...apps.googleusercontent.com" /></label>
-        <label>Segredo OAuth<input name="drive_client_secret" type="password" [(ngModel)]="draft.drive_client_secret" placeholder="{{ settings().drive_client_secret_configured ? 'Já configurado; deixe vazio para manter' : 'Cole o segredo do cliente' }}" /></label>
-        <label>ID da pasta no Drive (opcional)<input name="drive_folder_id" [(ngModel)]="draft.drive_folder_id" placeholder="Destino padrão se ficar vazio" /></label>
-        <div class="destination-field"><span>Conexão</span><strong class="drive-destination">{{ settings().drive_connected ? 'Autorizada' : 'Pendente' }}</strong><button class="secondary" type="button" [disabled]="driveConnecting()" (click)="connectGoogleDrive()">{{ driveConnecting() ? 'Abrindo Google…' : 'Autorizar Google Drive' }}</button></div>
+      <div class="settings-heading">
+        <span class="section-icon">↻</span>
+        <div>
+          <p class="eyebrow">Proteção de dados</p>
+          <h2>Backups</h2>
+          <p>Defina sua política de cópias e retenção.</p>
+        </div>
+        <span class="status-pill" [class.is-ready]="settings().backup_ready">{{
+          settings().backup_ready ? 'Em execução' : 'Configuração pendente'
+        }}</span>
+      </div>
+      <div class="backup-notice">
+        <strong>{{
+          settings().drive_connected ? 'Google Drive conectado.' : 'Configure a conexão com o Google Drive.'
+        }}</strong
+        ><span
+          >O Client ID, o segredo OAuth e a pasta de destino ficam protegidos no servidor. A autorização
+          acontece na sua conta Google e não exige chave dentro do APK.</span
+        >
       </div>
       <div class="backup-grid">
-        <label class="backup-enable"><input type="checkbox" name="backup_enabled" [(ngModel)]="draft.backup_enabled" /><span><strong>Quero ativar os backups</strong><small>Fica como preferência até o serviço estar conectado e operacional.</small></span></label>
-        <label>Frequência<select name="backup_frequency" [(ngModel)]="draft.backup_frequency"><option value="daily">Todos os dias</option><option value="weekly">Toda semana</option></select><small>O agendamento só começa após a configuração do serviço.</small></label>
-        <label>Horário do backup<input type="time" name="backup_time" [(ngModel)]="draft.backup_time" /><small>Horário local do servidor.</small></label>
-        <label>Manter cópias por<select name="backup_retention_days" [(ngModel)]="draft.backup_retention_days"><option [ngValue]="7">7 dias</option><option [ngValue]="14">14 dias</option><option [ngValue]="30">30 dias</option></select><small>Cópias mais antigas que 30 dias serão removidas quando a rotina estiver ativa.</small></label>
-        <div class="destination-field"><span>Destino</span><strong class="drive-destination"><span aria-hidden="true">▣</span> Google Drive</strong><small>Sem custo de armazenamento além do espaço gratuito disponível na sua conta Google.</small></div>
+        <label
+          >Client ID OAuth<input
+            name="drive_client_id"
+            [(ngModel)]="draft.drive_client_id"
+            placeholder="...apps.googleusercontent.com"
+        /></label>
+        <label
+          >Segredo OAuth<input
+            name="drive_client_secret"
+            type="password"
+            [(ngModel)]="draft.drive_client_secret"
+            placeholder="{{
+              settings().drive_client_secret_configured
+                ? 'Já configurado; deixe vazio para manter'
+                : 'Cole o segredo do cliente'
+            }}"
+        /></label>
+        <label
+          >ID da pasta no Drive (opcional)<input
+            name="drive_folder_id"
+            [(ngModel)]="draft.drive_folder_id"
+            placeholder="Destino padrão se ficar vazio"
+        /></label>
+        <div class="destination-field">
+          <span>Conexão</span
+          ><strong class="drive-destination">{{
+            settings().drive_connected ? 'Autorizada' : 'Pendente'
+          }}</strong
+          ><button
+            class="secondary"
+            type="button"
+            [disabled]="driveConnecting()"
+            (click)="connectGoogleDrive()"
+          >
+            {{ driveConnecting() ? 'Abrindo Google…' : 'Autorizar Google Drive' }}
+          </button>
+        </div>
       </div>
-      <div class="backup-footer"><span>Último backup <strong>{{ settings().backup_last_at ? (settings().backup_last_at | date:'dd/MM/yyyy HH:mm') : 'Ainda não realizado' }}</strong></span><span>Status <strong>{{ settings().backup_last_status }}</strong></span><button class="secondary" type="button" [disabled]="backupRunning() || !settings().drive_connected" (click)="runBackup()">{{ backupRunning() ? 'Enviando…' : 'Executar backup agora' }}</button></div>
+      <div class="backup-grid">
+        <label class="backup-enable"
+          ><input type="checkbox" name="backup_enabled" [(ngModel)]="draft.backup_enabled" /><span
+            ><strong>Quero ativar os backups</strong
+            ><small>Fica como preferência até o serviço estar conectado e operacional.</small></span
+          ></label
+        >
+        <label
+          >Frequência<select name="backup_frequency" [(ngModel)]="draft.backup_frequency">
+            <option value="daily">Todos os dias</option>
+            <option value="weekly">Toda semana</option></select
+          ><small>O agendamento só começa após a configuração do serviço.</small></label
+        >
+        <label
+          >Horário do backup<input type="time" name="backup_time" [(ngModel)]="draft.backup_time" /><small
+            >Horário local do servidor.</small
+          ></label
+        >
+        <label
+          >Manter cópias por<select name="backup_retention_days" [(ngModel)]="draft.backup_retention_days">
+            <option [ngValue]="7">7 dias</option>
+            <option [ngValue]="14">14 dias</option>
+            <option [ngValue]="30">30 dias</option></select
+          ><small
+            >Cópias mais antigas que 30 dias serão removidas quando a rotina estiver ativa.</small
+          ></label
+        >
+        <div class="destination-field">
+          <span>Destino</span
+          ><strong class="drive-destination"><span aria-hidden="true">▣</span> Google Drive</strong
+          ><small>Sem custo de armazenamento além do espaço gratuito disponível na sua conta Google.</small>
+        </div>
+      </div>
+      <div class="backup-footer">
+        <span
+          >Último backup
+          <strong>{{
+            settings().backup_last_at
+              ? (settings().backup_last_at | date: 'dd/MM/yyyy HH:mm')
+              : 'Ainda não realizado'
+          }}</strong></span
+        ><span
+          >Status <strong>{{ settings().backup_last_status }}</strong></span
+        ><button
+          class="secondary"
+          type="button"
+          [disabled]="backupRunning() || !settings().drive_connected"
+          (click)="runBackup()"
+        >
+          {{ backupRunning() ? 'Enviando…' : 'Executar backup agora' }}
+        </button>
+      </div>
     </section>
 
     <section class="settings-card import-profile-card">
-      <div class="settings-heading"><span class="section-icon">▤</span><div><p class="eyebrow">Compras</p><h2>Importação de documentos</h2><p>Perfis locais ajudam a identificar recibos de marketplaces. O sistema ainda pede revisão antes de criar uma compra.</p></div></div>
-      <div class="backup-notice"><strong>Leitura local e sem custo por documento</strong><span>PDF, fotos e XML são analisados no servidor do ERP. Perfis contêm apenas rótulos e sinais de identificação; não executam código. Um perfil pode ter várias versões de leiaute.</span></div>
-      <div class="profile-actions"><button class="secondary" type="button" (click)="downloadImportProfileExample()">Baixar modelo JSON</button><label class="secondary upload-button">{{ profileBusy() ? 'Processando…' : 'Importar perfil JSON' }}<input type="file" accept="application/json,.json" [disabled]="profileBusy()" (change)="uploadImportProfile($event)" /></label></div>
-      @if (profileError()) { <p class="field-error" role="alert">{{ profileError() }}</p> }
+      <div class="settings-heading">
+        <span class="section-icon">▤</span>
+        <div>
+          <p class="eyebrow">Compras</p>
+          <h2>Importação de documentos</h2>
+          <p>
+            Perfis locais ajudam a identificar recibos de marketplaces. O sistema ainda pede revisão antes de
+            criar uma compra.
+          </p>
+        </div>
+      </div>
+      <div class="backup-notice">
+        <strong>Leitura local e sem custo por documento</strong
+        ><span
+          >PDF, fotos e XML são analisados no servidor do ERP. Perfis contêm apenas rótulos e sinais de
+          identificação; não executam código. Um perfil pode ter várias versões de leiaute.</span
+        >
+      </div>
+      <div class="profile-actions">
+        <button class="secondary" type="button" (click)="downloadImportProfileExample()">
+          Baixar modelo JSON</button
+        ><label class="secondary upload-button"
+          >{{ profileBusy() ? 'Processando…' : 'Importar perfil JSON'
+          }}<input
+            type="file"
+            accept="application/json,.json"
+            [disabled]="profileBusy()"
+            (change)="uploadImportProfile($event)"
+        /></label>
+      </div>
+      @if (profileError()) {
+        <p class="field-error" role="alert">{{ profileError() }}</p>
+      }
       <div class="profile-list" aria-label="Perfis de importação disponíveis">
         @for (profile of importProfiles(); track profile.profile_id) {
-          <div class="profile-row"><div><strong>{{ profile.name }}</strong><small>{{ profile.kind === 'built_in' ? 'Perfil incluído' : 'Perfil personalizado' }} · v{{ profile.version }}</small></div>
-            @if (profile.kind === 'custom') { <button class="quiet-button" type="button" [disabled]="profileBusy()" (click)="deleteImportProfile(profile.profile_id)">Remover</button> }
+          <div class="profile-row">
+            <div>
+              <strong>{{ profile.name }}</strong
+              ><small
+                >{{ profile.kind === 'built_in' ? 'Perfil incluído' : 'Perfil personalizado' }} · v{{
+                  profile.version
+                }}</small
+              >
+            </div>
+            @if (profile.kind === 'custom') {
+              <button
+                class="quiet-button"
+                type="button"
+                [disabled]="profileBusy()"
+                (click)="deleteImportProfile(profile.profile_id)"
+              >
+                Remover
+              </button>
+            }
           </div>
-        } @empty { <p class="muted">Carregando perfis disponíveis…</p> }
+        } @empty {
+          <p class="muted">Carregando perfis disponíveis…</p>
+        }
       </div>
-      <small class="profile-footnote">Perfis incluídos: AliExpress, Mercado Livre, Shopee, Amazon e Alibaba. Recibos podem variar por país e formato; se a identificação for ambígua, escolha o perfil na revisão.</small>
+      <small class="profile-footnote"
+        >Perfis incluídos: AliExpress, Mercado Livre, Shopee, Amazon e Alibaba. Recibos podem variar por país
+        e formato; se a identificação for ambígua, escolha o perfil na revisão.</small
+      >
     </section>
 
-    <div class="settings-actions"><p>As alterações de identidade são compartilhadas com todos os usuários do ERP.</p><button class="primary" type="submit" [disabled]="saving()">{{ saving() ? 'Salvando…' : 'Salvar configurações' }}</button></div>
+    <div class="settings-actions">
+      <p>As alterações de identidade são compartilhadas com todos os usuários do ERP.</p>
+      <button class="primary" type="submit" [disabled]="saving()">
+        {{ saving() ? 'Salvando…' : 'Salvar configurações' }}
+      </button>
+    </div>
   </form>
 }

@@ -16,6 +16,59 @@ import { MoneyInputDirective } from '../../shared/money-input.directive';
 import { dateOnlyLabel, dateOnlyValue } from '../../shared/date-only';
 import { ImportPlanError, buildImportPlan } from '../../shared/purchase-import-math';
 
+/** Linha da revisão de importação (P0/P14). */
+interface ImportDraftItem {
+  description: string;
+  sku: string;
+  quantity: number;
+  unit_cost: number;
+  confidence: number;
+  product_id: string | null;
+  stock_controlled: boolean;
+  line_total: number;
+  discount_amount: number;
+  source: string;
+  quantityDerived: boolean;
+}
+
+/** Estado da revisão de importação: campos do documento, rateio e linhas. */
+interface ImportDraft {
+  supplier: string;
+  orderNumber: string;
+  documentDate: string;
+  total: number | null;
+  shipping: number | null;
+  discount: number | null;
+  tax: number | null;
+  currency: string | null;
+  exchangeRate: number | null;
+  paidAmount: number | null;
+  items: ImportDraftItem[];
+}
+
+/** Cadastro de peça aberto dentro da revisão. */
+interface ImportProductDraft {
+  sku: string;
+  stock_type: 'product' | 'warehouse';
+  name: string;
+  description: string;
+  sale_price: number;
+  cost_price: number;
+  minimum_stock: number;
+  brand: string;
+  manufacturer: string;
+  manufacturer_part_number: string;
+  barcode: string;
+  category: string;
+  item_condition: 'new' | 'used' | 'refurbished';
+  warranty_days: number | null;
+  origin_country: string;
+  weight_g: number | null;
+  package_length_cm: number | null;
+  package_width_cm: number | null;
+  package_height_cm: number | null;
+}
+
 @Component({
   selector: 'app-purchases',
   imports: [CurrencyPipe, DatePipe, DecimalPipe, FormsModule, MoneyInputDirective, ReactiveFormsModule, PageHeader, PeriodFilter],
@@ -70,12 +123,44 @@ export class PurchasesPage implements OnInit {
   readonly importProductLine = signal<number | null>(null);
   readonly savingImportProduct = signal(false);
   readonly importProductError = signal('');
-  readonly importProductDraft = signal({ sku: '', stock_type: 'product' as 'product' | 'warehouse', name: '', description: '', sale_price: 0, cost_price: 0, minimum_stock: 0, brand: '', manufacturer: '', manufacturer_part_number: '', barcode: '', category: '', item_condition: 'new' as 'new' | 'used' | 'refurbished', warranty_days: null as number | null, origin_country: '', weight_g: null as number | null, package_length_cm: null as number | null, package_width_cm: null as number | null, package_height_cm: null as number | null });
+  readonly importProductDraft = signal<ImportProductDraft>({
+    sku: '',
+    stock_type: 'product',
+    name: '',
+    description: '',
+    sale_price: 0,
+    cost_price: 0,
+    minimum_stock: 0,
+    brand: '',
+    manufacturer: '',
+    manufacturer_part_number: '',
+    barcode: '',
+    category: '',
+    item_condition: 'new',
+    warranty_days: null,
+    origin_country: '',
+    weight_g: null,
+    package_length_cm: null,
+    package_width_cm: null,
+    package_height_cm: null,
+  });
   private readonly importId = signal<string | null>(null);
   readonly selectedFiles = signal<File[]>([]);
   readonly importReview = signal<any | null>(null);
   readonly importProfiles = signal<Array<{ profile_id: string; name: string; kind: string; version: number }>>([]);
-  readonly importDraft = signal<{ supplier: string; orderNumber: string; documentDate: string; total: number | null; shipping: number | null; discount: number | null; tax: number | null; currency: string | null; exchangeRate: number | null; paidAmount: number | null; items: Array<{ description: string; sku: string; quantity: number; unit_cost: number; confidence: number; product_id: string | null; stock_controlled: boolean; line_total: number; discount_amount: number; source: string; quantityDerived: boolean }> }>({ supplier: '', orderNumber: '', documentDate: '', total: null, shipping: null, discount: null, tax: null, currency: null, exchangeRate: null, paidAmount: null, items: [] });
+  readonly importDraft = signal<ImportDraft>({
+    supplier: '',
+    orderNumber: '',
+    documentDate: '',
+    total: null,
+    shipping: null,
+    discount: null,
+    tax: null,
+    currency: null,
+    exchangeRate: null,
+    paidAmount: null,
+    items: [],
+  });
   readonly importDuplicate = signal<{ purchase_id: string; purchase_number: string; purchase_status: string; cancelled: boolean } | null>(null);
   readonly importCheck = signal<{ items_total: number | null; subtotal?: number | null; closing_difference: number | null; subtotal_difference: number | null; balanced: boolean } | null>(null);
   readonly importType = signal<'parts' | 'expense'>('parts');

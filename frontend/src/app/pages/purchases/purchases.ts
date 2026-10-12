@@ -36,58 +36,27 @@ import { MoneyInputDirective } from '../../shared/money-input.directive';
 import { dateOnlyLabel, dateOnlyValue } from '../../shared/date-only';
 import { ImportPlanError, buildImportPlan } from '../../shared/purchase-import-math';
 
-/** Linha da revisão de importação (P0/P14). */
-interface ImportDraftItem {
-  description: string;
-  sku: string;
-  quantity: number;
-  unit_cost: number;
-  confidence: number;
-  product_id: string | null;
-  stock_controlled: boolean;
-  line_total: number;
-  discount_amount: number;
-  source: string;
-  quantityDerived: boolean;
-}
-
-/** Estado da revisão de importação: campos do documento, rateio e linhas. */
-interface ImportDraft {
-  supplier: string;
-  orderNumber: string;
-  documentDate: string;
-  total: number | null;
-  shipping: number | null;
-  discount: number | null;
-  tax: number | null;
-  currency: string | null;
-  exchangeRate: number | null;
-  paidAmount: number | null;
-  items: ImportDraftItem[];
-}
-
-/** Cadastro de peça aberto dentro da revisão. */
-interface ImportProductDraft {
-  sku: string;
-  stock_type: 'product' | 'warehouse';
-  name: string;
-  description: string;
-  sale_price: number;
-  cost_price: number;
-  minimum_stock: number;
-  brand: string;
-  manufacturer: string;
-  manufacturer_part_number: string;
-  barcode: string;
-  category: string;
-  item_condition: 'new' | 'used' | 'refurbished';
-  warranty_days: number | null;
-  origin_country: string;
-  weight_g: number | null;
-  package_length_cm: number | null;
-  package_width_cm: number | null;
-  package_height_cm: number | null;
-}
+import {
+  ImportCheck,
+  ImportDraft,
+  ImportDraftItem,
+  ImportDuplicate,
+  ImportProductDraft,
+  closingDifference,
+  emptyImportDraft,
+  emptyImportLine,
+  emptyImportProductDraft,
+  fieldOriginText,
+  hasItemsToCheck,
+  importBlockers,
+  importNotes,
+  itemOriginText,
+  itemsTotal,
+  needsRate,
+  paidDifference,
+  subtotalDifference,
+  today,
+} from './import/purchase-import-model';
 
 @Component({
   selector: 'app-purchases',
@@ -183,59 +152,16 @@ export class PurchasesPage implements OnInit {
   readonly importProductLine = signal<number | null>(null);
   readonly savingImportProduct = signal(false);
   readonly importProductError = signal('');
-  readonly importProductDraft = signal<ImportProductDraft>({
-    sku: '',
-    stock_type: 'product',
-    name: '',
-    description: '',
-    sale_price: 0,
-    cost_price: 0,
-    minimum_stock: 0,
-    brand: '',
-    manufacturer: '',
-    manufacturer_part_number: '',
-    barcode: '',
-    category: '',
-    item_condition: 'new',
-    warranty_days: null,
-    origin_country: '',
-    weight_g: null,
-    package_length_cm: null,
-    package_width_cm: null,
-    package_height_cm: null,
-  });
+  readonly importProductDraft = signal(emptyImportProductDraft());
   private readonly importId = signal<string | null>(null);
   readonly selectedFiles = signal<File[]>([]);
   readonly importReview = signal<any | null>(null);
   readonly importProfiles = signal<
     Array<{ profile_id: string; name: string; kind: string; version: number }>
   >([]);
-  readonly importDraft = signal<ImportDraft>({
-    supplier: '',
-    orderNumber: '',
-    documentDate: '',
-    total: null,
-    shipping: null,
-    discount: null,
-    tax: null,
-    currency: null,
-    exchangeRate: null,
-    paidAmount: null,
-    items: [],
-  });
-  readonly importDuplicate = signal<{
-    purchase_id: string;
-    purchase_number: string;
-    purchase_status: string;
-    cancelled: boolean;
-  } | null>(null);
-  readonly importCheck = signal<{
-    items_total: number | null;
-    subtotal?: number | null;
-    closing_difference: number | null;
-    subtotal_difference: number | null;
-    balanced: boolean;
-  } | null>(null);
+  readonly importDraft = signal(emptyImportDraft());
+  readonly importDuplicate = signal<ImportDuplicate | null>(null);
+  readonly importCheck = signal<ImportCheck | null>(null);
   readonly importType = signal<'parts' | 'expense'>('parts');
   readonly importCategory = signal('');
   readonly importPaidNow = signal(false);
@@ -498,14 +424,7 @@ export class PurchasesPage implements OnInit {
     this.setImportRate(value === '' ? null : Number(value));
   }
   fieldOrigin(field: { source?: string; confidence?: number } | undefined): string {
-    if (!field) return 'não identificado';
-    const source = String(field.source || '');
-    if (source === 'xml') return 'XML da NF-e';
-    if (source === 'ocr')
-      return `OCR · qualidade ${Math.round((Number(field.confidence) || 0) * 100)}%`;
-    if (source === 'pdf_text') return 'texto do documento';
-    if (source === 'columns') return 'grade do documento';
-    return 'documento';
+    return fieldOriginText(field);
   }
   itemOrigin(item: {
     source?: string;
@@ -513,90 +432,39 @@ export class PurchasesPage implements OnInit {
     quantity_derived?: boolean;
     quantityDerived?: boolean;
   }): string {
-    const base = this.fieldOrigin(item);
-    const derived = item.quantity_derived ?? item.quantityDerived;
-    return derived ? `${base} · quantidade derivada` : base;
+    return itemOriginText(item);
   }
   setImportPaid(value: number | null) {
     this.importDraft.update((draft) => ({ ...draft, paidAmount: value }));
   }
   importItemsTotal() {
-    return this.importDraft().items.reduce((sum, item) => sum + Number(item.line_total || 0), 0);
+    return itemsTotal(this.importDraft().items);
   }
   importClosingDifference() {
-    const draft = this.importDraft();
-    if (draft.total === null || !draft.items.length) return 0;
-    return Number(
-      (
-        this.importItemsTotal() +
-        Number(draft.shipping || 0) +
-        Number(draft.tax || 0) -
-        Number(draft.discount || 0) -
-        Number(draft.total)
-      ).toFixed(2),
-    );
+    return closingDifference(this.importDraft());
   }
   importHasItemsToCheck() {
-    return !!this.importCheck()?.items_total || this.importDraft().items.length > 0;
+    return hasItemsToCheck(this.importCheck(), this.importDraft());
   }
   importSubtotalDifference() {
-    const draft = this.importDraft();
-    const subtotal = this.importCheck()?.subtotal ?? null;
-    if (subtotal === null || !draft.items.length) return null;
-    return Number((this.importItemsTotal() - Number(subtotal)).toFixed(2));
+    return subtotalDifference(this.importDraft(), this.importCheck()?.subtotal ?? null);
   }
   /** Motivos visíveis que impedem a confirmação — ninguém fica preso sem saber por quê. */
   importBlockers(): string[] {
-    const blockers: string[] = [];
-    const draft = this.importDraft();
-    const duplicate = this.importDuplicate();
-    if (duplicate && !duplicate.cancelled) {
-      blockers.push(`Este documento já foi importado na compra ${duplicate.purchase_number}.`);
-    }
-    if (this.importNeedsRate() && !(Number(draft.exchangeRate) > 0)) {
-      blockers.push('Informe a cotação usada na conversão para reais.');
-    }
-    if (Object.values(this.importMoneyValidity()).some(Boolean)) {
-      blockers.push('Há um campo de valor com formato inválido — corrija o valor destacado.');
-    }
-    if (this.importType() === 'expense') {
-      if (this.importCategory().trim().length < 2) blockers.push('Escolha a categoria da despesa.');
-      if (!(Number(draft.total) > 0)) blockers.push('Informe o valor total da despesa.');
-      return blockers;
-    }
-    if (!draft.items.length) {
-      blockers.push('Inclua pelo menos um item — ou marque uma linha candidata do documento.');
-    }
-    draft.items.forEach((item, index) => {
-      const label = `linha ${index + 1}`;
-      if (item.description.trim().length < 2) blockers.push(`Descreva a ${label}.`);
-      if (!(Number(item.quantity) > 0)) blockers.push(`Informe a quantidade da ${label}.`);
-      if (item.stock_controlled && !item.product_id) {
-        blockers.push(
-          `Vincule um produto do catálogo na ${label} (ou desmarque "Controlado no estoque").`,
-        );
-      }
-      // P0, regra 6: a compra nasce com o pedido registrado, então cada linha precisa de SKU
-      // ou produto vinculado — a mesma exigência do envio manual do pedido.
-      if (!item.sku.trim() && !item.product_id) {
-        blockers.push(
-          `Informe o SKU ou vincule um produto na ${label}: a compra já nasce como pedido registrado.`,
-        );
-      }
-      if (Number(item.discount_amount) > Number(item.quantity) * Number(item.unit_cost)) {
-        blockers.push(`O desconto da ${label} é maior que o valor da linha.`);
-      }
+    return importBlockers({
+      draft: this.importDraft(),
+      duplicate: this.importDuplicate(),
+      needsRate: this.importNeedsRate(),
+      moneyInvalid: Object.values(this.importMoneyValidity()).some(Boolean),
+      kind: this.importType(),
+      category: this.importCategory(),
     });
-    return [...new Set(blockers)];
   }
   importPaidDifference() {
-    const draft = this.importDraft();
-    if (draft.paidAmount === null || draft.total === null) return 0;
-    return Number((Number(draft.paidAmount) - Number(draft.total)).toFixed(2));
+    return paidDifference(this.importDraft());
   }
   importNeedsRate() {
-    const currency = this.importDraft().currency;
-    return !!currency && currency.toUpperCase() !== 'BRL';
+    return needsRate(this.importDraft().currency);
   }
   updateImportNumber(field: 'total' | 'shipping' | 'discount' | 'tax', value: number | null) {
     this.importDraft.update((draft) => ({ ...draft, [field]: value }));
@@ -807,17 +675,7 @@ export class PurchasesPage implements OnInit {
       tax: number | null;
     },
   ): string {
-    const metadata = [
-      `Perfil: ${review.profile.name}`,
-      draft.orderNumber ? `Pedido: ${draft.orderNumber}` : '',
-      draft.documentDate ? `Data no documento: ${draft.documentDate}` : '',
-      draft.shipping != null ? `Frete no documento: ${draft.shipping}` : '',
-      draft.discount != null ? `Desconto no documento: ${draft.discount}` : '',
-      draft.tax != null ? `Impostos no documento: ${draft.tax}` : '',
-      `Total no documento: ${draft.total ?? 'não identificado'}`,
-      'Documento revisado pelo usuário.',
-    ].filter(Boolean);
-    return `Importação de documento. ${metadata.join(' · ')}`.slice(0, 4000);
+    return importNotes(review.profile.name, draft);
   }
   importPlanLine(index: number) {
     return this.importPlan().plan?.lines[index] ?? null;
@@ -834,11 +692,7 @@ export class PurchasesPage implements OnInit {
   }
   setImportPaidNow(value: boolean) {
     this.importPaidNow.set(value);
-    if (value && !this.importPaidDate()) this.importPaidDate.set(this.today());
-  }
-  private today() {
-    const now = new Date();
-    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    if (value && !this.importPaidDate()) this.importPaidDate.set(today());
   }
   useImportCandidate(candidate: { text: string; quantity?: number; unit_cost?: number }) {
     const quantity = Number(candidate.quantity ?? 1) || 1;
@@ -866,22 +720,7 @@ export class PurchasesPage implements OnInit {
   addImportLine() {
     this.importDraft.update((draft) => ({
       ...draft,
-      items: [
-        ...draft.items,
-        {
-          description: '',
-          sku: '',
-          quantity: 1,
-          unit_cost: 0,
-          confidence: 0,
-          product_id: null,
-          stock_controlled: true,
-          line_total: 0,
-          discount_amount: 0,
-          source: '',
-          quantityDerived: false,
-        },
-      ],
+      items: [...draft.items, emptyImportLine()],
     }));
   }
   removeImportLine(index: number) {

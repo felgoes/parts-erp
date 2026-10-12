@@ -1,6 +1,5 @@
 2075 frontend/src/app/pages/purchases/purchases.html
-2019 frontend/src/app/pages/purchases/purchases.ts
-1725 backend/app/api/routes/purchases.py
+1858 frontend/src/app/pages/purchases/purchases.ts
 1384 frontend/src/app/pages/purchases/purchases.scss
 1246 backend/app/schemas/common.py
 1213 backend/app/services/purchase_import.py

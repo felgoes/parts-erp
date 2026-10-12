@@ -28,6 +28,7 @@ def _user(db) -> User:
 
 def _login(db, user: User, remember_me: bool):
     return login(
+        SimpleNamespace(headers={"cf-connecting-ip": "203.0.113.7"}, client=None),
         SimpleNamespace(username=user.email, password="uma-senha-segura"),
         db,
         remember_me,

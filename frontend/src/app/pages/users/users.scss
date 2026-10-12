@@ -108,3 +108,47 @@
     text-align: right;
   }
 }
+
+.login-attempts-card {
+  display: grid;
+  gap: 12px;
+
+  table {
+    width: 100%;
+  }
+
+  .delayed-accounts h3 {
+    font-size: 0.95rem;
+    margin: 14px 0 6px;
+  }
+
+  /* O aviso de "nada barrado" aqui é uma linha, não a área vazia da tabela. */
+  .empty {
+    padding: 10px 0;
+    text-align: left;
+  }
+
+  .delayed-accounts ul {
+    display: grid;
+    gap: 6px;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .delayed-accounts li,
+  .release-by-email {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: space-between;
+  }
+
+  .release-by-email label {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+}

@@ -30,3 +30,27 @@ export interface AuthToken {
   persistent?: boolean;
   user: User;
 }
+
+/** Origem (IP) barrada temporariamente por excesso de tentativas de login. */
+export interface BlockedLoginOrigin {
+  ip: string;
+  failures: number;
+  seconds_left: number;
+}
+
+/** Conta com falhas acumuladas: sofre atraso progressivo, mas nunca fica bloqueada. */
+export interface DelayedLoginAccount {
+  email: string;
+  failures: number;
+  delay_seconds: number;
+  seconds_left: number;
+}
+
+/** Estado do limite de tentativas de login, para a tela de Usuários. */
+export interface LoginAttempts {
+  window_seconds: number;
+  ip_failure_limit: number;
+  delay_cap_seconds: number;
+  blocked_origins: BlockedLoginOrigin[];
+  delayed_accounts: DelayedLoginAccount[];
+}

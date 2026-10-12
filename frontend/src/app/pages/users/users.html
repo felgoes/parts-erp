@@ -47,6 +47,101 @@
     </table>
   </div>
 </section>
+@if (canManageUsers()) {
+  <section class="card login-attempts-card">
+    <div class="card-head">
+      <div>
+        <p class="eyebrow">Acesso</p>
+        <h2>Tentativas de login bloqueadas</h2>
+        <p class="muted">
+          Depois de muitas senhas erradas, a origem fica barrada por até
+          {{ timeLeft(attempts()?.window_seconds ?? 300) }}. Falhas na mesma conta apenas atrasam a
+          entrada — quem sabe a senha continua entrando.
+        </p>
+      </div>
+      <button class="secondary small" type="button" (click)="loadAttempts()">Atualizar</button>
+    </div>
+    @if (attemptsMessage()) {
+      <p class="form-message error">{{ attemptsMessage() }}</p>
+    }
+    @if (attempts(); as state) {
+      @if (state.blocked_origins.length) {
+        <table>
+          <thead>
+            <tr>
+              <th>Origem</th>
+              <th>Senhas erradas</th>
+              <th>Libera em</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (origin of state.blocked_origins; track origin.ip) {
+              <tr>
+                <td>
+                  <strong>{{ origin.ip }}</strong>
+                </td>
+                <td>{{ origin.failures }}</td>
+                <td>{{ timeLeft(origin.seconds_left) }}</td>
+                <td>
+                  <button
+                    class="secondary small"
+                    type="button"
+                    [disabled]="releasing()"
+                    (click)="release({ ip: origin.ip })"
+                  >
+                    Liberar
+                  </button>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      } @else {
+        <p class="empty">Nenhuma origem barrada agora.</p>
+      }
+      @if (state.delayed_accounts.length) {
+        <div class="delayed-accounts">
+          <h3>Contas com atraso (nunca bloqueadas)</h3>
+          <ul>
+            @for (account of state.delayed_accounts; track account.email) {
+              <li>
+                <span
+                  ><strong>{{ account.email }}</strong> — {{ account.failures }} falha(s), atraso de
+                  {{ account.delay_seconds }} s</span
+                >
+                <button
+                  class="secondary small"
+                  type="button"
+                  [disabled]="releasing()"
+                  (click)="release({ email: account.email })"
+                >
+                  Liberar
+                </button>
+              </li>
+            }
+          </ul>
+        </div>
+      }
+      <div class="release-by-email">
+        <label
+          >Liberar por e-mail<input
+            type="email"
+            [value]="releaseEmail()"
+            (input)="releaseEmail.set($any($event.target).value)"
+            placeholder="quem.precisa@entrar.com" /></label
+        ><button
+          class="secondary small"
+          type="button"
+          [disabled]="releasing()"
+          (click)="releaseByEmail()"
+        >
+          Devolver acesso
+        </button>
+      </div>
+    }
+  </section>
+}
 @if (modal()) {
   <div class="modal-backdrop" (click)="close()">
     <section class="modal" (click)="$event.stopPropagation()">

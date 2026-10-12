@@ -11,6 +11,10 @@ from app.core.config import get_settings
 
 password_hash = PasswordHash.recommended()
 
+# Hash descartável, gerado uma vez no start: quando o e-mail não existe, verificamos contra
+# ele para o tempo de resposta não revelar se a conta existe.
+_discardable_hash = password_hash.hash("parts-erp-discardable")
+
 
 def hash_password(password: str) -> str:
     return password_hash.hash(password)
@@ -18,6 +22,11 @@ def hash_password(password: str) -> str:
 
 def verify_password(password: str, hashed: str) -> bool:
     return password_hash.verify(password, hashed)
+
+
+def verify_password_always(password: str, hashed: str | None) -> bool:
+    """Verifica a senha mesmo sem usuário correspondente (tempo de resposta constante)."""
+    return password_hash.verify(password, hashed or _discardable_hash)
 
 
 def create_access_token(subject: str, role: str, session_id: str | None = None) -> str:

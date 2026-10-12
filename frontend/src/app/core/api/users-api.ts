@@ -29,6 +29,7 @@ import {
   PayableReport,
   CustomerDetail,
   User,
+  LoginAttempts,
   TelemetrySummary,
   ErpSettings,
   PushPreference,
@@ -76,5 +77,11 @@ export class UsersApi {
   }
   myAvatar(): Observable<Blob> {
     return this.http.get(`${this.base}/users/me/avatar`, { responseType: 'blob' });
+  }
+  loginAttempts(): Observable<LoginAttempts> {
+    return this.http.get<LoginAttempts>(`${this.base}/auth/attempts`);
+  }
+  releaseLoginAttempts(payload: { email?: string; ip?: string }): Observable<LoginAttempts> {
+    return this.http.post<LoginAttempts>(`${this.base}/auth/attempts/reset`, payload);
   }
 }

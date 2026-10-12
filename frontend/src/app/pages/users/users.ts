@@ -1,9 +1,11 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { finalize } from 'rxjs';
+import { UsersApi } from '../../core/api/users-api';
 import { ApiService } from '../../core/api.service';
-import { User } from '../../core/models';
-import { ROLE_DESCRIPTIONS, ROLE_LABELS } from '../../core/user-access';
+import { AuthService } from '../../core/auth.service';
+import { LoginAttempts, User } from '../../core/models';
+import { ROLE_DESCRIPTIONS, ROLE_LABELS, canManageUsers } from '../../core/user-access';
 import { PageHeader } from '../../shared/page-header';
 
 @Component({
@@ -14,8 +16,14 @@ import { PageHeader } from '../../shared/page-header';
 })
 export class UsersPage implements OnInit {
   private readonly api = inject(ApiService);
+  private readonly access = inject(UsersApi);
+  private readonly auth = inject(AuthService);
   private readonly fb = inject(FormBuilder);
   readonly users = signal<User[]>([]);
+  readonly attempts = signal<LoginAttempts | null>(null);
+  readonly releaseEmail = signal('');
+  readonly releasing = signal(false);
+  readonly attemptsMessage = signal('');
   readonly modal = signal(false);
   readonly saving = signal(false);
   readonly message = signal('');
@@ -46,10 +54,52 @@ export class UsersPage implements OnInit {
 
   ngOnInit() {
     this.load();
+    this.loadAttempts();
   }
 
   load() {
     this.api.users().subscribe({ next: (users) => this.users.set(users) });
+  }
+
+  canManageUsers() {
+    return canManageUsers(this.auth.user()?.role);
+  }
+
+  loadAttempts() {
+    if (!this.canManageUsers()) return;
+    this.attemptsMessage.set('');
+    this.access.loginAttempts().subscribe({
+      next: (state) => this.attempts.set(state),
+      error: () => this.attemptsMessage.set('Não foi possível consultar as tentativas de login.'),
+    });
+  }
+
+  release(payload: { email?: string; ip?: string }) {
+    if (this.releasing()) return;
+    this.releasing.set(true);
+    this.access
+      .releaseLoginAttempts(payload)
+      .pipe(finalize(() => this.releasing.set(false)))
+      .subscribe({
+        next: (state) => {
+          this.attempts.set(state);
+          this.releaseEmail.set('');
+        },
+        error: (error) =>
+          this.attemptsMessage.set(error.error?.detail || 'Não foi possível liberar o acesso.'),
+      });
+  }
+
+  releaseByEmail() {
+    const email = this.releaseEmail().trim();
+    if (email) this.release({ email });
+  }
+
+  /** Tempo até a origem ser liberada, em linguagem de quem atende o telefone. */
+  timeLeft(seconds: number) {
+    if (seconds <= 0) return 'liberado';
+    if (seconds < 60) return `${seconds} s`;
+    return `${Math.ceil(seconds / 60)} min`;
   }
 
   openNew() {

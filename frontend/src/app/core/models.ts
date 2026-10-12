@@ -348,6 +348,13 @@ export interface Purchase {
   attachments: PurchaseAttachment[];
   payables?: PurchasePayable[];
 }
+
+/**
+ * Item da lista de compras: mesmo contrato do detalhe, sem os blocos que só a tela de
+ * detalhe usa (histórico e anexos). O detalhe é buscado ao abrir a compra.
+ */
+export type PurchaseListItem = Omit<Purchase, 'events' | 'attachments' | 'payables'>;
+
 export interface PurchaseAttachment {
   id: string;
   filename: string;

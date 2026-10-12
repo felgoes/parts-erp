@@ -800,6 +800,18 @@ class PurchaseOut(ORMModel):
     payables: list[PayableOut] = Field(default_factory=list)
 
 
+class PurchaseListItem(PurchaseOut):
+    """Projeção da lista de compras.
+
+    Mesmo contrato do detalhe, sem os três blocos que só a tela de detalhe usa: histórico,
+    anexos e títulos a pagar. São 20% do payload da lista e não são lidos por ninguém ali.
+    """
+
+    events: list[PurchaseEventOut] = Field(default_factory=list, exclude=True)
+    attachments: list[PurchaseAttachmentOut] = Field(default_factory=list, exclude=True)
+    payables: list[PayableOut] = Field(default_factory=list, exclude=True)
+
+
 class CustomerCreate(BaseModel):
     name: str = Field(min_length=2, max_length=200)
     document: str | None = Field(default=None, max_length=20)

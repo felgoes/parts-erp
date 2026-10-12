@@ -1,0 +1,55 @@
+<app-page-header eyebrow="Operação" title="Monitoramento" subtitle="Saúde técnica e comportamento no catálogo." />
+    <app-period-filter
+      heading="Período analisado"
+      description="As datas consideram o horário de Brasília."
+      ariaLabel="Filtrar monitoramento por período"
+      initialPreset="last30"
+      [initialStartDate]="startDate()"
+      [initialEndDate]="endDate()"
+      [busy]="loading()"
+      (rangeChange)="applyPeriod($event)"
+    />
+    @if (error()) { <div class="monitor-error" role="alert">Não foi possível atualizar o monitoramento. Confira o período e tente novamente.</div> }
+    @if (data(); as summary) {
+      <section class="monitor-grid">
+        <article class="card highlight"><span>Interações no período</span><strong>{{ totalEvents(summary) }}</strong><small>{{ startDate() | date:'dd/MM/yyyy' }} a {{ endDate() | date:'dd/MM/yyyy' }}</small></article>
+        <article class="card"><span>Peças visualizadas</span><strong>{{ eventCount(summary, 'product_view') }}</strong><small>Interesse no catálogo</small></article>
+        <article class="card"><span>Buscas realizadas</span><strong>{{ eventCount(summary, 'catalog_search') }}</strong><small>Intenção de compra</small></article>
+        <article class="card"><span>Contatos comerciais</span><strong>{{ commercialClicks(summary) }}</strong><small>Mercado Livre + WhatsApp</small></article>
+      </section>
+      <section class="card trend-card">
+        <div class="card-title"><div><h2>Atividade da loja</h2><p>Volume diário de navegação e intenção de compra no catálogo.</p></div><span class="chart-period">{{ summary.days }} dias</span></div>
+        <div class="chart-legend" aria-label="Séries do gráfico">
+          @for (series of chartSeries(); track series.key) {
+            <button type="button" class="legend-item" [class.legend-muted]="isSeriesHidden(series.key)" (click)="toggleSeries(series.key)"><i [style.background]="series.color"></i>{{ series.label }}</button>
+          }
+        </div>
+        @if (totalEvents(summary)) {
+          <div class="chart-scroll"><svg class="activity-chart" viewBox="0 0 820 300" role="img" aria-label="Gráfico de linhas da atividade diária no período">
+            @for (tick of [0, 1, 2, 3, 4]; track tick) {
+              <line x1="48" [attr.y1]="chartY(tick)" x2="804" [attr.y2]="chartY(tick)" class="grid-line" />
+              <text x="38" [attr.y]="chartY(tick) + 4" class="axis-label" text-anchor="end">{{ chartTick(tick, summary) }}</text>
+            }
+            @for (series of chartSeries(); track series.key) {
+              @if (!isSeriesHidden(series.key) && series.total) {
+                <polyline [attr.points]="series.points" fill="none" [attr.stroke]="series.color" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+                @for (point of series.coordinates; track point.date) {
+                  <circle [attr.cx]="point.x" [attr.cy]="point.y" r="3.5" [attr.fill]="series.color"><title>{{ point.date | date:'dd/MM/yyyy' }} · {{ series.label }}: {{ point.value }}</title></circle>
+                }
+              }
+            }
+            @for (label of chartLabels(summary); track label.date) { <text [attr.x]="label.x" y="286" class="axis-label" text-anchor="middle">{{ label.date | date:'dd/MM' }}</text> }
+          </svg></div>
+        } @else { <div class="chart-empty"><strong>Nenhuma interação neste período</strong><span>Quando alguém navegar pelo catálogo, a evolução aparecerá aqui.</span></div> }
+      </section>
+      <section class="content-grid">
+        <article class="card breakdown-card"><h2>O que as pessoas fazem</h2><p>Distribuição das interações no período; não representa visitantes únicos.</p><div class="event-bars">@for (item of eventBreakdown(summary); track item.name) { <div class="event-bar-row"><div class="event-bar-heading"><span>{{ item.label }}</span><strong>{{ item.count }}</strong></div><div class="event-bar-track"><span [style.width.%]="share(item.count, totalEvents(summary))" [style.background]="item.color"></span></div><small>{{ share(item.count, totalEvents(summary)) | number:'1.0-1' }}% das interações</small></div> }</div></article>
+        <article class="card health-card"><div class="card-title"><div><h2>Saúde da operação</h2><p>Última verificação de cada serviço monitorado.</p></div><span class="health-summary">{{ healthyCount(summary) }}/{{ healthChecks(summary).length }} OK</span></div><div class="health">@for (item of healthChecks(summary); track item.check_name) { <div><span class="dot" [class.down]="!item.ok"></span><div><strong>{{ healthLabel(item.check_name) }}</strong><small>{{ item.ok ? 'Operacional' : 'Falha' }} · {{ item.latency_ms | number:'1.0-0' }} ms · {{ item.detail || 'Sem detalhe' }} · {{ item.checked_at | date:'dd/MM HH:mm' }}</small></div></div> } @empty { <p class="muted">Ainda não há verificações registradas.</p> }</div></article>
+      </section>
+      <section class="card product-views-card">
+        <div class="card-title"><div><h2>Visualizações por peça</h2><p>Aberturas dos detalhes de cada peça no catálogo público, no período selecionado.</p></div><span class="views-total">{{ productViewTotal(summary) }} visualizações</span></div>
+        @if (summary.product_views.length) {
+          <div class="table-wrap"><table><thead><tr><th>Peça</th><th>SKU</th><th class="numeric">Visualizações</th><th>Participação</th></tr></thead><tbody>@for (product of summary.product_views; track product.sku) { <tr><td><strong>{{ product.product_name }}</strong></td><td><code>{{ product.sku }}</code></td><td class="numeric"><strong>{{ product.views }}</strong></td><td><div class="view-bar"><span [style.width.%]="share(product.views, productViewTotal(summary))"></span></div><small>{{ share(product.views, productViewTotal(summary)) | number:'1.0-1' }}%</small></td></tr> }</tbody></table></div>
+        } @else { <div class="views-empty"><strong>Sem visualizações detalhadas neste período</strong><span>Os detalhes abertos a partir desta versão serão contabilizados por SKU.</span></div> }
+      </section>
+    } @else { <div class="loading">Carregando monitoramento...</div> }

@@ -8,64 +8,7 @@ import { AuthService } from '../../core/auth.service';
 @Component({
   selector: 'app-login',
   imports: [ReactiveFormsModule],
-  template: ` <main class="login-page">
-    <section class="login-story">
-      <div class="brand"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 48 48" focusable="false"><path d="M12 36V12h13c7 0 11 3 11 9s-4 9-11 9H18" /><path d="M25 30l9-9" /></svg></span><strong>Parts ERP</strong></div>
-      <div>
-        <p class="kicker">Controle sem improviso</p>
-        <h1>Peças certas.<br /><em>Estoque em dia.</em></h1>
-        <p>Vendas, inventário e Mercado Livre em uma operação única, segura e rastreável.</p>
-      </div>
-      <small>Gestão desenhada para o balcão e para o online.</small>
-    </section>
-    <section class="login-panel">
-      <form [formGroup]="form" (ngSubmit)="submit()">
-        <p class="eyebrow">Acesso seguro</p>
-        <h2>Bem-vindo de volta</h2>
-        <p class="hint">Entre com o usuário criado na configuração inicial.</p>
-        <label
-          >E-mail<input
-            type="email"
-            formControlName="email"
-            autocomplete="username"
-            placeholder="voce@empresa.com" /></label
-        ><label
-          >Senha<input
-            type="password"
-            formControlName="password"
-            autocomplete="current-password"
-            placeholder="••••••••••••"
-        /></label>
-        <label class="stay-signed-in">
-          <input type="checkbox" [checked]="staySignedIn()" (change)="toggleStaySignedIn($event)" />
-          <span><strong>Manter conectado neste dispositivo</strong><small>A sessão permanece ativa até você sair manualmente.</small></span>
-        </label>
-        @if (error()) {
-          <div class="error">{{ error() }}</div>
-        }
-        <button class="primary full" type="submit" [disabled]="form.invalid || loading()">
-          {{ loading() ? 'Entrando…' : 'Entrar no ERP' }}
-        </button>
-        @if (biometricAvailable() && !biometricConfigured()) {
-          <label class="biometric-opt-in">
-            <input type="checkbox" [checked]="enableBiometric()" (change)="toggleBiometric($event)" />
-            <span>
-              <strong>Ativar acesso com digital</strong>
-              <small>Use a biometria deste celular nos próximos acessos.</small>
-            </span>
-          </label>
-        }
-        @if (biometricAvailable() && biometricConfigured()) {
-          <div class="login-divider"><span>ou</span></div>
-          <button class="biometric-button" type="button" [disabled]="loading()" (click)="loginWithBiometric()">
-            <span class="fingerprint" aria-hidden="true">◉</span>
-            <span><strong>Entrar com digital</strong><small>{{ biometricEmail() || 'Acesso protegido neste celular' }}</small></span>
-          </button>
-        }
-        <p class="security-note">🔒 Seus dados de acesso não são enviados a terceiros.</p>
-      </form>
-    </section>
-  </main>`,
+  templateUrl: './login.html',
   styleUrl: './login.scss',
 })
 export class LoginPage implements OnInit {

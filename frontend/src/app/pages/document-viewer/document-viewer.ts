@@ -11,16 +11,7 @@ const documentOpener = registerPlugin<DocumentOpenerPlugin>('DocumentOpener');
 
 @Component({
   selector: 'app-document-viewer',
-  template: `
-    <main class="document-viewer">
-      <header><a href="/dashboard" aria-label="Voltar ao Parts ERP"><span> P </span><strong>Parts ERP</strong></a><small>Visualização de documento</small></header>
-      @if (loading()) { <section class="viewer-state">Abrindo documento…</section> }
-      @if (error()) { <section class="viewer-state error">Não foi possível abrir este documento.</section> }
-      @if (nativeReady()) { <section class="viewer-state native-ready"><strong>Documento pronto</strong><span>O arquivo será aberto no navegador do celular.</span><button type="button" (click)="openNativeDocument()">Abrir no navegador</button>@if (nativeError()) { <small class="error-text">{{ nativeError() }}</small> }</section> }
-      @if (pdfUrl(); as url) { <iframe [src]="url" title="Documento fiscal em PDF"></iframe> }
-      @if (xml(); as content) { <pre>{{ content }}</pre> }
-    </main>
-  `,
+  templateUrl: './document-viewer.html',
   styles: [`
     :host { display:block; min-height:100vh; background:#f4f3ee; color:#223129; }
     .document-viewer { min-height:100vh; display:flex; flex-direction:column; }

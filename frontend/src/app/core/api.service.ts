@@ -22,6 +22,7 @@ import {
   ProductChannelMetadata,
   ProductChannelDraft,
   Purchase,
+  PurchaseListItem,
   PayableDetail,
   PayableListResponse,
   PayableReport,
@@ -166,8 +167,11 @@ export class ApiService {
       reason,
     });
   }
-  purchases(): Observable<Purchase[]> {
-    return this.http.get<Purchase[]>(`${this.base}/purchases`);
+  purchases(): Observable<PurchaseListItem[]> {
+    return this.http.get<PurchaseListItem[]>(`${this.base}/purchases`);
+  }
+  purchase(id: string): Observable<Purchase> {
+    return this.http.get<Purchase>(`${this.base}/purchases/${id}`);
   }
   marketStudies(): Observable<MarketStudy[]> {
     return this.http.get<MarketStudy[]>(`${this.base}/market-studies`);

@@ -12,49 +12,7 @@ export interface PeriodFilterStatusOption {
   selector: 'app-period-filter',
   imports: [FormsModule],
   styles: [':host { display: block; }'],
-  template: `
-    <section
-      class="date-filter card shared-period-filter"
-      [class.invoice-filter-toolbar]="statusOptions.length > 0"
-      [class.has-custom-range]="activePreset === 'custom'"
-      [attr.aria-label]="ariaLabel"
-    >
-      <div class="date-filter-heading">
-        <strong>{{ heading }}</strong>
-        @if (description) { <small>{{ description }}</small> }
-      </div>
-
-      @if (statusOptions.length) {
-        <div class="date-filter-options">
-          <div class="date-quick-filters" role="group" aria-label="Atalhos de período">
-            @for (preset of datePresets; track preset.id) {
-              <button type="button" class="date-preset" [class.active]="activePreset === preset.id" [attr.aria-pressed]="activePreset === preset.id" (click)="selectPreset(preset.id)">{{ preset.label }}</button>
-            }
-          </div>
-          <div class="invoice-status-filter" role="group" aria-label="Filtrar por situação">
-            <span>Situação</span>
-            @for (option of statusOptions; track option.value) {
-              <button type="button" [class.active]="selectedStatus === option.value" [attr.aria-pressed]="selectedStatus === option.value" (click)="selectStatus(option.value)">{{ option.label }} <small>{{ option.count }}</small></button>
-            }
-          </div>
-        </div>
-      } @else {
-        <div class="date-quick-filters" role="group" aria-label="Atalhos de período">
-          @for (preset of datePresets; track preset.id) {
-            <button type="button" class="date-preset" [class.active]="activePreset === preset.id" [attr.aria-pressed]="activePreset === preset.id" (click)="selectPreset(preset.id)">{{ preset.label }}</button>
-          }
-        </div>
-      }
-
-      @if (activePreset === 'custom') {
-        <div class="date-range-fields">
-          <label>De <input type="date" [ngModel]="startDate" (ngModelChange)="changeStart($event)" /></label>
-          <label>Até <input type="date" [ngModel]="endDate" (ngModelChange)="changeEnd($event)" /></label>
-          <button class="secondary" type="button" (click)="applyRange()" [disabled]="busy || !validRange()">{{ busy ? 'Atualizando…' : applyLabel }}</button>
-        </div>
-      }
-    </section>
-  `,
+  templateUrl: './period-filter.html',
 })
 export class PeriodFilter implements OnInit {
   @Input() heading = 'Período';

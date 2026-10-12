@@ -15,6 +15,7 @@ from app.api.routes.purchases import (
     create_purchase,
     delete_purchase,
     get_purchase,
+    list_purchases,
     place_order,
     receive_purchase_in_full,
     receive_purchase,
@@ -736,6 +737,29 @@ def test_draft_header_keeps_supplier_defaults_document_fields_and_total(db: Sess
     )
     purchase = select_quote(purchase.id, purchase.quotes[0].id, db, user)
     assert purchase.total_amount == Decimal("25.00")
+
+
+def test_purchase_list_is_a_light_projection(db: Session) -> None:
+    """A lista não carrega nem envia histórico, anexos e títulos: eles só existem no detalhe."""
+    user = _actor()
+    purchase = create_purchase(
+        PurchaseCreate(
+            supplier_name="Fornecedor Lista",
+            items=[PurchaseItemCreate(sku="L-1", description="Peça da lista", quantity=1)],
+        ),
+        db,
+        user,
+    )
+    listed = list_purchases(limit=500, offset=0, db=db, user=user)
+
+    assert [item.number for item in listed] == [purchase.number]
+    assert listed[0].events == []
+    assert listed[0].attachments == []
+    assert listed[0].payables == []
+
+    detail = get_purchase(purchase.id, db=db, user=user)
+    assert detail.number == purchase.number
+    assert detail.events, "o detalhe continua trazendo o histórico"
 
 
 def test_supplier_creation_reuses_the_existing_record(db: Session) -> None:

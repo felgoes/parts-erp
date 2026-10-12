@@ -101,10 +101,12 @@ case "${1:-all}" in
     ;;
   build) run_build ;;
   all)
+    say "→ estrutura: teto de tamanho de arquivo"
+    bash "$ROOT/scripts/dev/structure-gate.sh"
     run_backend ""
     run_frontend ""
     run_build
-    say "portão completo ok: backend + frontend + build"
+    say "portão completo ok: estrutura + backend + frontend + build"
     ;;
   help | -h | --help)
     usage

@@ -1,4 +1,3 @@
-45477 total
 2075 frontend/src/app/pages/purchases/purchases.html
 2011 frontend/src/app/pages/purchases/purchases.ts
 1778 backend/app/api/routes/purchases.py

@@ -23,7 +23,7 @@ collect() {
   done
   find "$ROOT/backend/app" "$ROOT/backend/tests" "$ROOT/frontend/src" \
     -type f \( "${find_expr[@]}" \) ! \( "${EXCLUDES[@]}" \) -exec wc -l {} + 2>/dev/null \
-    | awk -v root="$ROOT/" '{ n=$2; sub(root, "", n); if (n != "" && $1+0 > 0) print $1, n }' \
+    | awk -v root="$ROOT/" '{ n=$2; sub(root, "", n); if (n != "" && $1+0 > 0 && n != "total") print $1, n }' \
     | sort -k2
 }
 

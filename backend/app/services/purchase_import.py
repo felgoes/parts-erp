@@ -12,12 +12,13 @@ import subprocess
 import tempfile
 import threading
 import unicodedata
-import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any
 
 from fastapi import UploadFile
 from PIL import Image, ImageOps, UnidentifiedImageError
+
+from app.services.nfe_xml import parse_nfe_xml
 
 PROFILE_SCHEMA = "parts-erp-purchase-import-profile/v1"
 MAX_BYTES = 15 * 1024 * 1024
@@ -904,80 +905,6 @@ def _extract_danfe_items(lines: list[str]) -> list[dict[str, Any]]:
     return items[:100]
 
 
-def _parse_nfe_xml(data: bytes) -> dict[str, Any]:
-    if b"<!DOCTYPE" in data.upper() or b"<!ENTITY" in data.upper():
-        raise ValueError("XML com declarações externas não é aceito.")
-    root = ET.fromstring(data)  # noqa: S314 - DTD/entities are rejected above; NF-e has a fixed local schema.
-
-    def local(tag: str) -> str:
-        return tag.rsplit("}", 1)[-1]
-
-    def one(name: str, within: ET.Element | None = None) -> str | None:
-        parent = within or root
-        node = next((n for n in parent.iter() if local(n.tag) == name), None)
-        return node.text.strip() if node is not None and node.text else None
-
-    supplier = one("xNome")
-    access = one("chNFe")
-    if not access:
-        inf = next((node for node in root.iter() if local(node.tag) == "infNFe"), None)
-        if inf is not None:
-            identity = inf.attrib.get("Id", "")
-            access = identity[3:] if identity.startswith("NFe") else None
-    number = one("nNF")
-    total = one("vNF")
-    issue_date = one("dhEmi") or one("dEmi")
-    freight = one("vFrete")
-    discount = one("vDesc")
-    tax = one("vTotTrib")
-    items = []
-    for det in (n for n in root.iter() if local(n.tag) == "det"):
-        prod = next((n for n in det if local(n.tag) == "prod"), None)
-        if prod is None:
-            continue
-        vals = {local(n.tag): n.text.strip() for n in prod if n.text}
-        try:
-            items.append(
-                {
-                    "description": vals.get("xProd", "")[:200],
-                    "sku": vals.get("cProd", "")[:80],
-                    "quantity": float(vals.get("qCom", "0")),
-                    "unit_cost": round(float(vals.get("vUnCom", "0")), 4),
-                    "line_total": max(
-                        0,
-                        round(float(vals.get("vProd", "0")) - float(one("vDesc", det) or "0"), 2),
-                    ),
-                    "discount_amount": round(float(one("vDesc", det) or "0"), 2),
-                    "confidence": 1.0,
-                }
-            )
-        except ValueError:
-            continue
-    fields = {}
-    if supplier:
-        fields["supplier"] = {"value": supplier, "confidence": 1.0, "source": "xml"}
-    if number:
-        fields["order_number"] = {"value": number, "confidence": 1.0, "source": "xml"}
-    if total:
-        fields["total"] = {"value": round(float(total), 2), "confidence": 1.0, "source": "xml"}
-    if access:
-        fields["access_key"] = {"value": access, "confidence": 1.0, "source": "xml"}
-    if issue_date:
-        fields["date"] = {"value": issue_date[:10], "confidence": 1.0, "source": "xml"}
-    issuer_cnpj = one("CNPJ")
-    series = one("serie")
-    if issuer_cnpj:
-        fields["issuer_cnpj"] = {"value": issuer_cnpj, "confidence": 1.0, "source": "xml"}
-    if series:
-        fields["document_series"] = {"value": series, "confidence": 1.0, "source": "xml"}
-    if number:
-        fields["document_number"] = {"value": number, "confidence": 1.0, "source": "xml"}
-    for field, value in (("shipping", freight), ("discount", discount), ("tax", tax)):
-        if value:
-            fields[field] = {"value": round(float(value), 2), "confidence": 1.0, "source": "xml"}
-    return {"fields": fields, "items": items, "warnings": []}
-
-
 def _item_candidates(lines: list[str]) -> list[dict[str, Any]]:
     """Quando nada é reconhecido, devolve linhas do texto que podem ser o item."""
     candidates: list[dict[str, Any]] = []
@@ -1124,7 +1051,7 @@ async def analyze_upload(upload: UploadFile, selected_profile: str | None = None
     if not content or len(content) > MAX_BYTES:
         raise ValueError("O documento deve ter conteúdo e até 15 MB.")
     if filename.lower().endswith(".xml"):
-        parsed = _parse_nfe_xml(content)
+        parsed = parse_nfe_xml(content)
         total_field = parsed["fields"].get("total") or {}
         shipping_field = parsed["fields"].get("shipping") or {}
         tax_field = parsed["fields"].get("tax") or {}

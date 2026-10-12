@@ -10,13 +10,13 @@ from sqlalchemy.orm import Session
 from app.api.routes.purchases import create_purchase
 from app.models import PurchaseCase, StockMovement
 from app.schemas.common import PurchaseCreate, PurchaseImportDocument, PurchaseItemCreate
+from app.services.nfe_xml import parse_nfe_xml
 from app.services.purchase_allocation import ImportPlanError, build_import_plan
 from app.services.purchase_import import (
     PROFILE_SCHEMA,
     _extract_items,
     _extract_labeled,
     _money,
-    _parse_nfe_xml,
     detect_profile,
     validate_profile,
 )
@@ -164,7 +164,7 @@ def test_nfe_xml_reads_supplier_items_and_total():
       <total><ICMSTot><vFrete>2.00</vFrete><vDesc>1.00</vDesc><vTotTrib>3.00</vTotTrib><vNF>21.00</vNF></ICMSTot></total></infNFe></NFe>
       <protNFe><infProt><chNFe>12345678901234567890123456789012345678901234</chNFe></infProt></protNFe>
     </nfeProc>"""
-    parsed = _parse_nfe_xml(xml)
+    parsed = parse_nfe_xml(xml)
     assert parsed["fields"]["supplier"]["value"] == "Fornecedor Exemplo"
     assert parsed["fields"]["total"]["value"] == 21.0
     assert parsed["fields"]["date"]["value"] == "2026-10-09"

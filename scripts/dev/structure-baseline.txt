@@ -1,6 +1,5 @@
 999 backend/tests/test_purchases.py
 649 frontend/src/app/pages/products/products.html
-542 backend/app/api/routes/integrations.py
 527 frontend/src/app/pages/market-studies/market-studies.html
 519 frontend/src/app/pages/payables/payables.html
 508 backend/tests/test_marketplace_sync.py

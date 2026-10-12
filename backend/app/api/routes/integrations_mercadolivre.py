@@ -1,0 +1,371 @@
+import logging
+from datetime import UTC, datetime, timedelta
+from urllib.parse import urlencode
+
+import jwt
+from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import RedirectResponse
+from sqlalchemy import select
+from sqlalchemy.orm import Session, selectinload
+
+from app.api.deps import require_permission
+from app.core.config import get_settings
+from app.core.permissions import Permission
+from app.core.queue import get_queue_pool
+from app.core.security import decode_token, encrypt_secret
+from app.db.session import get_db
+from app.integrations.mercadolivre.client import MercadoLivreClient, MercadoLivreError
+from app.models import (
+    MarketplaceAccount,
+    MarketplaceConfig,
+    MarketplaceOrder,
+    MarketplaceOrderEvent,
+    User,
+)
+from app.schemas.common import (
+    MarketplaceConfigOut,
+    MarketplaceConfigUpdate,
+    MarketplaceOrderEventOut,
+    MarketplaceOrderOut,
+    MarketplaceStatus,
+)
+
+logger = logging.getLogger(__name__)
+
+router = APIRouter(prefix="/integrations/mercadolivre", tags=["Mercado Livre"])
+
+
+@router.get("/status", response_model=MarketplaceStatus)
+def status(
+    db: Session = Depends(get_db),
+    _: User = Depends(require_permission(Permission.INTEGRATION_STATUS)),
+) -> MarketplaceStatus:
+    settings = get_settings()
+    config = db.scalar(select(MarketplaceConfig).limit(1))
+    account = db.scalar(
+        select(MarketplaceAccount).where(MarketplaceAccount.active.is_(True)).limit(1)
+    )
+    return MarketplaceStatus(
+        configured=bool(
+            (config.client_id if config else settings.mercadolivre_client_id)
+            and (config.encrypted_client_secret if config else settings.mercadolivre_client_secret)
+        ),
+        connected=account is not None,
+        seller_id=account.seller_id if account else None,
+        nickname=account.nickname if account else None,
+        token_expires_at=account.token_expires_at if account else None,
+    )
+
+
+@router.get("/config", response_model=MarketplaceConfigOut)
+def get_config(
+    db: Session = Depends(get_db),
+    _: User = Depends(require_permission(Permission.INTEGRATION_CONFIG)),
+) -> MarketplaceConfigOut:
+    settings = get_settings()
+    config = db.scalar(select(MarketplaceConfig).limit(1))
+    return MarketplaceConfigOut(
+        client_id=config.client_id if config else settings.mercadolivre_client_id,
+        client_secret_configured=bool(config.encrypted_client_secret)
+        if config
+        else bool(settings.mercadolivre_client_secret),
+        redirect_uri=(config.redirect_uri if config else None)
+        or str(settings.mercadolivre_redirect_uri),
+        site_id=config.site_id if config else settings.mercadolivre_site_id,
+        import_orders=config.import_orders if config else True,
+        automatic_stock=config.automatic_stock if config else True,
+        sync_documents=config.sync_documents if config else True,
+    )
+
+
+@router.put("/config", response_model=MarketplaceConfigOut)
+def update_config(
+    payload: MarketplaceConfigUpdate,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_permission(Permission.INTEGRATION_CONFIG)),
+) -> MarketplaceConfigOut:
+    settings = get_settings()
+    config = db.scalar(select(MarketplaceConfig).limit(1)) or MarketplaceConfig()
+    config.client_id = payload.client_id.strip()
+    if payload.client_secret:
+        config.encrypted_client_secret = encrypt_secret(payload.client_secret)
+    elif not config.encrypted_client_secret and settings.mercadolivre_client_secret:
+        config.encrypted_client_secret = encrypt_secret(
+            settings.mercadolivre_client_secret.get_secret_value()
+        )
+    config.redirect_uri = payload.redirect_uri.strip()
+    config.site_id = payload.site_id.strip()
+    config.import_orders = payload.import_orders
+    config.automatic_stock = payload.automatic_stock
+    config.sync_documents = payload.sync_documents
+    db.add(config)
+    db.commit()
+    return get_config(db, _)
+
+
+@router.get("/connect")
+def connect(
+    db: Session = Depends(get_db),
+    user: User = Depends(require_permission(Permission.INTEGRATION_CONFIG)),
+) -> dict[str, str]:
+    settings = get_settings()
+    config = db.scalar(select(MarketplaceConfig).limit(1))
+    client_id = config.client_id if config else settings.mercadolivre_client_id
+    configured_secret = (
+        config.encrypted_client_secret if config else settings.mercadolivre_client_secret
+    )
+    if not client_id or not configured_secret:
+        raise HTTPException(status_code=503, detail="Credenciais do Mercado Livre não configuradas")
+    now = datetime.now(UTC)
+    state = jwt.encode(
+        {"sub": user.id, "type": "ml_oauth", "iat": now, "exp": now + timedelta(minutes=10)},
+        settings.secret_key.get_secret_value(),
+        algorithm="HS256",
+    )
+    query = urlencode(
+        {
+            "response_type": "code",
+            "client_id": client_id,
+            "redirect_uri": (config.redirect_uri if config else None)
+            or str(settings.mercadolivre_redirect_uri),
+            "state": state,
+        }
+    )
+    return {"authorization_url": f"{settings.mercadolivre_auth_url}?{query}"}
+
+
+@router.get("/callback")
+async def callback(code: str, state: str, db: Session = Depends(get_db)) -> RedirectResponse:
+    settings = get_settings()
+    try:
+        payload = decode_token(state)
+        if payload.get("type") != "ml_oauth":
+            raise jwt.InvalidTokenError
+        tokens = MercadoLivreClient(db).exchange_code(code)
+        if not tokens.get("refresh_token"):
+            raise MercadoLivreError(
+                "O Mercado Livre não retornou o token de renovação necessário "
+                "para a sincronização contínua."
+            )
+        temporary = MarketplaceAccount(
+            seller_id=str(tokens["user_id"]),
+            encrypted_access_token=encrypt_secret(tokens["access_token"]),
+            encrypted_refresh_token=(
+                encrypt_secret(tokens["refresh_token"]) if tokens.get("refresh_token") else None
+            ),
+            token_expires_at=datetime.now(UTC)
+            + timedelta(seconds=int(tokens.get("expires_in", 21600)) - 120),
+        )
+        profile_client = MercadoLivreClient(db, temporary)
+        profile = profile_client.get("/users/me")
+        if not isinstance(profile, dict):
+            raise MercadoLivreError("Perfil inválido")
+        account = (
+            db.scalar(
+                select(MarketplaceAccount).where(
+                    MarketplaceAccount.seller_id == temporary.seller_id
+                )
+            )
+            or temporary
+        )
+        account.nickname = str(profile.get("nickname", "")) or None
+        account.encrypted_access_token = temporary.encrypted_access_token
+        account.encrypted_refresh_token = temporary.encrypted_refresh_token
+        account.token_expires_at = temporary.token_expires_at
+        account.active = True
+        db.add(account)
+        db.commit()
+        try:
+            queue = await get_queue_pool()
+            await queue.enqueue_job("sync_mercadolivre_account", account.seller_id)
+        except Exception:
+            # A conexao nao deve impedir a conclusao do OAuth; o worker pode ser reexecutado.
+            logger.warning("OAuth concluído, mas a sincronização inicial não entrou na fila.")
+    except (jwt.PyJWTError, KeyError, MercadoLivreError):
+        return RedirectResponse(f"{settings.frontend_url}/integrations?error=oauth")
+    return RedirectResponse(f"{settings.frontend_url}/integrations?connected=true")
+
+
+@router.get("/orders", response_model=list[MarketplaceOrderOut])
+def orders(
+    db: Session = Depends(get_db),
+    _: User = Depends(require_permission(Permission.MARKETPLACE_READ)),
+) -> list[MarketplaceOrder]:
+    return list(
+        db.scalars(
+            select(MarketplaceOrder)
+            .options(selectinload(MarketplaceOrder.invoice))
+            .order_by(MarketplaceOrder.created_at.desc())
+            .limit(200)
+        )
+    )
+
+
+@router.get("/orders/{order_id}", response_model=MarketplaceOrderOut)
+def order_detail(
+    order_id: str,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_permission(Permission.MARKETPLACE_READ)),
+) -> MarketplaceOrder:
+    order = db.scalar(
+        select(MarketplaceOrder)
+        .options(selectinload(MarketplaceOrder.invoice))
+        .where(MarketplaceOrder.id == order_id)
+    )
+    if not order:
+        raise HTTPException(status_code=404, detail="Pedido não encontrado")
+    return order
+
+
+@router.get("/orders/{order_id}/history", response_model=list[MarketplaceOrderEventOut])
+def order_history(
+    order_id: str,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_permission(Permission.MARKETPLACE_READ)),
+) -> list[MarketplaceOrderEvent]:
+    if not db.get(MarketplaceOrder, order_id):
+        raise HTTPException(status_code=404, detail="Pedido não encontrado")
+    return list(
+        db.scalars(
+            select(MarketplaceOrderEvent)
+            .where(MarketplaceOrderEvent.order_id == order_id)
+            .order_by(MarketplaceOrderEvent.created_at.asc())
+        )
+    )
+
+
+@router.post("/orders/{order_id}/automate", response_model=MarketplaceOrderOut)
+def automate_order(
+    order_id: str,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_permission(Permission.MARKETPLACE_PROCESS)),
+) -> MarketplaceOrder:
+    from app.integrations.mercadolivre.sync import automate_order_documents
+
+    order = db.get(MarketplaceOrder, order_id)
+    if not order:
+        raise HTTPException(status_code=404, detail="Pedido não encontrado")
+    if not order.invoice_id:
+        return order
+    return automate_order_documents(db, order)
+
+
+@router.post("/orders/{order_id}/fiscal", response_model=MarketplaceOrderOut)
+def request_order_fiscal_document(
+    order_id: str,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_permission(Permission.MARKETPLACE_PROCESS)),
+) -> MarketplaceOrder:
+    """Request/reconcile the Mercado Livre invoice for an existing sale."""
+    from app.integrations.mercadolivre.sync import issue_and_sync_invoice, sync_shipping_label
+
+    order = db.get(MarketplaceOrder, order_id)
+    if not order:
+        raise HTTPException(status_code=404, detail="Pedido não encontrado")
+    if not order.invoice_id:
+        raise HTTPException(status_code=409, detail="A venda ainda não está vinculada a uma fatura")
+    if order.status.lower() in {"cancelled", "canceled"}:
+        raise HTTPException(
+            status_code=409,
+            detail="Não é possível solicitar NF-e para pedido cancelado",
+        )
+    account = db.scalar(
+        select(MarketplaceAccount).where(
+            MarketplaceAccount.seller_id == order.seller_id,
+            MarketplaceAccount.active.is_(True),
+        )
+    )
+    if not account:
+        raise HTTPException(status_code=409, detail="Conta do Mercado Livre não conectada")
+
+    issue_and_sync_invoice(db, order, account, force_issue=True)
+    config = db.scalar(select(MarketplaceConfig).limit(1))
+    auto_download_label = (
+        config.auto_download_label
+        if config
+        else getattr(get_settings(), "mercadolivre_auto_download_label", True)
+    )
+    if auto_download_label and not order.fiscal_error:
+        sync_shipping_label(db, order, account)
+    order.automation_updated_at = datetime.now(UTC)
+    db.commit()
+    db.refresh(order)
+    if order.fiscal_error:
+        raise HTTPException(status_code=502, detail=order.fiscal_error)
+    return order
+
+
+@router.post("/orders/{order_id}/label", response_model=MarketplaceOrderOut)
+def request_order_shipping_label(
+    order_id: str,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_permission(Permission.MARKETPLACE_PROCESS)),
+) -> MarketplaceOrder:
+    """Retry downloading the Mercado Envios label without requesting an invoice."""
+    from app.integrations.mercadolivre.sync import sync_shipping_label
+
+    order = db.get(MarketplaceOrder, order_id)
+    if not order:
+        raise HTTPException(status_code=404, detail="Pedido não encontrado")
+    if not order.invoice_id:
+        raise HTTPException(status_code=409, detail="A venda ainda não está vinculada a uma fatura")
+    account = db.scalar(
+        select(MarketplaceAccount).where(
+            MarketplaceAccount.seller_id == order.seller_id,
+            MarketplaceAccount.active.is_(True),
+        )
+    )
+    if not account:
+        raise HTTPException(status_code=409, detail="Conta do Mercado Livre não conectada")
+
+    sync_shipping_label(db, order, account)
+    order.automation_updated_at = datetime.now(UTC)
+    db.commit()
+    db.refresh(order)
+    if order.label_error:
+        raise HTTPException(status_code=502, detail=order.label_error)
+    return order
+
+
+@router.post("/sync", status_code=202)
+async def sync_now(
+    db: Session = Depends(get_db),
+    _: User = Depends(require_permission(Permission.MARKETPLACE_PROCESS)),
+) -> dict[str, bool | str]:
+    """Queue a full Mercado Livre import for the connected seller account."""
+    account = db.scalar(
+        select(MarketplaceAccount)
+        .where(
+            MarketplaceAccount.provider == "mercadolivre",
+            MarketplaceAccount.active.is_(True),
+        )
+        .limit(1)
+    )
+    if not account:
+        raise HTTPException(status_code=409, detail="Conta do Mercado Livre não conectada")
+    expires = account.token_expires_at
+    if expires and expires.tzinfo is None:
+        expires = expires.replace(tzinfo=UTC)
+    if not account.encrypted_refresh_token and (
+        not expires or expires <= datetime.now(UTC) + timedelta(minutes=2)
+    ):
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "A autorização do Mercado Livre expirou. Acesse Integrações, reconecte a conta "
+                "e depois sincronize novamente."
+            ),
+        )
+    try:
+        MercadoLivreClient(db, account).get("/users/me")
+    except MercadoLivreError as exc:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "Não foi possível renovar a autorização do Mercado Livre. Acesse Integrações e "
+                "reconecte a conta para importar os pedidos pendentes."
+            ),
+        ) from exc
+    queue = await get_queue_pool()
+    await queue.enqueue_job("sync_mercadolivre_account", account.seller_id)
+    return {"accepted": True, "message": "Sincronização do Mercado Livre enfileirada"}

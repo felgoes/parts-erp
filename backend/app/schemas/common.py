@@ -13,22 +13,12 @@ from pydantic import (
 )
 
 from app.models import UserRole
-
-
-class UtcModel(BaseModel):
-    @field_serializer("*", when_used="json")
-    def serialize_utc_datetimes(self, value: Any) -> Any:
-        """SQLite stores our UTC timestamps without tzinfo; make that explicit in JSON."""
-        if isinstance(value, datetime):
-            normalized = (
-                value.replace(tzinfo=UTC) if value.tzinfo is None else value.astimezone(UTC)
-            )
-            return normalized.isoformat().replace("+00:00", "Z")
-        return value
-
-
-class ORMModel(UtcModel):
-    model_config = ConfigDict(from_attributes=True)
+from app.schemas.base import ORMModel, UtcModel
+from app.schemas.purchase_quotes import (  # noqa: F401  (reexportado)
+    PurchaseItemOut,
+    PurchaseQuoteCreate,
+    PurchaseQuoteOut,
+)
 
 
 class ErpSettingsOut(BaseModel):
@@ -675,31 +665,6 @@ class PurchaseCreate(BaseModel):
         return self
 
 
-class PurchaseQuoteCreate(BaseModel):
-    supplier_name: str = Field(min_length=2, max_length=200)
-    supplier_contact: str | None = Field(default=None, max_length=200)
-    total: Decimal = Field(ge=0)
-    freight_amount: Decimal = Field(default=Decimal("0"), ge=0)
-    tax_amount: Decimal = Field(default=Decimal("0"), ge=0)
-    discount_amount: Decimal = Field(default=Decimal("0"), ge=0)
-    allocation_method: Literal["proportional", "quantity"] = "proportional"
-    item_costs: dict[str, Decimal] = Field(min_length=1)
-    delivery_days: int | None = Field(default=None, ge=0, le=3650)
-    payment_type: Literal["cash", "installments", "entry"] = "cash"
-    installment_count: int = Field(default=1, ge=1, le=36)
-    first_due_days: int = Field(default=30, ge=0, le=3650)
-    interval_days: int = Field(default=30, ge=1, le=3650)
-    payment_terms: str | None = Field(default=None, max_length=200)
-    notes: str | None = Field(default=None, max_length=2000)
-
-    @field_validator("item_costs")
-    @classmethod
-    def validate_item_costs(cls, value: dict[str, Decimal]) -> dict[str, Decimal]:
-        if any(cost < 0 for cost in value.values()):
-            raise ValueError("O custo cotado não pode ser negativo")
-        return value
-
-
 class PurchaseReceiveItem(BaseModel):
     item_id: str
     receipt_id: str = Field(min_length=12, max_length=120)
@@ -711,43 +676,6 @@ class PurchaseReceiveItem(BaseModel):
 
 class PurchaseReceive(BaseModel):
     items: list[PurchaseReceiveItem] = Field(min_length=1)
-
-
-class PurchaseItemOut(ORMModel):
-    id: str
-    product_id: str | None
-    sku: str
-    description: str
-    unit: str = "un"
-    quantity: Decimal
-    received_quantity: Decimal
-    returned_quantity: Decimal = Decimal("0")
-    base_unit_cost: Decimal | None = None
-    unit_cost: Decimal | None = None
-    freight_amount: Decimal | None = Decimal("0")
-    tax_amount: Decimal | None = Decimal("0")
-    discount_amount: Decimal | None = Decimal("0")
-    discount_percent: Decimal | None = Decimal("0")
-
-
-class PurchaseQuoteOut(ORMModel):
-    id: str
-    supplier_name: str
-    supplier_contact: str | None
-    total: Decimal | None = None
-    freight_amount: Decimal = Decimal("0")
-    tax_amount: Decimal = Decimal("0")
-    discount_amount: Decimal = Decimal("0")
-    allocation_method: str = "proportional"
-    item_costs: dict[str, Decimal] | None = None
-    delivery_days: int | None
-    payment_type: str | None = "cash"
-    installment_count: int | None = 1
-    first_due_days: int | None = 30
-    interval_days: int | None = 30
-    payment_terms: str | None
-    notes: str | None
-    created_at: datetime
 
 
 class PurchaseEventOut(ORMModel):

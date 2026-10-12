@@ -1,0 +1,172 @@
+
+.purchase-header-actions {
+  display: flex;
+  gap: 0.55rem;
+  align-items: center;
+}
+.money-input-error {
+  display: block;
+  color: var(--danger, #b42318);
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+.purchase-import-warnings {
+  margin: 0.8rem 0;
+  padding: 0.8rem 1rem;
+  border-left: 3px solid #d49b3c;
+  border-radius: 0 8px 8px 0;
+  background: color-mix(in srgb, #edb64b 11%, var(--surface));
+  font-size: 0.8rem;
+}
+.purchase-import-warnings ul {
+  margin: 0.4rem 0 0;
+  padding-left: 1.2rem;
+  color: var(--muted);
+}
+.import-meta {
+  margin: 0.8rem 0;
+}
+.import-line-list {
+  display: grid;
+  gap: 0.6rem;
+}
+.import-line {
+  grid-template-columns: minmax(180px, 2fr) repeat(3, minmax(95px, 1fr)) auto;
+  align-items: end;
+}
+.import-line .import-confidence {
+  grid-column: 1 / -2;
+  color: var(--muted);
+  font-size: 0.7rem;
+}
+.import-review-actions {
+  display: flex;
+  gap: 0.55rem;
+}
+@media (max-width: 720px) {
+  .purchase-header-actions {
+    flex-wrap: wrap;
+  }
+  .purchase-import-review {
+    max-height: calc(100dvh - 1rem);
+    overflow: auto;
+  }
+  .import-line {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .import-line .line-description,
+  .import-line .import-confidence {
+    grid-column: 1 / -1;
+  }
+  .import-review-actions {
+    width: 100%;
+    flex-direction: column-reverse;
+  }
+  .import-review-actions > button {
+    width: 100%;
+  }
+}
+
+/* Keep the long OCR filename and row controls inside the mobile review sheet. */
+.purchase-import-review {
+  overflow-x: hidden;
+}
+.purchase-import-review .modal-head > div {
+  min-width: 0;
+}
+.purchase-import-review .modal-head .eyebrow {
+  overflow-wrap: anywhere;
+}
+
+/* Product lookup and creation inside document import review. */
+.purchase-import-review .import-product-search {
+  position: relative;
+  grid-column: 1 / -1;
+}
+.purchase-import-review .import-product-results {
+  position: absolute;
+  z-index: 5;
+  inset: calc(100% - 0.2rem) 0 auto;
+  display: grid;
+  max-height: 15rem;
+  overflow: auto;
+  padding: 0.35rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow: 0 8px 24px #0002;
+}
+.purchase-import-review .import-product-results button {
+  display: grid;
+  gap: 0.2rem;
+  padding: 0.55rem 0.65rem;
+  text-align: left;
+  border: 0;
+  background: transparent;
+  color: inherit;
+}
+.purchase-import-review .import-product-results button:hover {
+  background: color-mix(in srgb, var(--primary) 8%, var(--surface));
+}
+.purchase-import-review .import-product-results small,
+.purchase-import-review .import-product-search > small {
+  color: var(--muted);
+}
+.purchase-import-review .import-stock-control {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* P0: fechamento do documento importado — custo final por peça e soma que vira a cotação. */
+.purchase-import-review .import-landed-cost {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 0.15rem;
+  color: var(--forest);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+.purchase-import-review .import-landed-cost span {
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 500;
+}
+.purchase-import-closing {
+  display: grid;
+  gap: 0.4rem;
+  margin: 0.9rem 0;
+  padding: 0.8rem 0.95rem;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--primary) 5%, var(--surface));
+}
+.import-closing-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.35rem 0.8rem;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+.import-closing-line strong {
+  color: var(--forest);
+  font-size: 0.95rem;
+}
+.purchase-import-closing small {
+  color: var(--muted);
+  font-size: 0.68rem;
+  line-height: 1.5;
+}
+.quote-summary-card .quote-cost-summary small {
+  color: var(--muted);
+  font-size: 0.65rem;
+}
+.import-product-backdrop {
+  z-index: 1001;
+}
+.import-product-modal {
+  width: min(54rem, calc(100vw - 2rem));
+  max-height: calc(100dvh - 2rem);
+  overflow: auto;
+}

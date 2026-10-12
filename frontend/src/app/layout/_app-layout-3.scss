@@ -1,0 +1,33 @@
+.profile-form input {
+  width: 100%;
+  min-height: 42px;
+  padding: 9px 11px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: #fff;
+  color: var(--text);
+  font: inherit;
+}
+.profile-message {
+  margin: 0 0 14px;
+  padding: 10px 12px;
+  border-radius: 9px;
+  background: #edf4e6;
+  color: #24412e;
+  font-size: 12px;
+}
+@media (max-width: 480px) {
+  .profile-backdrop {
+    align-items: end;
+    padding: 12px;
+  }
+  .profile-dialog {
+    padding: 20px;
+    border-radius: 18px 18px 12px 12px;
+  }
+}
+
+.sidebar-foot {
+  display: flex;
+  gap: 7px;
+}

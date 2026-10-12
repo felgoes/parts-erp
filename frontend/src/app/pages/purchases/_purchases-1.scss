@@ -1,0 +1,322 @@
+.purchase-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin: 0 0 16px;
+}
+.purchase-stat {
+  display: grid;
+  gap: 8px;
+  text-align: left;
+  padding: 17px 19px;
+  color: var(--text);
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  cursor: pointer;
+  transition:
+    border-color 0.18s,
+    box-shadow 0.18s,
+    transform 0.18s;
+}
+.purchase-stat.active-stat {
+  border-color: var(--forest);
+  box-shadow: inset 0 0 0 1px var(--forest);
+}
+.purchase-stat span {
+  color: var(--muted);
+  font-size: 13px;
+}
+.purchase-stat strong {
+  font-size: 27px;
+  letter-spacing: -0.04em;
+}
+.purchase-stat small {
+  color: var(--muted);
+  font-size: 11px;
+}
+.purchase-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 16px 0;
+}
+.purchase-search {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex: 1;
+  max-width: 470px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+}
+.purchase-search input {
+  min-width: 0;
+  width: 100%;
+  padding: 11px 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+}
+.purchase-search span {
+  color: var(--muted);
+  font-size: 21px;
+}
+.purchase-select {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.purchase-select select {
+  min-height: 39px;
+  max-width: 190px;
+  padding: 0 28px 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: #fff;
+  color: var(--text);
+}
+.purchase-toolbar > .muted {
+  margin-left: auto;
+  font-size: 12px;
+}
+.purchase-table-card {
+  padding: 0;
+  overflow: hidden;
+}
+.purchase-table-card table {
+  min-width: 800px;
+}
+.purchase-row {
+  cursor: pointer;
+}
+.purchase-row:hover {
+  background: #f8faf7;
+}
+.purchase-row td:first-child strong,
+.purchase-row td:first-child small,
+.purchase-row td:nth-child(3) strong,
+.purchase-row td:nth-child(3) small {
+  display: block;
+}
+.purchase-row td:first-child strong {
+  color: var(--forest);
+}
+.purchase-row td:first-child small,
+.purchase-row td:nth-child(3) small {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 11px;
+}
+.purchase-products {
+  display: grid;
+  gap: 4px;
+  max-width: 220px;
+  font-size: 12px;
+}
+.purchase-products span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.purchase-products small {
+  color: var(--muted);
+}
+.purchase-badge {
+  display: inline-flex;
+  padding: 6px 9px;
+  border-radius: 7px;
+  background: #eff1ed;
+  color: #55615a;
+  font-size: 11px;
+  font-weight: 750;
+  white-space: nowrap;
+}
+.purchase-badge[data-status='negotiating'] {
+  color: #8a650b;
+  background: #fbf2d9;
+}
+.purchase-badge[data-status='approved'] {
+  color: #355d91;
+  background: #e7effb;
+}
+.purchase-badge[data-status='ordered'],
+.purchase-badge[data-status='partially_received'] {
+  color: #895323;
+  background: #fff0df;
+}
+.purchase-badge[data-status='received'] {
+  color: #276c43;
+  background: #e5f3e9;
+}
+.purchase-badge[data-status='cancelled'] {
+  color: #963b35;
+  background: #f9e8e6;
+}
+.row-action {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 5px;
+  color: var(--forest);
+  font-size: 12px;
+  font-weight: 750;
+  white-space: nowrap;
+}
+.row-open,
+.row-menu-trigger {
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--forest);
+  cursor: pointer;
+  font: inherit;
+}
+.row-action .row-open span {
+  font-size: 17px;
+}
+.purchase-row-menu {
+  position: relative;
+}
+.row-menu-trigger {
+  width: 34px;
+  height: 34px;
+  font-size: 23px;
+}
+.purchase-row-menu-popover {
+  position: fixed;
+  z-index: 1000;
+  top: 100%;
+  right: 0;
+  min-width: 130px;
+  padding: 5px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: #fff;
+  box-shadow: 0 8px 24px #17251a24;
+}
+.purchase-row-menu-popover button {
+  width: 100%;
+  padding: 9px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+.purchase-row-menu-popover button:hover {
+  background: #f1f5ee;
+}
+.purchase-empty {
+  display: grid;
+  justify-items: center;
+  gap: 9px;
+  padding: 40px 18px;
+  text-align: center;
+}
+.purchase-empty span {
+  max-width: 390px;
+  color: var(--muted);
+  font-size: 13px;
+}
+.purchase-empty button {
+  margin-top: 7px;
+}
+.attachment-picker {
+  margin-top: 16px;
+  padding: 12px;
+  border: 1px dashed #b9c9b5;
+  border-radius: 10px;
+  background: #f7faf5;
+}
+.attachment-picker input {
+  min-height: auto !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+}
+.attachment-picker small {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 500;
+}
+.attachment-inline {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 6px;
+  color: var(--forest) !important;
+  cursor: pointer;
+}
+.attachment-inline input {
+  display: none;
+}
+.attachment-list {
+  display: grid;
+  gap: 7px;
+}
+.attachment-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+.attachment-row:hover {
+  border-color: var(--forest);
+  background: #f8faf7;
+}
+.attachment-row small {
+  color: var(--muted);
+}
+.expense-banner {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 20px 0 4px;
+  padding: 14px 16px;
+  border: 1px solid #dce8d8;
+  border-radius: 10px;
+  background: #f3f8f0;
+}
+.expense-banner span {
+  color: var(--muted);
+}
+.detail-head-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.purchase-steps {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  margin: 22px 0 4px;
+}
+.purchase-step {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: #98a19b;
+}
+.purchase-step:not(:last-child)::after {
+  position: absolute;
+  left: 29px;
+  right: 8px;
+  top: 15px;
+  height: 2px;
+  background: #e6e9e5;
+  content: '';
+}

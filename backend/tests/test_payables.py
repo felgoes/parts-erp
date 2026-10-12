@@ -31,7 +31,13 @@ def _actor() -> SimpleNamespace:
     return SimpleNamespace(id="user-finance", full_name="Financeiro QA")
 
 
-def _expense(db: Session, user: SimpleNamespace, amount: str, supplier: str = "Fornecedor AP", due_in_days: int = 10):
+def _expense(
+    db: Session,
+    user: SimpleNamespace,
+    amount: str,
+    supplier: str = "Fornecedor AP",
+    due_in_days: int = 10,
+):
     """Despesa sem condição informada: P12 faz o vencimento único cair na data do documento."""
     expense = create_purchase(
         PurchaseCreate(
@@ -71,7 +77,9 @@ def test_partial_payments_settle_the_title_and_are_idempotent(db: Session) -> No
     assert payable.status == "open"
     assert payable.amount == Decimal("500.00")
 
-    partial = create_payment(payable.id, PayablePaymentCreate(amount=Decimal("200.00"), method="Pix"), db, user)
+    partial = create_payment(
+        payable.id, PayablePaymentCreate(amount=Decimal("200.00"), method="Pix"), db, user
+    )
     assert partial.status == "partial"
     assert partial.paid_amount == Decimal("200.00")
     assert partial.balance == Decimal("300.00")
@@ -107,7 +115,9 @@ def test_reconciliation_protects_the_payment_and_removal_restores_the_balance(db
     paid = create_payment(payable.id, PayablePaymentCreate(amount=Decimal("150.00")), db, user)
     payment_id = paid.payments[0].id
 
-    reconciled = reconcile_payment(payable.id, payment_id, PayableReconcile(reconciled=True), db, user)
+    reconciled = reconcile_payment(
+        payable.id, payment_id, PayableReconcile(reconciled=True), db, user
+    )
     assert reconciled.payments[0].reconciled is True
     assert reconciled.reconciled_payment_count == 1
 
@@ -128,7 +138,9 @@ def test_list_summary_aging_and_filters(db: Session) -> None:
     overdue = _expense(db, user, "100.00", supplier="Fornecedor Vencido", due_in_days=10)
     upcoming = _expense(db, user, "50.00", supplier="Fornecedor A Vencer", due_in_days=32)
     paid = _expense(db, user, "80.00", supplier="Fornecedor Pago", due_in_days=12)
-    create_payment(paid.id, PayablePaymentCreate(amount=Decimal("80.00"), method="Boleto"), db, user)
+    create_payment(
+        paid.id, PayablePaymentCreate(amount=Decimal("80.00"), method="Boleto"), db, user
+    )
     update_payable(
         overdue.id,
         PayableUpdate(due_date=datetime.now(UTC) - timedelta(days=40)),
@@ -161,7 +173,10 @@ def test_list_summary_aging_and_filters(db: Session) -> None:
     assert [item.supplier_name for item in by_supplier.items] == ["Fornecedor A Vencer"]
 
     remaining = _list(db, user, status="open")
-    assert {item.supplier_name for item in remaining.items} == {"Fornecedor Vencido", "Fornecedor A Vencer"}
+    assert {item.supplier_name for item in remaining.items} == {
+        "Fornecedor Vencido",
+        "Fornecedor A Vencer",
+    }
 
 
 def test_report_groups_by_supplier_and_month(db: Session) -> None:
@@ -181,7 +196,9 @@ def test_report_groups_by_supplier_and_month(db: Session) -> None:
         _=user,
     )
 
-    supplier = next(entry for entry in report.by_supplier if entry.supplier_name == "Fornecedor Relatório")
+    supplier = next(
+        entry for entry in report.by_supplier if entry.supplier_name == "Fornecedor Relatório"
+    )
     assert supplier.titles == 2
     assert supplier.paid_in_period == Decimal("90.00")
     assert supplier.open_balance == Decimal("60.00")
@@ -192,7 +209,9 @@ def test_report_groups_by_supplier_and_month(db: Session) -> None:
 def test_csv_export_and_detail_keep_the_history(db: Session) -> None:
     user = _actor()
     payable = _expense(db, user, "45.50", supplier="Fornecedor CSV")
-    create_payment(payable.id, PayablePaymentCreate(amount=Decimal("20.00"), method="Dinheiro"), db, user)
+    create_payment(
+        payable.id, PayablePaymentCreate(amount=Decimal("20.00"), method="Dinheiro"), db, user
+    )
 
     detail = get_payable(payable.id, db, user)
     assert detail.payments[0].method == "Dinheiro"

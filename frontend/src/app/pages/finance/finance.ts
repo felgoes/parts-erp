@@ -33,20 +33,46 @@ export class FinancePage implements OnInit {
     const days = this.data()?.daily ?? [];
     return days.length > 31 ? days.slice(-31) : days;
   });
-  private readonly chartMax = computed(() => Math.max(1, ...this.chartDays().flatMap((day) => [day.inbound_value, day.outbound_value])));
-  readonly hasChartData = computed(() => this.chartDays().some((day) => day.inbound_value > 0 || day.outbound_value > 0));
+  private readonly chartMax = computed(() =>
+    Math.max(1, ...this.chartDays().flatMap((day) => [day.inbound_value, day.outbound_value])),
+  );
+  readonly hasChartData = computed(() =>
+    this.chartDays().some((day) => day.inbound_value > 0 || day.outbound_value > 0),
+  );
 
-  ngOnInit() { this.load(); this.live.changes$.pipe(debounceTime(500), takeUntilDestroyed(this.destroyRef)).subscribe(() => this.load()); }
-  applyPeriod(range: DateRange) { this.startDate.set(range.startDate); this.endDate.set(range.endDate); this.load(); }
-  load() {
-    this.loading.set(true); this.error.set('');
-    this.api.financeOverview(this.startDate(), this.endDate()).pipe(finalize(() => this.loading.set(false))).subscribe({
-      next: (result) => this.data.set(result),
-      error: () => this.error.set('Não foi possível carregar as métricas financeiras. Tente novamente.'),
-    });
+  ngOnInit() {
+    this.load();
+    this.live.changes$
+      .pipe(debounceTime(500), takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => this.load());
   }
-  barHeight(value: number) { return value > 0 ? Math.max(5, value / this.chartMax() * 100) : 0; }
-  chartTooltip(day: FinanceDailyMetric) { return `${day.label}: entradas ${this.currency(day.inbound_value)} · saídas ${this.currency(day.outbound_value)}`; }
-  chartDescription() { return `Gráfico de entradas e saídas por dia para ${this.data()?.period_label ?? 'o período selecionado'}.`; }
-  private currency(value: number) { return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value); }
+  applyPeriod(range: DateRange) {
+    this.startDate.set(range.startDate);
+    this.endDate.set(range.endDate);
+    this.load();
+  }
+  load() {
+    this.loading.set(true);
+    this.error.set('');
+    this.api
+      .financeOverview(this.startDate(), this.endDate())
+      .pipe(finalize(() => this.loading.set(false)))
+      .subscribe({
+        next: (result) => this.data.set(result),
+        error: () =>
+          this.error.set('Não foi possível carregar as métricas financeiras. Tente novamente.'),
+      });
+  }
+  barHeight(value: number) {
+    return value > 0 ? Math.max(5, (value / this.chartMax()) * 100) : 0;
+  }
+  chartTooltip(day: FinanceDailyMetric) {
+    return `${day.label}: entradas ${this.currency(day.inbound_value)} · saídas ${this.currency(day.outbound_value)}`;
+  }
+  chartDescription() {
+    return `Gráfico de entradas e saídas por dia para ${this.data()?.period_label ?? 'o período selecionado'}.`;
+  }
+  private currency(value: number) {
+    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+  }
 }

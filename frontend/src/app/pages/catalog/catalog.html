@@ -16,8 +16,8 @@
       <p class="kicker">GOES AUTO PARTS / PEÇAS PARA VEÍCULOS CHINESES</p>
       <h1>Encontre a peça certa. Com orientação de quem entende.</h1>
       <p class="hero-text">
-        Peças para BYD, GWM, Chery, JAC e outros veículos chineses. Busque pelo nome ou SKU, informe marca,
-        modelo e ano e confirme a aplicação com a nossa equipe.
+        Peças para BYD, GWM, Chery, JAC e outros veículos chineses. Busque pelo nome ou SKU, informe
+        marca, modelo e ano e confirme a aplicação com a nossa equipe.
       </p>
       <div class="hero-actions">
         <a class="button button-red" href="#catalogo">Explorar catálogo</a>
@@ -37,8 +37,8 @@
         <h2>Encontre pelo nome, SKU ou aplicação.</h2>
       </div>
       <p class="section-note">
-        Disponibilidade atualizada conforme os anúncios. Antes de comprar, confirme aplicação, marca, modelo e
-        ano com a equipe.
+        Disponibilidade atualizada conforme os anúncios. Antes de comprar, confirme aplicação,
+        marca, modelo e ano com a equipe.
       </p>
     </div>
     <div class="search-row">
@@ -64,7 +64,8 @@
       <div class="catalog-state">
         <strong>Nenhuma peça encontrada.</strong
         ><span
-          >Tente outro nome, SKU, marca ou modelo. Se preferir, nossa equipe encontra a peça com você.</span
+          >Tente outro nome, SKU, marca ou modelo. Se preferir, nossa equipe encontra a peça com
+          você.</span
         ><a class="button button-quiet" [href]="whatsappUrl()">Pedir ajuda no WhatsApp</a>
       </div>
     } @else {
@@ -145,7 +146,9 @@
             }
           </div>
         }
-        @if (product.brand || product.manufacturer_part_number || product.barcode || product.category) {
+        @if (
+          product.brand || product.manufacturer_part_number || product.barcode || product.category
+        ) {
           <div class="attribute-list master-attributes">
             @if (product.brand) {
               <span
@@ -185,7 +188,9 @@
                   ><span
                     >{{ fitment.year_from || '—'
                     }}{{
-                      fitment.year_to && fitment.year_to !== fitment.year_from ? '–' + fitment.year_to : ''
+                      fitment.year_to && fitment.year_to !== fitment.year_from
+                        ? '–' + fitment.year_to
+                        : ''
                     }}{{ fitment.engine ? ' · ' + fitment.engine : ''
                     }}{{ fitment.version ? ' · ' + fitment.version : '' }}</span
                   >
@@ -210,7 +215,9 @@
                   <small>Anúncio no Mercado Livre · {{ listing.external_item_id }}</small>
                   <h3>{{ listing.title || product.name }}</h3>
                 </div>
-                <strong>{{ listing.marketplace_price ?? product.sale_price | currency: 'BRL' }}</strong>
+                <strong>{{
+                  listing.marketplace_price ?? product.sale_price | currency: 'BRL'
+                }}</strong>
               </div>
               <div class="listing-stats">
                 <span
@@ -235,7 +242,9 @@
                 <a
                   class="button button-red"
                   [href]="whatsappUrl(product)"
-                  (click)="track('whatsapp_click', { sku: product.sku, placement: 'product_detail' })"
+                  (click)="
+                    track('whatsapp_click', { sku: product.sku, placement: 'product_detail' })
+                  "
                   >Tenho interesse nesta peça</a
                 >
                 @if (listing.permalink) {
@@ -252,7 +261,8 @@
           </article>
         } @empty {
           <div class="catalog-state">
-            Este produto ainda não possui um anúncio vinculado. Fale com a equipe para consultar alternativas.
+            Este produto ainda não possui um anúncio vinculado. Fale com a equipe para consultar
+            alternativas.
           </div>
         }
       </section>

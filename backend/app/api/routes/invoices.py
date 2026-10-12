@@ -1,8 +1,8 @@
 from datetime import UTC, date, datetime, time, timedelta, timezone
 
+import jwt
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import FileResponse
-import jwt
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
@@ -248,13 +248,24 @@ def create_document_browser_url(
     db: Session = Depends(get_db),
     _: User = Depends(require_permission(Permission.INVOICE_READ)),
 ) -> dict[str, str]:
-    document = db.scalar(select(InvoiceDocument).where(InvoiceDocument.id == document_id, InvoiceDocument.invoice_id == invoice_id))
+    document = db.scalar(
+        select(InvoiceDocument).where(
+            InvoiceDocument.id == document_id, InvoiceDocument.invoice_id == invoice_id
+        )
+    )
     if not document:
         raise HTTPException(status_code=404, detail="Documento não encontrado")
     now = datetime.now(UTC)
     token = jwt.encode(
-        {"invoice_id": invoice_id, "document_id": document_id, "type": "document_view", "iat": now, "exp": now + timedelta(minutes=5)},
-        get_settings().secret_key.get_secret_value(), algorithm="HS256",
+        {
+            "invoice_id": invoice_id,
+            "document_id": document_id,
+            "type": "document_view",
+            "iat": now,
+            "exp": now + timedelta(minutes=5),
+        },
+        get_settings().secret_key.get_secret_value(),
+        algorithm="HS256",
     )
     return {"url": f"/api/v1/invoices/documents/public/{token}"}
 
@@ -262,16 +273,30 @@ def create_document_browser_url(
 @router.get("/documents/public/{token}")
 def open_document_in_browser(token: str, db: Session = Depends(get_db)) -> FileResponse:
     try:
-        payload = jwt.decode(token, get_settings().secret_key.get_secret_value(), algorithms=["HS256"])
+        payload = jwt.decode(
+            token, get_settings().secret_key.get_secret_value(), algorithms=["HS256"]
+        )
         if payload.get("type") != "document_view":
             raise ValueError("token inválido")
     except Exception as error:
         raise HTTPException(status_code=401, detail="Link do documento expirado") from error
-    document = db.scalar(select(InvoiceDocument).where(InvoiceDocument.id == payload.get("document_id"), InvoiceDocument.invoice_id == payload.get("invoice_id")))
+    document = db.scalar(
+        select(InvoiceDocument).where(
+            InvoiceDocument.id == payload.get("document_id"),
+            InvoiceDocument.invoice_id == payload.get("invoice_id"),
+        )
+    )
     if not document:
         raise HTTPException(status_code=404, detail="Documento não encontrado")
-    media_type = "application/pdf" if document.document_type in {"pdf", "label_pdf"} else "application/xml"
-    return FileResponse(document.storage_path, media_type=media_type, filename=document.filename, headers={"Content-Disposition": f'inline; filename="{document.filename}"'})
+    media_type = (
+        "application/pdf" if document.document_type in {"pdf", "label_pdf"} else "application/xml"
+    )
+    return FileResponse(
+        document.storage_path,
+        media_type=media_type,
+        filename=document.filename,
+        headers={"Content-Disposition": f'inline; filename="{document.filename}"'},
+    )
 
 
 @router.get("/{invoice_id}/documents/{document_id}")

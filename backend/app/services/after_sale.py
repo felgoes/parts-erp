@@ -18,9 +18,9 @@ from app.models import (
     User,
 )
 from app.schemas.common import (
+    AfterSaleCaseOut,
     AfterSaleInspectIn,
     AfterSaleReceiveIn,
-    AfterSaleCaseOut,
     InvoiceAfterSaleOut,
     InvoiceTrackingEventOut,
 )
@@ -181,7 +181,9 @@ def after_sales_for_invoices(
     case_by_invoice: dict[str, list[AfterSaleCaseOut]] = {}
     for case in cases:
         if case.invoice_id:
-            case_by_invoice.setdefault(case.invoice_id, []).append(AfterSaleCaseOut.model_validate(case))
+            case_by_invoice.setdefault(case.invoice_id, []).append(
+                AfterSaleCaseOut.model_validate(case)
+            )
     result: dict[str, InvoiceAfterSaleOut] = {}
     for invoice in invoices:
         order = by_external_id.get(invoice.marketplace_order_id or "")
@@ -243,7 +245,9 @@ def _case_requested_quantity(
             for order_line in order_items:
                 if not isinstance(order_line, dict):
                     continue
-                order_item = order_line.get("item") if isinstance(order_line.get("item"), dict) else {}
+                order_item = (
+                    order_line.get("item") if isinstance(order_line.get("item"), dict) else {}
+                )
                 if str(order_item.get("id") or "") == external_item_id:
                     sku = _first_text(
                         order_line.get("seller_sku"), order_line.get("seller_custom_field")
@@ -253,7 +257,11 @@ def _case_requested_quantity(
             continue
         if sku and sku != invoice_item.sku:
             continue
-        quantity = returned.get("quantity") or returned.get("return_quantity") or returned.get("requested_quantity")
+        quantity = (
+            returned.get("quantity")
+            or returned.get("return_quantity")
+            or returned.get("requested_quantity")
+        )
         if quantity is not None:
             try:
                 parsed = Decimal(str(quantity))
@@ -275,7 +283,9 @@ def upsert_after_sale_case(
 ) -> AfterSaleCase:
     invoice = db.get(SalesInvoice, order.invoice_id) if order.invoice_id else None
     order_payload = order.payload if isinstance(order.payload, dict) else {}
-    payments = order_payload.get("payments") if isinstance(order_payload.get("payments"), list) else []
+    payments = (
+        order_payload.get("payments") if isinstance(order_payload.get("payments"), list) else []
+    )
     refunded_payment = next(
         (
             payment
@@ -308,7 +318,9 @@ def upsert_after_sale_case(
             payment_status=payment_status,
             refund_amount=refund_amount,
             requested_at=_date(event_data.get("created_at")),
-            payload={"notification": {key: event_data.get(key) for key in ("kind", "status", "id")}},
+            payload={
+                "notification": {key: event_data.get(key) for key in ("kind", "status", "id")}
+            },
         )
         db.add(case)
         db.flush()
@@ -321,7 +333,9 @@ def upsert_after_sale_case(
         case.payment_status = payment_status or case.payment_status
         case.refund_amount = refund_amount if refund_amount is not None else case.refund_amount
         case.requested_at = case.requested_at or _date(event_data.get("created_at"))
-        case.payload = {"notification": {key: event_data.get(key) for key in ("kind", "status", "id")}}
+        case.payload = {
+            "notification": {key: event_data.get(key) for key in ("kind", "status", "id")}
+        }
 
     if invoice and not case.items:
         for invoice_item in invoice.items:
@@ -439,7 +453,9 @@ def receive_after_sale_items(
         if target == current:
             continue
         item.received_quantity = target
-        detail = f"Recebidas {target} de {item.requested_quantity} un. · {item.sku} · {actor.full_name}"
+        detail = (
+            f"Recebidas {target} de {item.requested_quantity} un. · {item.sku} · {actor.full_name}"
+        )
         _record_case_event(
             db,
             case,
@@ -455,7 +471,13 @@ def receive_after_sale_items(
     all_received = bool(case.items) and all(
         Decimal(item.received_quantity) >= Decimal(item.requested_quantity) for item in case.items
     )
-    case.workflow_status = "inspection_pending" if all_received else "partially_received" if received_any else "requested"
+    case.workflow_status = (
+        "inspection_pending"
+        if all_received
+        else "partially_received"
+        if received_any
+        else "requested"
+    )
     db.flush()
     return case
 
@@ -472,7 +494,9 @@ def inspect_after_sale_items(
     if not invoice:
         raise ValueError("O pós-venda ainda não está vinculado a uma fatura")
     if invoice.status == InvoiceStatus.cancelled:
-        raise ValueError("A venda cancelada já teve o estoque estornado; confira o saldo antes de lançar outra entrada")
+        raise ValueError(
+            "A venda cancelada já teve o estoque estornado; confira o saldo antes de lançar outra entrada"
+        )
 
     for item_id, decision in requested.items():
         item = next((row for row in case.items if row.id == item_id), None)
@@ -488,7 +512,9 @@ def inspect_after_sale_items(
                 f"Quantidade de retorno ao estoque deve ficar entre {current_restocked} e {received} para {item.sku}"
             )
         if decision.disposition == "restock" and target != received:
-            raise ValueError("Para aprovar todas as unidades, a quantidade de retorno ao estoque deve igualar a recebida")
+            raise ValueError(
+                "Para aprovar todas as unidades, a quantidade de retorno ao estoque deve igualar a recebida"
+            )
         if decision.disposition in {"damaged", "discarded"} and target != 0:
             raise ValueError("Peça danificada ou descartada não pode gerar entrada no estoque")
         if decision.disposition == "mixed" and not (Decimal("0") < target < received):
@@ -545,9 +571,14 @@ def inspect_after_sale_items(
         case.workflow_status = "resolved"
         case.completed_at = datetime.now(UTC)
     else:
-        case.workflow_status = "inspection_pending" if any(
-            Decimal(item.received_quantity) > Decimal(item.inspected_quantity) for item in case.items
-        ) else "partially_received"
+        case.workflow_status = (
+            "inspection_pending"
+            if any(
+                Decimal(item.received_quantity) > Decimal(item.inspected_quantity)
+                for item in case.items
+            )
+            else "partially_received"
+        )
     db.flush()
     return case
 
@@ -555,7 +586,9 @@ def inspect_after_sale_items(
 def close_after_sale_without_stock(
     db: Session, case: AfterSaleCase, note: str, actor: User
 ) -> AfterSaleCase:
-    if any(Decimal(item.received_quantity) > Decimal(item.inspected_quantity) for item in case.items):
+    if any(
+        Decimal(item.received_quantity) > Decimal(item.inspected_quantity) for item in case.items
+    ):
         raise ValueError("Há peças recebidas que ainda precisam de inspeção")
     if any(Decimal(item.received_quantity) > 0 for item in case.items) and not all(
         Decimal(item.inspected_quantity) >= Decimal(item.received_quantity) for item in case.items

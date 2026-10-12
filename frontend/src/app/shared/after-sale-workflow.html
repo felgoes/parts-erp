@@ -5,7 +5,11 @@
         <p class="eyebrow">Acompanhamento</p>
         <h3>
           {{
-            summary.kind === 'return' ? 'Devolução' : summary.kind === 'claim' ? 'Reclamação' : 'Cancelamento'
+            summary.kind === 'return'
+              ? 'Devolução'
+              : summary.kind === 'claim'
+                ? 'Reclamação'
+                : 'Cancelamento'
           }}
         </h3>
       </div>
@@ -32,7 +36,8 @@
       }
       @if (summary.refund_amount !== null) {
         <div>
-          <span>Valor reembolsado</span><strong>{{ summary.refund_amount | currency: 'BRL' }}</strong>
+          <span>Valor reembolsado</span
+          ><strong>{{ summary.refund_amount | currency: 'BRL' }}</strong>
         </div>
       }
       @if (summary.return_id) {
@@ -47,8 +52,12 @@
         <div class="section-heading return-case-heading">
           <div>
             <p class="eyebrow">
-              {{ caseRecord.kind === 'return' ? 'Devolução Mercado Livre' : 'Reclamação Mercado Livre' }} ·
-              #{{ caseRecord.external_case_id }}
+              {{
+                caseRecord.kind === 'return'
+                  ? 'Devolução Mercado Livre'
+                  : 'Reclamação Mercado Livre'
+              }}
+              · #{{ caseRecord.external_case_id }}
             </p>
             <h4>{{ workflowLabel(caseRecord.workflow_status) }}</h4>
           </div>
@@ -57,8 +66,8 @@
           }
         </div>
         <p class="return-guidance">
-          O pedido do cliente não altera o estoque sozinho. Registre o recebimento físico e inspecione cada
-          peça; só unidades aprovadas para revenda entram no saldo.
+          O pedido do cliente não altera o estoque sozinho. Registre o recebimento físico e
+          inspecione cada peça; só unidades aprovadas para revenda entram no saldo.
         </p>
 
         @for (item of caseRecord.items; track item.id) {
@@ -72,12 +81,15 @@
                 >
               </div>
               <span class="badge" [class.success]="item.disposition === 'restock'">{{
-                item.disposition === 'pending' ? 'Aguardando conferência' : statusLabel(item.disposition)
+                item.disposition === 'pending'
+                  ? 'Aguardando conferência'
+                  : statusLabel(item.disposition)
               }}</span>
             </div>
             <div class="return-quantities">
               <div>
-                <small>Recebidas</small><strong>{{ item.received_quantity | number: '1.0-3' }} un.</strong>
+                <small>Recebidas</small
+                ><strong>{{ item.received_quantity | number: '1.0-3' }} un.</strong>
               </div>
               <div>
                 <small>Inspecionadas</small
@@ -140,15 +152,20 @@
                     [disabled]="busy() === item.id + ':inspect'"
                     (click)="inspect(caseRecord, item)"
                   >
-                    {{ busy() === item.id + ':inspect' ? 'Atualizando…' : 'Inspecionar e atualizar estoque' }}
+                    {{
+                      busy() === item.id + ':inspect'
+                        ? 'Atualizando…'
+                        : 'Inspecionar e atualizar estoque'
+                    }}
                   </button>
                 }
               </div>
             } @else {
               @if (caseRecord.workflow_status === 'resolved') {
                 <p class="return-outcome">
-                  {{ item.restocked_quantity | number: '1.0-3' }} unidade(s) reintegrada(s) ao estoque. O
-                  restante foi registrado como {{ statusLabel(item.disposition) | lowercase }}.
+                  {{ item.restocked_quantity | number: '1.0-3' }} unidade(s) reintegrada(s) ao
+                  estoque. O restante foi registrado como
+                  {{ statusLabel(item.disposition) | lowercase }}.
                 </p>
               }
             }
@@ -158,11 +175,15 @@
           </article>
         } @empty {
           <p class="muted">
-            A devolução ainda não trouxe itens conciliáveis. Confira o pedido no Mercado Livre antes de
-            registrar entrada de estoque.
+            A devolução ainda não trouxe itens conciliáveis. Confira o pedido no Mercado Livre antes
+            de registrar entrada de estoque.
           </p>
         }
-        @if (caseRecord.workflow_status !== 'resolved' && canClose() && canCloseWithoutStock(caseRecord)) {
+        @if (
+          caseRecord.workflow_status !== 'resolved' &&
+          canClose() &&
+          canCloseWithoutStock(caseRecord)
+        ) {
           <button
             class="secondary small close-return"
             [disabled]="busy() === caseRecord.id + ':close'"
@@ -179,10 +200,14 @@
           <div class="return-history">
             <p class="eyebrow">Histórico do caso</p>
             <div class="timeline">
-              @for (event of caseRecord.events; track event.event_type + event.status + event.created_at) {
+              @for (
+                event of caseRecord.events;
+                track event.event_type + event.status + event.created_at
+              ) {
                 <div>
                   <strong
-                    >{{ statusLabel(event.status) }}{{ event.detail ? ' · ' + event.detail : '' }}</strong
+                    >{{ statusLabel(event.status)
+                    }}{{ event.detail ? ' · ' + event.detail : '' }}</strong
                   ><span>{{ event.created_at | date: 'dd/MM/yyyy HH:mm' }}</span>
                 </div>
               }
@@ -192,8 +217,8 @@
       </section>
     } @empty {
       <div class="return-empty">
-        O Mercado Livre registrou o pós-venda, mas o caso ainda não foi estruturado para operação de estoque.
-        Sincronize a notificação de devolução para criar o processo vinculado.
+        O Mercado Livre registrou o pós-venda, mas o caso ainda não foi estruturado para operação de
+        estoque. Sincronize a notificação de devolução para criar o processo vinculado.
       </div>
     }
     @if (summary.history.length) {
@@ -202,7 +227,9 @@
         <div class="timeline">
           @for (event of summary.history; track event.created_at + event.status) {
             <div>
-              <strong>{{ statusLabel(event.status) }}{{ event.detail ? ' · ' + event.detail : '' }}</strong
+              <strong
+                >{{ statusLabel(event.status)
+                }}{{ event.detail ? ' · ' + event.detail : '' }}</strong
               ><span>{{ event.created_at | date: 'dd/MM/yyyy HH:mm' }}</span>
             </div>
           }

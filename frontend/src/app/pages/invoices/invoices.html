@@ -46,12 +46,16 @@
             </td>
             <td class="customer-cell">
               <strong>{{ i.customer?.name || 'Consumidor não identificado' }}</strong>
-              <small>{{ i.customer?.document || i.customer?.email || 'Sem cadastro vinculado' }}</small>
+              <small>{{
+                i.customer?.document || i.customer?.email || 'Sem cadastro vinculado'
+              }}</small>
             </td>
             <td>{{ i.source === 'mercadolivre' ? 'Mercado Livre' : 'Manual' }}</td>
             <td>{{ i.issued_at || i.created_at | date: 'dd/MM/yyyy HH:mm' }}</td>
             <td>
-              <span class="badge" [class]="i.status">{{ saleStageLabel(saleStageForInvoice(i)) }}</span>
+              <span class="badge" [class]="i.status">{{
+                saleStageLabel(saleStageForInvoice(i))
+              }}</span>
               @if (i.after_sale) {
                 <small class="post-sale-summary">{{ afterSaleLabel(i) }}</small>
               }
@@ -62,7 +66,9 @@
                   <a
                     class="doc"
                     href="#"
-                    (click)="$event.preventDefault(); $event.stopPropagation(); openDocument(i.id, doc.id)"
+                    (click)="
+                      $event.preventDefault(); $event.stopPropagation(); openDocument(i.id, doc.id)
+                    "
                   >
                     {{ documentLabel(doc.document_type) }}
                   </a>
@@ -133,7 +139,9 @@
           <div>
             <span
               ><strong>{{ line.product.name }}</strong
-              ><small>{{ line.quantity }} × {{ line.product.sale_price | currency: 'BRL' }}</small></span
+              ><small
+                >{{ line.quantity }} × {{ line.product.sale_price | currency: 'BRL' }}</small
+              ></span
             ><strong>{{ line.quantity * line.product.sale_price | currency: 'BRL' }}</strong
             ><button class="close" (click)="removeLine(line.product.id)">×</button>
           </div>
@@ -155,11 +163,17 @@
     <section class="modal wide object-modal" (click)="$event.stopPropagation()">
       <div class="modal-head detail-hero">
         <div>
-          <p class="eyebrow">Venda {{ invoice.source === 'mercadolivre' ? 'Mercado Livre' : 'manual' }}</p>
+          <p class="eyebrow">
+            Venda {{ invoice.source === 'mercadolivre' ? 'Mercado Livre' : 'manual' }}
+          </p>
           <h2>{{ invoice.number }}</h2>
           <p class="detail-subtitle">
             Criada em {{ invoice.created_at | date: 'dd/MM/yyyy HH:mm'
-            }}{{ invoice.issued_at ? ' · emitida em ' + (invoice.issued_at | date: 'dd/MM/yyyy HH:mm') : '' }}
+            }}{{
+              invoice.issued_at
+                ? ' · emitida em ' + (invoice.issued_at | date: 'dd/MM/yyyy HH:mm')
+                : ''
+            }}
           </p>
         </div>
         <div class="hero-actions">
@@ -169,7 +183,8 @@
       </div>
       <div class="detail-summary">
         <div>
-          <span>Cliente</span><strong>{{ invoice.customer?.name || 'Consumidor não identificado' }}</strong
+          <span>Cliente</span
+          ><strong>{{ invoice.customer?.name || 'Consumidor não identificado' }}</strong
           ><small>{{
             invoice.customer?.document || invoice.customer?.email || 'Sem cadastro vinculado'
           }}</small>
@@ -179,7 +194,9 @@
           ><strong>{{
             invoice.marketplace_order_id ? '#' + invoice.marketplace_order_id : 'Venda local'
           }}</strong
-          ><small>{{ invoice.items.length }} item(ns) · {{ invoice.total | currency: 'BRL' }}</small>
+          ><small
+            >{{ invoice.items.length }} item(ns) · {{ invoice.total | currency: 'BRL' }}</small
+          >
         </div>
       </div>
       <nav class="detail-tabs" aria-label="Detalhes da venda">
@@ -187,11 +204,17 @@
           Itens <small>{{ invoice.items.length }}</small></button
         ><button [class.active]="invoiceTab() === 'tracking'" (click)="invoiceTab.set('tracking')">
           Rastreio</button
-        ><button [class.active]="invoiceTab() === 'documents'" (click)="invoiceTab.set('documents')">
+        ><button
+          [class.active]="invoiceTab() === 'documents'"
+          (click)="invoiceTab.set('documents')"
+        >
           Documentos <small>{{ invoice.documents.length }}</small>
         </button>
         @if (invoice.after_sale) {
-          <button [class.active]="invoiceTab() === 'aftersale'" (click)="invoiceTab.set('aftersale')">
+          <button
+            [class.active]="invoiceTab() === 'aftersale'"
+            (click)="invoiceTab.set('aftersale')"
+          >
             Pós-venda
           </button>
         }

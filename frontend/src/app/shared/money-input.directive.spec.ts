@@ -24,7 +24,8 @@ class MoneyReadonlyHost {
 @Component({
   standalone: true,
   imports: [MoneyInputDirective, ReactiveFormsModule],
-  template: '<form [formGroup]="form"><input appMoneyInput formControlName="amount" min="1" /></form>',
+  template:
+    '<form [formGroup]="form"><input appMoneyInput formControlName="amount" min="1" /></form>',
 })
 class MoneyFormHost {
   readonly form = new FormGroup({ amount: new FormControl<number | null>(0) });
@@ -65,7 +66,9 @@ function type(input: HTMLInputElement, key: string) {
 }
 
 function paste(input: HTMLInputElement, text: string) {
-  const event = new Event('paste', { bubbles: true, cancelable: true }) as Event & { clipboardData: { getData: () => string } };
+  const event = new Event('paste', { bubbles: true, cancelable: true }) as Event & {
+    clipboardData: { getData: () => string };
+  };
   event.clipboardData = { getData: () => text };
   input.dispatchEvent(event);
 }

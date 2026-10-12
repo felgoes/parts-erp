@@ -1,9 +1,8 @@
-import pytest
-from pydantic import ValidationError
 from datetime import UTC, datetime
 from decimal import Decimal
 from types import SimpleNamespace
 
+import pytest
 from fastapi import HTTPException
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session

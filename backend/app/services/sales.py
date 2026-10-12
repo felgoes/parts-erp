@@ -102,8 +102,7 @@ def cancel_invoice(db: Session, invoice: SalesInvoice) -> SalesInvoice:
         for item in invoice.items:
             sale_movement = db.scalar(
                 select(StockMovement).where(
-                    StockMovement.idempotency_key
-                    == f"invoice:{invoice.id}:item:{item.id}:confirm"
+                    StockMovement.idempotency_key == f"invoice:{invoice.id}:item:{item.id}:confirm"
                 )
             )
             move_stock(

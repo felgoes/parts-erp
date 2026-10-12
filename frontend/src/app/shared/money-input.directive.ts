@@ -1,5 +1,23 @@
-import { Directive, ElementRef, EventEmitter, HostListener, Input, OnChanges, Output, SimpleChanges, forwardRef, inject } from '@angular/core';
-import { AbstractControl, ControlValueAccessor, NG_VALIDATORS, NG_VALUE_ACCESSOR, ValidationErrors, Validator } from '@angular/forms';
+import {
+  Directive,
+  ElementRef,
+  EventEmitter,
+  HostListener,
+  Input,
+  OnChanges,
+  Output,
+  SimpleChanges,
+  forwardRef,
+  inject,
+} from '@angular/core';
+import {
+  AbstractControl,
+  ControlValueAccessor,
+  NG_VALIDATORS,
+  NG_VALUE_ACCESSOR,
+  ValidationErrors,
+  Validator,
+} from '@angular/forms';
 
 /** Limite de dígitos aceitos para o valor em centavos. */
 const MAX_DIGITS = 15;
@@ -23,7 +41,11 @@ const MAX_DIGITS = 15;
     { provide: NG_VALUE_ACCESSOR, useExisting: forwardRef(() => MoneyInputDirective), multi: true },
     { provide: NG_VALIDATORS, useExisting: forwardRef(() => MoneyInputDirective), multi: true },
   ],
-  host: { '[attr.type]': '"text"', '[attr.inputmode]': '"numeric"', '[attr.autocomplete]': '"off"' },
+  host: {
+    '[attr.type]': '"text"',
+    '[attr.inputmode]': '"numeric"',
+    '[attr.autocomplete]': '"off"',
+  },
 })
 export class MoneyInputDirective implements ControlValueAccessor, Validator, OnChanges {
   @Input() appMoneyInput: number | string | null | undefined;
@@ -56,18 +78,28 @@ export class MoneyInputDirective implements ControlValueAccessor, Validator, OnC
     this.applyIncoming(this.toNumber(value));
   }
 
-  registerOnChange(fn: (value: number | null) => void): void { this.onChange = fn; }
-  registerOnTouched(fn: () => void): void { this.onTouched = fn; }
-  setDisabledState(disabled: boolean): void { this.element.nativeElement.disabled = disabled; }
-  registerOnValidatorChange(fn: () => void): void { this.validatorChanged = fn; }
+  registerOnChange(fn: (value: number | null) => void): void {
+    this.onChange = fn;
+  }
+  registerOnTouched(fn: () => void): void {
+    this.onTouched = fn;
+  }
+  setDisabledState(disabled: boolean): void {
+    this.element.nativeElement.disabled = disabled;
+  }
+  registerOnValidatorChange(fn: () => void): void {
+    this.validatorChanged = fn;
+  }
 
   validate(_control: AbstractControl): ValidationErrors | null {
     if (this.formatError) return { moneyFormat: { message: this.message() } };
     const value = this.currentValue();
     const min = this.bound('min');
     const max = this.bound('max');
-    if (value !== null && Number.isFinite(min) && value < min) return { min: { min, actual: value } };
-    if (value !== null && Number.isFinite(max) && value > max) return { max: { max, actual: value } };
+    if (value !== null && Number.isFinite(min) && value < min)
+      return { min: { min, actual: value } };
+    if (value !== null && Number.isFinite(max) && value > max)
+      return { max: { max, actual: value } };
     return null;
   }
 
@@ -87,9 +119,8 @@ export class MoneyInputDirective implements ControlValueAccessor, Validator, OnC
     if (event.key === 'Backspace' || event.key === 'Delete') {
       event.preventDefault();
       // Apagar um valor informado nunca deixa o campo em branco: termina em `R$ 0,00`.
-      this.digits = this.digits.length > 1
-        ? this.digits.slice(0, -1)
-        : (this.blankWhenCleared ? '' : '0');
+      this.digits =
+        this.digits.length > 1 ? this.digits.slice(0, -1) : this.blankWhenCleared ? '' : '0';
       this.commit();
       return;
     }
@@ -172,7 +203,8 @@ export class MoneyInputDirective implements ControlValueAccessor, Validator, OnC
 
   private render(): void {
     const input = this.element.nativeElement;
-    input.value = this.legacyText ?? (this.digits === '' ? '' : this.format(this.signedValue() ?? 0));
+    input.value =
+      this.legacyText ?? (this.digits === '' ? '' : this.format(this.signedValue() ?? 0));
     this.setCaretToEnd();
   }
 
@@ -197,7 +229,11 @@ export class MoneyInputDirective implements ControlValueAccessor, Validator, OnC
 
   private setCaretToEnd(): void {
     const input = this.element.nativeElement;
-    try { input.setSelectionRange(input.value.length, input.value.length); } catch { /* campos sem seleção */ }
+    try {
+      input.setSelectionRange(input.value.length, input.value.length);
+    } catch {
+      /* campos sem seleção */
+    }
   }
 
   private get readonly(): boolean {
@@ -224,15 +260,27 @@ export class MoneyInputDirective implements ControlValueAccessor, Validator, OnC
   }
 
   private format(value: number): string {
-    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value);
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(value);
   }
 
   private formatLegacy(value: number): string {
     const decimals = Math.min(8, Math.max(3, (String(value).split('.')[1] || '').length));
-    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: decimals, maximumFractionDigits: decimals }).format(value);
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
+      minimumFractionDigits: decimals,
+      maximumFractionDigits: decimals,
+    }).format(value);
   }
 
-  private message(): string { return 'Use reais com vírgula e no máximo duas casas decimais.'; }
+  private message(): string {
+    return 'Use reais com vírgula e no máximo duas casas decimais.';
+  }
 
   private setValidity(): void {
     const input = this.element.nativeElement;

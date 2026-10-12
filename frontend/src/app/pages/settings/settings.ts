@@ -25,7 +25,9 @@ export class SettingsPage implements OnInit {
   readonly message = signal('');
   readonly error = signal('');
   readonly logoError = signal('');
-  readonly importProfiles = signal<Array<{ profile_id: string; name: string; kind: string; version: number }>>([]);
+  readonly importProfiles = signal<
+    Array<{ profile_id: string; name: string; kind: string; version: number }>
+  >([]);
   readonly profileBusy = signal(false);
   readonly profileError = signal('');
   readonly settings = signal<ErpSettings>({
@@ -63,14 +65,25 @@ export class SettingsPage implements OnInit {
 
   ngOnInit(): void {
     const params = new URLSearchParams(window.location.search);
-    if (params.get('drive_connected') === 'true') this.message.set('Google Drive conectado. Salve a política de backup para ativá-la.');
-    if (params.get('drive_error')) this.error.set('Não foi possível autorizar o Google Drive. Confira o Client ID, o segredo e o redirect URI.');
-    if (params.has('drive_connected') || params.has('drive_error')) window.history.replaceState({}, '', window.location.pathname);
-    this.api.purchaseImportProfiles().subscribe({ next: (result) => this.importProfiles.set(result.profiles), error: () => undefined });
-    this.api.erpSettings().pipe(finalize(() => this.loading.set(false))).subscribe({
-      next: (settings) => this.applySettings(settings),
-      error: () => this.error.set('Não foi possível carregar as configurações. Tente novamente.'),
+    if (params.get('drive_connected') === 'true')
+      this.message.set('Google Drive conectado. Salve a política de backup para ativá-la.');
+    if (params.get('drive_error'))
+      this.error.set(
+        'Não foi possível autorizar o Google Drive. Confira o Client ID, o segredo e o redirect URI.',
+      );
+    if (params.has('drive_connected') || params.has('drive_error'))
+      window.history.replaceState({}, '', window.location.pathname);
+    this.api.purchaseImportProfiles().subscribe({
+      next: (result) => this.importProfiles.set(result.profiles),
+      error: () => undefined,
     });
+    this.api
+      .erpSettings()
+      .pipe(finalize(() => this.loading.set(false)))
+      .subscribe({
+        next: (settings) => this.applySettings(settings),
+        error: () => this.error.set('Não foi possível carregar as configurações. Tente novamente.'),
+      });
   }
 
   uploadImportProfile(event: Event): void {
@@ -80,25 +93,39 @@ export class SettingsPage implements OnInit {
     if (!file) return;
     this.profileError.set('');
     this.profileBusy.set(true);
-    this.api.uploadPurchaseImportProfile(file).pipe(finalize(() => this.profileBusy.set(false))).subscribe({
-      next: (result) => {
-        this.message.set(`Perfil ${result.name} importado.`);
-        this.api.purchaseImportProfiles().subscribe((response) => this.importProfiles.set(response.profiles));
-      },
-      error: (err) => this.profileError.set(err?.error?.detail || 'Não foi possível importar este perfil JSON.'),
-    });
+    this.api
+      .uploadPurchaseImportProfile(file)
+      .pipe(finalize(() => this.profileBusy.set(false)))
+      .subscribe({
+        next: (result) => {
+          this.message.set(`Perfil ${result.name} importado.`);
+          this.api
+            .purchaseImportProfiles()
+            .subscribe((response) => this.importProfiles.set(response.profiles));
+        },
+        error: (err) =>
+          this.profileError.set(
+            err?.error?.detail || 'Não foi possível importar este perfil JSON.',
+          ),
+      });
   }
 
   deleteImportProfile(profileId: string): void {
     if (this.profileBusy()) return;
     this.profileBusy.set(true);
-    this.api.deletePurchaseImportProfile(profileId).pipe(finalize(() => this.profileBusy.set(false))).subscribe({
-      next: () => {
-        this.importProfiles.update((profiles) => profiles.filter((item) => item.profile_id !== profileId));
-        this.message.set('Perfil removido.');
-      },
-      error: (err) => this.profileError.set(err?.error?.detail || 'Não foi possível remover o perfil.'),
-    });
+    this.api
+      .deletePurchaseImportProfile(profileId)
+      .pipe(finalize(() => this.profileBusy.set(false)))
+      .subscribe({
+        next: () => {
+          this.importProfiles.update((profiles) =>
+            profiles.filter((item) => item.profile_id !== profileId),
+          );
+          this.message.set('Perfil removido.');
+        },
+        error: (err) =>
+          this.profileError.set(err?.error?.detail || 'Não foi possível remover o perfil.'),
+      });
   }
 
   downloadImportProfileExample(): void {
@@ -117,7 +144,9 @@ export class SettingsPage implements OnInit {
     const blob = new Blob([JSON.stringify(example, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
-    link.href = url; link.download = 'perfil-importacao-exemplo.json'; link.click();
+    link.href = url;
+    link.download = 'perfil-importacao-exemplo.json';
+    link.click();
     URL.revokeObjectURL(url);
   }
 
@@ -130,7 +159,10 @@ export class SettingsPage implements OnInit {
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0];
     if (!file) return;
-    if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type) || file.size > 2 * 1024 * 1024) {
+    if (
+      !['image/png', 'image/jpeg', 'image/webp'].includes(file.type) ||
+      file.size > 2 * 1024 * 1024
+    ) {
       this.logoError.set('Use um arquivo PNG, JPEG ou WebP de até 2 MB.');
       input.value = '';
       return;
@@ -151,21 +183,32 @@ export class SettingsPage implements OnInit {
     this.message.set('');
     this.error.set('');
     this.saving.set(true);
-    this.api.saveErpSettings(this.draft).pipe(finalize(() => this.saving.set(false))).subscribe({
-      next: (settings) => {
-        this.applySettings(settings);
-        this.brand.apply(settings);
-        this.message.set('Configurações salvas. A identidade da empresa será aplicada no sistema.');
-      },
-      error: (err) => this.error.set(err?.error?.detail || 'Não foi possível salvar as configurações.'),
-    });
+    this.api
+      .saveErpSettings(this.draft)
+      .pipe(finalize(() => this.saving.set(false)))
+      .subscribe({
+        next: (settings) => {
+          this.applySettings(settings);
+          this.brand.apply(settings);
+          this.message.set(
+            'Configurações salvas. A identidade da empresa será aplicada no sistema.',
+          );
+        },
+        error: (err) =>
+          this.error.set(err?.error?.detail || 'Não foi possível salvar as configurações.'),
+      });
   }
 
   connectGoogleDrive(): void {
     this.driveConnecting.set(true);
     this.api.connectGoogleDrive().subscribe({
       next: ({ authorization_url }) => window.location.assign(authorization_url),
-      error: (err) => { this.error.set(err?.error?.detail || 'Informe as credenciais OAuth do Google Drive e salve primeiro.'); this.driveConnecting.set(false); },
+      error: (err) => {
+        this.error.set(
+          err?.error?.detail || 'Informe as credenciais OAuth do Google Drive e salve primeiro.',
+        );
+        this.driveConnecting.set(false);
+      },
     });
   }
 
@@ -174,8 +217,15 @@ export class SettingsPage implements OnInit {
     this.message.set('');
     this.error.set('');
     this.api.runGoogleDriveBackup().subscribe({
-      next: (result) => { this.message.set(result.message); this.backupRunning.set(false); this.api.erpSettings().subscribe((settings) => this.applySettings(settings)); },
-      error: (err) => { this.error.set(err?.error?.detail || 'Não foi possível concluir o backup.'); this.backupRunning.set(false); },
+      next: (result) => {
+        this.message.set(result.message);
+        this.backupRunning.set(false);
+        this.api.erpSettings().subscribe((settings) => this.applySettings(settings));
+      },
+      error: (err) => {
+        this.error.set(err?.error?.detail || 'Não foi possível concluir o backup.');
+        this.backupRunning.set(false);
+      },
     });
   }
 

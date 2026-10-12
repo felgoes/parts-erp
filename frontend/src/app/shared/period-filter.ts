@@ -1,6 +1,11 @@
 import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { DateRange, QUICK_DATE_PRESETS, QuickDatePreset, quickDateRange } from '../core/quick-date-ranges';
+import {
+  DateRange,
+  QUICK_DATE_PRESETS,
+  QuickDatePreset,
+  quickDateRange,
+} from '../core/quick-date-ranges';
 
 export interface PeriodFilterStatusOption {
   value: string;
@@ -36,7 +41,10 @@ export class PeriodFilter implements OnInit {
 
   ngOnInit() {
     this.activePreset = this.initialPreset;
-    const presetRange = this.initialPreset === 'custom' ? quickDateRange('thisMonth') : quickDateRange(this.initialPreset);
+    const presetRange =
+      this.initialPreset === 'custom'
+        ? quickDateRange('thisMonth')
+        : quickDateRange(this.initialPreset);
     this.startDate = this.initialStartDate || presetRange.startDate;
     this.endDate = this.initialEndDate || presetRange.endDate;
   }
@@ -70,6 +78,7 @@ export class PeriodFilter implements OnInit {
   }
 
   applyRange() {
-    if (this.validRange() && !this.busy) this.rangeChange.emit({ startDate: this.startDate, endDate: this.endDate });
+    if (this.validRange() && !this.busy)
+      this.rangeChange.emit({ startDate: this.startDate, endDate: this.endDate });
   }
 }

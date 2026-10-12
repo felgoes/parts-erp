@@ -50,9 +50,7 @@ def split_cents(amount_cents: int, weights: Sequence[tuple[str, int]]) -> dict[s
     total_weight = sum(weight for _, weight in weights)
     if total_weight <= 0:
         return {key: 0 for key, _ in weights}
-    shares = {
-        key: half_up_div(amount_cents * weight, total_weight) for key, weight in weights
-    }
+    shares = {key: half_up_div(amount_cents * weight, total_weight) for key, weight in weights}
     residual = amount_cents - sum(shares.values())
     if residual:
         largest = max(weights, key=lambda entry: entry[1])[0]
@@ -152,9 +150,7 @@ def build_import_plan(
 
     item_plans: list[ImportLinePlan] = []
     for index in range(len(lines)):
-        extra_cents = (
-            freight_share[str(index)] + tax_share[str(index)] - discount_share[str(index)]
-        )
+        extra_cents = freight_share[str(index)] + tax_share[str(index)] - discount_share[str(index)]
         landed_cents = base_cents[index] + half_up_div(extra_cents * MILLI, quantity_milli[index])
         if landed_cents < 0:
             raise ImportPlanError(

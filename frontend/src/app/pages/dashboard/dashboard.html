@@ -1,4 +1,8 @@
-<app-page-header eyebrow="Centro de controle" title="Visão geral" subtitle="O pulso da sua operação, agora.">
+<app-page-header
+  eyebrow="Centro de controle"
+  title="Visão geral"
+  subtitle="O pulso da sua operação, agora."
+>
   @if (canSell()) {
     <a class="primary" routerLink="/invoices">+ Nova venda</a>
   }
@@ -14,7 +18,8 @@
       (keydown.space)="$event.preventDefault(); openFinancial()"
     >
       <div>
-        <span>Faturamento no período</span><strong>{{ summary.revenue_month | currency: 'BRL' }}</strong>
+        <span>Faturamento no período</span
+        ><strong>{{ summary.revenue_month | currency: 'BRL' }}</strong>
       </div>
       <i>↗</i><small>Vendas confirmadas</small>
     </article>
@@ -27,8 +32,8 @@
     >
       <span>Vendas confirmadas</span><strong>{{ summary.confirmed_sales }}</strong
       ><small
-        >{{ summary.cancelled_sales }} cancelada(s) · {{ summary.cancelled_amount | currency: 'BRL' }} fora da
-        receita</small
+        >{{ summary.cancelled_sales }} cancelada(s) ·
+        {{ summary.cancelled_amount | currency: 'BRL' }} fora da receita</small
       >
     </article>
     <article
@@ -90,13 +95,17 @@
                   <td>
                     <strong>{{ invoice.number }}</strong
                     ><small class="block">{{
-                      invoice.marketplace_order_id ? 'Pedido #' + invoice.marketplace_order_id : 'Venda local'
+                      invoice.marketplace_order_id
+                        ? 'Pedido #' + invoice.marketplace_order_id
+                        : 'Venda local'
                     }}</small>
                   </td>
                   <td class="dashboard-customer">
                     <strong>{{ invoice.customer?.name || 'Consumidor não identificado' }}</strong
                     ><small>{{
-                      invoice.customer?.document || invoice.customer?.email || 'Sem cadastro vinculado'
+                      invoice.customer?.document ||
+                        invoice.customer?.email ||
+                        'Sem cadastro vinculado'
                     }}</small>
                   </td>
                   <td>{{ invoice.source === 'mercadolivre' ? 'Mercado Livre' : 'Balcão' }}</td>
@@ -174,7 +183,11 @@
               Uma leitura rápida da receita, do ritmo de vendas e da composição do caixa.
             </p>
           </div>
-          <button class="close" aria-label="Fechar métricas financeiras" (click)="financial.set(null)">
+          <button
+            class="close"
+            aria-label="Fechar métricas financeiras"
+            (click)="financial.set(null)"
+          >
             ×
           </button>
         </div>
@@ -185,7 +198,8 @@
               [class.positive-text]="finance.revenue_change_percent >= 0"
               [class.negative-text]="finance.revenue_change_percent < 0"
               >{{ finance.revenue_change_percent >= 0 ? '↑' : '↓' }}
-              {{ abs(finance.revenue_change_percent) | number: '1.0-2' }}% vs. período anterior</small
+              {{ abs(finance.revenue_change_percent) | number: '1.0-2' }}% vs. período
+              anterior</small
             >
           </div>
           <div class="financial-kpi">
@@ -201,7 +215,8 @@
             ><small>no período</small>
           </div>
           <div class="financial-kpi">
-            <span>Valor cancelado</span><strong>{{ finance.cancelled_amount | currency: 'BRL' }}</strong
+            <span>Valor cancelado</span
+            ><strong>{{ finance.cancelled_amount | currency: 'BRL' }}</strong
             ><small>excluído da receita confirmada</small>
           </div>
         </div>
@@ -217,7 +232,9 @@
             <div class="revenue-chart" aria-label="Receita diária">
               @for (day of finance.daily; track day.date) {
                 <div class="chart-column">
-                  <span class="chart-value">{{ day.amount | currency: 'BRL' : 'symbol' : '1.2-2' }}</span>
+                  <span class="chart-value">{{
+                    day.amount | currency: 'BRL' : 'symbol' : '1.2-2'
+                  }}</span>
                   <div class="chart-track">
                     <i [style.height.%]="chartHeight(day.amount, finance.daily)"></i>
                   </div>
@@ -259,12 +276,16 @@
       <section class="modal wide object-modal" (click)="$event.stopPropagation()">
         <div class="modal-head detail-hero">
           <div>
-            <p class="eyebrow">Venda {{ invoice.source === 'mercadolivre' ? 'Mercado Livre' : 'manual' }}</p>
+            <p class="eyebrow">
+              Venda {{ invoice.source === 'mercadolivre' ? 'Mercado Livre' : 'manual' }}
+            </p>
             <h2>{{ invoice.number }}</h2>
             <p class="detail-subtitle">
               Criada em {{ invoice.created_at | date: 'dd/MM/yyyy HH:mm'
               }}{{
-                invoice.issued_at ? ' · emitida em ' + (invoice.issued_at | date: 'dd/MM/yyyy HH:mm') : ''
+                invoice.issued_at
+                  ? ' · emitida em ' + (invoice.issued_at | date: 'dd/MM/yyyy HH:mm')
+                  : ''
               }}
             </p>
           </div>
@@ -277,7 +298,8 @@
         </div>
         <div class="detail-summary">
           <div>
-            <span>Cliente</span><strong>{{ invoice.customer?.name || 'Consumidor não identificado' }}</strong
+            <span>Cliente</span
+            ><strong>{{ invoice.customer?.name || 'Consumidor não identificado' }}</strong
             ><small>{{
               invoice.customer?.document || invoice.customer?.email || 'Sem cadastro vinculado'
             }}</small>
@@ -287,19 +309,30 @@
             ><strong>{{
               invoice.marketplace_order_id ? '#' + invoice.marketplace_order_id : 'Venda local'
             }}</strong
-            ><small>{{ invoice.items.length }} item(ns) · {{ invoice.total | currency: 'BRL' }}</small>
+            ><small
+              >{{ invoice.items.length }} item(ns) · {{ invoice.total | currency: 'BRL' }}</small
+            >
           </div>
         </div>
         <nav class="detail-tabs" aria-label="Detalhes da venda">
           <button [class.active]="invoiceTab() === 'items'" (click)="invoiceTab.set('items')">
             Itens <small>{{ invoice.items.length }}</small></button
-          ><button [class.active]="invoiceTab() === 'tracking'" (click)="invoiceTab.set('tracking')">
+          ><button
+            [class.active]="invoiceTab() === 'tracking'"
+            (click)="invoiceTab.set('tracking')"
+          >
             Rastreio</button
-          ><button [class.active]="invoiceTab() === 'documents'" (click)="invoiceTab.set('documents')">
+          ><button
+            [class.active]="invoiceTab() === 'documents'"
+            (click)="invoiceTab.set('documents')"
+          >
             Documentos <small>{{ invoice.documents.length }}</small>
           </button>
           @if (invoice.after_sale) {
-            <button [class.active]="invoiceTab() === 'aftersale'" (click)="invoiceTab.set('aftersale')">
+            <button
+              [class.active]="invoiceTab() === 'aftersale'"
+              (click)="invoiceTab.set('aftersale')"
+            >
               Pós-venda
             </button>
           }
@@ -389,11 +422,15 @@
                     class="document-card"
                     href="#"
                     (click)="$event.preventDefault(); openDocument(invoice.id, doc.id)"
-                    ><span class="document-icon">{{ doc.document_type === 'pdf' ? 'PDF' : 'XML' }}</span
+                    ><span class="document-icon">{{
+                      doc.document_type === 'pdf' ? 'PDF' : 'XML'
+                    }}</span
                     ><span
                       ><strong>{{ doc.filename }}</strong
                       ><small>{{
-                        doc.document_type === 'pdf' ? 'DANFE para visualização' : 'Nota fiscal eletrônica'
+                        doc.document_type === 'pdf'
+                          ? 'DANFE para visualização'
+                          : 'Nota fiscal eletrônica'
                       }}</small></span
                     ><b>↗</b></a
                   >

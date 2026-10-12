@@ -54,7 +54,8 @@ export class PushNotificationsService {
     } catch {
       this.registrationState.set({
         status: 'error',
-        message: 'O Firebase não conseguiu registrar este dispositivo. Confira o Google Play Services e tente novamente.',
+        message:
+          'O Firebase não conseguiu registrar este dispositivo. Confira o Google Play Services e tente novamente.',
       });
     } finally {
       this.registrationRequest = null;

@@ -127,12 +127,13 @@ export function trackingEventLabel(status: string, detail?: string | null): stri
   const normalizedStatus = normalizeStatus(status);
   const normalizedDetail = normalizeStatus(detail || '');
   const detailLabel = trackingDetailLabel(detail);
-  const laterStage =
-    ['picked_up', 'shipped_to_carrier', 'dropped_off'].includes(normalizedDetail)
-      ? 'Despachado'
-      : ['in_transit', 'in_hub', 'on_route', 'out_for_delivery', 'at_the_branch'].includes(normalizedDetail)
-        ? 'Em trânsito'
-        : null;
+  const laterStage = ['picked_up', 'shipped_to_carrier', 'dropped_off'].includes(normalizedDetail)
+    ? 'Despachado'
+    : ['in_transit', 'in_hub', 'on_route', 'out_for_delivery', 'at_the_branch'].includes(
+          normalizedDetail,
+        )
+      ? 'Em trânsito'
+      : null;
   if (laterStage && ['ready_to_ship', 'handling'].includes(normalizedStatus)) {
     return detailLabel ? `${laterStage} · ${detailLabel}` : laterStage;
   }
@@ -159,7 +160,10 @@ function trackingDetailLabel(value: string | null | undefined): string | null {
   const phrase = value.trim().toLowerCase().replace(/[.]/g, ' ').replace(/\s+/g, ' ');
   if (phrases[phrase]) return phrases[phrase];
   // Preserve a readable Portuguese description when the carrier supplies one.
-  if (/[áàâãéêíóôõúç]/i.test(value) || /\b(entrega|pacote|destinatário|remetente|agência|coleta|pedido)\b/i.test(value)) {
+  if (
+    /[áàâãéêíóôõúç]/i.test(value) ||
+    /\b(entrega|pacote|destinatário|remetente|agência|coleta|pedido)\b/i.test(value)
+  ) {
     return value.trim();
   }
   return null;

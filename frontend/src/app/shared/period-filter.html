@@ -58,9 +58,18 @@
 
   @if (activePreset === 'custom') {
     <div class="date-range-fields">
-      <label>De <input type="date" [ngModel]="startDate" (ngModelChange)="changeStart($event)" /></label>
-      <label>Até <input type="date" [ngModel]="endDate" (ngModelChange)="changeEnd($event)" /></label>
-      <button class="secondary" type="button" (click)="applyRange()" [disabled]="busy || !validRange()">
+      <label
+        >De <input type="date" [ngModel]="startDate" (ngModelChange)="changeStart($event)"
+      /></label>
+      <label
+        >Até <input type="date" [ngModel]="endDate" (ngModelChange)="changeEnd($event)"
+      /></label>
+      <button
+        class="secondary"
+        type="button"
+        (click)="applyRange()"
+        [disabled]="busy || !validRange()"
+      >
         {{ busy ? 'Atualizando…' : applyLabel }}
       </button>
     </div>

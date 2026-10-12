@@ -66,7 +66,13 @@
           aria-label="Gráfico de linhas da atividade diária no período"
         >
           @for (tick of [0, 1, 2, 3, 4]; track tick) {
-            <line x1="48" [attr.y1]="chartY(tick)" x2="804" [attr.y2]="chartY(tick)" class="grid-line" />
+            <line
+              x1="48"
+              [attr.y1]="chartY(tick)"
+              x2="804"
+              [attr.y2]="chartY(tick)"
+              class="grid-line"
+            />
             <text x="38" [attr.y]="chartY(tick) + 4" class="axis-label" text-anchor="end">
               {{ chartTick(tick, summary) }}
             </text>
@@ -83,7 +89,9 @@
               />
               @for (point of series.coordinates; track point.date) {
                 <circle [attr.cx]="point.x" [attr.cy]="point.y" r="3.5" [attr.fill]="series.color">
-                  <title>{{ point.date | date: 'dd/MM/yyyy' }} · {{ series.label }}: {{ point.value }}</title>
+                  <title>
+                    {{ point.date | date: 'dd/MM/yyyy' }} · {{ series.label }}: {{ point.value }}
+                  </title>
                 </circle>
               }
             }
@@ -119,7 +127,10 @@
                 [style.background]="item.color"
               ></span>
             </div>
-            <small>{{ share(item.count, totalEvents(summary)) | number: '1.0-1' }}% das interações</small>
+            <small
+              >{{ share(item.count, totalEvents(summary)) | number: '1.0-1' }}% das
+              interações</small
+            >
           </div>
         }
       </div>
@@ -130,7 +141,9 @@
           <h2>Saúde da operação</h2>
           <p>Última verificação de cada serviço monitorado.</p>
         </div>
-        <span class="health-summary">{{ healthyCount(summary) }}/{{ healthChecks(summary).length }} OK</span>
+        <span class="health-summary"
+          >{{ healthyCount(summary) }}/{{ healthChecks(summary).length }} OK</span
+        >
       </div>
       <div class="health">
         @for (item of healthChecks(summary); track item.check_name) {
@@ -139,8 +152,9 @@
             <div>
               <strong>{{ healthLabel(item.check_name) }}</strong
               ><small
-                >{{ item.ok ? 'Operacional' : 'Falha' }} · {{ item.latency_ms | number: '1.0-0' }} ms ·
-                {{ item.detail || 'Sem detalhe' }} · {{ item.checked_at | date: 'dd/MM HH:mm' }}</small
+                >{{ item.ok ? 'Operacional' : 'Falha' }} ·
+                {{ item.latency_ms | number: '1.0-0' }} ms · {{ item.detail || 'Sem detalhe' }} ·
+                {{ item.checked_at | date: 'dd/MM HH:mm' }}</small
               >
             </div>
           </div>
@@ -185,7 +199,9 @@
                   <div class="view-bar">
                     <span [style.width.%]="share(product.views, productViewTotal(summary))"></span>
                   </div>
-                  <small>{{ share(product.views, productViewTotal(summary)) | number: '1.0-1' }}%</small>
+                  <small
+                    >{{ share(product.views, productViewTotal(summary)) | number: '1.0-1' }}%</small
+                  >
                 </td>
               </tr>
             }

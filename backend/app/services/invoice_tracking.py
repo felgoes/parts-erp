@@ -22,7 +22,9 @@ def _payload_datetime(value: object) -> datetime | None:
     return None
 
 
-def tracking_last_update(order: MarketplaceOrder, events: list[MarketplaceOrderEvent]) -> tuple[datetime | None, str]:
+def tracking_last_update(
+    order: MarketplaceOrder, events: list[MarketplaceOrderEvent]
+) -> tuple[datetime | None, str]:
     platform_dates: list[datetime] = []
     payload = order.payload if isinstance(order.payload, dict) else {}
     for key in ("_erp_source_updated_at", "last_updated", "update_time"):

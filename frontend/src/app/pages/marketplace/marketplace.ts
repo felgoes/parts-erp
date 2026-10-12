@@ -44,7 +44,8 @@ export class MarketplacePage implements OnInit {
   }
   platformUpdatedAt(order: MarketplaceOrder): string | number | null {
     const payload = order.payload || {};
-    const value = payload['last_updated'] ?? payload['update_time'] ?? payload['_erp_source_updated_at'];
+    const value =
+      payload['last_updated'] ?? payload['update_time'] ?? payload['_erp_source_updated_at'];
     if (value === undefined || value === null || value === '') return null;
     if (order.provider === 'shopee' && /^\d+$/.test(String(value))) return Number(value) * 1000;
     return String(value);
@@ -55,7 +56,9 @@ export class MarketplacePage implements OnInit {
   }
   ngOnInit() {
     this.load();
-    this.live.changes$.pipe(debounceTime(250), takeUntilDestroyed(this.destroyRef)).subscribe(() => this.load());
+    this.live.changes$
+      .pipe(debounceTime(250), takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => this.load());
   }
   load() {
     this.api.marketplaceStatus().subscribe((v) => this.status.set(v));
@@ -196,7 +199,9 @@ export class MarketplacePage implements OnInit {
       return 'Gerando no Mercado Livre';
     }
     if (this.isLabelAvailable(order)) return 'Pronta para obter';
-    if (['delivered', 'shipped', 'returned', 'not_delivered'].includes(order.shipping_status ?? '')) {
+    if (
+      ['delivered', 'shipped', 'returned', 'not_delivered'].includes(order.shipping_status ?? '')
+    ) {
       return 'Etapa de envio encerrada';
     }
     return this.automationLabel(order.label_status);
@@ -214,7 +219,9 @@ export class MarketplacePage implements OnInit {
     if (this.isLabelAvailable(order)) {
       return 'A etiqueta já está liberada. Ao obter, o PDF será anexado à fatura.';
     }
-    if (['delivered', 'shipped', 'returned', 'not_delivered'].includes(order.shipping_status ?? '')) {
+    if (
+      ['delivered', 'shipped', 'returned', 'not_delivered'].includes(order.shipping_status ?? '')
+    ) {
       return 'O pedido já passou da etapa de impressão da etiqueta.';
     }
     if (order.label_status === 'error') {

@@ -102,7 +102,9 @@ class PushDevice(TimestampMixin, Base):
 
 class PushPreference(TimestampMixin, Base):
     __tablename__ = "push_preferences"
-    __table_args__ = (UniqueConstraint("user_id", "category", name="uq_push_preferences_user_category"),)
+    __table_args__ = (
+        UniqueConstraint("user_id", "category", name="uq_push_preferences_user_category"),
+    )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
     user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
@@ -162,7 +164,9 @@ class Product(TimestampMixin, Base):
     manufacturer_part_number: Mapped[str | None] = mapped_column(String(120), index=True)
     barcode: Mapped[str | None] = mapped_column(String(32), index=True)
     category: Mapped[str | None] = mapped_column(String(160))
-    stock_type: Mapped[str] = mapped_column(String(20), default="product", server_default="product", index=True)
+    stock_type: Mapped[str] = mapped_column(
+        String(20), default="product", server_default="product", index=True
+    )
     item_condition: Mapped[str] = mapped_column(String(24), default="new")
     warranty_days: Mapped[int | None] = mapped_column()
     origin_country: Mapped[str | None] = mapped_column(String(80))
@@ -345,9 +349,7 @@ class PurchaseCase(TimestampMixin, Base):
     ordered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     cancel_reason: Mapped[str | None] = mapped_column(String(255))
     cancelled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    cancelled_by_id: Mapped[str | None] = mapped_column(
-        ForeignKey("users.id", ondelete="SET NULL")
-    )
+    cancelled_by_id: Mapped[str | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
     closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     notes: Mapped[str | None] = mapped_column(Text)
     source_import_id: Mapped[str | None] = mapped_column(String(36), unique=True, index=True)
@@ -426,7 +428,9 @@ class PurchaseEvent(Base):
     __table_args__ = (Index("ix_purchase_events_purchase_created", "purchase_id", "created_at"),)
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
     purchase_id: Mapped[str] = mapped_column(ForeignKey("purchase_cases.id", ondelete="CASCADE"))
-    item_id: Mapped[str | None] = mapped_column(ForeignKey("purchase_items.id", ondelete="SET NULL"))
+    item_id: Mapped[str | None] = mapped_column(
+        ForeignKey("purchase_items.id", ondelete="SET NULL")
+    )
     user_id: Mapped[str | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
     event_type: Mapped[str] = mapped_column(String(40))
     detail: Mapped[str] = mapped_column(String(500))
@@ -437,7 +441,9 @@ class PurchaseEvent(Base):
 class PurchaseAttachment(Base):
     __tablename__ = "purchase_attachments"
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
-    purchase_id: Mapped[str] = mapped_column(ForeignKey("purchase_cases.id", ondelete="CASCADE"), index=True)
+    purchase_id: Mapped[str] = mapped_column(
+        ForeignKey("purchase_cases.id", ondelete="CASCADE"), index=True
+    )
     filename: Mapped[str] = mapped_column(String(255))
     content_type: Mapped[str] = mapped_column(String(120), default="application/octet-stream")
     size_bytes: Mapped[int] = mapped_column()
@@ -454,9 +460,7 @@ class PurchasePayable(TimestampMixin, Base):
     purchase_id: Mapped[str] = mapped_column(
         ForeignKey("purchase_cases.id", ondelete="CASCADE"), index=True
     )
-    supplier_id: Mapped[str | None] = mapped_column(
-        ForeignKey("suppliers.id", ondelete="SET NULL")
-    )
+    supplier_id: Mapped[str | None] = mapped_column(ForeignKey("suppliers.id", ondelete="SET NULL"))
     supplier_name: Mapped[str | None] = mapped_column(String(200))
     amount: Mapped[Decimal] = mapped_column(Numeric(14, 2), default=0)
     paid_amount: Mapped[Decimal] = mapped_column(Numeric(14, 2), default=0)
@@ -529,9 +533,7 @@ class PayablePayment(Base):
     reconciled_by_id: Mapped[str | None] = mapped_column(
         ForeignKey("users.id", ondelete="SET NULL")
     )
-    created_by_id: Mapped[str | None] = mapped_column(
-        ForeignKey("users.id", ondelete="SET NULL")
-    )
+    created_by_id: Mapped[str | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc)
     payable: Mapped[PurchasePayable] = relationship(back_populates="payments")
     installment: Mapped["PayableInstallment | None"] = relationship(back_populates="payments")

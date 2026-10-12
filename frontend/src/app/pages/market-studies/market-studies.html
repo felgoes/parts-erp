@@ -9,8 +9,8 @@
     <span class="research-icon">⌕</span>
     <p>
       <strong>Dados observáveis, decisão assistida</strong><br />Veja preços e anúncios comparáveis,
-      tendências disponíveis e giro real do seu ERP. A IA interpreta os sinais — não inventa fornecedor nem
-      promete venda.
+      tendências disponíveis e giro real do seu ERP. A IA interpreta os sinais — não inventa
+      fornecedor nem promete venda.
     </p>
   </div>
   @if (canManage) {
@@ -32,7 +32,9 @@
       <div>
         <p class="eyebrow">Conector plugável</p>
         <h2>Análise assistida por IA</h2>
-        <p>Opcional. Sem chave configurada, os indicadores e cálculos continuam funcionando sem IA.</p>
+        <p>
+          Opcional. Sem chave configurada, os indicadores e cálculos continuam funcionando sem IA.
+        </p>
       </div>
       <span class="connector-state" [class.is-on]="aiConfigured()">{{
         aiConfigured() ? 'Conectado' : 'Não configurado'
@@ -48,7 +50,9 @@
       <label>Modelo<input [(ngModel)]="connector.model" placeholder="Ex.: gpt-6-luna" /></label>
       @if (connector.provider === 'openai_compatible') {
         <label class="connector-url"
-          >URL base HTTPS<input [(ngModel)]="connector.base_url" placeholder="https://api.seuprovedor.com/v1"
+          >URL base HTTPS<input
+            [(ngModel)]="connector.base_url"
+            placeholder="https://api.seuprovedor.com/v1"
         /></label>
       }
       <label class="connector-key"
@@ -65,14 +69,20 @@
       <label class="connector-enable"
         ><input type="checkbox" [(ngModel)]="connector.enabled" /> Usar IA nos novos estudos</label
       >
-      <button class="primary" type="button" [disabled]="savingConnector()" (click)="saveConnector()">
+      <button
+        class="primary"
+        type="button"
+        [disabled]="savingConnector()"
+        (click)="saveConnector()"
+      >
         {{ savingConnector() ? 'Salvando…' : 'Salvar conector' }}
       </button>
     </div>
     <p class="connector-privacy">
-      A chave fica criptografada no banco e nunca volta pela API. Quando habilitada, somente a busca e dados
-      agregados do estudo (incluindo custo informado) são enviados ao provedor escolhido; nenhum dado de
-      cliente ou pedido é enviado. O provedor pode cobrar pelo uso da API. A integração começa desligada.
+      A chave fica criptografada no banco e nunca volta pela API. Quando habilitada, somente a busca
+      e dados agregados do estudo (incluindo custo informado) são enviados ao provedor escolhido;
+      nenhum dado de cliente ou pedido é enviado. O provedor pode cobrar pelo uso da API. A
+      integração começa desligada.
     </p>
     @if (connectorMessage()) {
       <p class="inline-message" [class.is-error]="connectorError()">{{ connectorMessage() }}</p>
@@ -88,7 +98,8 @@
           <p class="eyebrow">Novo estudo</p>
           <h2>Pesquise uma oportunidade</h2>
           <p>
-            Use nome da peça, código OEM ou aplicação. Informe custo posto na sua loja para comparar a margem.
+            Use nome da peça, código OEM ou aplicação. Informe custo posto na sua loja para comparar
+            a margem.
           </p>
         </div>
         <span class="step-mark">01</span>
@@ -144,7 +155,8 @@
         /></label>
       </form>
       <div class="study-submit">
-        <small>Pesquisa até 50 anúncios do ML, tendências e histórico ERP de 90 dias para o SKU.</small
+        <small
+          >Pesquisa até 50 anúncios do ML, tendências e histórico ERP de 90 dias para o SKU.</small
         ><button
           class="primary"
           type="button"
@@ -163,8 +175,8 @@
       <p class="eyebrow">Acesso de consulta</p>
       <h2>Peça um novo estudo à gestão</h2>
       <p>
-        Você pode consultar análises já salvas. Para consumir a API do marketplace e executar uma nova
-        pesquisa, é necessário perfil de gerente ou administrador.
+        Você pode consultar análises já salvas. Para consumir a API do marketplace e executar uma
+        nova pesquisa, é necessário perfil de gerente ou administrador.
       </p>
     </section>
   }
@@ -174,7 +186,10 @@
     <h2>Uma referência para decidir melhor</h2>
     <div>
       <span>1</span>
-      <p><strong>Concorrência</strong><small>Mediana e faixa de preço dos anúncios semelhantes.</small></p>
+      <p>
+        <strong>Concorrência</strong
+        ><small>Mediana e faixa de preço dos anúncios semelhantes.</small>
+      </p>
     </div>
     <div>
       <span>2</span>
@@ -186,11 +201,13 @@
     <div>
       <span>3</span>
       <p>
-        <strong>Próxima ação</strong><small>Converta em rascunho de compra e registre cotações reais.</small>
+        <strong>Próxima ação</strong
+        ><small>Converta em rascunho de compra e registre cotações reais.</small>
       </p>
     </div>
     <small class="method-note"
-      >Não é cotação comercial, previsão garantida de giro nem validação de aplicação automotiva.</small
+      >Não é cotação comercial, previsão garantida de giro nem validação de aplicação
+      automotiva.</small
     >
   </aside>
 </div>
@@ -215,7 +232,8 @@
         <span>Preço mediano comparável</span
         ><strong>{{
           study.result.market_metrics.median_price
-            ? (+study.result.market_metrics.median_price | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR')
+            ? (+study.result.market_metrics.median_price
+              | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR')
             : 'Sem amostra'
         }}</strong
         ><small>{{ study.result.market_metrics.comparable_offers }} anúncios semelhantes</small>
@@ -224,9 +242,11 @@
         <span>Faixa observada</span
         ><strong>{{
           study.result.market_metrics.min_price
-            ? (+study.result.market_metrics.min_price | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR') +
+            ? (+study.result.market_metrics.min_price
+                | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR') +
               ' — ' +
-              (+study.result.market_metrics.max_price! | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR')
+              (+study.result.market_metrics.max_price!
+                | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR')
             : '—'
         }}</strong
         ><small>Preços anunciados; não incluem todas as condições</small>
@@ -235,18 +255,21 @@
         <span>Preço para margem desejada</span
         ><strong>{{
           study.result.price_scenario.target_price
-            ? (+study.result.price_scenario.target_price | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR')
+            ? (+study.result.price_scenario.target_price
+              | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR')
             : '—'
         }}</strong
         ><small>Após taxas estimadas de {{ study.marketplace_fee_pct }}%</small>
       </article>
       <article>
         <span>Margem no preço mediano</span
-        ><strong [class.negative]="+(study.result.price_scenario.market_margin_at_median_pct ?? 0) < 0">{{
-          study.result.price_scenario.market_margin_at_median_pct !== null
-            ? study.result.price_scenario.market_margin_at_median_pct + '%'
-            : '—'
-        }}</strong
+        ><strong
+          [class.negative]="+(study.result.price_scenario.market_margin_at_median_pct ?? 0) < 0"
+          >{{
+            study.result.price_scenario.market_margin_at_median_pct !== null
+              ? study.result.price_scenario.market_margin_at_median_pct + '%'
+              : '—'
+          }}</strong
         ><small
           >Custo posto informado:
           {{
@@ -263,7 +286,8 @@
           }}{{ study.sku ? ' un. em 90 dias' : '' }}</strong
         ><small>{{
           study.sku
-            ? study.result.internal_sales.units_per_month + ' un./mês; média observada, não previsão.'
+            ? study.result.internal_sales.units_per_month +
+              ' un./mês; média observada, não previsão.'
             : 'Informe SKU para cruzar com vendas e saldo.'
         }}</small>
       </article>
@@ -271,8 +295,8 @@
         <p class="eyebrow">Anúncios encontrados</p>
         <strong>{{ study.result.market_metrics.offers_found }}</strong
         ><small
-          >{{ study.result.market_metrics.sold_units_lifetime_in_comparables }} vendas acumuladas somadas nos
-          anúncios comparáveis — não representam período mensal.</small
+          >{{ study.result.market_metrics.sold_units_lifetime_in_comparables }} vendas acumuladas
+          somadas nos anúncios comparáveis — não representam período mensal.</small
         >
       </article>
       <article>
@@ -290,7 +314,9 @@
           <div class="ai-title">
             <span>✳</span>
             <div>
-              <p class="eyebrow">Leitura assistida por IA · confiança {{ confidenceLabel(ai.confidence) }}</p>
+              <p class="eyebrow">
+                Leitura assistida por IA · confiança {{ confidenceLabel(ai.confidence) }}
+              </p>
               <h3>O que os sinais sugerem</h3>
             </div>
           </div>
@@ -331,8 +357,8 @@
       }
     } @else {
       <p class="ai-disabled">
-        Sem IA conectada: resultados acima são cálculos e dados diretos. Configure um provedor para receber
-        uma síntese qualitativa.
+        Sem IA conectada: resultados acima são cálculos e dados diretos. Configure um provedor para
+        receber uma síntese qualitativa.
       </p>
     }
 
@@ -346,7 +372,9 @@
         </div>
         <div class="trend-chips">
           @for (trend of study.result.trend_matches; track trend.keyword) {
-            <a [href]="trend.url" target="_blank" rel="noopener noreferrer">{{ trend.keyword }} ↗</a>
+            <a [href]="trend.url" target="_blank" rel="noopener noreferrer"
+              >{{ trend.keyword }} ↗</a
+            >
           }
         </div>
       </section>
@@ -373,7 +401,8 @@
               <div class="offer-info">
                 <strong>{{ offer.title }}</strong
                 ><small
-                  >Anúncio {{ offer.id }} · relevância {{ offer.similarity | percent: '1.0-0' : 'pt-BR' }} ·
+                  >Anúncio {{ offer.id }} · relevância
+                  {{ offer.similarity | percent: '1.0-0' : 'pt-BR' }} ·
                   {{ offer.sold_quantity_lifetime ?? '—' }} vendas acumuladas</small
                 >
               </div>
@@ -401,9 +430,9 @@
       }
     </section>
     <div class="limitations-note">
-      <strong>Limites dos dados:</strong> disponibilidade pode vir aproximada; venda acumulada do anúncio não
-      é giro mensal; vendedor do anúncio é apenas uma pista para cotação, não fornecedor validado;
-      compatibilidade deve ser conferida.
+      <strong>Limites dos dados:</strong> disponibilidade pode vir aproximada; venda acumulada do
+      anúncio não é giro mensal; vendedor do anúncio é apenas uma pista para cotação, não fornecedor
+      validado; compatibilidade deve ser conferida.
     </div>
 
     @if (canManage) {
@@ -422,7 +451,8 @@
         <p>
           <strong>Iniciar negociação de compra</strong
           ><small
-            >O estudo não faz pedido. Vai abrir uma negociação para você inserir cotações e decidir.</small
+            >O estudo não faz pedido. Vai abrir uma negociação para você inserir cotações e
+            decidir.</small
           >
         </p>
         <label
@@ -474,7 +504,8 @@
           ><span class="history-price"
             >{{
               study.result.market_metrics.median_price
-                ? (+study.result.market_metrics.median_price | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR')
+                ? (+study.result.market_metrics.median_price
+                  | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR')
                 : 'Sem amostra'
             }}<small>{{ study.result.market_metrics.comparable_offers }} comparáveis</small></span
           ><span class="history-arrow">→</span>

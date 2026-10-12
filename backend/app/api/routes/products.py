@@ -140,7 +140,9 @@ def list_products(
     if stock_type:
         query = query.where(Product.stock_type == stock_type)
     if low_stock:
-        query = query.where(Product.stock_type == "product", Product.current_stock < Product.minimum_stock)
+        query = query.where(
+            Product.stock_type == "product", Product.current_stock < Product.minimum_stock
+        )
     products = list(db.scalars(query))
     if has_permission(actor.role, Permission.FINANCE_READ):
         return products

@@ -5,6 +5,8 @@ const labels: Record<string, string> = {
 };
 
 export function documentLabel(value: string | null | undefined): string {
-  const normalized = String(value || '').trim().toLowerCase();
+  const normalized = String(value || '')
+    .trim()
+    .toLowerCase();
   return labels[normalized] || normalized.toUpperCase() || 'Documento';
 }

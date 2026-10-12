@@ -2,8 +2,8 @@ import asyncio
 import logging
 import time as clock
 from datetime import UTC, datetime, time, timedelta, timezone
-from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from typing import Any
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from arq import cron
 from arq.connections import RedisSettings
@@ -37,11 +37,14 @@ except ZoneInfoNotFoundError:
     BACKUP_TIMEZONE = timezone(timedelta(hours=-3), name="America/Sao_Paulo")
 
 
-def _process_mercadolivre_notification(
-    topic: str, resource: str, seller_id: str
-) -> None:
+def _process_mercadolivre_notification(topic: str, resource: str, seller_id: str) -> None:
     started_at = clock.monotonic()
-    logger.info("webhook processing provider=mercadolivre topic=%s resource=%s seller_id=%s", topic, resource, seller_id)
+    logger.info(
+        "webhook processing provider=mercadolivre topic=%s resource=%s seller_id=%s",
+        topic,
+        resource,
+        seller_id,
+    )
     with SessionLocal() as db:
         account = db.scalar(
             select(MarketplaceAccount).where(MarketplaceAccount.seller_id == seller_id)
@@ -166,7 +169,12 @@ def _process_mercadolivre_notification(
                 db.commit()
             if order.invoice_id and topic == "invoices":
                 sync_invoice_documents(db, account, order_id, order.invoice_id)
-    logger.info("webhook processed provider=mercadolivre topic=%s resource=%s elapsed_ms=%.1f", topic, resource, (clock.monotonic() - started_at) * 1000)
+    logger.info(
+        "webhook processed provider=mercadolivre topic=%s resource=%s elapsed_ms=%.1f",
+        topic,
+        resource,
+        (clock.monotonic() - started_at) * 1000,
+    )
 
 
 async def process_mercadolivre_notification(
@@ -176,7 +184,9 @@ async def process_mercadolivre_notification(
     try:
         await asyncio.to_thread(_process_mercadolivre_notification, topic, resource, seller_id)
     except Exception:
-        logger.exception("webhook failed provider=mercadolivre topic=%s resource=%s", topic, resource)
+        logger.exception(
+            "webhook failed provider=mercadolivre topic=%s resource=%s", topic, resource
+        )
         raise
 
 
@@ -251,7 +261,10 @@ async def process_shopee_notification(ctx: dict[str, Any], payload: dict[str, An
     try:
         await asyncio.to_thread(_process_shopee_notification, payload)
     except Exception:
-        logger.exception("webhook failed provider=shopee shop_id=%s", payload.get("shop_id") or payload.get("shopid"))
+        logger.exception(
+            "webhook failed provider=shopee shop_id=%s",
+            payload.get("shop_id") or payload.get("shopid"),
+        )
         raise
 
 
@@ -323,7 +336,11 @@ def _scheduled_backup_is_due(settings: ErpSettings, now_utc: datetime | None = N
 def _run_scheduled_backup() -> str | None:
     with SessionLocal() as db:
         settings = db.scalar(select(ErpSettings).where(ErpSettings.id == "global"))
-        if not settings or not settings.backup_enabled or not settings.encrypted_drive_refresh_token:
+        if (
+            not settings
+            or not settings.backup_enabled
+            or not settings.encrypted_drive_refresh_token
+        ):
             return None
         if not _scheduled_backup_is_due(settings):
             return None

@@ -81,7 +81,10 @@ export function halfUpDiv(numerator: number, denominator: number): number {
 }
 
 /** Rateia centavos por peso, fechando a sobra no maior item (o primeiro, em caso de empate). */
-export function splitCents(amountCents: number, weights: Array<[string, number]>): Record<string, number> {
+export function splitCents(
+  amountCents: number,
+  weights: Array<[string, number]>,
+): Record<string, number> {
   const totalWeight = weights.reduce((sum, [, weight]) => sum + weight, 0);
   if (totalWeight <= 0) {
     return Object.fromEntries(weights.map(([key]) => [key, 0]));
@@ -114,7 +117,10 @@ export function formatBrlCents(cents: number): string {
   return `${sign}R$ ${String(integer).replace(/\B(?=(\d{3})+(?!\d))/g, '.')},${fraction}`;
 }
 
-export function buildImportPlan(lines: ImportLineDraft[], document: ImportDocumentDraft): ImportPlan {
+export function buildImportPlan(
+  lines: ImportLineDraft[],
+  document: ImportDocumentDraft,
+): ImportPlan {
   if (!lines.length) {
     throw new ImportPlanError('Adicione pelo menos uma peça antes de confirmar a importação.');
   }

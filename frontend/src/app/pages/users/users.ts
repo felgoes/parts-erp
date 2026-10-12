@@ -23,7 +23,14 @@ export class UsersPage implements OnInit {
   readonly selectedUser = signal<User | null>(null);
   readonly resetting = signal(false);
   readonly resetMessage = signal('');
-  readonly roleChoices: User['role'][] = ['operator', 'stock', 'finance', 'manager', 'viewer', 'admin'];
+  readonly roleChoices: User['role'][] = [
+    'operator',
+    'stock',
+    'finance',
+    'manager',
+    'viewer',
+    'admin',
+  ];
   readonly userForm = this.fb.nonNullable.group({
     full_name: ['', [Validators.required, Validators.minLength(2)]],
     email: ['', [Validators.required, Validators.email]],
@@ -73,10 +80,25 @@ export class UsersPage implements OnInit {
     this.resetting.set(true);
     this.resetMessage.set('');
     const values = this.resetForm.getRawValue();
-    const payload = { email: values.email, role: values.role, active: values.active, ...(values.password ? { password: values.password } : {}) };
-    this.api.updateUser(user.id, payload)
+    const payload = {
+      email: values.email,
+      role: values.role,
+      active: values.active,
+      ...(values.password ? { password: values.password } : {}),
+    };
+    this.api
+      .updateUser(user.id, payload)
       .pipe(finalize(() => this.resetting.set(false)))
-      .subscribe({ next: () => { this.closeReset(); this.load(); }, error: (error) => this.resetMessage.set(error.error?.detail || 'Não foi possível salvar as alterações do usuário.') });
+      .subscribe({
+        next: () => {
+          this.closeReset();
+          this.load();
+        },
+        error: (error) =>
+          this.resetMessage.set(
+            error.error?.detail || 'Não foi possível salvar as alterações do usuário.',
+          ),
+      });
   }
 
   roleLabel(role: User['role']) {
@@ -91,14 +113,21 @@ export class UsersPage implements OnInit {
     if (this.userForm.invalid) return;
     this.saving.set(true);
     this.message.set('');
-    this.api.createUser(this.userForm.getRawValue()).pipe(finalize(() => this.saving.set(false))).subscribe({
-      next: () => {
-        this.close();
-        this.load();
-      },
-      error: (error) => {
-        this.message.set(error.status === 409 ? 'Já existe um usuário com este e-mail.' : 'Não foi possível cadastrar o usuário.');
-      },
-    });
+    this.api
+      .createUser(this.userForm.getRawValue())
+      .pipe(finalize(() => this.saving.set(false)))
+      .subscribe({
+        next: () => {
+          this.close();
+          this.load();
+        },
+        error: (error) => {
+          this.message.set(
+            error.status === 409
+              ? 'Já existe um usuário com este e-mail.'
+              : 'Não foi possível cadastrar o usuário.',
+          );
+        },
+      });
   }
 }

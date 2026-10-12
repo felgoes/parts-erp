@@ -8,8 +8,8 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.api.routes.purchases import (
-    add_quote,
     add_purchase_item,
+    add_quote,
     cancel_purchase,
     close_purchase_balance,
     create_purchase,
@@ -17,8 +17,8 @@ from app.api.routes.purchases import (
     get_purchase,
     list_purchases,
     place_order,
-    receive_purchase_in_full,
     receive_purchase,
+    receive_purchase_in_full,
     remove_purchase_item,
     select_quote,
     settle_payable,
@@ -26,8 +26,14 @@ from app.api.routes.purchases import (
     update_purchase_item,
 )
 from app.api.routes.suppliers import create_supplier
-from app.services.stock import move_stock
-from app.models import MarketStudy, MovementType, Product, PurchaseCase, PurchaseDeletion, StockMovement
+from app.models import (
+    MarketStudy,
+    MovementType,
+    Product,
+    PurchaseCase,
+    PurchaseDeletion,
+    StockMovement,
+)
 from app.schemas.common import (
     PayableUpdate,
     PurchaseCancelRequest,
@@ -35,14 +41,15 @@ from app.schemas.common import (
     PurchaseCreate,
     PurchaseImportDocument,
     PurchaseItemCreate,
+    PurchaseItemUpdate,
     PurchaseOut,
     PurchaseQuoteCreate,
     PurchaseReceive,
     PurchaseReceiveItem,
-    PurchaseItemUpdate,
     PurchaseUpdate,
     SupplierCreate,
 )
+from app.services.stock import move_stock
 
 
 def _actor() -> SimpleNamespace:
@@ -256,11 +263,7 @@ def test_draft_purchase_is_deleted_with_immutable_audit_record(db: Session) -> N
     purchase = create_purchase(
         PurchaseCreate(
             supplier_name="Fornecedor Rascunho",
-            items=[
-                PurchaseItemCreate(
-                    sku="P-9", description="Peça em rascunho", quantity=2
-                )
-            ],
+            items=[PurchaseItemCreate(sku="P-9", description="Peça em rascunho", quantity=2)],
         ),
         db,
         user,
@@ -309,14 +312,18 @@ def test_deleting_a_received_purchase_reverses_stock_and_keeps_the_trail(db: Ses
         db,
         user,
     )
-    assert db.scalar(select(Product.current_stock).where(Product.sku == "LR174890")) == Decimal("3.000")
+    assert db.scalar(select(Product.current_stock).where(Product.sku == "LR174890")) == Decimal(
+        "3.000"
+    )
 
     record = delete_purchase(purchase.id, "Compra de teste", db, user)
 
     assert "estorno" in record.children_summary
     assert "título a pagar" in record.children_summary
     assert db.get(PurchaseCase, purchase.id) is None
-    assert db.scalar(select(Product.current_stock).where(Product.sku == "LR174890")) == Decimal("0.000")
+    assert db.scalar(select(Product.current_stock).where(Product.sku == "LR174890")) == Decimal(
+        "0.000"
+    )
     movements = list(db.scalars(select(StockMovement).order_by(StockMovement.created_at)))
     assert [movement.movement_type for movement in movements] == [
         MovementType.purchase_received,
@@ -533,7 +540,9 @@ def test_partial_receipt_cancel_returns_stock_and_closes_the_payable(db: Session
 
     assert purchase.status == "cancelled"
     assert purchase.items[0].returned_quantity == Decimal("3.000")
-    assert db.scalar(select(Product.current_stock).where(Product.sku == "LR174890")) == Decimal("0.000")
+    assert db.scalar(select(Product.current_stock).where(Product.sku == "LR174890")) == Decimal(
+        "0.000"
+    )
     assert purchase.payables[0].status == "cancelled"
     posted = list(db.scalars(select(StockMovement).order_by(StockMovement.created_at)))
     assert [movement.movement_type for movement in posted] == [
@@ -580,7 +589,9 @@ def test_close_balance_keeps_received_goods_and_opens_the_payable(db: Session) -
 
     assert purchase.status == "closed"
     assert purchase.closed_at is not None
-    assert db.scalar(select(Product.current_stock).where(Product.sku == "LR174890")) == Decimal("2.000")
+    assert db.scalar(select(Product.current_stock).where(Product.sku == "LR174890")) == Decimal(
+        "2.000"
+    )
     assert purchase.payables[0].amount == Decimal("52.00")
 
     with pytest.raises(HTTPException) as error:
@@ -625,9 +636,7 @@ def test_expense_payable_is_settled_and_reversed_when_cancelled(db: Session) -> 
 def test_draft_item_without_sku_is_accepted_until_the_order(db: Session) -> None:
     user = _actor()
     purchase = create_purchase(
-        PurchaseCreate(
-            items=[PurchaseItemCreate(description="Peça ainda sem código", quantity=1)]
-        ),
+        PurchaseCreate(items=[PurchaseItemCreate(description="Peça ainda sem código", quantity=1)]),
         db,
         user,
     )
@@ -648,7 +657,11 @@ def test_draft_item_without_sku_is_accepted_until_the_order(db: Session) -> None
     assert "SKU" in str(error.value.detail)
 
     purchase = update_purchase_item(
-        purchase.id, line.id, PurchaseItemUpdate(sku="SKU-OK", description="Peça identificada"), db, user
+        purchase.id,
+        line.id,
+        PurchaseItemUpdate(sku="SKU-OK", description="Peça identificada"),
+        db,
+        user,
     )
     purchase = place_order(purchase.id, db, user)
     assert purchase.status == "ordered"
@@ -657,9 +670,7 @@ def test_draft_item_without_sku_is_accepted_until_the_order(db: Session) -> None
 def test_draft_lines_can_be_added_and_removed_with_quotes_following(db: Session) -> None:
     user = _actor()
     purchase = create_purchase(
-        PurchaseCreate(
-            items=[PurchaseItemCreate(sku="A", description="Peça A", quantity=1)]
-        ),
+        PurchaseCreate(items=[PurchaseItemCreate(sku="A", description="Peça A", quantity=1)]),
         db,
         user,
     )
@@ -677,7 +688,10 @@ def test_draft_lines_can_be_added_and_removed_with_quotes_following(db: Session)
         PurchaseQuoteCreate(
             supplier_name="Fornecedor",
             total=16,
-            item_costs={item.id: Decimal("10") if item.sku == "A" else Decimal("3") for item in purchase.items},
+            item_costs={
+                item.id: Decimal("10") if item.sku == "A" else Decimal("3")
+                for item in purchase.items
+            },
         ),
         db,
         user,
@@ -721,7 +735,10 @@ def test_draft_header_keeps_supplier_defaults_document_fields_and_total(db: Sess
     )
 
     assert purchase.supplier_order_number == "PED-99"
-    assert purchase.document_date is not None and purchase.document_date.date().isoformat() == "2026-10-01"
+    assert (
+        purchase.document_date is not None
+        and purchase.document_date.date().isoformat() == "2026-10-01"
+    )
     assert purchase.notes == "Conferir na entrega"
 
     line = purchase.items[0]
@@ -832,9 +849,7 @@ def test_item_update_keeps_costs_pending_without_a_quote(db: Session) -> None:
     purchase = update_purchase_item(
         purchase.id,
         line.id,
-        PurchaseItemUpdate(
-            description="Peça A revisada", quantity=3, base_unit_cost=Decimal("9")
-        ),
+        PurchaseItemUpdate(description="Peça A revisada", quantity=3, base_unit_cost=Decimal("9")),
         db,
         user,
     )

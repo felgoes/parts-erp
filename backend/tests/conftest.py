@@ -1,6 +1,7 @@
 import os
 import secrets
 from collections.abc import Generator
+
 from cryptography.fernet import Fernet
 
 os.environ.setdefault("SECRET_KEY", secrets.token_urlsafe(48))

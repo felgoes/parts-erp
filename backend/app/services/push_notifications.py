@@ -18,8 +18,8 @@ from typing import Any
 import httpx
 import jwt
 from sqlalchemy import select
-from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.models import MarketplaceOrder, PushDevice, PushNotification, PushPreference, SalesInvoice
@@ -122,7 +122,9 @@ def enqueue_sale_notification(db: Session, order: MarketplaceOrder) -> PushNotif
         return existing
     invoice = db.get(SalesInvoice, order.invoice_id)
     title, body, data = _sale_copy(order, invoice)
-    notification = PushNotification(dedupe_key=dedupe_key, category="sales", title=title, body=body, data=data)
+    notification = PushNotification(
+        dedupe_key=dedupe_key, category="sales", title=title, body=body, data=data
+    )
     db.add(notification)
     db.commit()
     db.refresh(notification)
@@ -160,7 +162,9 @@ def enqueue_document_notification(
             db.flush()
     except IntegrityError:
         # A simultaneous invoice/shipment webhook may already have queued it.
-        existing = db.scalar(select(PushNotification).where(PushNotification.dedupe_key == dedupe_key))
+        existing = db.scalar(
+            select(PushNotification).where(PushNotification.dedupe_key == dedupe_key)
+        )
         if existing is None:
             raise
         return existing
@@ -284,13 +288,17 @@ def deliver_pending_notifications(db: Session, only_id: str | None = None) -> in
     now = datetime.now(UTC)
     for notification in notifications:
         user_ids = {device.user_id for device in devices if device.active}
-        category_preferences = list(db.scalars(
-            select(PushPreference).where(
-                PushPreference.user_id.in_(user_ids),
-                PushPreference.category == notification.category,
+        category_preferences = list(
+            db.scalars(
+                select(PushPreference).where(
+                    PushPreference.user_id.in_(user_ids),
+                    PushPreference.category == notification.category,
+                )
             )
-        ))
-        preferences_by_user = {preference.user_id: preference for preference in category_preferences}
+        )
+        preferences_by_user = {
+            preference.user_id: preference for preference in category_preferences
+        }
         disabled_users = {
             user_id for user_id, preference in preferences_by_user.items() if not preference.enabled
         }
@@ -298,8 +306,7 @@ def deliver_pending_notifications(db: Session, only_id: str | None = None) -> in
             user_id: preference.sound for user_id, preference in preferences_by_user.items()
         }
         recipients = [
-            device for device in devices
-            if device.active and device.user_id not in disabled_users
+            device for device in devices if device.active and device.user_id not in disabled_users
         ]
         if not recipients:
             notification.error = "Nenhum celular autorizado para receber notificações"
@@ -338,7 +345,11 @@ def _deliver(
         if sound == "kaching" and device.sound_settings_version < 2:
             sound = "system"
         channel_id = "sales"  # Legacy fallback for APKs that do not create sound-specific channels.
-        if device.sound_settings_version >= 1 and notification.category in SOUND_CATEGORIES and sound != "system":
+        if (
+            device.sound_settings_version >= 1
+            and notification.category in SOUND_CATEGORIES
+            and sound != "system"
+        ):
             channel_id = f"parts_v1_{notification.category}_{sound}"
         data = {str(key): str(value) for key, value in notification.data.items()}
         if channel_id != "sales":

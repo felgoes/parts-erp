@@ -17,7 +17,15 @@ import { AfterSaleWorkflow } from '../../shared/after-sale-workflow';
 
 @Component({
   selector: 'app-dashboard',
-  imports: [CurrencyPipe, DatePipe, DecimalPipe, RouterLink, PageHeader, PeriodFilter, AfterSaleWorkflow],
+  imports: [
+    CurrencyPipe,
+    DatePipe,
+    DecimalPipe,
+    RouterLink,
+    PageHeader,
+    PeriodFilter,
+    AfterSaleWorkflow,
+  ],
   templateUrl: './dashboard.html',
   styleUrl: './dashboard.scss',
 })
@@ -26,9 +34,15 @@ export class DashboardPage implements OnInit {
   private readonly live = inject(LiveUpdatesService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly auth = inject(AuthService);
-  canSell() { return canSell(this.auth.user()?.role); }
-  canManageCatalog() { return canManageCatalog(this.auth.user()?.role); }
-  canAdjustStock() { return canAdjustStock(this.auth.user()?.role); }
+  canSell() {
+    return canSell(this.auth.user()?.role);
+  }
+  canManageCatalog() {
+    return canManageCatalog(this.auth.user()?.role);
+  }
+  canAdjustStock() {
+    return canAdjustStock(this.auth.user()?.role);
+  }
   private readonly router = inject(Router);
   readonly data = signal<DashboardSummary | null>(null);
   readonly financial = signal<DashboardFinancialMetrics | null>(null);
@@ -43,36 +57,55 @@ export class DashboardPage implements OnInit {
   readonly documentLabel = documentLabel;
   afterSaleLabel(invoice: Invoice) {
     if (!invoice.after_sale) return '';
-    const kind = invoice.after_sale.kind === 'return' ? 'Devolução' : invoice.after_sale.kind === 'claim' ? 'Reclamação' : 'Cancelamento';
+    const kind =
+      invoice.after_sale.kind === 'return'
+        ? 'Devolução'
+        : invoice.after_sale.kind === 'claim'
+          ? 'Reclamação'
+          : 'Cancelamento';
     return `${kind} · ${statusLabel(invoice.after_sale.status)}`;
   }
   afterSaleReason(value: string) {
-    if (value.trim().toLowerCase() === 'mediations cancel the order') return 'A mediação cancelou o pedido';
+    if (value.trim().toLowerCase() === 'mediations cancel the order')
+      return 'A mediação cancelou o pedido';
     return value;
   }
   requesterLabel(value: string) {
-    return ({ meli: 'Mercado Livre', buyer: 'Comprador', seller: 'Vendedor' } as Record<string, string>)[value.toLowerCase()] ?? value;
+    return (
+      ({ meli: 'Mercado Livre', buyer: 'Comprador', seller: 'Vendedor' } as Record<string, string>)[
+        value.toLowerCase()
+      ] ?? value
+    );
   }
   ngOnInit() {
     this.load();
-    this.live.changes$.pipe(debounceTime(250), takeUntilDestroyed(this.destroyRef)).subscribe(() => this.load());
+    this.live.changes$
+      .pipe(debounceTime(250), takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => this.load());
   }
   load() {
     if (!this.validRange()) return;
     this.api.dashboard(this.startDate, this.endDate).subscribe((v) => this.data.set(v));
     const detailId = this.detail()?.id;
-    if (detailId) this.api.invoice(detailId).subscribe((full) => {
-      if (this.detail()?.id === detailId) this.detail.set(full);
-    });
+    if (detailId)
+      this.api.invoice(detailId).subscribe((full) => {
+        if (this.detail()?.id === detailId) this.detail.set(full);
+      });
   }
   applyDateFilter(range: { startDate: string; endDate: string }) {
     this.startDate = range.startDate;
     this.endDate = range.endDate;
     this.load();
   }
-  validRange() { return !!this.startDate && !!this.endDate && this.startDate <= this.endDate; }
-  private today() { return new Date().toLocaleDateString('sv-SE'); }
-  private monthStart() { return `${this.today().slice(0, 7)}-01`; }
+  validRange() {
+    return !!this.startDate && !!this.endDate && this.startDate <= this.endDate;
+  }
+  private today() {
+    return new Date().toLocaleDateString('sv-SE');
+  }
+  private monthStart() {
+    return `${this.today().slice(0, 7)}-01`;
+  }
   status(value: string) {
     return (
       (
@@ -91,7 +124,9 @@ export class DashboardPage implements OnInit {
     void this.router.navigate([path]);
   }
   openFinancial() {
-    this.api.dashboardFinancial(this.startDate, this.endDate).subscribe((metrics) => this.financial.set(metrics));
+    this.api
+      .dashboardFinancial(this.startDate, this.endDate)
+      .subscribe((metrics) => this.financial.set(metrics));
   }
   abs(value: number) {
     return Math.abs(value);
@@ -107,5 +142,7 @@ export class DashboardPage implements OnInit {
     // Popup + blob falha no WebView Android e resulta em about:blank.
     this.router.navigate(['/document-viewer', invoiceId, documentId]);
   }
-  documentViewerUrl(invoiceId: string, documentId: string) { return `/document-viewer/${invoiceId}/${documentId}`; }
+  documentViewerUrl(invoiceId: string, documentId: string) {
+    return `/document-viewer/${invoiceId}/${documentId}`;
+  }
 }

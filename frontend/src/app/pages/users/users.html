@@ -1,4 +1,7 @@
-<app-page-header eyebrow="Acesso" title="Usuários" subtitle="Gerencie quem pode acessar o Parts ERP."
+<app-page-header
+  eyebrow="Acesso"
+  title="Usuários"
+  subtitle="Gerencie quem pode acessar o Parts ERP."
   ><button class="primary" (click)="openNew()">+ Novo usuário</button></app-page-header
 >
 <section class="card table-card">
@@ -30,7 +33,9 @@
               }}</span>
             </td>
             <td>
-              <button class="secondary small" type="button" (click)="openEdit(user)">Editar acesso</button>
+              <button class="secondary small" type="button" (click)="openEdit(user)">
+                Editar acesso
+              </button>
             </td>
           </tr>
         } @empty {
@@ -57,9 +62,11 @@
           <label>Nome completo<input formControlName="full_name" autocomplete="name" /></label>
           <label>E-mail<input type="email" formControlName="email" autocomplete="email" /></label>
           <label
-            >Senha<input type="password" formControlName="password" autocomplete="new-password" /><small
-              >Mínimo de 12 caracteres.</small
-            ></label
+            >Senha<input
+              type="password"
+              formControlName="password"
+              autocomplete="new-password"
+            /><small>Mínimo de 12 caracteres.</small></label
           >
           <label
             >Perfil<select formControlName="role">
@@ -102,7 +109,9 @@
             }</select
           ><small>{{ roleDescription(resetForm.controls.role.value) }}</small></label
         >
-        <label class="active-toggle"><input type="checkbox" formControlName="active" /> Acesso ativo</label>
+        <label class="active-toggle"
+          ><input type="checkbox" formControlName="active" /> Acesso ativo</label
+        >
         <label
           >Nova senha<input
             type="password"

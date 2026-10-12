@@ -6,29 +6,123 @@ import { Browser } from '@capacitor/browser';
 import { firstValueFrom } from 'rxjs';
 import { ApiService } from '../../core/api.service';
 
-type DocumentOpenerPlugin = { openUrl(options: { url: string }): Promise<void>; open(options: { base64: string; mimeType: string; fileName: string }): Promise<{ saved?: boolean; fileName?: string }> };
+type DocumentOpenerPlugin = {
+  openUrl(options: { url: string }): Promise<void>;
+  open(options: {
+    base64: string;
+    mimeType: string;
+    fileName: string;
+  }): Promise<{ saved?: boolean; fileName?: string }>;
+};
 const documentOpener = registerPlugin<DocumentOpenerPlugin>('DocumentOpener');
 
 @Component({
   selector: 'app-document-viewer',
   templateUrl: './document-viewer.html',
-  styles: [`
-    :host { display:block; min-height:100vh; background:#f4f3ee; color:#223129; }
-    .document-viewer { min-height:100vh; display:flex; flex-direction:column; }
-    header { display:flex; align-items:center; justify-content:space-between; gap:18px; padding:16px 24px; background:#17271f; color:#fff; }
-    header a { display:flex; align-items:center; gap:10px; color:#fff; text-decoration:none; }
-    header a span { display:grid; place-items:center; width:32px; height:32px; border-radius:10px 10px 10px 3px; background:#b9dc52; color:#17271f; font-weight:900; transform:rotate(-3deg); }
-    header small { color:#b9c9c0; }
-    iframe { flex:1; width:100%; min-height:calc(100vh - 65px); border:0; background:#fff; }
-    pre { flex:1; margin:20px; padding:20px; overflow:auto; white-space:pre-wrap; background:#fff; border:1px solid #dedfd8; font:12px/1.55 ui-monospace,monospace; }
-    .viewer-state { margin:auto; padding:30px; color:#748078; }
-    .viewer-state.error { color:#a33b2c; }
-    .native-ready { display:grid; gap:10px; text-align:center; }
-    .native-ready strong { color:#223129; font-size:18px; }
-    .native-ready button { border:0; border-radius:10px; padding:12px 18px; background:#193d2e; color:#fff; font-weight:700; }
-    .native-ready .error-text { color:#a33b2c; }
-    @media (max-width:600px) { header { padding:14px 16px; } header small { font-size:11px; } pre { margin:12px; padding:14px; } }
-  `],
+  styles: [
+    `
+      :host {
+        display: block;
+        min-height: 100vh;
+        background: #f4f3ee;
+        color: #223129;
+      }
+      .document-viewer {
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
+      header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 18px;
+        padding: 16px 24px;
+        background: #17271f;
+        color: #fff;
+      }
+      header a {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        color: #fff;
+        text-decoration: none;
+      }
+      header a span {
+        display: grid;
+        place-items: center;
+        width: 32px;
+        height: 32px;
+        border-radius: 10px 10px 10px 3px;
+        background: #b9dc52;
+        color: #17271f;
+        font-weight: 900;
+        transform: rotate(-3deg);
+      }
+      header small {
+        color: #b9c9c0;
+      }
+      iframe {
+        flex: 1;
+        width: 100%;
+        min-height: calc(100vh - 65px);
+        border: 0;
+        background: #fff;
+      }
+      pre {
+        flex: 1;
+        margin: 20px;
+        padding: 20px;
+        overflow: auto;
+        white-space: pre-wrap;
+        background: #fff;
+        border: 1px solid #dedfd8;
+        font:
+          12px/1.55 ui-monospace,
+          monospace;
+      }
+      .viewer-state {
+        margin: auto;
+        padding: 30px;
+        color: #748078;
+      }
+      .viewer-state.error {
+        color: #a33b2c;
+      }
+      .native-ready {
+        display: grid;
+        gap: 10px;
+        text-align: center;
+      }
+      .native-ready strong {
+        color: #223129;
+        font-size: 18px;
+      }
+      .native-ready button {
+        border: 0;
+        border-radius: 10px;
+        padding: 12px 18px;
+        background: #193d2e;
+        color: #fff;
+        font-weight: 700;
+      }
+      .native-ready .error-text {
+        color: #a33b2c;
+      }
+      @media (max-width: 600px) {
+        header {
+          padding: 14px 16px;
+        }
+        header small {
+          font-size: 11px;
+        }
+        pre {
+          margin: 12px;
+          padding: 14px;
+        }
+      }
+    `,
+  ],
 })
 export class DocumentViewerPage implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
@@ -47,7 +141,11 @@ export class DocumentViewerPage implements OnInit, OnDestroy {
   ngOnInit() {
     const invoiceId = this.route.snapshot.paramMap.get('invoiceId');
     const documentId = this.route.snapshot.paramMap.get('documentId');
-    if (!invoiceId || !documentId) { this.loading.set(false); this.error.set(true); return; }
+    if (!invoiceId || !documentId) {
+      this.loading.set(false);
+      this.error.set(true);
+      return;
+    }
     this.api.downloadInvoiceDocument(invoiceId, documentId).subscribe({
       next: async (blob) => {
         this.objectUrl = URL.createObjectURL(blob);
@@ -65,22 +163,36 @@ export class DocumentViewerPage implements OnInit, OnDestroy {
         }
         this.loading.set(false);
       },
-      error: () => { this.loading.set(false); this.error.set(true); },
+      error: () => {
+        this.loading.set(false);
+        this.error.set(true);
+      },
     });
   }
   async openNativeDocument() {
     this.nativeError.set(null);
     try {
-      const result = await documentOpener.open({ base64: this.nativeBase64, mimeType: 'application/pdf', fileName: this.nativeFileName });
-      if (result?.saved) this.nativeError.set(`Arquivo salvo em Downloads/Parts ERP: ${result.fileName ?? this.nativeFileName}`);
+      const result = await documentOpener.open({
+        base64: this.nativeBase64,
+        mimeType: 'application/pdf',
+        fileName: this.nativeFileName,
+      });
+      if (result?.saved)
+        this.nativeError.set(
+          `Arquivo salvo em Downloads/Parts ERP: ${result.fileName ?? this.nativeFileName}`,
+        );
     } catch (error) {
-      this.nativeError.set(error instanceof Error ? error.message : 'Não foi possível abrir o documento.');
+      this.nativeError.set(
+        error instanceof Error ? error.message : 'Não foi possível abrir o documento.',
+      );
     }
   }
   private async openBrowserDocument(invoiceId: string, documentId: string) {
     this.nativeError.set(null);
     try {
-      const response = await firstValueFrom(this.api.invoiceDocumentBrowserUrl(invoiceId, documentId));
+      const response = await firstValueFrom(
+        this.api.invoiceDocumentBrowserUrl(invoiceId, documentId),
+      );
       if (!response.url) throw new Error('Link do documento não foi gerado.');
       const url = `https://erp.goesautoparts.com.br${response.url}`;
       if (Capacitor.isNativePlatform()) {
@@ -89,7 +201,9 @@ export class DocumentViewerPage implements OnInit, OnDestroy {
         window.open(url, '_blank', 'noopener,noreferrer');
       }
     } catch (error) {
-      this.nativeError.set(error instanceof Error ? error.message : 'Não foi possível abrir o navegador.');
+      this.nativeError.set(
+        error instanceof Error ? error.message : 'Não foi possível abrir o navegador.',
+      );
     }
   }
   private toBase64(blob: Blob): Promise<string> {
@@ -100,5 +214,7 @@ export class DocumentViewerPage implements OnInit, OnDestroy {
       reader.readAsDataURL(blob);
     });
   }
-  ngOnDestroy() { if (this.objectUrl) URL.revokeObjectURL(this.objectUrl); }
+  ngOnDestroy() {
+    if (this.objectUrl) URL.revokeObjectURL(this.objectUrl);
+  }
 }

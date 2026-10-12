@@ -27,9 +27,7 @@ export class AuthService {
       .post<AuthToken>('/api/v1/auth/login', body.toString(), {
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       })
-      .pipe(
-        tap((session) => this.storeSession(session)),
-      );
+      .pipe(tap((session) => this.storeSession(session)));
   }
   async biometricStatus(): Promise<BiometricStatus> {
     if (!biometricLogin.isNativeAndroid()) {
@@ -76,14 +74,20 @@ export class AuthService {
     if (!this.isAuthenticated()) return;
     this.http.get<User>('/api/v1/auth/me').subscribe({
       next: (user) => this.updateCurrentUser(user),
-      error: () => { /* A sessão expirada é tratada pelo interceptor. */ },
+      error: () => {
+        /* A sessão expirada é tratada pelo interceptor. */
+      },
     });
   }
   logout(revokeSession = true): void {
     const token = this.token;
     if (revokeSession && token) {
       void firstValueFrom(
-        this.http.post('/api/v1/auth/logout', {}, { headers: { Authorization: `Bearer ${token}` } }),
+        this.http.post(
+          '/api/v1/auth/logout',
+          {},
+          { headers: { Authorization: `Bearer ${token}` } },
+        ),
       ).catch(() => {});
     }
     sessionStorage.removeItem(this.storageKey);

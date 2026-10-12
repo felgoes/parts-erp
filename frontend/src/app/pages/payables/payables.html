@@ -5,7 +5,9 @@
 >
   <div class="payables-header-actions">
     <button class="secondary" type="button" (click)="exportCsv()">Exportar CSV</button
-    ><button class="secondary" type="button" [disabled]="loading()" (click)="load()">Atualizar</button>
+    ><button class="secondary" type="button" [disabled]="loading()" (click)="load()">
+      Atualizar
+    </button>
   </div>
 </app-page-header>
 
@@ -20,7 +22,9 @@
   <section class="payables-highlights" aria-label="Resumo das contas a pagar">
     <article class="payables-highlight">
       <span>Em aberto</span
-      ><strong>{{ listing.summary.open_balance | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR' }}</strong
+      ><strong>{{
+        listing.summary.open_balance | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR'
+      }}</strong
       ><small
         >{{ listing.summary.open_count }} título(s) · {{ listing.summary.partial_count }} em baixa
         parcial</small
@@ -28,7 +32,9 @@
     </article>
     <article class="payables-highlight overdue-highlight">
       <span>Vencido</span
-      ><strong>{{ listing.summary.overdue_balance | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR' }}</strong
+      ><strong>{{
+        listing.summary.overdue_balance | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR'
+      }}</strong
       ><small>{{ listing.summary.overdue_count }} título(s) com vencimento passado</small>
     </article>
     <article class="payables-highlight">
@@ -40,7 +46,9 @@
     </article>
     <article class="payables-highlight paid-highlight">
       <span>Pago no período</span
-      ><strong>{{ listing.summary.paid_in_period | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR' }}</strong
+      ><strong>{{
+        listing.summary.paid_in_period | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR'
+      }}</strong
       ><small
         >{{ listing.summary.paid_count }} título(s) quitado(s) ·
         {{ listing.summary.unreconciled_payments }} pagamento(s) sem conciliação</small
@@ -130,7 +138,9 @@
               <td>
                 {{ item.supplier_name || 'Sem fornecedor'
                 }}<small>{{
-                  item.purchase_type === 'expense' ? item.expense_category || 'Despesa' : 'Compra de peças'
+                  item.purchase_type === 'expense'
+                    ? item.expense_category || 'Despesa'
+                    : 'Compra de peças'
                 }}</small>
               </td>
               <td>
@@ -154,7 +164,9 @@
               </td>
               <td class="row-action">
                 <button type="button" class="secondary small" (click)="openDetail(item)">
-                  {{ canManage() && item.status !== 'cancelled' ? 'Baixar / histórico' : 'Histórico' }}
+                  {{
+                    canManage() && item.status !== 'cancelled' ? 'Baixar / histórico' : 'Histórico'
+                  }}
                 </button>
               </td>
             </tr>
@@ -178,7 +190,10 @@
       <div>
         <p class="eyebrow">Relatórios</p>
         <h2>Pagamentos e passivo por fornecedor</h2>
-        <p>Período aplicado aos pagamentos registrados: {{ report()?.period_label || 'últimos 30 dias' }}.</p>
+        <p>
+          Período aplicado aos pagamentos registrados:
+          {{ report()?.period_label || 'últimos 30 dias' }}.
+        </p>
       </div>
     </div>
     <app-period-filter
@@ -211,8 +226,12 @@
                     <td>{{ row.supplier_name }}</td>
                     <td>{{ row.titles }}</td>
                     <td>{{ row.open_balance | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR' }}</td>
-                    <td>{{ row.overdue_balance | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR' }}</td>
-                    <td>{{ row.paid_in_period | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR' }}</td>
+                    <td>
+                      {{ row.overdue_balance | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR' }}
+                    </td>
+                    <td>
+                      {{ row.paid_in_period | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR' }}
+                    </td>
                   </tr>
                 } @empty {
                   <tr>
@@ -258,7 +277,8 @@
       <div class="modal-head">
         <div>
           <p class="eyebrow">
-            {{ payable.purchase_type === 'expense' ? 'Despesa' : 'Compra' }} · {{ payable.purchase_number }}
+            {{ payable.purchase_type === 'expense' ? 'Despesa' : 'Compra' }} ·
+            {{ payable.purchase_number }}
           </p>
           <h2>{{ payable.supplier_name || 'Sem fornecedor' }}</h2>
           <p class="modal-intro">
@@ -296,10 +316,12 @@
                     >{{ dateOnly(installment.due_date) }} ·
                     {{ installment.amount | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR' }}
                     @if (installment.paid_amount > 0) {
-                      · pago {{ installment.paid_amount | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR' }}
+                      · pago
+                      {{ installment.paid_amount | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR' }}
                     }
                     @if (installment.balance > 0 && installment.paid_amount > 0) {
-                      · saldo {{ installment.balance | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR' }}
+                      · saldo
+                      {{ installment.balance | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR' }}
                     }
                   </small>
                 </div>
@@ -339,14 +361,18 @@
                       min="1"
                       max="36"
                       [value]="conditionDraft().installment_count"
-                      (input)="setConditionNumber('installment_count', $any($event.target).value)" /></label
+                      (input)="
+                        setConditionNumber('installment_count', $any($event.target).value)
+                      " /></label
                   ><label
                     >1º vencimento (dias)<input
                       type="number"
                       min="0"
                       max="3650"
                       [value]="conditionDraft().first_due_days"
-                      (input)="setConditionNumber('first_due_days', $any($event.target).value)" /></label
+                      (input)="
+                        setConditionNumber('first_due_days', $any($event.target).value)
+                      " /></label
                   ><label
                     >Intervalo (dias)<input
                       type="number"
@@ -419,11 +445,14 @@
           </div>
           <div class="payable-form-actions">
             <span class="muted"
-              >Saldo atual: {{ payable.balance | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR' }}</span
+              >Saldo atual:
+              {{ payable.balance | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR' }}</span
             ><button
               type="button"
               class="primary"
-              [disabled]="saving() || paymentDraft().amount <= 0 || paymentDraft().amount > payable.balance"
+              [disabled]="
+                saving() || paymentDraft().amount <= 0 || paymentDraft().amount > payable.balance
+              "
               (click)="submitPayment(payable)"
             >
               {{ saving() ? 'Salvando…' : 'Registrar pagamento' }}
@@ -445,7 +474,9 @@
             @for (payment of payable.payments; track payment.id) {
               <li class="payment-row" [class.reconciled]="payment.reconciled">
                 <div>
-                  <strong>{{ payment.amount | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR' }}</strong
+                  <strong>{{
+                    payment.amount | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR'
+                  }}</strong
                   ><small
                     >{{ dateOnly(payment.paid_at) }}{{ payment.method ? ' · ' + payment.method : ''
                     }}{{ payment.notes ? ' · ' + payment.notes : '' }}</small

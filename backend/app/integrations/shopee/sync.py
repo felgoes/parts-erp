@@ -148,7 +148,9 @@ def sync_order(db: Session, account: MarketplaceAccount, order_sn: str) -> Marke
                 status=status,
                 payload={
                     "status": status,
-                    "source_updated_at": source_updated_at.isoformat() if source_updated_at else None,
+                    "source_updated_at": source_updated_at.isoformat()
+                    if source_updated_at
+                    else None,
                 },
                 created_at=source_updated_at or source_created_at or datetime.now(UTC),
             )

@@ -22,7 +22,9 @@ export class CustomersPage implements OnInit {
   private readonly live = inject(LiveUpdatesService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly auth = inject(AuthService);
-  canSell() { return canSell(this.auth.user()?.role); }
+  canSell() {
+    return canSell(this.auth.user()?.role);
+  }
   private readonly fb = inject(FormBuilder);
   readonly customers = signal<Customer[]>([]);
   readonly search = signal('');
@@ -43,11 +45,16 @@ export class CustomersPage implements OnInit {
   });
   ngOnInit() {
     this.load();
-    this.live.changes$.pipe(debounceTime(250), takeUntilDestroyed(this.destroyRef)).subscribe(() => {
-      this.load();
-      const id = this.detail()?.id;
-      if (id) this.api.customerDetail(id).subscribe((value) => { if (this.detail()?.id === id) this.detail.set(value); });
-    });
+    this.live.changes$
+      .pipe(debounceTime(250), takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        this.load();
+        const id = this.detail()?.id;
+        if (id)
+          this.api.customerDetail(id).subscribe((value) => {
+            if (this.detail()?.id === id) this.detail.set(value);
+          });
+      });
   }
   load() {
     this.api.customers().subscribe((v) => this.customers.set(v));

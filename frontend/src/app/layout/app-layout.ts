@@ -38,21 +38,26 @@ export class AppLayout implements OnInit {
   private readonly api = inject(ApiService);
   private readonly pushNotifications = inject(PushNotificationsService);
   private readonly fb = inject(FormBuilder);
-  readonly profileForm = this.fb.nonNullable.group({ email: ['', [Validators.required, Validators.email]] });
+  readonly profileForm = this.fb.nonNullable.group({
+    email: ['', [Validators.required, Validators.email]],
+  });
   ngOnInit(): void {
     this.brand.load();
     this.loadAvatar();
     this.loadNotifications();
     void this.pushNotifications.enableForCurrentDevice();
     this.settingsOpen.set(this.isConfigurationRoute());
-    this.router.events.pipe(filter((event): event is NavigationEnd => event instanceof NavigationEnd))
+    this.router.events
+      .pipe(filter((event): event is NavigationEnd => event instanceof NavigationEnd))
       .subscribe((event) => {
         const route = event.urlAfterRedirects.split('?')[0].replace(/^\//, '');
         this.settingsOpen.set(['settings', 'integrations', 'users'].includes(route));
         this.notificationsOpen.set(false);
       });
   }
-  notificationPreview(): PushNotification[] { return this.notificationHistory().slice(0, 4); }
+  notificationPreview(): PushNotification[] {
+    return this.notificationHistory().slice(0, 4);
+  }
   toggleNotifications(): void {
     const open = !this.notificationsOpen();
     this.notificationsOpen.set(open);
@@ -67,7 +72,9 @@ export class AppLayout implements OnInit {
       next: (items) => {
         this.notificationHistory.set(items);
         const seenAt = this.notificationsSeenAt();
-        this.notificationCount.set(items.filter((item) => !seenAt || item.created_at > seenAt).length);
+        this.notificationCount.set(
+          items.filter((item) => !seenAt || item.created_at > seenAt).length,
+        );
       },
       error: () => this.notificationHistory.set([]),
       complete: () => this.notificationLoading.set(false),
@@ -131,8 +138,16 @@ export class AppLayout implements OnInit {
     this.profileSaving.set(true);
     this.profileMessage.set('');
     this.api.updateMyProfile(this.profileForm.getRawValue().email.trim()).subscribe({
-      next: (user) => { this.auth.updateCurrentUser(user); this.profileForm.setValue({ email: user.email }); this.profileMessage.set('E-mail atualizado.'); this.profileSaving.set(false); },
-      error: (err) => { this.profileMessage.set(err?.error?.detail || 'Não foi possível atualizar o e-mail.'); this.profileSaving.set(false); },
+      next: (user) => {
+        this.auth.updateCurrentUser(user);
+        this.profileForm.setValue({ email: user.email });
+        this.profileMessage.set('E-mail atualizado.');
+        this.profileSaving.set(false);
+      },
+      error: (err) => {
+        this.profileMessage.set(err?.error?.detail || 'Não foi possível atualizar o e-mail.');
+        this.profileSaving.set(false);
+      },
     });
   }
   selectAvatar(event: Event): void {
@@ -140,7 +155,10 @@ export class AppLayout implements OnInit {
     const file = input.files?.[0];
     input.value = '';
     if (!file) return;
-    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 5 * 1024 * 1024) {
+    if (
+      !['image/jpeg', 'image/png', 'image/webp'].includes(file.type) ||
+      file.size > 5 * 1024 * 1024
+    ) {
       this.profileMessage.set('Escolha uma imagem JPG, PNG ou WebP de até 5 MB.');
       return;
     }
@@ -154,14 +172,31 @@ export class AppLayout implements OnInit {
     if (!file || this.avatarSaving()) return;
     this.avatarSaving.set(true);
     this.api.uploadMyAvatar(file).subscribe({
-      next: () => { this.avatarSaving.set(false); this.selectedAvatar.set(null); this.clearPreview(); this.profileMessage.set('Foto de perfil atualizada.'); this.loadAvatar(); },
-      error: (err) => { this.avatarSaving.set(false); this.profileMessage.set(err?.error?.detail || 'Não foi possível enviar a foto.'); },
+      next: () => {
+        this.avatarSaving.set(false);
+        this.selectedAvatar.set(null);
+        this.clearPreview();
+        this.profileMessage.set('Foto de perfil atualizada.');
+        this.loadAvatar();
+      },
+      error: (err) => {
+        this.avatarSaving.set(false);
+        this.profileMessage.set(err?.error?.detail || 'Não foi possível enviar a foto.');
+      },
     });
   }
   private loadAvatar(): void {
     this.api.myAvatar().subscribe({
-      next: (blob) => { const previous = this.avatarUrl(); if (previous) URL.revokeObjectURL(previous); this.avatarUrl.set(URL.createObjectURL(blob)); },
-      error: () => { const previous = this.avatarUrl(); if (previous) URL.revokeObjectURL(previous); this.avatarUrl.set(null); },
+      next: (blob) => {
+        const previous = this.avatarUrl();
+        if (previous) URL.revokeObjectURL(previous);
+        this.avatarUrl.set(URL.createObjectURL(blob));
+      },
+      error: () => {
+        const previous = this.avatarUrl();
+        if (previous) URL.revokeObjectURL(previous);
+        this.avatarUrl.set(null);
+      },
     });
   }
   private clearPreview(): void {

@@ -1,6 +1,5 @@
 import re
 
-
 _LOWERCASE_PARTICLES = {"a", "as", "da", "das", "de", "do", "dos", "e", "em"}
 
 

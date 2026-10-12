@@ -408,7 +408,9 @@ async def webhook(request: Request) -> dict[str, bool]:
     received_at = time.monotonic()
     redis = await create_pool(RedisSettings.from_dsn(get_settings().redis_url))
     try:
-        job = await redis.enqueue_job("process_mercadolivre_notification", topic, resource, seller_id)
+        job = await redis.enqueue_job(
+            "process_mercadolivre_notification", topic, resource, seller_id
+        )
     finally:
         await redis.close()
     logger.info(

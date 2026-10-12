@@ -114,8 +114,23 @@ export interface ProductChannelMetadata {
   connected: boolean;
   user_product_seller: boolean;
   categories: { id: string; name: string; domain_id?: string | null; path?: unknown[] }[];
-  attributes: { id: string; name: string; required: boolean; new_required?: boolean; conditional_required?: boolean; value_type: string; values: { id?: string; name?: string; value_id?: string; original_value_name?: string }[]; max_length?: number }[];
-  sale_terms: { id: string; name: string; value_type: string; values?: { id: string; name: string }[]; allowed_units?: { id: string; name: string }[] }[];
+  attributes: {
+    id: string;
+    name: string;
+    required: boolean;
+    new_required?: boolean;
+    conditional_required?: boolean;
+    value_type: string;
+    values: { id?: string; name?: string; value_id?: string; original_value_name?: string }[];
+    max_length?: number;
+  }[];
+  sale_terms: {
+    id: string;
+    name: string;
+    value_type: string;
+    values?: { id: string; name: string }[];
+    allowed_units?: { id: string; name: string }[];
+  }[];
   listing_types: { id: string; name: string; listing_exposure?: string }[];
   logistics: { id: number; name: string }[];
   limits: { max_pictures?: number; max_title_length?: number; category_name?: string };
@@ -178,7 +193,14 @@ export interface FinanceOverview {
   by_product: FinanceProductMetric[];
   daily: FinanceDailyMetric[];
 }
-export type PurchaseStatus = 'negotiating' | 'approved' | 'ordered' | 'partially_received' | 'received' | 'closed' | 'cancelled';
+export type PurchaseStatus =
+  | 'negotiating'
+  | 'approved'
+  | 'ordered'
+  | 'partially_received'
+  | 'received'
+  | 'closed'
+  | 'cancelled';
 export interface PurchaseItem {
   id: string;
   product_id: string | null;
@@ -291,7 +313,13 @@ export interface PayableReport {
   end_date: string;
   summary: PayableSummary;
   aging: PayableAgingBucket[];
-  by_supplier: Array<{ supplier_name: string; open_balance: number; overdue_balance: number; paid_in_period: number; titles: number }>;
+  by_supplier: Array<{
+    supplier_name: string;
+    open_balance: number;
+    overdue_balance: number;
+    paid_in_period: number;
+    titles: number;
+  }>;
   by_month: Array<{ month: string; paid: number; titles: number }>;
 }
 export interface PurchaseQuote {

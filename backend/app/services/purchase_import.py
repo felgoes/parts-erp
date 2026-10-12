@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import asyncio
-import html
 import csv
+import html
 import io
 import json
 import os
@@ -522,18 +522,12 @@ def _extract_labeled(lines: list[str], labels: dict[str, list[str]]) -> dict[str
                 value = _normalize_order_date(date_match.group(1)) if date_match else None
             else:
                 raw_variant = next(
-                    (
-                        original
-                        for original in variants
-                        if _normalize(original) == matched
-                    ),
+                    (original for original in variants if _normalize(original) == matched),
                     None,
                 )
                 raw_remainder = line
                 if raw_variant:
-                    raw_match = re.match(
-                        rf"\s*{re.escape(raw_variant)}\s*[:\-#]?\s*", line, re.I
-                    )
+                    raw_match = re.match(rf"\s*{re.escape(raw_variant)}\s*[:\-#]?\s*", line, re.I)
                     if raw_match:
                         raw_remainder = line[raw_match.end() :]
                 # A segunda coluna do recibo vem depois de um vão largo: corta ali.
@@ -719,7 +713,11 @@ def _extract_items_by_columns(lines: list[str]) -> list[dict[str, Any]]:
         positions = [index for index, number in enumerate(numbers) if number is not None]
         if len(cells) < 3 or not positions or positions[0] == 0 or len(positions) < 2:
             # Linha de texto que pode ser a descrição (inclusive a segunda linha dela).
-            if ":" not in value and not _looks_like_column_label(value) and not NUMBER_CELL.match(value):
+            if (
+                ":" not in value
+                and not _looks_like_column_label(value)
+                and not NUMBER_CELL.match(value)
+            ):
                 pending.append(value)
             continue
         description_cells = cells[: positions[0]]
@@ -735,7 +733,13 @@ def _extract_items_by_columns(lines: list[str]) -> list[dict[str, Any]]:
         # A descrição vem da própria linha; as linhas acima só completam quando a linha é só de números.
         description = own_text if len(own_text) >= 3 else " ".join(pending[-2:]).strip()
         pending = []
-        if len(description) < 3 or not quantity or quantity <= 0 or unit_cost is None or unit_cost < 0:
+        if (
+            len(description) < 3
+            or not quantity
+            or quantity <= 0
+            or unit_cost is None
+            or unit_cost < 0
+        ):
             continue
         items.append(
             {
@@ -843,7 +847,9 @@ def _extract_danfe_items(lines: list[str]) -> list[dict[str, Any]]:
     description_buffer: list[str] = []
     for index in range(header + 1, len(lines)):
         cells = _split_cells(lines[index])
-        numeric_positions = [position for position, cell in enumerate(cells) if _cell_number(cell) is not None]
+        numeric_positions = [
+            position for position, cell in enumerate(cells) if _cell_number(cell) is not None
+        ]
         if not cells or len(numeric_positions) < 2:
             text = lines[index].strip()
             if cells and all(re.fullmatch(r"[A-Z]{2,10}", cell) for cell in cells):
@@ -861,7 +867,11 @@ def _extract_danfe_items(lines: list[str]) -> list[dict[str, Any]]:
         code = cells[0] if numeric_positions[0] == 0 else ""
         unit = next((cell for cell in cells if re.fullmatch(r"[A-Za-z]{1,6}", cell)), "")
         unit_index = cells.index(unit) if unit else -1
-        quantity = _cell_number(cells[unit_index + 1]) if unit_index >= 0 and unit_index + 1 < len(cells) else None
+        quantity = (
+            _cell_number(cells[unit_index + 1])
+            if unit_index >= 0 and unit_index + 1 < len(cells)
+            else None
+        )
         unit_cost, line_total = money_values[0], money_values[1]
         description = " ".join(description_buffer).strip()
         description_buffer = []
@@ -1118,7 +1128,11 @@ async def analyze_upload(upload: UploadFile, selected_profile: str | None = None
         shipping_field = parsed["fields"].get("shipping") or {}
         tax_field = parsed["fields"].get("tax") or {}
         discount_field = parsed["fields"].get("discount") or {}
-        items_total = round(sum(item["line_total"] for item in parsed["items"]), 2) if parsed["items"] else None
+        items_total = (
+            round(sum(item["line_total"] for item in parsed["items"]), 2)
+            if parsed["items"]
+            else None
+        )
         total_value = total_field.get("value")
         closing = None
         if total_value is not None and items_total is not None:
@@ -1210,7 +1224,9 @@ async def analyze_upload(upload: UploadFile, selected_profile: str | None = None
     subtotal = (fields.get("subtotal") or {}).get("value")
     closing_difference = None
     if total is not None and items_total is not None:
-        closing_difference = round(items_total + (shipping or 0) + (tax or 0) - (discount or 0) - total, 2)
+        closing_difference = round(
+            items_total + (shipping or 0) + (tax or 0) - (discount or 0) - total, 2
+        )
     subtotal_difference = None
     if subtotal is not None and items_total is not None:
         subtotal_difference = round(items_total - subtotal, 2)
@@ -1246,7 +1262,9 @@ async def analyze_upload(upload: UploadFile, selected_profile: str | None = None
             "currency": paid.get("currency") or currency,
             "date": paid_date,
             "method": paid_method,
-        } if paid else None,
+        }
+        if paid
+        else None,
         "check": {
             "items_total": items_total,
             "subtotal": subtotal,

@@ -48,32 +48,47 @@ export class AfterSaleWorkflow implements OnChanges {
   }
 
   formFor(item: AfterSaleCaseItem): ReturnItemForm {
-    return this.values()[item.id] ?? {
-      received: item.received_quantity,
-      restock: item.restocked_quantity,
-      disposition: item.disposition === 'pending' ? 'restock' : item.disposition as InspectionDisposition,
-      notes: item.notes ?? '',
-    };
+    return (
+      this.values()[item.id] ?? {
+        received: item.received_quantity,
+        restock: item.restocked_quantity,
+        disposition:
+          item.disposition === 'pending' ? 'restock' : (item.disposition as InspectionDisposition),
+        notes: item.notes ?? '',
+      }
+    );
   }
 
   setForm<K extends keyof ReturnItemForm>(itemId: string, key: K, value: ReturnItemForm[K]) {
-    const item = this.cases().flatMap((record) => record.items).find((row) => row.id === itemId);
-    const initial: ReturnItemForm = item ? this.formFor(item) : { received: 0, restock: 0, disposition: 'restock', notes: '' };
+    const item = this.cases()
+      .flatMap((record) => record.items)
+      .find((row) => row.id === itemId);
+    const initial: ReturnItemForm = item
+      ? this.formFor(item)
+      : { received: 0, restock: 0, disposition: 'restock', notes: '' };
     this.values.update((all) => ({ ...all, [itemId]: { ...initial, [key]: value } }));
   }
 
   workflowLabel(status: string) {
-    return ({
-      requested: 'Devolução solicitada',
-      partially_received: 'Recebimento parcial',
-      inspection_pending: 'Aguardando inspeção',
-      resolved: 'Pós-venda concluído',
-      cancelled: 'Caso cancelado',
-    } as Record<string, string>)[status] ?? statusLabel(status);
+    return (
+      (
+        {
+          requested: 'Devolução solicitada',
+          partially_received: 'Recebimento parcial',
+          inspection_pending: 'Aguardando inspeção',
+          resolved: 'Pós-venda concluído',
+          cancelled: 'Caso cancelado',
+        } as Record<string, string>
+      )[status] ?? statusLabel(status)
+    );
   }
 
   requesterLabel(value: string) {
-    return ({ meli: 'Mercado Livre', buyer: 'Comprador', seller: 'Vendedor' } as Record<string, string>)[value.toLowerCase()] ?? value;
+    return (
+      ({ meli: 'Mercado Livre', buyer: 'Comprador', seller: 'Vendedor' } as Record<string, string>)[
+        value.toLowerCase()
+      ] ?? value
+    );
   }
 
   canCloseWithoutStock(record: AfterSaleCase) {
@@ -86,36 +101,56 @@ export class AfterSaleWorkflow implements OnChanges {
 
   receive(record: AfterSaleCase, item: AfterSaleCaseItem) {
     const quantity = Number(this.formFor(item).received);
-    this.run(record, `${item.id}:receive`, this.api.receiveAfterSale(record.id, [
-      { item_id: item.id, received_quantity: quantity },
-    ]), 'Recebimento registrado. A peça ainda não voltou ao estoque: falta inspecioná-la.');
+    this.run(
+      record,
+      `${item.id}:receive`,
+      this.api.receiveAfterSale(record.id, [{ item_id: item.id, received_quantity: quantity }]),
+      'Recebimento registrado. A peça ainda não voltou ao estoque: falta inspecioná-la.',
+    );
   }
 
   inspect(record: AfterSaleCase, item: AfterSaleCaseItem) {
     const form = this.formFor(item);
-    this.run(record, `${item.id}:inspect`, this.api.inspectAfterSale(record.id, [
-      {
-        item_id: item.id,
-        restock_quantity: Number(form.restock),
-        disposition: form.disposition,
-        notes: form.notes || undefined,
-      },
-    ]), 'Inspeção registrada e saldo de estoque atualizado.');
+    this.run(
+      record,
+      `${item.id}:inspect`,
+      this.api.inspectAfterSale(record.id, [
+        {
+          item_id: item.id,
+          restock_quantity: Number(form.restock),
+          disposition: form.disposition,
+          notes: form.notes || undefined,
+        },
+      ]),
+      'Inspeção registrada e saldo de estoque atualizado.',
+    );
   }
 
   closeWithoutStock(record: AfterSaleCase) {
-    this.run(record, `${record.id}:close`, this.api.closeAfterSaleWithoutStock(
-      record.id,
-      'Caso encerrado no marketplace sem retorno físico da peça.',
-    ), 'Pós-venda encerrado sem movimentar o estoque.');
+    this.run(
+      record,
+      `${record.id}:close`,
+      this.api.closeAfterSaleWithoutStock(
+        record.id,
+        'Caso encerrado no marketplace sem retorno físico da peça.',
+      ),
+      'Pós-venda encerrado sem movimentar o estoque.',
+    );
   }
 
-  private run(record: AfterSaleCase, busyKey: string, request: ReturnType<ApiService['receiveAfterSale']>, success: string) {
+  private run(
+    record: AfterSaleCase,
+    busyKey: string,
+    request: ReturnType<ApiService['receiveAfterSale']>,
+    success: string,
+  ) {
     this.busy.set(busyKey);
     this.message.set('');
     request.subscribe({
       next: (updated) => {
-        this.cases.update((current) => current.map((item) => item.id === record.id ? updated : item));
+        this.cases.update((current) =>
+          current.map((item) => (item.id === record.id ? updated : item)),
+        );
         this.busy.set('');
         this.messageIsError.set(false);
         this.message.set(success);
@@ -123,7 +158,9 @@ export class AfterSaleWorkflow implements OnChanges {
       error: (error: { error?: { detail?: string } }) => {
         this.busy.set('');
         this.messageIsError.set(true);
-        this.message.set(error.error?.detail ?? 'Não foi possível atualizar o pós-venda. Tente novamente.');
+        this.message.set(
+          error.error?.detail ?? 'Não foi possível atualizar o pós-venda. Tente novamente.',
+        );
       },
     });
   }

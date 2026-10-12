@@ -11,9 +11,9 @@ MAX_DAYS = 3650
 
 
 def payment_total(payable: PurchasePayable) -> Decimal:
-    return sum(
-        (Decimal(payment.amount) for payment in payable.payments), Decimal("0")
-    ).quantize(Decimal("0.01"))
+    return sum((Decimal(payment.amount) for payment in payable.payments), Decimal("0")).quantize(
+        Decimal("0.01")
+    )
 
 
 def payable_balance(payable: PurchasePayable) -> Decimal:

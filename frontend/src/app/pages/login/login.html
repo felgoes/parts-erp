@@ -56,7 +56,12 @@
       }
       @if (biometricAvailable() && biometricConfigured()) {
         <div class="login-divider"><span>ou</span></div>
-        <button class="biometric-button" type="button" [disabled]="loading()" (click)="loginWithBiometric()">
+        <button
+          class="biometric-button"
+          type="button"
+          [disabled]="loading()"
+          (click)="loginWithBiometric()"
+        >
           <span class="fingerprint" aria-hidden="true">◉</span>
           <span
             ><strong>Entrar com digital</strong

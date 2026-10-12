@@ -26,26 +26,39 @@ def callback_url() -> str:
 
 
 def authorization_url(settings_row: ErpSettings) -> str:
-    state = encrypt_secret(json.dumps({"kind": "google-drive", "expires": (datetime.now(UTC) + timedelta(minutes=10)).timestamp()}))
-    return "https://accounts.google.com/o/oauth2/v2/auth?" + urlencode({
-        "client_id": settings_row.drive_client_id,
-        "redirect_uri": callback_url(),
-        "response_type": "code",
-        "access_type": "offline",
-        "prompt": "consent",
-        "scope": DRIVE_SCOPE,
-        "state": state,
-    })
+    state = encrypt_secret(
+        json.dumps(
+            {
+                "kind": "google-drive",
+                "expires": (datetime.now(UTC) + timedelta(minutes=10)).timestamp(),
+            }
+        )
+    )
+    return "https://accounts.google.com/o/oauth2/v2/auth?" + urlencode(
+        {
+            "client_id": settings_row.drive_client_id,
+            "redirect_uri": callback_url(),
+            "response_type": "code",
+            "access_type": "offline",
+            "prompt": "consent",
+            "scope": DRIVE_SCOPE,
+            "state": state,
+        }
+    )
 
 
 def exchange_code(settings_row: ErpSettings, code: str) -> None:
-    response = httpx.post("https://oauth2.googleapis.com/token", data={
-        "code": code,
-        "client_id": settings_row.drive_client_id,
-        "client_secret": decrypt_secret(settings_row.encrypted_drive_client_secret or ""),
-        "redirect_uri": callback_url(),
-        "grant_type": "authorization_code",
-    }, timeout=20)
+    response = httpx.post(
+        "https://oauth2.googleapis.com/token",
+        data={
+            "code": code,
+            "client_id": settings_row.drive_client_id,
+            "client_secret": decrypt_secret(settings_row.encrypted_drive_client_secret or ""),
+            "redirect_uri": callback_url(),
+            "grant_type": "authorization_code",
+        },
+        timeout=20,
+    )
     response.raise_for_status()
     refresh_token = response.json().get("refresh_token")
     if not refresh_token:
@@ -56,27 +69,44 @@ def exchange_code(settings_row: ErpSettings, code: str) -> None:
 
 
 def _access_token(settings_row: ErpSettings) -> str:
-    response = httpx.post("https://oauth2.googleapis.com/token", data={
-        "client_id": settings_row.drive_client_id,
-        "client_secret": decrypt_secret(settings_row.encrypted_drive_client_secret or ""),
-        "refresh_token": decrypt_secret(settings_row.encrypted_drive_refresh_token or ""),
-        "grant_type": "refresh_token",
-    }, timeout=20)
+    response = httpx.post(
+        "https://oauth2.googleapis.com/token",
+        data={
+            "client_id": settings_row.drive_client_id,
+            "client_secret": decrypt_secret(settings_row.encrypted_drive_client_secret or ""),
+            "refresh_token": decrypt_secret(settings_row.encrypted_drive_refresh_token or ""),
+            "grant_type": "refresh_token",
+        },
+        timeout=20,
+    )
     response.raise_for_status()
     return str(response.json()["access_token"])
 
 
 def _cleanup_old_backups(token: str, settings_row: ErpSettings) -> None:
     cutoff = datetime.now(UTC) - timedelta(days=settings_row.backup_retention_days)
-    params = {"q": "name contains 'parts-erp-backup-' and trashed = false", "fields": "files(id,name,createdTime)", "pageSize": "100"}
+    params = {
+        "q": "name contains 'parts-erp-backup-' and trashed = false",
+        "fields": "files(id,name,createdTime)",
+        "pageSize": "100",
+    }
     if settings_row.drive_folder_id:
         params["q"] += f" and '{settings_row.drive_folder_id}' in parents"
-    response = httpx.get("https://www.googleapis.com/drive/v3/files", headers={"Authorization": f"Bearer {token}"}, params=params, timeout=30)
+    response = httpx.get(
+        "https://www.googleapis.com/drive/v3/files",
+        headers={"Authorization": f"Bearer {token}"},
+        params=params,
+        timeout=30,
+    )
     response.raise_for_status()
     for item in response.json().get("files", []):
         created = datetime.fromisoformat(str(item.get("createdTime", "")).replace("Z", "+00:00"))
         if created < cutoff:
-            httpx.delete(f"https://www.googleapis.com/drive/v3/files/{item['id']}", headers={"Authorization": f"Bearer {token}"}, timeout=30).raise_for_status()
+            httpx.delete(
+                f"https://www.googleapis.com/drive/v3/files/{item['id']}",
+                headers={"Authorization": f"Bearer {token}"},
+                timeout=30,
+            ).raise_for_status()
 
 
 def _sqlite_snapshot() -> Path:

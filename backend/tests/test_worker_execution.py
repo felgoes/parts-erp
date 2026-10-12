@@ -2,8 +2,8 @@ import asyncio
 import threading
 from datetime import UTC, datetime
 
-from app.workers import settings as worker_settings
 from app.models import ErpSettings
+from app.workers import settings as worker_settings
 
 
 def test_scheduled_backup_catches_up_after_configured_local_time():
@@ -16,12 +16,14 @@ def test_scheduled_backup_catches_up_after_configured_local_time():
 
     # 06:15 UTC is 03:15 in São Paulo: the exact 02:00 minute has passed,
     # but the daily backup must still run once for the local calendar date.
-    assert worker_settings._scheduled_backup_is_due(
-        settings, datetime(2026, 10, 8, 6, 15, tzinfo=UTC)
-    ) is True
-    assert worker_settings._scheduled_backup_is_due(
-        settings, datetime(2026, 10, 8, 6, 16, tzinfo=UTC)
-    ) is True
+    assert (
+        worker_settings._scheduled_backup_is_due(settings, datetime(2026, 10, 8, 6, 15, tzinfo=UTC))
+        is True
+    )
+    assert (
+        worker_settings._scheduled_backup_is_due(settings, datetime(2026, 10, 8, 6, 16, tzinfo=UTC))
+        is True
+    )
 
 
 def test_scheduled_backup_does_not_repeat_same_local_day():
@@ -32,9 +34,10 @@ def test_scheduled_backup_does_not_repeat_same_local_day():
         backup_last_at=datetime(2026, 10, 8, 5, 10, tzinfo=UTC),
     )
 
-    assert worker_settings._scheduled_backup_is_due(
-        settings, datetime(2026, 10, 8, 8, 0, tzinfo=UTC)
-    ) is False
+    assert (
+        worker_settings._scheduled_backup_is_due(settings, datetime(2026, 10, 8, 8, 0, tzinfo=UTC))
+        is False
+    )
 
 
 def test_scheduled_backup_waits_until_local_time():
@@ -45,9 +48,10 @@ def test_scheduled_backup_waits_until_local_time():
     )
 
     # 04:59 UTC is 01:59 in São Paulo.
-    assert worker_settings._scheduled_backup_is_due(
-        settings, datetime(2026, 10, 8, 4, 59, tzinfo=UTC)
-    ) is False
+    assert (
+        worker_settings._scheduled_backup_is_due(settings, datetime(2026, 10, 8, 4, 59, tzinfo=UTC))
+        is False
+    )
 
 
 def test_marketplace_webhook_work_runs_outside_worker_event_loop(monkeypatch):
@@ -60,9 +64,7 @@ def test_marketplace_webhook_work_runs_outside_worker_event_loop(monkeypatch):
     )
 
     asyncio.run(
-        worker_settings.process_mercadolivre_notification(
-            {}, "shipments", "/shipments/555", "77"
-        )
+        worker_settings.process_mercadolivre_notification({}, "shipments", "/shipments/555", "77")
     )
 
     assert execution_threads
@@ -72,9 +74,14 @@ def test_marketplace_webhook_work_runs_outside_worker_event_loop(monkeypatch):
 def test_order_webhook_reaches_sync_with_runtime_clock(db, monkeypatch):
     from contextlib import nullcontext
     from types import SimpleNamespace
+
     from app.models import MarketplaceAccount
 
-    db.add(MarketplaceAccount(provider="mercadolivre", seller_id="77", active=True, encrypted_access_token="mock"))
+    db.add(
+        MarketplaceAccount(
+            provider="mercadolivre", seller_id="77", active=True, encrypted_access_token="mock"
+        )
+    )
     db.commit()
     synced = []
     monkeypatch.setattr(worker_settings, "SessionLocal", lambda: nullcontext(db))
@@ -82,7 +89,8 @@ def test_order_webhook_reaches_sync_with_runtime_clock(db, monkeypatch):
         worker_settings.MercadoLivreClient, "get", lambda self, resource: {"id": "123"}
     )
     monkeypatch.setattr(
-        worker_settings, "sync_order",
+        worker_settings,
+        "sync_order",
         lambda db, seller, resource: (
             synced.append((seller, resource))
             or SimpleNamespace(invoice_id=None, sync_status="synced")

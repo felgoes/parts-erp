@@ -35,6 +35,10 @@ def store_user_avatar(contents: bytes) -> str:
 def user_avatar_path(filename: str) -> Path:
     directory = Path(get_settings().product_images_dir).resolve() / "avatars"
     target = (directory / filename).resolve()
-    if target.parent != directory or Path(filename).name != filename or not filename.endswith(".jpg"):
+    if (
+        target.parent != directory
+        or Path(filename).name != filename
+        or not filename.endswith(".jpg")
+    ):
         raise ValueError("Foto de perfil inválida")
     return target

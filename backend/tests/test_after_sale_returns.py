@@ -5,7 +5,6 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.security import hash_password
-
 from app.models import (
     AfterSaleCase,
     AfterSaleCaseItem,
@@ -151,9 +150,7 @@ def test_return_receipt_does_not_change_stock_until_inspection_and_restock_is_id
 
     movements = list(
         db.scalars(
-            select(StockMovement).where(
-                StockMovement.movement_type == MovementType.customer_return
-            )
+            select(StockMovement).where(StockMovement.movement_type == MovementType.customer_return)
         )
     )
     assert len(movements) == 1

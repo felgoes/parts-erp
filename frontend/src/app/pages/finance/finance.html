@@ -27,16 +27,22 @@
   <section class="finance-highlights" aria-label="Indicadores financeiros">
     <article class="finance-highlight inventory-highlight">
       <span>Estoque atual a custo médio</span
-      ><strong>{{ metrics.inventory_value | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR' }}</strong
+      ><strong>{{
+        metrics.inventory_value | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR'
+      }}</strong
       ><small
-        >{{ metrics.inventory_units | number: '1.0-3' : 'pt-BR' }} unidades em {{ metrics.by_product.length }}
+        >{{ metrics.inventory_units | number: '1.0-3' : 'pt-BR' }} unidades em
+        {{ metrics.by_product.length }}
         {{ metrics.by_product.length === 1 ? 'peça' : 'peças' }}</small
       ><i aria-hidden="true">◒</i>
     </article>
     <article class="finance-highlight">
       <span>Entradas de estoque</span
       ><strong>{{ metrics.inbound_value | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR' }}</strong
-      ><small>{{ metrics.inbound_quantity | number: '1.0-3' : 'pt-BR' }} unidades, inclui devoluções</small>
+      ><small
+        >{{ metrics.inbound_quantity | number: '1.0-3' : 'pt-BR' }} unidades, inclui
+        devoluções</small
+      >
     </article>
     <article class="finance-highlight">
       <span>Saídas de estoque</span
@@ -45,7 +51,9 @@
     </article>
     <article class="finance-highlight">
       <span>Custo líquido das vendas</span
-      ><strong>{{ metrics.net_cost_of_goods | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR' }}</strong
+      ><strong>{{
+        metrics.net_cost_of_goods | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR'
+      }}</strong
       ><small>Já desconta devoluções registradas</small>
     </article>
   </section>
@@ -57,8 +65,10 @@
         <strong>Histórico de custos parcial.</strong>
         @if (metrics.unvalued_sales_items > 0) {
           {{ metrics.unvalued_sales_items }}
-          {{ metrics.unvalued_sales_items === 1 ? 'item vendido não tem' : 'itens vendidos não têm' }} custo
-          registrado; por isso a margem não é apresentada como se fosse completa.
+          {{
+            metrics.unvalued_sales_items === 1 ? 'item vendido não tem' : 'itens vendidos não têm'
+          }}
+          custo registrado; por isso a margem não é apresentada como se fosse completa.
         }
         @if (metrics.unknown_cost_movements > 0) {
           {{ metrics.unknown_cost_movements }} movimentações antigas também não têm custo salvo.
@@ -84,15 +94,20 @@
       </div>
       <div class="result-metric">
         <span>Custo das peças vendidas</span
-        ><strong>{{ metrics.net_cost_of_goods | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR' }}</strong>
+        ><strong>{{
+          metrics.net_cost_of_goods | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR'
+        }}</strong>
       </div>
       <div class="result-metric margin-metric">
         <span>Margem bruta estimada</span>
         @if (metrics.gross_margin !== null) {
-          <strong>{{ metrics.gross_margin | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR' }}</strong
+          <strong>{{
+            metrics.gross_margin | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR'
+          }}</strong
           ><small>{{ metrics.gross_margin_percent | number: '1.0-1' : 'pt-BR' }}% das vendas</small>
         } @else {
-          <strong class="margin-unavailable">Incompleta</strong><small>Falta custo histórico em vendas</small>
+          <strong class="margin-unavailable">Incompleta</strong
+          ><small>Falta custo histórico em vendas</small>
         }
       </div>
       <div class="result-metric returns-metric">
@@ -135,7 +150,8 @@
         <p>O custo médio ponderado considera o saldo anterior e o valor de cada recebimento.</p>
       </div>
       <span class="result-count"
-        >{{ metrics.by_product.length }} {{ metrics.by_product.length === 1 ? 'peça' : 'peças' }}</span
+        >{{ metrics.by_product.length }}
+        {{ metrics.by_product.length === 1 ? 'peça' : 'peças' }}</span
       >
     </div>
     @if (metrics.by_product.length) {
@@ -169,7 +185,9 @@
                 <td>
                   <strong class="quantity-in"
                     >+{{ product.inbound_quantity | number: '1.0-3' : 'pt-BR' }}</strong
-                  ><small>{{ product.inbound_value | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR' }}</small>
+                  ><small>{{
+                    product.inbound_value | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR'
+                  }}</small>
                 </td>
                 <td>
                   <strong class="quantity-out"
@@ -180,7 +198,9 @@
                 </td>
                 <td>
                   <strong>{{ product.return_quantity | number: '1.0-3' : 'pt-BR' }}</strong
-                  ><small>{{ product.return_value | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR' }}</small>
+                  ><small>{{
+                    product.return_value | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR'
+                  }}</small>
                 </td>
               </tr>
             }
@@ -200,7 +220,9 @@
             <div class="mobile-cost-grid">
               <div>
                 <small>Custo médio</small
-                ><strong>{{ product.average_cost | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR' }}</strong>
+                ><strong>{{
+                  product.average_cost | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR'
+                }}</strong>
               </div>
               <div>
                 <small>Estoque valorizado</small
@@ -231,12 +253,15 @@
     } @else {
       <div class="finance-empty">
         <strong>Nenhum produto com saldo ou movimentação</strong
-        ><span>Cadastre peças e registre recebimentos em Compras para começar a acompanhar custos.</span>
+        ><span
+          >Cadastre peças e registre recebimentos em Compras para começar a acompanhar custos.</span
+        >
       </div>
     }
   </section>
   <p class="finance-disclaimer">
-    Entradas representam mercadorias recebidas, não pagamentos realizados ao fornecedor. Este painel ainda não
-    é um fluxo de caixa nem substitui a conciliação contábil. O valor do estoque usa o custo médio atual.
+    Entradas representam mercadorias recebidas, não pagamentos realizados ao fornecedor. Este painel
+    ainda não é um fluxo de caixa nem substitui a conciliação contábil. O valor do estoque usa o
+    custo médio atual.
   </p>
 }

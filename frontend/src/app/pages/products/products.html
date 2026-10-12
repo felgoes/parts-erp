@@ -11,7 +11,11 @@
   <button type="button" [class.active]="stockTab() === 'product'" (click)="setStockTab('product')">
     Produtos
   </button>
-  <button type="button" [class.active]="stockTab() === 'warehouse'" (click)="setStockTab('warehouse')">
+  <button
+    type="button"
+    [class.active]="stockTab() === 'warehouse'"
+    (click)="setStockTab('warehouse')"
+  >
     Almoxarifado
   </button>
 </nav>
@@ -26,12 +30,17 @@
   </div>
   @if (stockTab() === 'product') {
     <label class="check"
-      ><input type="checkbox" [checked]="onlyLow()" (change)="onlyLow.set($any($event.target).checked)" />
+      ><input
+        type="checkbox"
+        [checked]="onlyLow()"
+        (change)="onlyLow.set($any($event.target).checked)"
+      />
       Apenas estoque baixo</label
     >
   }
   <span class="count"
-    >{{ filtered().length }} {{ stockTab() === 'product' ? 'produtos' : 'itens de almoxarifado' }}</span
+    >{{ filtered().length }}
+    {{ stockTab() === 'product' ? 'produtos' : 'itens de almoxarifado' }}</span
   >
 </section>
 <section class="card table-card">
@@ -81,11 +90,17 @@
               >
             </td>
             <td class="right">
-              <button class="secondary small" (click)="$event.stopPropagation(); openDetails(product)">
+              <button
+                class="secondary small"
+                (click)="$event.stopPropagation(); openDetails(product)"
+              >
                 Detalhes
               </button>
               @if (canAdjustStock()) {
-                <button class="secondary small" (click)="$event.stopPropagation(); openAdjust(product)">
+                <button
+                  class="secondary small"
+                  (click)="$event.stopPropagation(); openAdjust(product)"
+                >
                   Ajustar
                 </button>
               }
@@ -120,8 +135,11 @@
             >Quantidade <input type="number" step="0.001" formControlName="quantity" /><small
               >Use valor negativo para dar baixa.</small
             ></label
-          ><label>Motivo <input formControlName="reason" placeholder="Ex.: Inventário mensal" /></label
-          ><button class="primary full" [disabled]="adjustForm.invalid || saving()">Salvar ajuste</button>
+          ><label
+            >Motivo <input formControlName="reason" placeholder="Ex.: Inventário mensal" /></label
+          ><button class="primary full" [disabled]="adjustForm.invalid || saving()">
+            Salvar ajuste
+          </button>
         </form>
       } @else {
         <form [formGroup]="productForm" (ngSubmit)="saveProduct()">
@@ -131,35 +149,57 @@
                 <option value="product">Produto</option>
                 <option value="warehouse">Almoxarifado</option>
               </select></label
-            ><label>SKU<input formControlName="sku" placeholder="PAST-001" [readonly]="!!editing()" /></label
-            ><label>Nome<input formControlName="name" placeholder="Pastilha de freio dianteira" /></label
+            ><label
+              >SKU<input
+                formControlName="sku"
+                placeholder="PAST-001"
+                [readonly]="!!editing()" /></label
+            ><label
+              >Nome<input formControlName="name" placeholder="Pastilha de freio dianteira" /></label
             ><label>Marca<input formControlName="brand" placeholder="Ex.: Chery" /></label
             ><label>Fabricante<input formControlName="manufacturer" /></label
             ><label>Número OEM / MPN<input formControlName="manufacturer_part_number" /></label
             ><label>GTIN / EAN<input formControlName="barcode" inputmode="numeric" /></label
-            ><label>Categoria da peça<input formControlName="category" placeholder="Motor, freios…" /></label
+            ><label
+              >Categoria da peça<input
+                formControlName="category"
+                placeholder="Motor, freios…" /></label
             ><label
               >Condição<select formControlName="item_condition">
                 <option value="new">Nova</option>
                 <option value="used">Usada</option>
                 <option value="refurbished">Recondicionada</option>
               </select></label
-            ><label>Garantia (dias)<input type="number" min="0" formControlName="warranty_days" /></label
-            ><label>País de origem<input formControlName="origin_country" placeholder="Brasil" /></label
+            ><label
+              >Garantia (dias)<input type="number" min="0" formControlName="warranty_days" /></label
+            ><label
+              >País de origem<input formControlName="origin_country" placeholder="Brasil" /></label
             ><label class="span-2"
               >Descrição<textarea formControlName="description" rows="2"></textarea></label
             ><label>Preço de venda<input appMoneyInput formControlName="sale_price" /></label>
             @if (canReadCosts()) {
               <label>Custo<input appMoneyInput formControlName="cost_price" /></label>
             }
-            ><label>Estoque inicial<input type="number" step="0.001" formControlName="current_stock" /></label
-            ><label>Estoque mínimo<input type="number" step="0.001" formControlName="minimum_stock" /></label>
-            <label>Peso embalado (g)<input type="number" step="0.001" formControlName="weight_g" /></label>
+            ><label
+              >Estoque inicial<input
+                type="number"
+                step="0.001"
+                formControlName="current_stock" /></label
+            ><label
+              >Estoque mínimo<input type="number" step="0.001" formControlName="minimum_stock"
+            /></label>
+            <label
+              >Peso embalado (g)<input type="number" step="0.001" formControlName="weight_g"
+            /></label>
             <label
               >Comprimento (cm)<input type="number" step="0.01" formControlName="package_length_cm"
             /></label>
-            <label>Largura (cm)<input type="number" step="0.01" formControlName="package_width_cm" /></label>
-            <label>Altura (cm)<input type="number" step="0.01" formControlName="package_height_cm" /></label>
+            <label
+              >Largura (cm)<input type="number" step="0.01" formControlName="package_width_cm"
+            /></label>
+            <label
+              >Altura (cm)<input type="number" step="0.01" formControlName="package_height_cm"
+            /></label>
             <label class="span-2"
               >Especificações (uma por linha: chave: valor)<textarea
                 rows="3"
@@ -169,7 +209,8 @@
               ></textarea>
             </label>
             <label class="span-2"
-              >Aplicação veicular (uma por linha: marca | modelo | ano inicial | ano final | motor)<textarea
+              >Aplicação veicular (uma por linha: marca | modelo | ano inicial | ano final |
+              motor)<textarea
                 rows="3"
                 [value]="fitmentsText()"
                 (input)="fitmentsText.set($any($event.target).value)"
@@ -184,8 +225,8 @@
                 multiple
                 (change)="selectPhotos($event)"
               /><small
-                >JPEG, PNG ou WebP. Até 10 MB por arquivo; as imagens são otimizadas para remover metadados e
-                reduzir tamanho.</small
+                >JPEG, PNG ou WebP. Até 10 MB por arquivo; as imagens são otimizadas para remover
+                metadados e reduzir tamanho.</small
               ></label
             >
             @if (photoPreviews().length) {
@@ -218,7 +259,8 @@
       @if (canManageCatalog()) {
         <div class="detail-actions">
           <button class="secondary small" (click)="openEdit(product)">Editar ficha</button
-          ><button class="secondary small" (click)="detailPhotoInput.click()">Adicionar fotos</button
+          ><button class="secondary small" (click)="detailPhotoInput.click()">
+            Adicionar fotos</button
           ><input
             #detailPhotoInput
             hidden
@@ -237,7 +279,8 @@
           <span>Preço de venda</span><strong>{{ product.sale_price | currency: 'BRL' }}</strong>
         </div>
         <div>
-          <span>Estoque atual</span><strong>{{ product.current_stock | number: '1.0-3' }} un.</strong
+          <span>Estoque atual</span
+          ><strong>{{ product.current_stock | number: '1.0-3' }} un.</strong
           ><small>mínimo {{ product.minimum_stock | number: '1.0-3' }} un.</small>
         </div>
       </div>
@@ -249,7 +292,11 @@
                 ><img [src]="photo.url" [alt]="product.name"
               /></a>
               @if (canManageCatalog()) {
-                <button class="photo-remove" aria-label="Remover foto" (click)="removePhoto(product, photo)">
+                <button
+                  class="photo-remove"
+                  aria-label="Remover foto"
+                  (click)="removePhoto(product, photo)"
+                >
                   ×
                 </button>
               }
@@ -309,7 +356,9 @@
       }
       <div class="product-description">
         <span class="eyebrow">Descrição</span>
-        <p>{{ product.description || 'Este produto ainda não possui uma descrição cadastrada.' }}</p>
+        <p>
+          {{ product.description || 'Este produto ainda não possui uma descrição cadastrada.' }}
+        </p>
       </div>
       <section class="product-section">
         <div class="section-heading">
@@ -328,7 +377,9 @@
             @if (listing.thumbnail) {
               <img [src]="listing.thumbnail" [alt]="listing.title || 'Imagem do anúncio'" />
             } @else {
-              <div class="listing-placeholder">{{ listing.provider === 'shopee' ? 'S' : 'ML' }}</div>
+              <div class="listing-placeholder">
+                {{ listing.provider === 'shopee' ? 'S' : 'ML' }}
+              </div>
             }
             <div class="listing-content">
               <div class="listing-title">
@@ -344,7 +395,8 @@
               </div>
               <div class="listing-metrics">
                 <div>
-                  <small>Estoque no canal</small><strong>{{ listing.available_quantity ?? '—' }}</strong>
+                  <small>Estoque no canal</small
+                  ><strong>{{ listing.available_quantity ?? '—' }}</strong>
                 </div>
                 <div>
                   <small>Vendidos</small><strong>{{ listing.sold_quantity ?? 0 }}</strong>
@@ -353,7 +405,8 @@
                   <small>Visitas</small><strong>{{ listing.visits ?? 0 }}</strong>
                 </div>
                 <div>
-                  <small>Preço</small><strong>{{ listing.marketplace_price | currency: 'BRL' }}</strong>
+                  <small>Preço</small
+                  ><strong>{{ listing.marketplace_price | currency: 'BRL' }}</strong>
                 </div>
               </div>
               @if (listing.sync_error) {
@@ -377,8 +430,8 @@
               <p class="eyebrow">Cadastro multicanal</p>
               <h3>Preparar anúncio</h3>
               <p class="muted">
-                Cada plataforma tem campos, categorias e políticas próprias. Salvar rascunho não publica nem
-                altera anúncios.
+                Cada plataforma tem campos, categorias e políticas próprias. Salvar rascunho não
+                publica nem altera anúncios.
               </p>
             </div>
           </div>
@@ -388,7 +441,10 @@
               (click)="selectProvider('mercadolivre')"
             >
               Mercado Livre</button
-            ><button [class.active]="channelProvider() === 'shopee'" (click)="selectProvider('shopee')">
+            ><button
+              [class.active]="channelProvider() === 'shopee'"
+              (click)="selectProvider('shopee')"
+            >
               Shopee
             </button>
           </div>
@@ -432,7 +488,10 @@
                       (input)="channelTitle.set($any($event.target).value)"
                       [attr.maxlength]="meta.limits.max_title_length || 200"
                     /><small
-                      >{{ channelTitle().length }}/{{ meta.limits.max_title_length || 200 }} caracteres{{
+                      >{{ channelTitle().length }}/{{
+                        meta.limits.max_title_length || 200
+                      }}
+                      caracteres{{
                         channelProvider() === 'mercadolivre' && meta.user_product_seller
                           ? ' · o título será gerado pelo Mercado Livre'
                           : ''
@@ -463,7 +522,8 @@
                     <label
                       >{{ attribute.name }}
                       @if (
-                        attribute.required || (channelProvider() === 'mercadolivre' && attribute.new_required)
+                        attribute.required ||
+                        (channelProvider() === 'mercadolivre' && attribute.new_required)
                       ) {
                         <em>Obrigatório</em>
                       }
@@ -473,7 +533,10 @@
                           (change)="setChannelAttribute(attribute.id, $any($event.target).value)"
                         >
                           <option value="">Selecione…</option>
-                          @for (value of attribute.values; track value.id || value.value_id || value.name) {
+                          @for (
+                            value of attribute.values;
+                            track value.id || value.value_id || value.name
+                          ) {
                             <option [value]="value.id || value.value_id || value.name">
                               {{ value.name || value.original_value_name }}
                             </option>
@@ -556,8 +619,11 @@
           @for (movement of movements(); track movement.id) {
             <div class="movement-row">
               <span class="movement-date">{{ movement.created_at | date: 'dd/MM/yyyy HH:mm' }}</span
-              ><strong [class.negative]="movement.quantity < 0" [class.positive]="movement.quantity > 0"
-                >{{ movement.quantity > 0 ? '+' : '' }}{{ movement.quantity | number: '1.0-3' }}</strong
+              ><strong
+                [class.negative]="movement.quantity < 0"
+                [class.positive]="movement.quantity > 0"
+                >{{ movement.quantity > 0 ? '+' : ''
+                }}{{ movement.quantity | number: '1.0-3' }}</strong
               ><span class="movement-reason">{{ movement.reason }}</span>
               @if (canReadCosts()) {
                 <span class="movement-value">

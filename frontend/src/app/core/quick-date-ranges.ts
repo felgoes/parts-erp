@@ -1,4 +1,5 @@
-export type QuickDatePreset = 'last7' | 'last30' | 'thisMonth' | 'lastMonth' | 'thisYear' | 'custom';
+export type QuickDatePreset =
+  'last7' | 'last30' | 'thisMonth' | 'lastMonth' | 'thisYear' | 'custom';
 
 export const QUICK_DATE_PRESETS: { id: QuickDatePreset; label: string }[] = [
   { id: 'last7', label: '7 dias' },
@@ -14,7 +15,10 @@ export interface DateRange {
   endDate: string;
 }
 
-export function quickDateRange(preset: Exclude<QuickDatePreset, 'custom'>, now = new Date()): DateRange {
+export function quickDateRange(
+  preset: Exclude<QuickDatePreset, 'custom'>,
+  now = new Date(),
+): DateRange {
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 12);
   const endDate = formatLocalDate(today);
 
@@ -24,7 +28,10 @@ export function quickDateRange(preset: Exclude<QuickDatePreset, 'custom'>, now =
     return { startDate: formatLocalDate(start), endDate };
   }
   if (preset === 'thisMonth') {
-    return { startDate: formatLocalDate(new Date(today.getFullYear(), today.getMonth(), 1, 12)), endDate };
+    return {
+      startDate: formatLocalDate(new Date(today.getFullYear(), today.getMonth(), 1, 12)),
+      endDate,
+    };
   }
   if (preset === 'lastMonth') {
     return {

@@ -49,7 +49,14 @@ from app.services.payables import (
 router = APIRouter(prefix="/payables", tags=["Contas a pagar"])
 
 SAO_PAULO = timezone(timedelta(hours=-3))
-AGING_LABELS = ("A vencer", "1 a 15 dias", "16 a 30 dias", "31 a 60 dias", "61 a 90 dias", "Mais de 90 dias")
+AGING_LABELS = (
+    "A vencer",
+    "1 a 15 dias",
+    "16 a 30 dias",
+    "31 a 60 dias",
+    "61 a 90 dias",
+    "Mais de 90 dias",
+)
 
 
 def _today() -> date:
@@ -88,7 +95,9 @@ def _payment_day(payment: PayablePayment) -> date | None:
     return moment.date() if moment else None
 
 
-def _event(db: Session, purchase: PurchaseCase, event_type: str, detail: str, user: User | None = None) -> None:
+def _event(
+    db: Session, purchase: PurchaseCase, event_type: str, detail: str, user: User | None = None
+) -> None:
     db.add(
         PurchaseEvent(
             purchase_id=purchase.id,
@@ -222,7 +231,9 @@ def _aging(payables: list[PurchasePayable]) -> list[PayableAgingBucket]:
         buckets[label]["count"] += 1
         buckets[label]["balance"] += payable_balance(payable)
     return [
-        PayableAgingBucket(label=label, count=values["count"], balance=values["balance"].quantize(Decimal("0.01")))
+        PayableAgingBucket(
+            label=label, count=values["count"], balance=values["balance"].quantize(Decimal("0.01"))
+        )
         for label, values in buckets.items()
     ]
 
@@ -307,8 +318,10 @@ def _summary(
                 unreconciled += 1
             paid_at = _as_utc(payment.paid_at)
             day = _payment_day(payment)
-            if day and (paid_from is None or day >= paid_from) and (
-                paid_to is None or day <= paid_to
+            if (
+                day
+                and (paid_from is None or day >= paid_from)
+                and (paid_to is None or day <= paid_to)
             ):
                 paid_in_period += Decimal(payment.amount)
     return PayableSummary(
@@ -387,7 +400,9 @@ def payables_report(
     for payable in filtered:
         purchase = payable.purchase
         name = payable.supplier_name or purchase.supplier_name or "Sem fornecedor"
-        entry = suppliers.setdefault(name, {"open": Decimal("0"), "overdue": Decimal("0"), "paid": Decimal("0"), "titles": 0})
+        entry = suppliers.setdefault(
+            name, {"open": Decimal("0"), "overdue": Decimal("0"), "paid": Decimal("0"), "titles": 0}
+        )
         entry["titles"] = int(entry["titles"]) + 1
         balance = payable_balance(payable)
         if balance > 0:
@@ -424,10 +439,16 @@ def payables_report(
                 paid_in_period=Decimal(values["paid"]).quantize(Decimal("0.01")),
                 titles=int(values["titles"]),
             )
-            for name, values in sorted(suppliers.items(), key=lambda entry: -Decimal(entry[1]["open"]))
+            for name, values in sorted(
+                suppliers.items(), key=lambda entry: -Decimal(entry[1]["open"])
+            )
         ],
         by_month=[
-            PayableMonthReport(month=month, paid=Decimal(values["paid"]).quantize(Decimal("0.01")), titles=int(values["titles"]))
+            PayableMonthReport(
+                month=month,
+                paid=Decimal(values["paid"]).quantize(Decimal("0.01")),
+                titles=int(values["titles"]),
+            )
             for month, values in sorted(months.items())
         ],
     )
@@ -455,7 +476,23 @@ def export_payables(
     )
     buffer = io.StringIO()
     writer = csv.writer(buffer, delimiter=";", lineterminator="\n")
-    writer.writerow(["Vencimento", "Status", "Fornecedor", "Origem", "Numero", "Categoria", "Valor", "Pago", "Saldo", "Dias em atraso", "Pagamentos", "Conciliados", "Ultimo pagamento"])
+    writer.writerow(
+        [
+            "Vencimento",
+            "Status",
+            "Fornecedor",
+            "Origem",
+            "Numero",
+            "Categoria",
+            "Valor",
+            "Pago",
+            "Saldo",
+            "Dias em atraso",
+            "Pagamentos",
+            "Conciliados",
+            "Ultimo pagamento",
+        ]
+    )
     for payable in payables:
         item = _item(payable)
         writer.writerow(
@@ -501,7 +538,9 @@ def update_payable(
 ) -> PayableDetailOut:
     payable = _load(db, payable_id)
     if payable.status == "cancelled":
-        raise HTTPException(status_code=409, detail="Título encerrado com o cancelamento da compra.")
+        raise HTTPException(
+            status_code=409, detail="Título encerrado com o cancelamento da compra."
+        )
     if payload.due_date is not None:
         payable.due_date = _as_utc(payload.due_date)
     if payload.payment_method:
@@ -537,7 +576,13 @@ def update_payable(
             user,
         )
     else:
-        _event(db, payable.purchase, "payable_updated", f"Vencimento do título ajustado por {user.full_name}.", user)
+        _event(
+            db,
+            payable.purchase,
+            "payable_updated",
+            f"Vencimento do título ajustado por {user.full_name}.",
+            user,
+        )
     db.commit()
     payable = _load(db, payable_id)
     return _detail(payable)
@@ -552,10 +597,16 @@ def create_payment(
 ) -> PayableDetailOut:
     payable = _load(db, payable_id)
     if payable.status == "cancelled":
-        raise HTTPException(status_code=409, detail="Título encerrado com o cancelamento da compra.")
+        raise HTTPException(
+            status_code=409, detail="Título encerrado com o cancelamento da compra."
+        )
     if payload.idempotency_key:
         existing = next(
-            (payment for payment in payable.payments if payment.idempotency_key == payload.idempotency_key),
+            (
+                payment
+                for payment in payable.payments
+                if payment.idempotency_key == payload.idempotency_key
+            ),
             None,
         )
         if existing:

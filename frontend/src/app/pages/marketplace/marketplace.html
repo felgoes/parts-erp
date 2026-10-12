@@ -4,7 +4,11 @@
   subtitle="Importação, conciliação e baixa automática de estoque."
 >
   @if (canProcess()) {
-    <button class="secondary" [disabled]="syncing() || status()?.connected !== true" (click)="syncNow()">
+    <button
+      class="secondary"
+      [disabled]="syncing() || status()?.connected !== true"
+      (click)="syncNow()"
+    >
       {{ syncing() ? 'Enviando sincronização…' : 'Sincronizar agora' }}
     </button>
   }
@@ -19,7 +23,12 @@
     >
       <span class="toast-indicator" aria-hidden="true"></span>
       <p>{{ toast.message }}</p>
-      <button class="toast-close" type="button" aria-label="Fechar aviso" (click)="dismissFeedback()">
+      <button
+        class="toast-close"
+        type="button"
+        aria-label="Fechar aviso"
+        (click)="dismissFeedback()"
+      >
         ×
       </button>
     </div>
@@ -69,13 +78,17 @@
         @for (o of orders(); track o.id) {
           <tr class="clickable-row" (click)="openDetails(o)">
             <td>
-              <button class="link-button" (click)="openDetails(o)">#{{ o.external_order_id }}</button>
+              <button class="link-button" (click)="openDetails(o)">
+                #{{ o.external_order_id }}
+              </button>
             </td>
             <td>{{ platformCreatedAt(o) || o.created_at | date: 'dd/MM/yyyy HH:mm' }}</td>
             <td>
               {{ saleStageLabel(saleStageForOrder(o)) }}
               @if (o.shipping_status) {
-                <small class="block">{{ trackingEventLabel(o.shipping_status, o.shipping_substatus) }}</small>
+                <small class="block">{{
+                  trackingEventLabel(o.shipping_status, o.shipping_substatus)
+                }}</small>
               }
             </td>
             <td>
@@ -106,7 +119,8 @@
                 <button
                   class="document-action"
                   (click)="
-                    $event.stopPropagation(); download(o.invoice_id!, fiscalPdf.id, fiscalPdf.filename)
+                    $event.stopPropagation();
+                    download(o.invoice_id!, fiscalPdf.id, fiscalPdf.filename)
                   "
                 >
                   Abrir NF-e <span>↗</span>
@@ -115,7 +129,8 @@
                 <button
                   class="document-action"
                   (click)="
-                    $event.stopPropagation(); download(o.invoice_id!, fiscalXml.id, fiscalXml.filename)
+                    $event.stopPropagation();
+                    download(o.invoice_id!, fiscalXml.id, fiscalXml.filename)
                   "
                 >
                   Abrir XML <span>↗</span>
@@ -144,7 +159,10 @@
               @if (documentFor(o, 'label_pdf'); as labelPdf) {
                 <button
                   class="document-action"
-                  (click)="$event.stopPropagation(); download(o.invoice_id!, labelPdf.id, labelPdf.filename)"
+                  (click)="
+                    $event.stopPropagation();
+                    download(o.invoice_id!, labelPdf.id, labelPdf.filename)
+                  "
                 >
                   Baixar etiqueta <span>↗</span>
                 </button>
@@ -176,7 +194,8 @@
           <p class="eyebrow">Marketplace · Pedido Mercado Livre</p>
           <h2>#{{ order.external_order_id }}</h2>
           <p class="detail-subtitle">
-            Recebido em {{ platformCreatedAt(order) || order.created_at | date: 'dd/MM/yyyy HH:mm' }}
+            Recebido em
+            {{ platformCreatedAt(order) || order.created_at | date: 'dd/MM/yyyy HH:mm' }}
           </p>
         </div>
         <div class="object-hero-actions">
@@ -190,7 +209,8 @@
       </div>
       <div class="detail-grid">
         <div>
-          <small>Etapa da venda</small><strong>{{ saleStageLabel(saleStageForOrder(order)) }}</strong>
+          <small>Etapa da venda</small
+          ><strong>{{ saleStageLabel(saleStageForOrder(order)) }}</strong>
         </div>
         <div>
           <small>Status no ML</small><strong>{{ statusLabel(order.status) }}</strong>
@@ -338,13 +358,15 @@
           </div>
           <span class="muted">{{
             platformUpdatedAt(order) || order.synchronized_at
-              ? 'Atualizado ' + (platformUpdatedAt(order) || order.synchronized_at | date: 'dd/MM/yyyy HH:mm')
+              ? 'Atualizado ' +
+                (platformUpdatedAt(order) || order.synchronized_at | date: 'dd/MM/yyyy HH:mm')
               : 'Aguardando sincronização'
           }}</span>
         </div>
         <div class="timeline">
           <div>
-            <strong>Pedido recebido</strong><span>{{ order.created_at | date: 'dd/MM/yyyy HH:mm' }}</span>
+            <strong>Pedido recebido</strong
+            ><span>{{ order.created_at | date: 'dd/MM/yyyy HH:mm' }}</span>
           </div>
           <div>
             <strong>Status do pedido: {{ statusLabel(order.status) }}</strong
@@ -400,11 +422,15 @@
             <div class="detail-grid">
               <div>
                 <small>Motivo</small
-                ><strong>{{ cancelReason(order.payload?.['cancel_detail']?.['description']) }}</strong>
+                ><strong>{{
+                  cancelReason(order.payload?.['cancel_detail']?.['description'])
+                }}</strong>
               </div>
               <div>
                 <small>Solicitado por</small
-                ><strong>{{ cancelRequester(order.payload?.['cancel_detail']?.['requested_by']) }}</strong>
+                ><strong>{{
+                  cancelRequester(order.payload?.['cancel_detail']?.['requested_by'])
+                }}</strong>
               </div>
               <div>
                 <small>Pagamento</small

@@ -1,9 +1,9 @@
 """P14 — leitura de itens por coluna (recibos de marketplace e DANFE)."""
 
 from app.services.purchase_import import (
-    _extract_image_items,
     _extract_danfe_fields,
     _extract_danfe_items,
+    _extract_image_items,
     _extract_items_by_columns,
     _looks_like_danfe,
 )
@@ -28,9 +28,7 @@ def test_column_grid_reads_quantity_unit_and_line_total():
 
 
 def test_column_grid_derives_quantity_when_only_unit_and_total_are_read():
-    items = _extract_items_by_columns(
-        ["Fita de empacotamento 45mm    5,00    25,00"]
-    )
+    items = _extract_items_by_columns(["Fita de empacotamento 45mm    5,00    25,00"])
 
     assert len(items) == 1
     assert items[0]["quantity"] == 5.0
@@ -59,9 +57,7 @@ def test_image_receipt_keeps_packaging_text_and_reads_quantity_one():
 
 
 def test_image_receipt_uses_explicit_quantity_when_present():
-    items = _extract_image_items(
-        ["Detalhes do item", "Filtro de óleo", "2 un", "R$ 30,00"]
-    )
+    items = _extract_image_items(["Detalhes do item", "Filtro de óleo", "2 un", "R$ 30,00"])
 
     assert items[0]["quantity"] == 2.0
     assert items[0]["quantity_derived"] is False

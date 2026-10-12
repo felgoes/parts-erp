@@ -29,7 +29,9 @@ export class InvoicesPage implements OnInit {
   private readonly live = inject(LiveUpdatesService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly auth = inject(AuthService);
-  canSell() { return canSell(this.auth.user()?.role); }
+  canSell() {
+    return canSell(this.auth.user()?.role);
+  }
   readonly invoices = signal<Invoice[]>([]);
   readonly products = signal<Product[]>([]);
   readonly customers = signal<Customer[]>([]);
@@ -40,7 +42,11 @@ export class InvoicesPage implements OnInit {
   readonly filterStatusOptions = computed<PeriodFilterStatusOption[]>(() => [
     { value: 'all', label: 'Todas', count: this.invoices().length },
     { value: 'open', label: 'Em andamento', count: this.countByStatus('open') },
-    { value: 'post_sale', label: 'Canceladas / devoluções', count: this.countByStatus('post_sale') },
+    {
+      value: 'post_sale',
+      label: 'Canceladas / devoluções',
+      count: this.countByStatus('post_sale'),
+    },
   ]);
   readonly statusLabel = statusLabel;
   readonly trackingEventLabel = trackingEventLabel;
@@ -66,15 +72,25 @@ export class InvoicesPage implements OnInit {
   }
   afterSaleLabel(invoice: Invoice) {
     if (!invoice.after_sale) return '';
-    const title = invoice.after_sale.kind === 'return' ? 'Devolução' : invoice.after_sale.kind === 'claim' ? 'Reclamação' : 'Cancelamento';
+    const title =
+      invoice.after_sale.kind === 'return'
+        ? 'Devolução'
+        : invoice.after_sale.kind === 'claim'
+          ? 'Reclamação'
+          : 'Cancelamento';
     return `${title} · ${statusLabel(invoice.after_sale.status)}`;
   }
   afterSaleReason(value: string) {
-    if (value.trim().toLowerCase() === 'mediations cancel the order') return 'A mediação cancelou o pedido';
+    if (value.trim().toLowerCase() === 'mediations cancel the order')
+      return 'A mediação cancelou o pedido';
     return value;
   }
   requesterLabel(value: string) {
-    return ({ meli: 'Mercado Livre', buyer: 'Comprador', seller: 'Vendedor' } as Record<string, string>)[value.toLowerCase()] ?? value;
+    return (
+      ({ meli: 'Mercado Livre', buyer: 'Comprador', seller: 'Vendedor' } as Record<string, string>)[
+        value.toLowerCase()
+      ] ?? value
+    );
   }
   readonly lines = signal<{ product: Product; quantity: number }[]>([]);
   customerId = '';
@@ -84,15 +100,18 @@ export class InvoicesPage implements OnInit {
   endDate = this.today();
   ngOnInit() {
     this.load();
-    this.live.changes$.pipe(debounceTime(250), takeUntilDestroyed(this.destroyRef)).subscribe(() => this.load());
+    this.live.changes$
+      .pipe(debounceTime(250), takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => this.load());
   }
   load() {
     if (!this.validRange()) return;
     this.api.invoices(this.startDate, this.endDate).subscribe((v) => this.invoices.set(v));
     const detailId = this.detail()?.id;
-    if (detailId) this.api.invoice(detailId).subscribe((full) => {
-      if (this.detail()?.id === detailId) this.detail.set(full);
-    });
+    if (detailId)
+      this.api.invoice(detailId).subscribe((full) => {
+        if (this.detail()?.id === detailId) this.detail.set(full);
+      });
   }
   applyDateFilter(range: { startDate: string; endDate: string }) {
     this.startDate = range.startDate;
@@ -102,16 +121,24 @@ export class InvoicesPage implements OnInit {
   setStatusFilter(value: string) {
     if (value === 'all' || value === 'open' || value === 'post_sale') this.statusFilter = value;
   }
-  validRange() { return !!this.startDate && !!this.endDate && this.startDate <= this.endDate; }
-  private today() { return new Date().toLocaleDateString('sv-SE'); }
-  private monthStart() { return `${this.today().slice(0, 7)}-01`; }
+  validRange() {
+    return !!this.startDate && !!this.endDate && this.startDate <= this.endDate;
+  }
+  private today() {
+    return new Date().toLocaleDateString('sv-SE');
+  }
+  private monthStart() {
+    return `${this.today().slice(0, 7)}-01`;
+  }
   openNew() {
-    forkJoin([this.api.products('', false, 'product'), this.api.customers()]).subscribe(([p, c]) => {
-      this.products.set(p);
-      this.customers.set(c);
-      this.lines.set([]);
-      this.modal.set(true);
-    });
+    forkJoin([this.api.products('', false, 'product'), this.api.customers()]).subscribe(
+      ([p, c]) => {
+        this.products.set(p);
+        this.customers.set(c);
+        this.lines.set([]);
+        this.modal.set(true);
+      },
+    );
   }
   addLine() {
     const p = this.products().find((x) => x.id === this.selectedProduct);
@@ -151,8 +178,17 @@ export class InvoicesPage implements OnInit {
     // Popup + blob falha no WebView Android e resulta em about:blank.
     this.router.navigate(['/document-viewer', invoiceId, documentId]);
   }
-  documentViewerUrl(invoiceId: string, documentId: string) { return `/document-viewer/${invoiceId}/${documentId}`; }
+  documentViewerUrl(invoiceId: string, documentId: string) {
+    return `/document-viewer/${invoiceId}/${documentId}`;
+  }
   label(s: string) {
-    return ({ draft: 'Rascunho', confirmed: 'Confirmada', cancelled: 'Cancelada' } as Record<string, string>)[s] ?? statusLabel(s);
+    return (
+      (
+        { draft: 'Rascunho', confirmed: 'Confirmada', cancelled: 'Cancelada' } as Record<
+          string,
+          string
+        >
+      )[s] ?? statusLabel(s)
+    );
   }
 }

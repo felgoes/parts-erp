@@ -102,16 +102,19 @@
       </div>
       <div class="detail-grid customer-metrics">
         <div>
-          <small>Total comprado</small><strong>{{ customer.total_purchased | currency: 'BRL' }}</strong>
+          <small>Total comprado</small
+          ><strong>{{ customer.total_purchased | currency: 'BRL' }}</strong>
         </div>
         <div>
           <small>Compras</small><strong>{{ customer.purchase_count }}</strong>
         </div>
         <div>
-          <small>Ticket médio</small><strong>{{ customer.average_purchase | currency: 'BRL' }}</strong>
+          <small>Ticket médio</small
+          ><strong>{{ customer.average_purchase | currency: 'BRL' }}</strong>
         </div>
         <div>
-          <small>Pedidos Mercado Livre</small><strong>{{ customer.marketplace_order_count }}</strong>
+          <small>Pedidos Mercado Livre</small
+          ><strong>{{ customer.marketplace_order_count }}</strong>
         </div>
         <div>
           <small>Cancelados</small><strong>{{ customer.cancelled_order_count }}</strong>
@@ -144,7 +147,9 @@
                     ? 'Pedido recebido'
                     : 'Finalizado'
               }}</span
-            ><small>{{ purchase.item_count }} item(ns) · {{ purchase.total | currency: 'BRL' }}</small>
+            ><small
+              >{{ purchase.item_count }} item(ns) · {{ purchase.total | currency: 'BRL' }}</small
+            >
           </div>
         } @empty {
           <p class="muted">Nenhuma compra registrada.</p>

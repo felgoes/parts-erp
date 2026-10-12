@@ -16,7 +16,9 @@ describe('Mercado Livre status labels', () => {
   });
 
   it('translates known tracking details and omits unknown technical text', () => {
-    expect(trackingEventLabel('shipped', 'out_for_delivery')).toBe('Em trânsito · Saiu para entrega');
+    expect(trackingEventLabel('shipped', 'out_for_delivery')).toBe(
+      'Em trânsito · Saiu para entrega',
+    );
     expect(trackingEventLabel('delivered', 'A new carrier detail')).toBe('Entregue');
   });
 });

@@ -7,8 +7,22 @@ from app.models import Product
 def test_public_catalog_returns_only_active_products_without_internal_cost(db):
     db.add_all(
         [
-            Product(sku="PUB-1", name="Pastilha", sale_price=Decimal("10"), cost_price=Decimal("5"), current_stock=2, active=True),
-            Product(sku="OFF-1", name="Inativo", sale_price=Decimal("8"), cost_price=Decimal("3"), current_stock=2, active=False),
+            Product(
+                sku="PUB-1",
+                name="Pastilha",
+                sale_price=Decimal("10"),
+                cost_price=Decimal("5"),
+                current_stock=2,
+                active=True,
+            ),
+            Product(
+                sku="OFF-1",
+                name="Inativo",
+                sale_price=Decimal("8"),
+                cost_price=Decimal("3"),
+                current_stock=2,
+                active=False,
+            ),
         ]
     )
     db.commit()

@@ -26,9 +26,7 @@ def test_biometric_credential_creates_a_new_session(db) -> None:
         BiometricCredentialCreate(device_name="Galaxy S23"), user
     )
 
-    session = biometric_login(
-        BiometricCredentialLogin(credential=enrollment.credential), db
-    )
+    session = biometric_login(BiometricCredentialLogin(credential=enrollment.credential), db)
 
     assert session.user.id == user.id
     assert session.access_token

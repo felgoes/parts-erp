@@ -664,7 +664,11 @@ class PurchaseCreate(BaseModel):
             not self.expense_category or self.expense_amount is None
         ):
             raise ValueError("Informe a categoria e o valor da despesa")
-        if self.original_currency and self.original_currency.upper() != "BRL" and not self.exchange_rate:
+        if (
+            self.original_currency
+            and self.original_currency.upper() != "BRL"
+            and not self.exchange_rate
+        ):
             raise ValueError(
                 "Documento em moeda estrangeira exige a cotação usada na conversão para reais."
             )

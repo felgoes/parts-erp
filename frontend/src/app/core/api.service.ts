@@ -42,24 +42,57 @@ export class ApiService {
   erpSettings(): Observable<ErpSettings> {
     return this.http.get<ErpSettings>(`${this.base}/settings`);
   }
-  purchaseImportProfiles(): Observable<{ schema: string; profiles: Array<{ profile_id: string; name: string; kind: string; version: number }> }> {
-    return this.http.get<{ schema: string; profiles: Array<{ profile_id: string; name: string; kind: string; version: number }> }>(`${this.base}/settings/purchase-import-profiles`);
+  purchaseImportProfiles(): Observable<{
+    schema: string;
+    profiles: Array<{ profile_id: string; name: string; kind: string; version: number }>;
+  }> {
+    return this.http.get<{
+      schema: string;
+      profiles: Array<{ profile_id: string; name: string; kind: string; version: number }>;
+    }>(`${this.base}/settings/purchase-import-profiles`);
   }
-  uploadPurchaseImportProfile(file: File): Observable<{ profile_id: string; name: string; status: string }> {
-    const form = new FormData(); form.append('file', file, file.name);
-    return this.http.post<{ profile_id: string; name: string; status: string }>(`${this.base}/settings/purchase-import-profiles`, form);
+  uploadPurchaseImportProfile(
+    file: File,
+  ): Observable<{ profile_id: string; name: string; status: string }> {
+    const form = new FormData();
+    form.append('file', file, file.name);
+    return this.http.post<{ profile_id: string; name: string; status: string }>(
+      `${this.base}/settings/purchase-import-profiles`,
+      form,
+    );
   }
   deletePurchaseImportProfile(id: string): Observable<{ status: string }> {
-    return this.http.delete<{ status: string }>(`${this.base}/settings/purchase-import-profiles/${encodeURIComponent(id)}`);
+    return this.http.delete<{ status: string }>(
+      `${this.base}/settings/purchase-import-profiles/${encodeURIComponent(id)}`,
+    );
   }
   analyzePurchaseDocument(file: File, profileId?: string): Observable<any> {
-    const form = new FormData(); form.append('file', file, file.name);
+    const form = new FormData();
+    form.append('file', file, file.name);
     const params = profileId ? { profile_id: profileId } : undefined;
     return this.http.post<any>(`${this.base}/purchases/import-document`, form, { params });
   }
 
-  purchaseImportDuplicates(params: { document_access_key?: string; order_number?: string; origin?: string }): Observable<{ match: { purchase_id: string; purchase_number: string; purchase_status: string; cancelled: boolean } | null }> {
-    return this.http.get<{ match: { purchase_id: string; purchase_number: string; purchase_status: string; cancelled: boolean } | null }>(`${this.base}/purchases/import-document/duplicates`, { params: this.queryParams(params) });
+  purchaseImportDuplicates(params: {
+    document_access_key?: string;
+    order_number?: string;
+    origin?: string;
+  }): Observable<{
+    match: {
+      purchase_id: string;
+      purchase_number: string;
+      purchase_status: string;
+      cancelled: boolean;
+    } | null;
+  }> {
+    return this.http.get<{
+      match: {
+        purchase_id: string;
+        purchase_number: string;
+        purchase_status: string;
+        cancelled: boolean;
+      } | null;
+    }>(`${this.base}/purchases/import-document/duplicates`, { params: this.queryParams(params) });
   }
 
   confirmImportedPurchase(file: File, payload: unknown): Observable<Purchase> {
@@ -69,18 +102,50 @@ export class ApiService {
     return this.http.post<Purchase>(`${this.base}/purchases/import-document/confirm`, form);
   }
   saveErpSettings(
-    settings: Pick<ErpSettings, 'company_name' | 'company_short_name' | 'logo_data_url' | 'backup_enabled' | 'backup_frequency' | 'backup_time' | 'backup_retention_days' | 'backup_destination'> & { drive_client_id?: string | null; drive_client_secret?: string; drive_folder_id?: string | null },
+    settings: Pick<
+      ErpSettings,
+      | 'company_name'
+      | 'company_short_name'
+      | 'logo_data_url'
+      | 'backup_enabled'
+      | 'backup_frequency'
+      | 'backup_time'
+      | 'backup_retention_days'
+      | 'backup_destination'
+    > & {
+      drive_client_id?: string | null;
+      drive_client_secret?: string;
+      drive_folder_id?: string | null;
+    },
   ): Observable<ErpSettings> {
     return this.http.put<ErpSettings>(`${this.base}/settings`, settings);
   }
-  pushPreferences(): Observable<PushPreference[]> { return this.http.get<PushPreference[]>(`${this.base}/push/preferences`); }
-  updatePushPreference(category: string, enabled: boolean, sound?: PushSound): Observable<PushPreference> { return this.http.put<PushPreference>(this.base + '/push/preferences/' + category, { enabled, sound }); }
-  pushHistory(): Observable<PushNotification[]> { return this.http.get<PushNotification[]>(`${this.base}/push/history`); }
+  pushPreferences(): Observable<PushPreference[]> {
+    return this.http.get<PushPreference[]>(`${this.base}/push/preferences`);
+  }
+  updatePushPreference(
+    category: string,
+    enabled: boolean,
+    sound?: PushSound,
+  ): Observable<PushPreference> {
+    return this.http.put<PushPreference>(this.base + '/push/preferences/' + category, {
+      enabled,
+      sound,
+    });
+  }
+  pushHistory(): Observable<PushNotification[]> {
+    return this.http.get<PushNotification[]>(`${this.base}/push/history`);
+  }
   connectGoogleDrive(): Observable<{ authorization_url: string; redirect_uri: string }> {
-    return this.http.get<{ authorization_url: string; redirect_uri: string }>(`${this.base}/settings/backup/google-drive/connect`);
+    return this.http.get<{ authorization_url: string; redirect_uri: string }>(
+      `${this.base}/settings/backup/google-drive/connect`,
+    );
   }
   runGoogleDriveBackup(): Observable<{ filename: string; message: string }> {
-    return this.http.post<{ filename: string; message: string }>(`${this.base}/settings/backup/run`, {});
+    return this.http.post<{ filename: string; message: string }>(
+      `${this.base}/settings/backup/run`,
+      {},
+    );
   }
   dashboard(startDate: string, endDate: string): Observable<DashboardSummary> {
     return this.http.get<DashboardSummary>(`${this.base}/dashboard/summary`, {
@@ -97,7 +162,11 @@ export class ApiService {
       params: { start_date: startDate, end_date: endDate },
     });
   }
-  products(search = '', lowStock = false, stockType?: 'product' | 'warehouse'): Observable<Product[]> {
+  products(
+    search = '',
+    lowStock = false,
+    stockType?: 'product' | 'warehouse',
+  ): Observable<Product[]> {
     let params = new HttpParams();
     if (search) params = params.set('search', search);
     if (lowStock) params = params.set('low_stock', true);
@@ -228,7 +297,10 @@ export class ApiService {
     return this.http.post<Purchase>(`${this.base}/purchases/${id}/cancel`, {});
   }
 
-  cancelPurchaseWithReason(id: string, payload: { reason: string; resolution?: string; return_items?: unknown[] }): Observable<Purchase> {
+  cancelPurchaseWithReason(
+    id: string,
+    payload: { reason: string; resolution?: string; return_items?: unknown[] },
+  ): Observable<Purchase> {
     return this.http.post<Purchase>(`${this.base}/purchases/${id}/cancel`, payload);
   }
 
@@ -236,9 +308,15 @@ export class ApiService {
     return this.http.post<Purchase>(`${this.base}/purchases/${id}/close-balance`, payload);
   }
 
-  deletePurchase(id: string, reason?: string): Observable<{ number: string; items_summary: string }> {
+  deletePurchase(
+    id: string,
+    reason?: string,
+  ): Observable<{ number: string; items_summary: string }> {
     const params = reason ? { reason } : undefined;
-    return this.http.delete<{ number: string; items_summary: string }>(`${this.base}/purchases/${id}`, { params });
+    return this.http.delete<{ number: string; items_summary: string }>(
+      `${this.base}/purchases/${id}`,
+      { params },
+    );
   }
 
   updatePurchase(id: string, payload: unknown): Observable<Purchase> {
@@ -253,27 +331,67 @@ export class ApiService {
     return this.http.delete<Purchase>(`${this.base}/purchases/${id}/items/${itemId}`);
   }
 
-  suppliers(): Observable<Array<{ id: string; name: string; contact: string | null; default_delivery_days: number | null; default_payment_terms: string | null }>> {
-    return this.http.get<Array<{ id: string; name: string; contact: string | null; default_delivery_days: number | null; default_payment_terms: string | null }>>(`${this.base}/suppliers`);
+  suppliers(): Observable<
+    Array<{
+      id: string;
+      name: string;
+      contact: string | null;
+      default_delivery_days: number | null;
+      default_payment_terms: string | null;
+    }>
+  > {
+    return this.http.get<
+      Array<{
+        id: string;
+        name: string;
+        contact: string | null;
+        default_delivery_days: number | null;
+        default_payment_terms: string | null;
+      }>
+    >(`${this.base}/suppliers`);
   }
 
-  createSupplier(payload: unknown): Observable<{ id: string; name: string; default_delivery_days: number | null; default_payment_terms: string | null }> {
-    return this.http.post<{ id: string; name: string; default_delivery_days: number | null; default_payment_terms: string | null }>(`${this.base}/suppliers`, payload);
+  createSupplier(payload: unknown): Observable<{
+    id: string;
+    name: string;
+    default_delivery_days: number | null;
+    default_payment_terms: string | null;
+  }> {
+    return this.http.post<{
+      id: string;
+      name: string;
+      default_delivery_days: number | null;
+      default_payment_terms: string | null;
+    }>(`${this.base}/suppliers`, payload);
   }
 
-  receivePurchaseInFull(id: string, options?: { create_products?: boolean; observation?: string }): Observable<Purchase> {
+  receivePurchaseInFull(
+    id: string,
+    options?: { create_products?: boolean; observation?: string },
+  ): Observable<Purchase> {
     const params: Record<string, string> = {};
     if (options?.create_products) params['create_products'] = 'true';
     if (options?.observation) params['observation'] = options.observation;
     return this.http.post<Purchase>(`${this.base}/purchases/${id}/receive-all`, {}, { params });
   }
 
-  settlePurchasePayable(purchaseId: string, payableId: string, payload: unknown = {}): Observable<unknown> {
-    return this.http.post(`${this.base}/purchases/${purchaseId}/payables/${payableId}/settle`, payload);
+  settlePurchasePayable(
+    purchaseId: string,
+    payableId: string,
+    payload: unknown = {},
+  ): Observable<unknown> {
+    return this.http.post(
+      `${this.base}/purchases/${purchaseId}/payables/${payableId}/settle`,
+      payload,
+    );
   }
 
-  payables(params: Record<string, string | number | boolean> = {}): Observable<PayableListResponse> {
-    return this.http.get<PayableListResponse>(`${this.base}/payables`, { params: this.queryParams(params) });
+  payables(
+    params: Record<string, string | number | boolean> = {},
+  ): Observable<PayableListResponse> {
+    return this.http.get<PayableListResponse>(`${this.base}/payables`, {
+      params: this.queryParams(params),
+    });
   }
 
   payable(id: string): Observable<PayableDetail> {
@@ -281,7 +399,9 @@ export class ApiService {
   }
 
   payableReport(params: Record<string, string | number | boolean> = {}): Observable<PayableReport> {
-    return this.http.get<PayableReport>(`${this.base}/payables/report`, { params: this.queryParams(params) });
+    return this.http.get<PayableReport>(`${this.base}/payables/report`, {
+      params: this.queryParams(params),
+    });
   }
 
   addPayablePayment(id: string, payload: unknown): Observable<PayableDetail> {
@@ -292,8 +412,15 @@ export class ApiService {
     return this.http.delete<PayableDetail>(`${this.base}/payables/${id}/payments/${paymentId}`);
   }
 
-  reconcilePayablePayment(id: string, paymentId: string, reconciled: boolean): Observable<PayableDetail> {
-    return this.http.post<PayableDetail>(`${this.base}/payables/${id}/payments/${paymentId}/reconcile`, { reconciled });
+  reconcilePayablePayment(
+    id: string,
+    paymentId: string,
+    reconciled: boolean,
+  ): Observable<PayableDetail> {
+    return this.http.post<PayableDetail>(
+      `${this.base}/payables/${id}/payments/${paymentId}/reconcile`,
+      { reconciled },
+    );
   }
 
   updatePayable(id: string, payload: unknown): Observable<PayableDetail> {
@@ -301,14 +428,19 @@ export class ApiService {
   }
 
   downloadPayablesCsv(params: Record<string, string | number | boolean> = {}): void {
-    this.http.get(`${this.base}/payables/export.csv`, { params: this.queryParams(params), responseType: 'blob' }).subscribe((blob) => {
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = 'contas-a-pagar.csv';
-      link.click();
-      URL.revokeObjectURL(url);
-    });
+    this.http
+      .get(`${this.base}/payables/export.csv`, {
+        params: this.queryParams(params),
+        responseType: 'blob',
+      })
+      .subscribe((blob) => {
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'contas-a-pagar.csv';
+        link.click();
+        URL.revokeObjectURL(url);
+      });
   }
 
   private queryParams(params: Record<string, string | number | boolean>): Record<string, string> {
@@ -319,7 +451,11 @@ export class ApiService {
     );
   }
 
-  updatePurchasePayable(purchaseId: string, payableId: string, payload: unknown): Observable<unknown> {
+  updatePurchasePayable(
+    purchaseId: string,
+    payableId: string,
+    payload: unknown,
+  ): Observable<unknown> {
     return this.http.patch(`${this.base}/purchases/${purchaseId}/payables/${payableId}`, payload);
   }
   updatePurchaseItem(id: string, itemId: string, payload: unknown): Observable<Purchase> {
@@ -331,11 +467,16 @@ export class ApiService {
     return this.http.post<Purchase>(`${this.base}/purchases/${id}/attachments`, form);
   }
   downloadPurchaseAttachment(id: string, attachmentId: string, filename: string): void {
-    this.http.get(`${this.base}/purchases/${id}/attachments/${attachmentId}`, { responseType: 'blob' }).subscribe((blob) => {
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a'); link.href = url; link.download = filename; link.click();
-      URL.revokeObjectURL(url);
-    });
+    this.http
+      .get(`${this.base}/purchases/${id}/attachments/${attachmentId}`, { responseType: 'blob' })
+      .subscribe((blob) => {
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        link.click();
+        URL.revokeObjectURL(url);
+      });
   }
   customers(): Observable<Customer[]> {
     return this.http.get<Customer[]>(`${this.base}/customers`);

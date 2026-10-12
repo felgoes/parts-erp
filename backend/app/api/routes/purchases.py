@@ -14,8 +14,8 @@ from app.core.config import get_settings
 from app.core.permissions import Permission, has_permission
 from app.db.session import get_db
 from app.models import (
-    MovementType,
     MarketStudy,
+    MovementType,
     PayablePayment,
     Product,
     PurchaseAttachment,
@@ -47,10 +47,16 @@ from app.schemas.common import (
     PurchaseReceiveItem,
     PurchaseUpdate,
 )
+from app.services.payables import (
+    apply_payment_condition,
+    normalize_condition,
+    payable_balance,
+    refresh_payable,
+)
 from app.services.purchase_allocation import (
+    MILLI,
     ImportPlan,
     ImportPlanError,
-    MILLI,
     build_import_plan,
     from_cents,
     half_up_div,
@@ -59,7 +65,6 @@ from app.services.purchase_allocation import (
     to_milli,
 )
 from app.services.purchase_import import analyze_upload
-from app.services.payables import apply_payment_condition, normalize_condition, payable_balance, refresh_payable
 from app.services.stock import move_stock
 
 router = APIRouter(prefix="/purchases", tags=["Compras"])
@@ -179,13 +184,15 @@ def _event(
     item: PurchaseItem | None = None,
     user: User | None = None,
 ) -> None:
-    db.add(PurchaseEvent(
-        purchase_id=purchase.id,
-        item_id=item.id if item else None,
-        user_id=user.id if user else None,
-        event_type=event_type,
-        detail=detail,
-    ))
+    db.add(
+        PurchaseEvent(
+            purchase_id=purchase.id,
+            item_id=item.id if item else None,
+            user_id=user.id if user else None,
+            event_type=event_type,
+            detail=detail,
+        )
+    )
 
 
 def _recompute_purchase_costs(purchase: PurchaseCase, quote: PurchaseQuote | None = None) -> None:
@@ -206,9 +213,7 @@ def _recompute_purchase_costs(purchase: PurchaseCase, quote: PurchaseQuote | Non
         base_cents[item.id] * quantities[item.id] > 0 for item in purchase.items
     )
     if proportional:
-        weights = [
-            (item.id, base_cents[item.id] * quantities[item.id]) for item in purchase.items
-        ]
+        weights = [(item.id, base_cents[item.id] * quantities[item.id]) for item in purchase.items]
     else:
         # Sem preço informado em nenhum item não existe base proporcional: cai para quantidade.
         weights = [(item.id, quantities[item.id]) for item in purchase.items]
@@ -219,7 +224,9 @@ def _recompute_purchase_costs(purchase: PurchaseCase, quote: PurchaseQuote | Non
         extra_cents = freight[item.id] + tax[item.id] - discount[item.id]
         landed_cents = base_cents[item.id] + half_up_div(extra_cents * MILLI, quantities[item.id])
         if landed_cents < 0:
-            raise HTTPException(status_code=422, detail="Os descontos deixam o custo de alguma peça negativo.")
+            raise HTTPException(
+                status_code=422, detail="Os descontos deixam o custo de alguma peça negativo."
+            )
         item.freight_amount = from_cents(freight[item.id])
         item.tax_amount = from_cents(tax[item.id])
         item.discount_amount = from_cents(discount[item.id])
@@ -257,7 +264,12 @@ def _as_utc(value: datetime | None) -> datetime | None:
 
 
 def _payable_due_date(purchase: PurchaseCase) -> datetime:
-    base = _as_utc(purchase.needed_by) or _as_utc(purchase.document_date) or _as_utc(purchase.created_at) or datetime.now(UTC)
+    base = (
+        _as_utc(purchase.needed_by)
+        or _as_utc(purchase.document_date)
+        or _as_utc(purchase.created_at)
+        or datetime.now(UTC)
+    )
     return base + timedelta(days=PAYABLE_TERM_DAYS)
 
 
@@ -288,7 +300,9 @@ def _owed_value(purchase: PurchaseCase) -> Decimal:
         return Decimal(purchase.expense_amount or 0)
     if purchase.status == "closed":
         return _received_value(purchase)
-    quote = next((entry for entry in purchase.quotes if entry.id == purchase.selected_quote_id), None)
+    quote = next(
+        (entry for entry in purchase.quotes if entry.id == purchase.selected_quote_id), None
+    )
     if quote is not None:
         return Decimal(quote.total).quantize(Decimal("0.01"))
     return _received_value(purchase)
@@ -296,7 +310,9 @@ def _owed_value(purchase: PurchaseCase) -> Decimal:
 
 def _payable_condition(purchase: PurchaseCase) -> tuple[str, int, int, int]:
     """Condição combinada: a da cotação vencedora; sem ela, à vista no prazo padrão."""
-    quote = next((entry for entry in purchase.quotes if entry.id == purchase.selected_quote_id), None)
+    quote = next(
+        (entry for entry in purchase.quotes if entry.id == purchase.selected_quote_id), None
+    )
     if quote is not None:
         return (
             quote.payment_type,
@@ -348,14 +364,24 @@ def _sync_payable(
             payable.status = "cancelled"
             payable.cancelled_at = datetime.now(UTC)
             payable.cancel_reason = (reason or purchase.cancel_reason or "")[:255] or None
-            _event(db, purchase, "payable_cancelled", f"Título a pagar de {payable.amount:.2f} encerrado com o cancelamento.")
+            _event(
+                db,
+                purchase,
+                "payable_cancelled",
+                f"Título a pagar de {payable.amount:.2f} encerrado com o cancelamento.",
+            )
         return payable
     if amount <= 0:
         if payable and payable.status in {"open", "partial"} and not payable.payments:
             payable.status = "cancelled"
             payable.cancelled_at = datetime.now(UTC)
             payable.cancel_reason = "Sem valor a pagar depois do encerramento do saldo."
-            _event(db, purchase, "payable_cancelled", "Título a pagar encerrado por não haver valor recebido.")
+            _event(
+                db,
+                purchase,
+                "payable_cancelled",
+                "Título a pagar encerrado por não haver valor recebido.",
+            )
         elif payable:
             refresh_payable(payable)
         return payable
@@ -369,7 +395,8 @@ def _sync_payable(
         return payable
     payable = PurchasePayable(
         supplier_id=purchase.supplier_id,
-        supplier_name=purchase.supplier_name or (purchase.supplier.name if purchase.supplier else None),
+        supplier_name=purchase.supplier_name
+        or (purchase.supplier.name if purchase.supplier else None),
         amount=amount,
         due_date=_payable_due_date(purchase),
         status="open",
@@ -452,6 +479,8 @@ def _delete_blockers(purchase: PurchaseCase) -> list[str]:
     if purchase.status != "negotiating":
         blockers.append(f"etapa {purchase.status}")
     return blockers
+
+
 def _received_pending_return(item: PurchaseItem) -> Decimal:
     return Decimal(item.received_quantity) - Decimal(item.returned_quantity)
 
@@ -536,10 +565,16 @@ def _deletion_effects(purchase: PurchaseCase) -> str:
         effects.append(f"{len(purchase.quotes)} cotação(ões)")
     if purchase.attachments:
         effects.append(f"{len(purchase.attachments)} anexo(s)")
-    received = [(item, _received_pending_return(item)) for item in purchase.items if _received_pending_return(item) > 0]
+    received = [
+        (item, _received_pending_return(item))
+        for item in purchase.items
+        if _received_pending_return(item) > 0
+    ]
     if received:
         quantity = sum((entry[1] for entry in received), Decimal("0"))
-        effects.append(f"estorno de {quantity:g} unidade(s) recebida(s) em {len(received)} item(ns)")
+        effects.append(
+            f"estorno de {quantity:g} unidade(s) recebida(s) em {len(received)} item(ns)"
+        )
     payables = [payable for payable in purchase.payables if payable.status != "cancelled"]
     if payables:
         amount = sum((Decimal(payable.amount) for payable in payables), Decimal("0"))
@@ -665,16 +700,17 @@ def create_purchase(
         if item.product_id and payload.purchase_type == "expense":
             product = db.get(Product, item.product_id)
             if product and product.stock_type != "warehouse":
-                raise HTTPException(status_code=422, detail="Materiais de despesas devem ser vinculados a itens do almoxarifado.")
+                raise HTTPException(
+                    status_code=422,
+                    detail="Materiais de despesas devem ser vinculados a itens do almoxarifado.",
+                )
     supplier: Supplier | None = None
     if payload.supplier_id:
         supplier = db.get(Supplier, payload.supplier_id)
         if not supplier:
             raise HTTPException(status_code=404, detail="Fornecedor não encontrado.")
     elif payload.supplier_name and payload.supplier_name.strip():
-        supplier = db.scalar(
-            select(Supplier).where(Supplier.name == payload.supplier_name.strip())
-        )
+        supplier = db.scalar(select(Supplier).where(Supplier.name == payload.supplier_name.strip()))
     duplicate = _find_duplicate_purchase(db, payload)
     if duplicate and duplicate.status != "cancelled":
         raise HTTPException(
@@ -691,7 +727,9 @@ def create_purchase(
         )
     purchase = PurchaseCase(
         number=f"COM-{datetime.now(UTC):%Y}-{uuid4().hex[:6].upper()}",
-        status=("ordered" if payload.items else "received") if payload.purchase_type == "expense" else "negotiating",
+        status=("ordered" if payload.items else "received")
+        if payload.purchase_type == "expense"
+        else "negotiating",
         purchase_type=payload.purchase_type,
         expense_category=payload.expense_category,
         expense_amount=payload.expense_amount,
@@ -767,11 +805,26 @@ def upload_purchase_attachments(
                 raise HTTPException(status_code=422, detail="Nome de arquivo inválido.")
             path.write_bytes(content)
             saved.append(path)
-            db.add(PurchaseAttachment(purchase_id=purchase.id, filename=filename, content_type=upload.content_type or "application/octet-stream", size_bytes=len(content), storage_path=str(path)))
+            db.add(
+                PurchaseAttachment(
+                    purchase_id=purchase.id,
+                    filename=filename,
+                    content_type=upload.content_type or "application/octet-stream",
+                    size_bytes=len(content),
+                    storage_path=str(path),
+                )
+            )
             existing_size += len(content)
         if existing_size > 100 * 1024 * 1024:
-            raise HTTPException(status_code=422, detail="O limite total de documentos desta compra é 100 MB.")
-        _event(db, purchase, "attachment_added", f"{len(files)} documento(s) anexado(s) por {user.full_name}.")
+            raise HTTPException(
+                status_code=422, detail="O limite total de documentos desta compra é 100 MB."
+            )
+        _event(
+            db,
+            purchase,
+            "attachment_added",
+            f"{len(files)} documento(s) anexado(s) por {user.full_name}.",
+        )
         db.commit()
     except Exception:
         for path in saved:
@@ -791,10 +844,16 @@ def download_purchase_attachment(
     db: Session = Depends(get_db),
     _: User = Depends(require_permission(Permission.PURCHASE_READ)),
 ) -> FileResponse:
-    attachment = db.scalar(select(PurchaseAttachment).where(PurchaseAttachment.id == attachment_id, PurchaseAttachment.purchase_id == purchase_id))
+    attachment = db.scalar(
+        select(PurchaseAttachment).where(
+            PurchaseAttachment.id == attachment_id, PurchaseAttachment.purchase_id == purchase_id
+        )
+    )
     if not attachment:
         raise HTTPException(status_code=404, detail="Documento não encontrado")
-    return FileResponse(attachment.storage_path, media_type=attachment.content_type, filename=attachment.filename)
+    return FileResponse(
+        attachment.storage_path, media_type=attachment.content_type, filename=attachment.filename
+    )
 
 
 @router.get("/{purchase_id}", response_model=PurchaseOut)
@@ -816,26 +875,42 @@ def update_purchase_item(
 ) -> PurchaseOut:
     purchase = _load(db, purchase_id)
     if purchase.purchase_type != "parts":
-        raise HTTPException(status_code=409, detail="Os itens só podem ser alterados em compras de peças.")
+        raise HTTPException(
+            status_code=409, detail="Os itens só podem ser alterados em compras de peças."
+        )
     if purchase.status in {"received", "cancelled", "closed"}:
-        raise HTTPException(status_code=409, detail="Os itens não podem mais ser alterados nesta etapa.")
+        raise HTTPException(
+            status_code=409, detail="Os itens não podem mais ser alterados nesta etapa."
+        )
     item = next((entry for entry in purchase.items if entry.id == item_id), None)
     if not item:
         raise HTTPException(status_code=404, detail="Peça não encontrada nesta compra.")
     changes = payload.model_dump(exclude_unset=True)
-    if purchase.status not in {"negotiating", "approved"} and {"description", "sku", "unit"} & changes.keys():
+    if (
+        purchase.status not in {"negotiating", "approved"}
+        and {"description", "sku", "unit"} & changes.keys()
+    ):
         raise HTTPException(
             status_code=409,
             detail="Descrição, SKU e unidade só podem ser alterados antes do pedido ao fornecedor.",
         )
     if payload.quantity is not None and payload.quantity < item.received_quantity:
-        raise HTTPException(status_code=422, detail="A quantidade não pode ser menor que o já recebido.")
+        raise HTTPException(
+            status_code=422, detail="A quantidade não pode ser menor que o já recebido."
+        )
     for field, value in changes.items():
         if value is not None:
             setattr(item, field, value)
-    selected = next((quote for quote in purchase.quotes if quote.id == purchase.selected_quote_id), None)
+    selected = next(
+        (quote for quote in purchase.quotes if quote.id == purchase.selected_quote_id), None
+    )
     _recompute_purchase_costs(purchase, selected)
-    _event(db, purchase, "item_updated", f"Dados de {item.description} atualizados por {user.full_name}.")
+    _event(
+        db,
+        purchase,
+        "item_updated",
+        f"Dados de {item.description} atualizados por {user.full_name}.",
+    )
     db.commit()
     return _present(_load(db, purchase.id), user)
 
@@ -877,7 +952,13 @@ async def confirm_imported_purchase(
                 storage_path=str(stored),
             )
         )
-        _event(db, _load(db, purchase.id), "attachment_added", f"Documento original anexado por {user.full_name}.", user=user)
+        _event(
+            db,
+            _load(db, purchase.id),
+            "attachment_added",
+            f"Documento original anexado por {user.full_name}.",
+            user=user,
+        )
         db.commit()
     except Exception:
         db.rollback()
@@ -940,7 +1021,9 @@ def add_purchase_item(
 ) -> PurchaseOut:
     purchase = _load(db, purchase_id, for_update=True)
     if purchase.purchase_type != "parts":
-        raise HTTPException(status_code=409, detail="Itens só podem ser incluídos em compras de peças.")
+        raise HTTPException(
+            status_code=409, detail="Itens só podem ser incluídos em compras de peças."
+        )
     if purchase.status != "negotiating":
         raise HTTPException(
             status_code=409, detail="Só é possível incluir itens durante a negociação."
@@ -982,7 +1065,9 @@ def remove_purchase_item(
 ) -> PurchaseOut:
     purchase = _load(db, purchase_id, for_update=True)
     if purchase.purchase_type != "parts":
-        raise HTTPException(status_code=409, detail="Itens só podem ser removidos de compras de peças.")
+        raise HTTPException(
+            status_code=409, detail="Itens só podem ser removidos de compras de peças."
+        )
     if purchase.status != "negotiating":
         raise HTTPException(
             status_code=409, detail="Só é possível remover itens durante a negociação."
@@ -1026,7 +1111,8 @@ def add_quote(
     purchase = _load(db, purchase_id)
     if purchase.status not in {"negotiating", "approved"}:
         raise HTTPException(
-            status_code=409, detail="As cotações só podem ser registradas antes do pedido ao fornecedor."
+            status_code=409,
+            detail="As cotações só podem ser registradas antes do pedido ao fornecedor.",
         )
     expected_item_ids = {item.id for item in purchase.items}
     if set(payload.item_costs) != expected_item_ids:
@@ -1090,7 +1176,8 @@ def select_quote(
     purchase = _load(db, purchase_id)
     if purchase.status not in {"negotiating", "approved"}:
         raise HTTPException(
-            status_code=409, detail="Só é possível escolher uma cotação antes de enviar o pedido ao fornecedor."
+            status_code=409,
+            detail="Só é possível escolher uma cotação antes de enviar o pedido ao fornecedor.",
         )
     quote = next((q for q in purchase.quotes if q.id == quote_id), None)
     if not quote:
@@ -1178,7 +1265,10 @@ def _apply_receipt(
                     ),
                 )
             if not item.sku.strip():
-                raise HTTPException(status_code=422, detail="Informe o SKU para cadastrar este material no catálogo.")
+                raise HTTPException(
+                    status_code=422,
+                    detail="Informe o SKU para cadastrar este material no catálogo.",
+                )
             existing = db.scalar(select(Product).where(Product.sku == item.sku))
             if existing:
                 product = existing
@@ -1207,7 +1297,10 @@ def _apply_receipt(
                 ),
             )
         if purchase.purchase_type == "expense" and product.stock_type != "warehouse":
-            raise HTTPException(status_code=422, detail="Recebimentos de despesas só podem creditar itens do almoxarifado.")
+            raise HTTPException(
+                status_code=422,
+                detail="Recebimentos de despesas só podem creditar itens do almoxarifado.",
+            )
 
         new_received = item.received_quantity + received.quantity
         move_stock(
@@ -1226,7 +1319,11 @@ def _apply_receipt(
             purchase,
             "item_received",
             f"{received.quantity:g} {item.unit} de {item.sku or item.description[:80]} recebidas por {user.full_name}."
-            + (f" Observação: {received.observation.strip()}" if received.observation and received.observation.strip() else ""),
+            + (
+                f" Observação: {received.observation.strip()}"
+                if received.observation and received.observation.strip()
+                else ""
+            ),
             item=item,
             user=user,
         )
@@ -1302,7 +1399,9 @@ def _register_returns(
 ) -> None:
     """Write the documented stock-out when received goods go back to the supplier."""
     lines = {item.id: item for item in purchase.items}
-    pending = {item.id: _pending_return(item) for item in purchase.items if _pending_return(item) > 0}
+    pending = {
+        item.id: _pending_return(item) for item in purchase.items if _pending_return(item) > 0
+    }
     entries = requested or [None]
     registered = 0
     for entry in entries:
@@ -1400,7 +1499,13 @@ def cancel_purchase(
         purchase.cancel_reason = reason
         purchase.cancelled_at = datetime.now(UTC)
         purchase.cancelled_by_id = user.id
-        _event(db, purchase, "cancelled", f"Compra cancelada por {user.full_name}. Motivo: {reason}", user=user)
+        _event(
+            db,
+            purchase,
+            "cancelled",
+            f"Compra cancelada por {user.full_name}. Motivo: {reason}",
+            user=user,
+        )
     _sync_payable(db, purchase, reason=reason)
     db.commit()
     return _present(_load(db, purchase.id), user)
@@ -1482,7 +1587,10 @@ def delete_purchase(
     total = (
         Decimal(purchase.expense_amount or 0)
         if purchase.purchase_type == "expense"
-        else sum((Decimal(item.quantity) * Decimal(item.unit_cost) for item in purchase.items), Decimal("0"))
+        else sum(
+            (Decimal(item.quantity) * Decimal(item.unit_cost) for item in purchase.items),
+            Decimal("0"),
+        )
     )
     children_summary = _deletion_effects(purchase)
     record = PurchaseDeletion(
@@ -1491,7 +1599,8 @@ def delete_purchase(
         purchase_type=purchase.purchase_type,
         supplier_name=purchase.supplier_name,
         items_summary="; ".join(
-            f"{Decimal(item.quantity):g} x {item.sku or item.description}" for item in purchase.items
+            f"{Decimal(item.quantity):g} x {item.sku or item.description}"
+            for item in purchase.items
         )[:2000]
         or (purchase.expense_category or ""),
         children_summary=children_summary,

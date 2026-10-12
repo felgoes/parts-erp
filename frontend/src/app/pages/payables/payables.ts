@@ -8,7 +8,14 @@ import { finalize } from 'rxjs';
 import { ApiService } from '../../core/api.service';
 import { AuthService } from '../../core/auth.service';
 import { LiveUpdatesService } from '../../core/live-updates.service';
-import { PayableDetail, PayableInstallment, PayableListItem, PayableListResponse, PayableReport, PaymentConditionType } from '../../core/models';
+import {
+  PayableDetail,
+  PayableInstallment,
+  PayableListItem,
+  PayableListResponse,
+  PayableReport,
+  PaymentConditionType,
+} from '../../core/models';
 import { DateRange, quickDateRange } from '../../core/quick-date-ranges';
 import { canManagePurchases } from '../../core/user-access';
 import { dateOnlyLabel, dateOnlyValue } from '../../shared/date-only';
@@ -42,23 +49,54 @@ export class PayablesPage implements OnInit {
   private readonly initialRange = quickDateRange('last30');
   readonly startDate = signal(this.initialRange.startDate);
   readonly endDate = signal(this.initialRange.endDate);
-  readonly paymentDraft = signal<{ amount: number; paid_at: string; method: string; notes: string; installmentId: string | null }>({ amount: 0, paid_at: this.today(), method: '', notes: '', installmentId: null });
-  readonly conditionDraft = signal<{ payment_type: PaymentConditionType; installment_count: number; first_due_days: number; interval_days: number }>({ payment_type: 'cash', installment_count: 1, first_due_days: 30, interval_days: 30 });
+  readonly paymentDraft = signal<{
+    amount: number;
+    paid_at: string;
+    method: string;
+    notes: string;
+    installmentId: string | null;
+  }>({ amount: 0, paid_at: this.today(), method: '', notes: '', installmentId: null });
+  readonly conditionDraft = signal<{
+    payment_type: PaymentConditionType;
+    installment_count: number;
+    first_due_days: number;
+    interval_days: number;
+  }>({ payment_type: 'cash', installment_count: 1, first_due_days: 30, interval_days: 30 });
   private readonly filterChanges = new Subject<void>();
 
   constructor() {
     this.filterChanges.pipe(debounceTime(350), takeUntilDestroyed()).subscribe(() => this.load());
   }
 
-  setSearch(value: string) { this.search.set(value); this.filterChanges.next(); }
-  setSupplier(value: string) { this.supplierFilter.set(value); this.filterChanges.next(); }
-  setStatus(value: string) { this.statusFilter.set(value); this.load(); }
-  setOverdueOnly(value: boolean) { this.overdueOnly.set(value); this.load(); }
+  setSearch(value: string) {
+    this.search.set(value);
+    this.filterChanges.next();
+  }
+  setSupplier(value: string) {
+    this.supplierFilter.set(value);
+    this.filterChanges.next();
+  }
+  setStatus(value: string) {
+    this.statusFilter.set(value);
+    this.load();
+  }
+  setOverdueOnly(value: boolean) {
+    this.overdueOnly.set(value);
+    this.load();
+  }
 
-  canManage() { return canManagePurchases(this.auth.user()?.role); }
-  dateOnly(value: string | null | undefined) { return dateOnlyLabel(value); }
+  canManage() {
+    return canManagePurchases(this.auth.user()?.role);
+  }
+  dateOnly(value: string | null | undefined) {
+    return dateOnlyLabel(value);
+  }
   payableStatusLabel(status: string) {
-    return { open: 'Em aberto', partial: 'Baixa parcial', paid: 'Pago', cancelled: 'Encerrado' }[status] ?? status;
+    return (
+      { open: 'Em aberto', partial: 'Baixa parcial', paid: 'Pago', cancelled: 'Encerrado' }[
+        status
+      ] ?? status
+    );
   }
   private today() {
     const now = new Date();
@@ -68,7 +106,12 @@ export class PayablesPage implements OnInit {
   ngOnInit() {
     this.load();
     this.loadReport();
-    this.live.changes$.pipe(debounceTime(300), takeUntilDestroyed(this.destroyRef)).subscribe(() => { this.load(); this.loadReport(); });
+    this.live.changes$
+      .pipe(debounceTime(300), takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        this.load();
+        this.loadReport();
+      });
   }
 
   private filters(extra: Record<string, string | number | boolean> = {}) {
@@ -84,10 +127,14 @@ export class PayablesPage implements OnInit {
   load() {
     this.loading.set(true);
     this.error.set('');
-    this.api.payables(this.filters()).pipe(finalize(() => this.loading.set(false))).subscribe({
-      next: (listing) => this.data.set(listing),
-      error: (err) => this.error.set(err.error?.detail || 'Não foi possível carregar as contas a pagar.'),
-    });
+    this.api
+      .payables(this.filters())
+      .pipe(finalize(() => this.loading.set(false)))
+      .subscribe({
+        next: (listing) => this.data.set(listing),
+        error: (err) =>
+          this.error.set(err.error?.detail || 'Não foi possível carregar as contas a pagar.'),
+      });
   }
 
   loadReport() {
@@ -113,25 +160,58 @@ export class PayablesPage implements OnInit {
     this.message.set('');
     this.api.payable(item.id).subscribe({
       next: (payable) => {
-        this.paymentDraft.set({ amount: Number(payable.balance), paid_at: this.today(), method: '', notes: '', installmentId: null });
-        this.conditionDraft.set({ payment_type: (payable.payment_type ?? 'cash') as PaymentConditionType, installment_count: payable.installment_count ?? payable.installments.length ?? 1, first_due_days: payable.first_due_days ?? 30, interval_days: payable.interval_days ?? 30 });
+        this.paymentDraft.set({
+          amount: Number(payable.balance),
+          paid_at: this.today(),
+          method: '',
+          notes: '',
+          installmentId: null,
+        });
+        this.conditionDraft.set({
+          payment_type: (payable.payment_type ?? 'cash') as PaymentConditionType,
+          installment_count: payable.installment_count ?? payable.installments.length ?? 1,
+          first_due_days: payable.first_due_days ?? 30,
+          interval_days: payable.interval_days ?? 30,
+        });
         this.detail.set(payable);
       },
       error: (err) => this.error.set(err.error?.detail || 'Não foi possível abrir o título.'),
     });
   }
 
-  closeDetail() { this.detail.set(null); }
-
-  setPaymentAmount(value: number | null) { this.paymentDraft.update((draft) => ({ ...draft, amount: value ?? 0 })); }
-  /** P12: pré-seleciona a parcela no formulário de baixa. */
-  payInstallment(payable: PayableDetail, installment: PayableInstallment) {
-    const open = Number(installment.balance ?? Number(installment.amount) - Number(installment.paid_amount ?? 0));
-    this.paymentDraft.set({ amount: open, paid_at: this.today(), method: '', notes: `Parcela ${installment.number}`, installmentId: installment.id });
+  closeDetail() {
+    this.detail.set(null);
   }
 
-  setConditionType(value: string) { this.conditionDraft.update((draft) => ({ ...draft, payment_type: value as PaymentConditionType })); }
-  setConditionNumber(field: 'installment_count' | 'first_due_days' | 'interval_days', value: string) { this.conditionDraft.update((draft) => ({ ...draft, [field]: Number(value) || 0 })); }
+  setPaymentAmount(value: number | null) {
+    this.paymentDraft.update((draft) => ({ ...draft, amount: value ?? 0 }));
+  }
+  /** P12: pré-seleciona a parcela no formulário de baixa. */
+  payInstallment(payable: PayableDetail, installment: PayableInstallment) {
+    const open = Number(
+      installment.balance ?? Number(installment.amount) - Number(installment.paid_amount ?? 0),
+    );
+    this.paymentDraft.set({
+      amount: open,
+      paid_at: this.today(),
+      method: '',
+      notes: `Parcela ${installment.number}`,
+      installmentId: installment.id,
+    });
+  }
+
+  setConditionType(value: string) {
+    this.conditionDraft.update((draft) => ({
+      ...draft,
+      payment_type: value as PaymentConditionType,
+    }));
+  }
+  setConditionNumber(
+    field: 'installment_count' | 'first_due_days' | 'interval_days',
+    value: string,
+  ) {
+    this.conditionDraft.update((draft) => ({ ...draft, [field]: Number(value) || 0 }));
+  }
 
   /** P12: altera a condição do título; parcelas já pagas ficam como estão. */
   saveCondition(payable: PayableDetail) {
@@ -139,50 +219,103 @@ export class PayablesPage implements OnInit {
     const draft = this.conditionDraft();
     this.saving.set(true);
     this.error.set('');
-    this.api.updatePayable(payable.id, draft).pipe(finalize(() => this.saving.set(false))).subscribe({
-      next: (updated) => { this.detail.set(updated); this.afterMutation('Condição de pagamento atualizada.'); },
-      error: (err) => this.error.set(err.error?.detail || 'Não foi possível alterar a condição de pagamento.'),
-    });
+    this.api
+      .updatePayable(payable.id, draft)
+      .pipe(finalize(() => this.saving.set(false)))
+      .subscribe({
+        next: (updated) => {
+          this.detail.set(updated);
+          this.afterMutation('Condição de pagamento atualizada.');
+        },
+        error: (err) =>
+          this.error.set(err.error?.detail || 'Não foi possível alterar a condição de pagamento.'),
+      });
   }
-  setPaymentField(field: 'paid_at' | 'method' | 'notes', value: string) { this.paymentDraft.update((draft) => ({ ...draft, [field]: value })); }
+  setPaymentField(field: 'paid_at' | 'method' | 'notes', value: string) {
+    this.paymentDraft.update((draft) => ({ ...draft, [field]: value }));
+  }
 
   submitPayment(payable: PayableDetail) {
     const draft = this.paymentDraft();
     if (this.saving() || draft.amount <= 0 || draft.amount > payable.balance) return;
     this.saving.set(true);
     this.error.set('');
-    this.api.addPayablePayment(payable.id, { amount: draft.amount, paid_at: draft.paid_at || null, method: draft.method || null, notes: draft.notes || null, installment_id: draft.installmentId }).pipe(finalize(() => this.saving.set(false))).subscribe({
-      next: (updated) => { this.paymentDraft.set({ amount: Number(updated.balance), paid_at: this.today(), method: '', notes: '', installmentId: null }); this.detail.set(updated); this.afterMutation('Pagamento registrado.'); },
-      error: (err) => this.error.set(err.error?.detail || 'Não foi possível registrar o pagamento.'),
-    });
+    this.api
+      .addPayablePayment(payable.id, {
+        amount: draft.amount,
+        paid_at: draft.paid_at || null,
+        method: draft.method || null,
+        notes: draft.notes || null,
+        installment_id: draft.installmentId,
+      })
+      .pipe(finalize(() => this.saving.set(false)))
+      .subscribe({
+        next: (updated) => {
+          this.paymentDraft.set({
+            amount: Number(updated.balance),
+            paid_at: this.today(),
+            method: '',
+            notes: '',
+            installmentId: null,
+          });
+          this.detail.set(updated);
+          this.afterMutation('Pagamento registrado.');
+        },
+        error: (err) =>
+          this.error.set(err.error?.detail || 'Não foi possível registrar o pagamento.'),
+      });
   }
 
   toggleReconcile(payable: PayableDetail, payment: { id: string; reconciled: boolean }) {
     if (this.saving()) return;
     this.saving.set(true);
-    this.api.reconcilePayablePayment(payable.id, payment.id, !payment.reconciled).pipe(finalize(() => this.saving.set(false))).subscribe({
-      next: (updated) => { this.detail.set(updated); this.afterMutation(payment.reconciled ? 'Conciliação desfeita.' : 'Pagamento conciliado.'); },
-      error: (err) => this.error.set(err.error?.detail || 'Não foi possível atualizar a conciliação.'),
-    });
+    this.api
+      .reconcilePayablePayment(payable.id, payment.id, !payment.reconciled)
+      .pipe(finalize(() => this.saving.set(false)))
+      .subscribe({
+        next: (updated) => {
+          this.detail.set(updated);
+          this.afterMutation(
+            payment.reconciled ? 'Conciliação desfeita.' : 'Pagamento conciliado.',
+          );
+        },
+        error: (err) =>
+          this.error.set(err.error?.detail || 'Não foi possível atualizar a conciliação.'),
+      });
   }
 
   removePayment(payable: PayableDetail, payment: { id: string }) {
     if (this.saving()) return;
     if (!confirm('Remover este pagamento do título? O saldo volta a ficar em aberto.')) return;
     this.saving.set(true);
-    this.api.removePayablePayment(payable.id, payment.id).pipe(finalize(() => this.saving.set(false))).subscribe({
-      next: (updated) => { this.detail.set(updated); this.paymentDraft.update((draft) => ({ ...draft, amount: Number(updated.balance) })); this.afterMutation('Pagamento removido.'); },
-      error: (err) => this.error.set(err.error?.detail || 'Não foi possível remover o pagamento.'),
-    });
+    this.api
+      .removePayablePayment(payable.id, payment.id)
+      .pipe(finalize(() => this.saving.set(false)))
+      .subscribe({
+        next: (updated) => {
+          this.detail.set(updated);
+          this.paymentDraft.update((draft) => ({ ...draft, amount: Number(updated.balance) }));
+          this.afterMutation('Pagamento removido.');
+        },
+        error: (err) =>
+          this.error.set(err.error?.detail || 'Não foi possível remover o pagamento.'),
+      });
   }
 
   updateDueDate(payable: PayableDetail, value: string) {
     if (!value || dateOnlyValue(value) === dateOnlyValue(payable.due_date)) return;
     this.saving.set(true);
-    this.api.updatePayable(payable.id, { due_date: value }).pipe(finalize(() => this.saving.set(false))).subscribe({
-      next: (updated) => { this.detail.set(updated); this.afterMutation('Vencimento atualizado.'); },
-      error: (err) => this.error.set(err.error?.detail || 'Não foi possível alterar o vencimento.'),
-    });
+    this.api
+      .updatePayable(payable.id, { due_date: value })
+      .pipe(finalize(() => this.saving.set(false)))
+      .subscribe({
+        next: (updated) => {
+          this.detail.set(updated);
+          this.afterMutation('Vencimento atualizado.');
+        },
+        error: (err) =>
+          this.error.set(err.error?.detail || 'Não foi possível alterar o vencimento.'),
+      });
   }
 
   private afterMutation(text: string) {

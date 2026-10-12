@@ -22,8 +22,8 @@
           <p class="eyebrow">Identidade</p>
           <h2>Sua empresa no ERP</h2>
           <p>
-            O nome e o símbolo aparecem no menu para toda a equipe. Se apagar os campos, o ERP volta para a
-            identidade padrão.
+            O nome e o símbolo aparecem no menu para toda a equipe. Se apagar os campos, o ERP volta
+            para a identidade padrão.
           </p>
         </div>
       </div>
@@ -53,7 +53,10 @@
           <div class="logo-controls">
             <label class="secondary upload-button"
               >{{ draft.logo_data_url ? 'Trocar logotipo' : 'Enviar logotipo'
-              }}<input type="file" accept="image/png,image/jpeg,image/webp" (change)="selectLogo($event)"
+              }}<input
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                (change)="selectLogo($event)"
             /></label>
             @if (draft.logo_data_url) {
               <button class="quiet-button" type="button" (click)="removeLogo()">Remover</button>
@@ -116,11 +119,13 @@
       </div>
       <div class="backup-notice">
         <strong>{{
-          settings().drive_connected ? 'Google Drive conectado.' : 'Configure a conexão com o Google Drive.'
+          settings().drive_connected
+            ? 'Google Drive conectado.'
+            : 'Configure a conexão com o Google Drive.'
         }}</strong
         ><span
-          >O Client ID, o segredo OAuth e a pasta de destino ficam protegidos no servidor. A autorização
-          acontece na sua conta Google e não exige chave dentro do APK.</span
+          >O Client ID, o segredo OAuth e a pasta de destino ficam protegidos no servidor. A
+          autorização acontece na sua conta Google e não exige chave dentro do APK.</span
         >
       </div>
       <div class="backup-grid">
@@ -176,12 +181,17 @@
           ><small>O agendamento só começa após a configuração do serviço.</small></label
         >
         <label
-          >Horário do backup<input type="time" name="backup_time" [(ngModel)]="draft.backup_time" /><small
-            >Horário local do servidor.</small
-          ></label
+          >Horário do backup<input
+            type="time"
+            name="backup_time"
+            [(ngModel)]="draft.backup_time"
+          /><small>Horário local do servidor.</small></label
         >
         <label
-          >Manter cópias por<select name="backup_retention_days" [(ngModel)]="draft.backup_retention_days">
+          >Manter cópias por<select
+            name="backup_retention_days"
+            [(ngModel)]="draft.backup_retention_days"
+          >
             <option [ngValue]="7">7 dias</option>
             <option [ngValue]="14">14 dias</option>
             <option [ngValue]="30">30 dias</option></select
@@ -192,7 +202,10 @@
         <div class="destination-field">
           <span>Destino</span
           ><strong class="drive-destination"><span aria-hidden="true">▣</span> Google Drive</strong
-          ><small>Sem custo de armazenamento além do espaço gratuito disponível na sua conta Google.</small>
+          ><small
+            >Sem custo de armazenamento além do espaço gratuito disponível na sua conta
+            Google.</small
+          >
         </div>
       </div>
       <div class="backup-footer">
@@ -223,16 +236,16 @@
           <p class="eyebrow">Compras</p>
           <h2>Importação de documentos</h2>
           <p>
-            Perfis locais ajudam a identificar recibos de marketplaces. O sistema ainda pede revisão antes de
-            criar uma compra.
+            Perfis locais ajudam a identificar recibos de marketplaces. O sistema ainda pede revisão
+            antes de criar uma compra.
           </p>
         </div>
       </div>
       <div class="backup-notice">
         <strong>Leitura local e sem custo por documento</strong
         ><span
-          >PDF, fotos e XML são analisados no servidor do ERP. Perfis contêm apenas rótulos e sinais de
-          identificação; não executam código. Um perfil pode ter várias versões de leiaute.</span
+          >PDF, fotos e XML são analisados no servidor do ERP. Perfis contêm apenas rótulos e sinais
+          de identificação; não executam código. Um perfil pode ter várias versões de leiaute.</span
         >
       </div>
       <div class="profile-actions">
@@ -256,9 +269,8 @@
             <div>
               <strong>{{ profile.name }}</strong
               ><small
-                >{{ profile.kind === 'built_in' ? 'Perfil incluído' : 'Perfil personalizado' }} · v{{
-                  profile.version
-                }}</small
+                >{{ profile.kind === 'built_in' ? 'Perfil incluído' : 'Perfil personalizado' }} ·
+                v{{ profile.version }}</small
               >
             </div>
             @if (profile.kind === 'custom') {
@@ -277,8 +289,8 @@
         }
       </div>
       <small class="profile-footnote"
-        >Perfis incluídos: AliExpress, Mercado Livre, Shopee, Amazon e Alibaba. Recibos podem variar por país
-        e formato; se a identificação for ambígua, escolha o perfil na revisão.</small
+        >Perfis incluídos: AliExpress, Mercado Livre, Shopee, Amazon e Alibaba. Recibos podem variar
+        por país e formato; se a identificação for ambígua, escolha o perfil na revisão.</small
       >
     </section>
 

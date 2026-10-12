@@ -219,7 +219,9 @@ def sync_order(db: Session, seller_id: str, resource: str) -> MarketplaceOrder:
                     "status_detail": order.get("status_detail"),
                     "cancel_detail": order.get("cancel_detail"),
                     "order_request": order.get("order_request"),
-                    "source_updated_at": source_updated_at.isoformat() if source_updated_at else None,
+                    "source_updated_at": source_updated_at.isoformat()
+                    if source_updated_at
+                    else None,
                 },
                 created_at=source_updated_at or source_created_at or datetime.now(UTC),
             )
@@ -456,9 +458,7 @@ def _store_document(
         )
     )
     db.flush()
-    order = db.scalar(
-        select(MarketplaceOrder).where(MarketplaceOrder.invoice_id == invoice_id)
-    )
+    order = db.scalar(select(MarketplaceOrder).where(MarketplaceOrder.invoice_id == invoice_id))
     if order and document_type in {"xml", "pdf", "label_pdf"}:
         enqueue_document_notification(
             db, order, "label" if document_type == "label_pdf" else "invoice"

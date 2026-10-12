@@ -12,7 +12,12 @@ def check_api() -> tuple[str, bool, float, str]:
     started = perf_counter()
     try:
         response = httpx.get("http://127.0.0.1:8000/health", timeout=5)
-        return "API principal", response.is_success, (perf_counter() - started) * 1000, str(response.status_code)
+        return (
+            "API principal",
+            response.is_success,
+            (perf_counter() - started) * 1000,
+            str(response.status_code),
+        )
     except httpx.HTTPError as exc:
         return "API principal", False, (perf_counter() - started) * 1000, type(exc).__name__
 
@@ -35,7 +40,12 @@ def check_public_catalog() -> tuple[str, bool, float, str]:
             headers={"host": "www.goesautoparts.com.br"},
             timeout=5,
         )
-        return "Catálogo público", response.is_success, (perf_counter() - started) * 1000, str(response.status_code)
+        return (
+            "Catálogo público",
+            response.is_success,
+            (perf_counter() - started) * 1000,
+            str(response.status_code),
+        )
     except httpx.HTTPError as exc:
         return "Catálogo público", False, (perf_counter() - started) * 1000, type(exc).__name__
 

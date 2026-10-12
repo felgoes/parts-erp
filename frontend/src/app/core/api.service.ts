@@ -35,45 +35,51 @@ import {
   PushSound,
   PushNotification,
 } from './models';
+import { SettingsApi } from './api/settings-api';
+import { PurchasesApi } from './api/purchases-api';
+import { DashboardApi } from './api/dashboard-api';
+import { ProductsApi } from './api/products-api';
+import { MarketStudiesApi } from './api/market-studies-api';
+import { PayablesApi } from './api/payables-api';
+import { CustomersApi } from './api/customers-api';
+import { UsersApi } from './api/users-api';
+import { MarketplaceApi } from './api/marketplace-api';
+import { InvoicesApi } from './api/invoices-api';
+import { IntegrationsApi } from './api/integrations-api';
 
 @Injectable({ providedIn: 'root' })
 export class ApiService {
-  private readonly http = inject(HttpClient);
-  private readonly base = apiUrl('');
+  private readonly settingsApi = inject(SettingsApi);
+  private readonly purchasesApi = inject(PurchasesApi);
+  private readonly dashboardApi = inject(DashboardApi);
+  private readonly productsApi = inject(ProductsApi);
+  private readonly marketstudiesApi = inject(MarketStudiesApi);
+  private readonly payablesApi = inject(PayablesApi);
+  private readonly customersApi = inject(CustomersApi);
+  private readonly usersApi = inject(UsersApi);
+  private readonly marketplaceApi = inject(MarketplaceApi);
+  private readonly invoicesApi = inject(InvoicesApi);
+  private readonly integrationsApi = inject(IntegrationsApi);
   erpSettings(): Observable<ErpSettings> {
-    return this.http.get<ErpSettings>(`${this.base}/settings`);
+    return this.settingsApi.erpSettings();
   }
   purchaseImportProfiles(): Observable<{
     schema: string;
     profiles: Array<{ profile_id: string; name: string; kind: string; version: number }>;
   }> {
-    return this.http.get<{
-      schema: string;
-      profiles: Array<{ profile_id: string; name: string; kind: string; version: number }>;
-    }>(`${this.base}/settings/purchase-import-profiles`);
+    return this.purchasesApi.purchaseImportProfiles();
   }
   uploadPurchaseImportProfile(
     file: File,
   ): Observable<{ profile_id: string; name: string; status: string }> {
-    const form = new FormData();
-    form.append('file', file, file.name);
-    return this.http.post<{ profile_id: string; name: string; status: string }>(
-      `${this.base}/settings/purchase-import-profiles`,
-      form,
-    );
+    return this.purchasesApi.uploadPurchaseImportProfile(file);
   }
   deletePurchaseImportProfile(id: string): Observable<{ status: string }> {
-    return this.http.delete<{ status: string }>(
-      `${this.base}/settings/purchase-import-profiles/${encodeURIComponent(id)}`,
-    );
+    return this.purchasesApi.deletePurchaseImportProfile(id);
   }
   analyzePurchaseDocument(file: File, profileId?: string): Observable<any> {
-    const form = new FormData();
-    form.append('file', file, file.name);
-    const params = profileId ? { profile_id: profileId } : undefined;
-    return this.http.post<any>(`${this.base}/purchases/import-document`, form, { params });
+    return this.purchasesApi.analyzePurchaseDocument(file, profileId);
   }
-
   purchaseImportDuplicates(params: {
     document_access_key?: string;
     order_number?: string;
@@ -86,21 +92,10 @@ export class ApiService {
       cancelled: boolean;
     } | null;
   }> {
-    return this.http.get<{
-      match: {
-        purchase_id: string;
-        purchase_number: string;
-        purchase_status: string;
-        cancelled: boolean;
-      } | null;
-    }>(`${this.base}/purchases/import-document/duplicates`, { params: this.queryParams(params) });
+    return this.purchasesApi.purchaseImportDuplicates(params);
   }
-
   confirmImportedPurchase(file: File, payload: unknown): Observable<Purchase> {
-    const form = new FormData();
-    form.append('file', file);
-    form.append('payload', JSON.stringify(payload));
-    return this.http.post<Purchase>(`${this.base}/purchases/import-document/confirm`, form);
+    return this.purchasesApi.confirmImportedPurchase(file, payload);
   }
   saveErpSettings(
     settings: Pick<
@@ -119,123 +114,86 @@ export class ApiService {
       drive_folder_id?: string | null;
     },
   ): Observable<ErpSettings> {
-    return this.http.put<ErpSettings>(`${this.base}/settings`, settings);
+    return this.settingsApi.saveErpSettings(settings);
   }
   pushPreferences(): Observable<PushPreference[]> {
-    return this.http.get<PushPreference[]>(`${this.base}/push/preferences`);
+    return this.settingsApi.pushPreferences();
   }
   updatePushPreference(
     category: string,
     enabled: boolean,
     sound?: PushSound,
   ): Observable<PushPreference> {
-    return this.http.put<PushPreference>(this.base + '/push/preferences/' + category, {
-      enabled,
-      sound,
-    });
+    return this.settingsApi.updatePushPreference(category, enabled, sound);
   }
   pushHistory(): Observable<PushNotification[]> {
-    return this.http.get<PushNotification[]>(`${this.base}/push/history`);
+    return this.settingsApi.pushHistory();
   }
   connectGoogleDrive(): Observable<{ authorization_url: string; redirect_uri: string }> {
-    return this.http.get<{ authorization_url: string; redirect_uri: string }>(
-      `${this.base}/settings/backup/google-drive/connect`,
-    );
+    return this.settingsApi.connectGoogleDrive();
   }
   runGoogleDriveBackup(): Observable<{ filename: string; message: string }> {
-    return this.http.post<{ filename: string; message: string }>(
-      `${this.base}/settings/backup/run`,
-      {},
-    );
+    return this.settingsApi.runGoogleDriveBackup();
   }
   dashboard(startDate: string, endDate: string): Observable<DashboardSummary> {
-    return this.http.get<DashboardSummary>(`${this.base}/dashboard/summary`, {
-      params: { start_date: startDate, end_date: endDate },
-    });
+    return this.dashboardApi.dashboard(startDate, endDate);
   }
   dashboardFinancial(startDate: string, endDate: string): Observable<DashboardFinancialMetrics> {
-    return this.http.get<DashboardFinancialMetrics>(`${this.base}/dashboard/financial`, {
-      params: { start_date: startDate, end_date: endDate },
-    });
+    return this.dashboardApi.dashboardFinancial(startDate, endDate);
   }
   financeOverview(startDate: string, endDate: string): Observable<FinanceOverview> {
-    return this.http.get<FinanceOverview>(`${this.base}/finance/overview`, {
-      params: { start_date: startDate, end_date: endDate },
-    });
+    return this.dashboardApi.financeOverview(startDate, endDate);
   }
   products(
     search = '',
     lowStock = false,
     stockType?: 'product' | 'warehouse',
   ): Observable<Product[]> {
-    let params = new HttpParams();
-    if (search) params = params.set('search', search);
-    if (lowStock) params = params.set('low_stock', true);
-    if (stockType) params = params.set('stock_type', stockType);
-    return this.http.get<Product[]>(`${this.base}/products`, { params });
+    return this.productsApi.products(search, lowStock, stockType);
   }
   productMovements(id: string): Observable<import('./models').StockMovement[]> {
-    return this.http.get<import('./models').StockMovement[]>(
-      `${this.base}/products/${id}/movements`,
-    );
+    return this.productsApi.productMovements(id);
   }
   productDetail(id: string): Observable<ProductDetail> {
-    return this.http.get<ProductDetail>(`${this.base}/products/${id}/detail`);
+    return this.productsApi.productDetail(id);
   }
   syncMarketplaceStock(id: string): Observable<Product> {
-    return this.http.post<Product>(`${this.base}/products/${id}/sync-marketplace`, {});
+    return this.productsApi.syncMarketplaceStock(id);
   }
   createProduct(payload: Partial<Product>): Observable<Product> {
-    return this.http.post<Product>(`${this.base}/products`, payload);
+    return this.productsApi.createProduct(payload);
   }
   updateProduct(id: string, payload: Partial<Product>): Observable<Product> {
-    return this.http.patch<Product>(`${this.base}/products/${id}`, payload);
+    return this.productsApi.updateProduct(id, payload);
   }
   uploadProductImages(id: string, files: File[]): Observable<Product> {
-    const form = new FormData();
-    files.forEach((file) => form.append('files', file, file.name));
-    return this.http.post<Product>(`${this.base}/products/${id}/images`, form);
+    return this.productsApi.uploadProductImages(id, files);
   }
   deleteProductImage(id: string, imageId: string): Observable<Product> {
-    return this.http.delete<Product>(`${this.base}/products/${id}/images/${imageId}`);
+    return this.productsApi.deleteProductImage(id, imageId);
   }
   productChannelMetadata(
     provider: 'mercadolivre' | 'shopee',
     query = '',
     categoryId = '',
   ): Observable<ProductChannelMetadata> {
-    let params = new HttpParams();
-    if (query) params = params.set('query', query);
-    if (categoryId) params = params.set('category_id', categoryId);
-    return this.http.get<ProductChannelMetadata>(
-      `${this.base}/products/channel-metadata/${provider}`,
-      { params },
-    );
+    return this.productsApi.productChannelMetadata(provider, query, categoryId);
   }
   saveProductChannelDraft(
     id: string,
     provider: 'mercadolivre' | 'shopee',
     draft: ProductChannelDraft,
   ): Observable<ProductDetail> {
-    return this.http.put<ProductDetail>(
-      `${this.base}/products/${id}/channels/${provider}/draft`,
-      draft,
-    );
+    return this.productsApi.saveProductChannelDraft(id, provider, draft);
   }
   publishProductChannel(
     id: string,
     provider: 'mercadolivre' | 'shopee',
   ): Observable<ProductDetail> {
-    return this.http.post<ProductDetail>(
-      `${this.base}/products/${id}/channels/${provider}/publish`,
-      {},
-    );
+    return this.productsApi.publishProductChannel(id, provider);
   }
   adjustStock(id: string, quantity: number, reason: string): Observable<Product> {
-    return this.http.post<Product>(`${this.base}/products/${id}/adjust-stock`, {
-      quantity,
-      reason,
-    });
+    return this.productsApi.adjustStock(id, quantity, reason);
   }
   purchases(params?: {
     limit?: number;
@@ -245,22 +203,13 @@ export class ApiService {
     startDate?: string;
     endDate?: string;
   }): Observable<PurchaseListOut> {
-    return this.http.get<PurchaseListOut>(`${this.base}/purchases`, {
-      params: this.queryParams({
-        limit: params?.limit,
-        offset: params?.offset,
-        search: params?.search,
-        status: params?.status,
-        start_date: params?.startDate,
-        end_date: params?.endDate,
-      }),
-    });
+    return this.purchasesApi.purchases(params);
   }
   purchase(id: string): Observable<Purchase> {
-    return this.http.get<Purchase>(`${this.base}/purchases/${id}`);
+    return this.purchasesApi.purchase(id);
   }
   marketStudies(): Observable<MarketStudy[]> {
-    return this.http.get<MarketStudy[]>(`${this.base}/market-studies`);
+    return this.marketstudiesApi.marketStudies();
   }
   createMarketStudy(payload: {
     search_term: string;
@@ -271,10 +220,10 @@ export class ApiService {
     marketplace_fee_pct: number;
     shipping_cost: number;
   }): Observable<MarketStudy> {
-    return this.http.post<MarketStudy>(`${this.base}/market-studies`, payload);
+    return this.marketstudiesApi.createMarketStudy(payload);
   }
   marketStudyConnector(): Observable<MarketStudyConnector> {
-    return this.http.get<MarketStudyConnector>(`${this.base}/market-studies/connector`);
+    return this.marketstudiesApi.marketStudyConnector();
   }
   saveMarketStudyConnector(payload: {
     provider: MarketStudyConnector['provider'];
@@ -283,71 +232,57 @@ export class ApiService {
     api_key?: string;
     enabled: boolean;
   }): Observable<MarketStudyConnector> {
-    return this.http.put<MarketStudyConnector>(`${this.base}/market-studies/connector`, payload);
+    return this.marketstudiesApi.saveMarketStudyConnector(payload);
   }
   createPurchaseFromMarketStudy(
     studyId: string,
     sku: string,
     quantity: number,
   ): Observable<Purchase> {
-    return this.http.post<Purchase>(`${this.base}/market-studies/${studyId}/purchase`, {
-      sku,
-      quantity,
-    });
+    return this.marketstudiesApi.createPurchaseFromMarketStudy(studyId, sku, quantity);
   }
   createPurchase(payload: unknown): Observable<Purchase> {
-    return this.http.post<Purchase>(`${this.base}/purchases`, payload);
+    return this.purchasesApi.createPurchase(payload);
   }
   addPurchaseQuote(id: string, payload: unknown): Observable<Purchase> {
-    return this.http.post<Purchase>(`${this.base}/purchases/${id}/quotes`, payload);
+    return this.purchasesApi.addPurchaseQuote(id, payload);
   }
   selectPurchaseQuote(id: string, quoteId: string): Observable<Purchase> {
-    return this.http.post<Purchase>(`${this.base}/purchases/${id}/select-quote/${quoteId}`, {});
+    return this.purchasesApi.selectPurchaseQuote(id, quoteId);
   }
   placePurchaseOrder(id: string): Observable<Purchase> {
-    return this.http.post<Purchase>(`${this.base}/purchases/${id}/place-order`, {});
+    return this.purchasesApi.placePurchaseOrder(id);
   }
   receivePurchase(id: string, payload: unknown): Observable<Purchase> {
-    return this.http.post<Purchase>(`${this.base}/purchases/${id}/receive`, payload);
+    return this.purchasesApi.receivePurchase(id, payload);
   }
   cancelPurchase(id: string): Observable<Purchase> {
-    return this.http.post<Purchase>(`${this.base}/purchases/${id}/cancel`, {});
+    return this.purchasesApi.cancelPurchase(id);
   }
-
   cancelPurchaseWithReason(
     id: string,
     payload: { reason: string; resolution?: string; return_items?: unknown[] },
   ): Observable<Purchase> {
-    return this.http.post<Purchase>(`${this.base}/purchases/${id}/cancel`, payload);
+    return this.purchasesApi.cancelPurchaseWithReason(id, payload);
   }
-
   closePurchaseBalance(id: string, payload: { reason?: string | null }): Observable<Purchase> {
-    return this.http.post<Purchase>(`${this.base}/purchases/${id}/close-balance`, payload);
+    return this.purchasesApi.closePurchaseBalance(id, payload);
   }
-
   deletePurchase(
     id: string,
     reason?: string,
   ): Observable<{ number: string; items_summary: string }> {
-    const params = reason ? { reason } : undefined;
-    return this.http.delete<{ number: string; items_summary: string }>(
-      `${this.base}/purchases/${id}`,
-      { params },
-    );
+    return this.purchasesApi.deletePurchase(id, reason);
   }
-
   updatePurchase(id: string, payload: unknown): Observable<Purchase> {
-    return this.http.patch<Purchase>(`${this.base}/purchases/${id}`, payload);
+    return this.purchasesApi.updatePurchase(id, payload);
   }
-
   addPurchaseItem(id: string, payload: unknown): Observable<Purchase> {
-    return this.http.post<Purchase>(`${this.base}/purchases/${id}/items`, payload);
+    return this.purchasesApi.addPurchaseItem(id, payload);
   }
-
   removePurchaseItem(id: string, itemId: string): Observable<Purchase> {
-    return this.http.delete<Purchase>(`${this.base}/purchases/${id}/items/${itemId}`);
+    return this.purchasesApi.removePurchaseItem(id, itemId);
   }
-
   suppliers(): Observable<
     Array<{
       id: string;
@@ -357,157 +292,86 @@ export class ApiService {
       default_payment_terms: string | null;
     }>
   > {
-    return this.http.get<
-      Array<{
-        id: string;
-        name: string;
-        contact: string | null;
-        default_delivery_days: number | null;
-        default_payment_terms: string | null;
-      }>
-    >(`${this.base}/suppliers`);
+    return this.purchasesApi.suppliers();
   }
-
   createSupplier(payload: unknown): Observable<{
     id: string;
     name: string;
     default_delivery_days: number | null;
     default_payment_terms: string | null;
   }> {
-    return this.http.post<{
-      id: string;
-      name: string;
-      default_delivery_days: number | null;
-      default_payment_terms: string | null;
-    }>(`${this.base}/suppliers`, payload);
+    return this.purchasesApi.createSupplier(payload);
   }
-
   receivePurchaseInFull(
     id: string,
     options?: { create_products?: boolean; observation?: string },
   ): Observable<Purchase> {
-    const params: Record<string, string> = {};
-    if (options?.create_products) params['create_products'] = 'true';
-    if (options?.observation) params['observation'] = options.observation;
-    return this.http.post<Purchase>(`${this.base}/purchases/${id}/receive-all`, {}, { params });
+    return this.purchasesApi.receivePurchaseInFull(id, options);
   }
-
   settlePurchasePayable(
     purchaseId: string,
     payableId: string,
     payload: unknown = {},
   ): Observable<unknown> {
-    return this.http.post(
-      `${this.base}/purchases/${purchaseId}/payables/${payableId}/settle`,
-      payload,
-    );
+    return this.purchasesApi.settlePurchasePayable(purchaseId, payableId, payload);
   }
-
   payables(
     params: Record<string, string | number | boolean> = {},
   ): Observable<PayableListResponse> {
-    return this.http.get<PayableListResponse>(`${this.base}/payables`, {
-      params: this.queryParams(params),
-    });
+    return this.payablesApi.payables(params);
   }
-
   payable(id: string): Observable<PayableDetail> {
-    return this.http.get<PayableDetail>(`${this.base}/payables/${id}`);
+    return this.payablesApi.payable(id);
   }
-
   payableReport(params: Record<string, string | number | boolean> = {}): Observable<PayableReport> {
-    return this.http.get<PayableReport>(`${this.base}/payables/report`, {
-      params: this.queryParams(params),
-    });
+    return this.payablesApi.payableReport(params);
   }
-
   addPayablePayment(id: string, payload: unknown): Observable<PayableDetail> {
-    return this.http.post<PayableDetail>(`${this.base}/payables/${id}/payments`, payload);
+    return this.payablesApi.addPayablePayment(id, payload);
   }
-
   removePayablePayment(id: string, paymentId: string): Observable<PayableDetail> {
-    return this.http.delete<PayableDetail>(`${this.base}/payables/${id}/payments/${paymentId}`);
+    return this.payablesApi.removePayablePayment(id, paymentId);
   }
-
   reconcilePayablePayment(
     id: string,
     paymentId: string,
     reconciled: boolean,
   ): Observable<PayableDetail> {
-    return this.http.post<PayableDetail>(
-      `${this.base}/payables/${id}/payments/${paymentId}/reconcile`,
-      { reconciled },
-    );
+    return this.payablesApi.reconcilePayablePayment(id, paymentId, reconciled);
   }
-
   updatePayable(id: string, payload: unknown): Observable<PayableDetail> {
-    return this.http.patch<PayableDetail>(`${this.base}/payables/${id}`, payload);
+    return this.payablesApi.updatePayable(id, payload);
   }
-
   downloadPayablesCsv(params: Record<string, string | number | boolean> = {}): void {
-    this.http
-      .get(`${this.base}/payables/export.csv`, {
-        params: this.queryParams(params),
-        responseType: 'blob',
-      })
-      .subscribe((blob) => {
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = 'contas-a-pagar.csv';
-        link.click();
-        URL.revokeObjectURL(url);
-      });
+    this.payablesApi.downloadPayablesCsv(params);
   }
-
-  private queryParams(
-    params: Record<string, string | number | boolean | null | undefined>,
-  ): Record<string, string> {
-    return Object.fromEntries(
-      Object.entries(params)
-        .filter(([, value]) => value !== undefined && value !== null && value !== '')
-        .map(([key, value]) => [key, String(value)]),
-    );
-  }
-
   updatePurchasePayable(
     purchaseId: string,
     payableId: string,
     payload: unknown,
   ): Observable<unknown> {
-    return this.http.patch(`${this.base}/purchases/${purchaseId}/payables/${payableId}`, payload);
+    return this.purchasesApi.updatePurchasePayable(purchaseId, payableId, payload);
   }
   updatePurchaseItem(id: string, itemId: string, payload: unknown): Observable<Purchase> {
-    return this.http.patch<Purchase>(`${this.base}/purchases/${id}/items/${itemId}`, payload);
+    return this.purchasesApi.updatePurchaseItem(id, itemId, payload);
   }
   uploadPurchaseAttachments(id: string, files: File[]): Observable<Purchase> {
-    const form = new FormData();
-    files.forEach((file) => form.append('files', file, file.name));
-    return this.http.post<Purchase>(`${this.base}/purchases/${id}/attachments`, form);
+    return this.purchasesApi.uploadPurchaseAttachments(id, files);
   }
   downloadPurchaseAttachment(id: string, attachmentId: string, filename: string): void {
-    this.http
-      .get(`${this.base}/purchases/${id}/attachments/${attachmentId}`, { responseType: 'blob' })
-      .subscribe((blob) => {
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = filename;
-        link.click();
-        URL.revokeObjectURL(url);
-      });
+    this.purchasesApi.downloadPurchaseAttachment(id, attachmentId, filename);
   }
   customers(): Observable<Customer[]> {
-    return this.http.get<Customer[]>(`${this.base}/customers`);
+    return this.customersApi.customers();
   }
   customerDetail(id: string): Observable<CustomerDetail> {
-    return this.http.get<CustomerDetail>(`${this.base}/customers/${id}`);
+    return this.customersApi.customerDetail(id);
   }
   createCustomer(payload: Partial<Customer>): Observable<Customer> {
-    return this.http.post<Customer>(`${this.base}/customers`, payload);
+    return this.customersApi.createCustomer(payload);
   }
   users(): Observable<User[]> {
-    return this.http.get<User[]>(`${this.base}/users`);
+    return this.usersApi.users();
   }
   createUser(payload: {
     email: string;
@@ -515,10 +379,10 @@ export class ApiService {
     password: string;
     role: User['role'];
   }): Observable<User> {
-    return this.http.post<User>(`${this.base}/users`, payload);
+    return this.usersApi.createUser(payload);
   }
   resetUserPassword(id: string, password: string): Observable<User> {
-    return this.http.patch<User>(`${this.base}/users/${id}/password`, { password });
+    return this.usersApi.resetUserPassword(id, password);
   }
   updateUser(
     id: string,
@@ -530,54 +394,38 @@ export class ApiService {
       active?: boolean;
     },
   ): Observable<User> {
-    return this.http.patch<User>(`${this.base}/users/${id}`, payload);
+    return this.usersApi.updateUser(id, payload);
   }
   updateMyProfile(email: string): Observable<User> {
-    return this.http.patch<User>(`${this.base}/users/me/profile`, { email });
+    return this.usersApi.updateMyProfile(email);
   }
   uploadMyAvatar(file: File): Observable<User> {
-    const body = new FormData();
-    body.append('image', file);
-    return this.http.post<User>(`${this.base}/users/me/avatar`, body);
+    return this.usersApi.uploadMyAvatar(file);
   }
   myAvatar(): Observable<Blob> {
-    return this.http.get(`${this.base}/users/me/avatar`, { responseType: 'blob' });
+    return this.usersApi.myAvatar();
   }
   automateMarketplaceOrder(id: string): Observable<MarketplaceOrder> {
-    return this.http.post<MarketplaceOrder>(
-      `${this.base}/integrations/mercadolivre/orders/${id}/automate`,
-      {},
-    );
+    return this.marketplaceApi.automateMarketplaceOrder(id);
   }
   requestMarketplaceInvoice(id: string): Observable<MarketplaceOrder> {
-    return this.http.post<MarketplaceOrder>(
-      `${this.base}/integrations/mercadolivre/orders/${id}/fiscal`,
-      {},
-    );
+    return this.marketplaceApi.requestMarketplaceInvoice(id);
   }
   retryMarketplaceLabel(id: string): Observable<MarketplaceOrder> {
-    return this.http.post<MarketplaceOrder>(
-      `${this.base}/integrations/mercadolivre/orders/${id}/label`,
-      {},
-    );
+    return this.marketplaceApi.retryMarketplaceLabel(id);
   }
   invoices(startDate: string, endDate: string): Observable<Invoice[]> {
-    return this.http.get<Invoice[]>(`${this.base}/invoices`, {
-      params: { start_date: startDate, end_date: endDate },
-    });
+    return this.invoicesApi.invoices(startDate, endDate);
   }
   invoice(id: string): Observable<Invoice> {
-    return this.http.get<Invoice>(`${this.base}/invoices/${id}`);
+    return this.invoicesApi.invoice(id);
   }
   receiveAfterSale(
     caseId: string,
     items: { item_id: string; received_quantity: number }[],
     notes?: string,
   ): Observable<AfterSaleCase> {
-    return this.http.post<AfterSaleCase>(`${this.base}/after-sales/${caseId}/receive`, {
-      items,
-      notes,
-    });
+    return this.invoicesApi.receiveAfterSale(caseId, items, notes);
   }
   inspectAfterSale(
     caseId: string,
@@ -588,82 +436,63 @@ export class ApiService {
       notes?: string;
     }[],
   ): Observable<AfterSaleCase> {
-    return this.http.post<AfterSaleCase>(`${this.base}/after-sales/${caseId}/inspect`, { items });
+    return this.invoicesApi.inspectAfterSale(caseId, items);
   }
   closeAfterSaleWithoutStock(caseId: string, note: string): Observable<AfterSaleCase> {
-    return this.http.post<AfterSaleCase>(`${this.base}/after-sales/${caseId}/close-without-stock`, {
-      note,
-    });
+    return this.invoicesApi.closeAfterSaleWithoutStock(caseId, note);
   }
   createInvoice(payload: unknown): Observable<Invoice> {
-    return this.http.post<Invoice>(`${this.base}/invoices`, payload);
+    return this.invoicesApi.createInvoice(payload);
   }
   confirmInvoice(id: string): Observable<Invoice> {
-    return this.http.post<Invoice>(`${this.base}/invoices/${id}/confirm`, {});
+    return this.invoicesApi.confirmInvoice(id);
   }
   cancelInvoice(id: string): Observable<Invoice> {
-    return this.http.post<Invoice>(`${this.base}/invoices/${id}/cancel`, {});
+    return this.invoicesApi.cancelInvoice(id);
   }
   downloadInvoiceDocument(invoiceId: string, documentId: string): Observable<Blob> {
-    return this.http.get(`${this.base}/invoices/${invoiceId}/documents/${documentId}`, {
-      responseType: 'blob',
-    });
+    return this.invoicesApi.downloadInvoiceDocument(invoiceId, documentId);
   }
   invoiceDocumentBrowserUrl(invoiceId: string, documentId: string): Observable<{ url: string }> {
-    return this.http.get<{ url: string }>(`${this.base}/invoices/documents/browser-url`, {
-      params: { invoice_id: invoiceId, document_id: documentId },
-    });
+    return this.invoicesApi.invoiceDocumentBrowserUrl(invoiceId, documentId);
   }
   marketplaceStatus(): Observable<MarketplaceStatus> {
-    return this.http.get<MarketplaceStatus>(`${this.base}/integrations/mercadolivre/status`);
+    return this.marketplaceApi.marketplaceStatus();
   }
   marketplaceConfig(): Observable<MarketplaceConfig> {
-    return this.http.get<MarketplaceConfig>(`${this.base}/integrations/mercadolivre/config`);
+    return this.marketplaceApi.marketplaceConfig();
   }
   saveMarketplaceConfig(payload: Record<string, unknown>): Observable<MarketplaceConfig> {
-    return this.http.put<MarketplaceConfig>(
-      `${this.base}/integrations/mercadolivre/config`,
-      payload,
-    );
+    return this.marketplaceApi.saveMarketplaceConfig(payload);
   }
   marketplaceOrders(): Observable<MarketplaceOrder[]> {
-    return this.http.get<MarketplaceOrder[]>(`${this.base}/integrations/mercadolivre/orders`);
+    return this.marketplaceApi.marketplaceOrders();
   }
   marketplaceOrder(id: string): Observable<MarketplaceOrder> {
-    return this.http.get<MarketplaceOrder>(`${this.base}/integrations/mercadolivre/orders/${id}`);
+    return this.marketplaceApi.marketplaceOrder(id);
   }
   marketplaceOrderHistory(id: string): Observable<MarketplaceOrderEvent[]> {
-    return this.http.get<MarketplaceOrderEvent[]>(
-      `${this.base}/integrations/mercadolivre/orders/${id}/history`,
-    );
+    return this.marketplaceApi.marketplaceOrderHistory(id);
   }
   syncMarketplace(): Observable<{ accepted: boolean; message: string }> {
-    return this.http.post<{ accepted: boolean; message: string }>(
-      `${this.base}/integrations/mercadolivre/sync`,
-      {},
-    );
+    return this.marketplaceApi.syncMarketplace();
   }
   connectMarketplace(): Observable<{ authorization_url: string }> {
-    return this.http.get<{ authorization_url: string }>(
-      `${this.base}/integrations/mercadolivre/connect`,
-    );
+    return this.marketplaceApi.connectMarketplace();
   }
-
   shopeeStatus(): Observable<ShopeeStatus> {
-    return this.http.get<ShopeeStatus>(this.base + '/integrations/shopee/status');
+    return this.marketplaceApi.shopeeStatus();
   }
   shopeeConfig(): Observable<ShopeeConfig> {
-    return this.http.get<ShopeeConfig>(this.base + '/integrations/shopee/config');
+    return this.marketplaceApi.shopeeConfig();
   }
   saveShopeeConfig(payload: Record<string, unknown>): Observable<ShopeeConfig> {
-    return this.http.put<ShopeeConfig>(this.base + '/integrations/shopee/config', payload);
+    return this.marketplaceApi.saveShopeeConfig(payload);
   }
   connectShopee(): Observable<{ authorization_url: string }> {
-    return this.http.get<{ authorization_url: string }>(this.base + '/integrations/shopee/connect');
+    return this.marketplaceApi.connectShopee();
   }
   telemetrySummary(startDate: string, endDate: string): Observable<TelemetrySummary> {
-    return this.http.get<TelemetrySummary>(this.base + '/telemetry/summary', {
-      params: { start_date: startDate, end_date: endDate },
-    });
+    return this.integrationsApi.telemetrySummary(startDate, endDate);
   }
 }

@@ -12,7 +12,6 @@
 726 backend/app/api/routes/payables.py
 712 backend/app/services/product_channels.py
 683 frontend/src/app/layout/app-layout.scss
-669 frontend/src/app/core/api.service.ts
 652 frontend/src/app/pages/catalog/catalog.scss
 650 frontend/src/app/pages/dashboard/dashboard.scss
 649 frontend/src/app/pages/products/products.html
@@ -26,6 +25,7 @@
 510 frontend/src/app/pages/finance/finance.scss
 507 backend/tests/test_marketplace_sync.py
 507 frontend/src/app/pages/products/products.ts
+498 frontend/src/app/core/api.service.ts
 466 frontend/src/app/pages/marketplace/marketplace.html
 460 frontend/src/app/pages/monitoring/monitoring.scss
 452 frontend/src/app/pages/dashboard/dashboard.html

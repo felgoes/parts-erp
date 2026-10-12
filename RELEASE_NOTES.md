@@ -2,6 +2,10 @@
 
 ## 12 de outubro de 2026 — entregas confirmadas em PRD
 
+- [Organização interna da área de compras na API · d2f050e](https://github.com/felgoes/parts-erp/commit/d2f050e): a rota de compras do servidor (1.725 linhas) foi separada por assunto — criação, itens e anexos, cotações, recebimento, ciclo de vida, contas a pagar e importação de documento — mantendo exatamente as mesmas rotas públicas. Sem mudança de comportamento.
+
+- [Organização interna da área de compras no ERP · 226e635](https://github.com/felgoes/parts-erp/commit/226e635): a revisão de importação de documento ficou com o modelo e as contas de fechamento em um arquivo próprio (com testes), em vez de misturados às 2 mil linhas da tela de compras. Sem mudança de comportamento — é manutenção: fica mais rápido e mais seguro alterar qualquer ponto da conferência.
+
 - [Limite de tentativas no login, com liberação pela tela de Usuários · 66a0ab5](https://github.com/felgoes/parts-erp/commit/66a0ab5): repetir senha errada passou a ter limite. Muitas falhas vindas do mesmo lugar barram temporariamente aquele acesso (a janela é de 5 minutos) e falhas na mesma conta apenas acrescentam uma pequena espera antes de checar a senha — quem sabe a senha continua entrando, e não existe bloqueio de conta. A tela de login avisa, com o tempo restante, quando o acesso está temporariamente barrado, e a tela de Usuários ganhou o cartão "Tentativas de login bloqueadas", onde o administrador vê o que está barrado e devolve o acesso com um clique, por origem ou por e-mail.
 
 - [Número de fatura deixa de repetir · 5e87257](https://github.com/felgoes/parts-erp/commit/5e87257): a sequência de faturas (VEN-AAAA-NNNNNN) passou a continuar do maior número já usado. Duas faturas criadas no mesmo instante deixam de disputar o mesmo número — a segunda recebe o número seguinte — e apagar uma fatura não devolve mais o número dela para a próxima.

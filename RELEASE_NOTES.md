@@ -2,6 +2,8 @@
 
 ## 12 de outubro de 2026 — entregas confirmadas em PRD
 
+- [Detalhe da compra separado da tela · c34b14d](https://github.com/felgoes/parts-erp/commit/c34b14d): a tela de compras terminou de ser dividida — o painel de detalhe (rascunho, itens e recebimento, cotações, resumo lateral, histórico e título a pagar) virou componentes próprios com o estado em serviços separados. A tela saiu de 2.019 para 393 linhas de código e de 2.075 para 276 linhas de template, ficando dentro do teto que o projeto usa para manter o código legível. Nada muda para quem usa: conferido abrindo uma compra, registrando recebimento e copiando o pedido.
+
 - [Tela de compras dividida em partes menores · 6dabecd](https://github.com/felgoes/parts-erp/commit/6dabecd): a revisão da importação de documento, o cadastro de nova compra (inclusive copiar um pedido) e a confirmação de exclusão saíram de dentro do arquivo da tela e viraram componentes próprios, com o estilo compartilhado em um arquivo comum. Nada muda para quem usa: as telas ficaram do mesmo jeito, e a exclusão e a cópia — que podiam aparecer atrás do painel da compra — agora ficam sempre na frente. É manutenção: deixa a tela de compras bem menor e mais rápida de alterar.
 
 - [Modelos e contratos do ERP divididos por assunto · f322882](https://github.com/felgoes/parts-erp/commit/f322882): as peças comuns dos modelos (identificador, marca de tempo, hora UTC) e os eventos de telemetria ganharam arquivos próprios, e os contratos da cotação de compra saíram do arquivo compartilhado de contratos. Sem mudança de comportamento.

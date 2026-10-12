@@ -1,6 +1,5 @@
 1022 backend/app/integrations/mercadolivre/sync.py
 999 backend/tests/test_purchases.py
-726 backend/app/api/routes/payables.py
 712 backend/app/services/product_channels.py
 649 frontend/src/app/pages/products/products.html
 618 backend/app/services/after_sale.py

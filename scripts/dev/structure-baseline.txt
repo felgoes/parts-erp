@@ -7,7 +7,6 @@
 1151 frontend/src/styles.scss
 1022 backend/app/integrations/mercadolivre/sync.py
 999 backend/tests/test_purchases.py
-820 frontend/src/app/core/models.ts
 791 backend/app/models/entities.py
 758 frontend/src/app/pages/market-studies/market-studies.scss
 726 backend/app/api/routes/payables.py

@@ -228,7 +228,6 @@ async def sync_shopee_account(ctx: dict[str, Any], shop_id: str) -> None:
 def _process_shopee_notification(payload: dict[str, Any]) -> None:
     started_at = clock.monotonic()
     shop_id = str(payload.get("shop_id") or payload.get("shopid") or "")
-    logger.info("webhook processing provider=shopee shop_id=%s", shop_id)
     order_sn = str((payload.get("data") or {}).get("ordersn") or payload.get("ordersn") or "")
     with SessionLocal() as db:
         account = db.scalar(
@@ -254,6 +253,12 @@ def _process_shopee_notification(payload: dict[str, Any]) -> None:
                 enqueue_sale_notification(db, order)
         else:
             sync_shopee_all(db, account)
+    logger.info(
+        "webhook processed provider=shopee shop_id=%s order_sn=%s queue_ms=%.1f",
+        shop_id,
+        order_sn,
+        (clock.monotonic() - started_at) * 1000,
+    )
 
 
 async def process_shopee_notification(ctx: dict[str, Any], payload: dict[str, Any]) -> None:

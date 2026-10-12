@@ -136,7 +136,7 @@ def test_reconciliation_protects_the_payment_and_removal_restores_the_balance(db
 def test_list_summary_aging_and_filters(db: Session) -> None:
     user = _actor()
     overdue = _expense(db, user, "100.00", supplier="Fornecedor Vencido", due_in_days=10)
-    upcoming = _expense(db, user, "50.00", supplier="Fornecedor A Vencer", due_in_days=32)
+    _expense(db, user, "50.00", supplier="Fornecedor A Vencer", due_in_days=32)
     paid = _expense(db, user, "80.00", supplier="Fornecedor Pago", due_in_days=12)
     create_payment(
         paid.id, PayablePaymentCreate(amount=Decimal("80.00"), method="Boleto"), db, user

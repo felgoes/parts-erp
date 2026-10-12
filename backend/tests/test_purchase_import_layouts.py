@@ -12,7 +12,7 @@ from app.services.purchase_import import (
 def test_column_grid_reads_quantity_unit_and_line_total():
     lines = [
         "Receipt number: #312403958001029344",
-        "Auto Parts Engine Coolant Temperature Sensor &amp; Connector D4G15B-3611043    20.00    BRL 6.43    BRL 128.42",
+        "Auto Parts Engine Coolant Temperature Sensor &amp; Connector D4G15B-3611043    20.00    BRL 6.43    BRL 128.42",  # noqa: E501
     ]
 
     items = _extract_items_by_columns(lines)
@@ -84,7 +84,7 @@ def test_candidate_lines_are_offered_when_nothing_is_recognized():
 
 def test_danfe_reads_document_identity_and_item_with_two_line_description():
     lines = [
-        "RECEBEMOS DE STARHOUSE MEGA STORE LTDA OS PRODUTOS CONSTANTES DA NOTA FISCAL INDICADA AO LADO",
+        "RECEBEMOS DE STARHOUSE MEGA STORE LTDA OS PRODUTOS CONSTANTES DA NOTA FISCAL INDICADA AO LADO",  # noqa: E501
         "CHAVE DE ACESSO",
         "3526 0904 6176 5900 0142 5500 2003 1786 5516 5579 9260",
         "SÉRIE 002",

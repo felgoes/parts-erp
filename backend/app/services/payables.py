@@ -140,7 +140,9 @@ def apply_payment_condition(
             raise ValueError(
                 "O valor do título não permite essa quantidade de parcelas sem parcela zerada."
             )
-        for position, (offset, amount) in enumerate(zip(offsets, amounts), start=len(kept) + 1):
+        for position, (offset, amount) in enumerate(
+            zip(offsets, amounts, strict=True), start=len(kept) + 1
+        ):
             payable.installments.append(
                 PayableInstallment(
                     number=position,

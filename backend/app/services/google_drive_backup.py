@@ -22,7 +22,8 @@ DRIVE_SCOPE = "https://www.googleapis.com/auth/drive.file"
 
 
 def callback_url() -> str:
-    return f"{str(get_settings().frontend_url).rstrip('/')}/api/v1/settings/backup/google-drive/callback"
+    base = str(get_settings().frontend_url).rstrip("/")
+    return f"{base}/api/v1/settings/backup/google-drive/callback"
 
 
 def authorization_url(settings_row: ErpSettings) -> str:

@@ -730,7 +730,8 @@ def _extract_items_by_columns(lines: list[str]) -> list[dict[str, Any]]:
             quantity = round(line_total / unit_cost, 3) if unit_cost else 0
             derived = True
         own_text = " ".join(description_cells).strip()
-        # A descrição vem da própria linha; as linhas acima só completam quando a linha é só de números.
+        # A descrição vem da própria linha; as linhas acima só completam quando a linha
+        # é só de números.
         description = own_text if len(own_text) >= 3 else " ".join(pending[-2:]).strip()
         pending = []
         if (

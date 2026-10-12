@@ -448,7 +448,8 @@ def receive_after_sale_items(
         target = Decimal(quantity)
         if target < current or target > Decimal(item.requested_quantity):
             raise ValueError(
-                f"Quantidade recebida deve ficar entre {current} e {item.requested_quantity} para {item.sku}"
+                f"Quantidade recebida deve ficar entre {current} e {item.requested_quantity} "
+                f"para {item.sku}"
             )
         if target == current:
             continue
@@ -495,7 +496,8 @@ def inspect_after_sale_items(
         raise ValueError("O pós-venda ainda não está vinculado a uma fatura")
     if invoice.status == InvoiceStatus.cancelled:
         raise ValueError(
-            "A venda cancelada já teve o estoque estornado; confira o saldo antes de lançar outra entrada"
+            "A venda cancelada já teve o estoque estornado; confira o saldo antes de "
+            "lançar outra entrada"
         )
 
     for item_id, decision in requested.items():
@@ -509,11 +511,13 @@ def inspect_after_sale_items(
             raise ValueError(f"Registre primeiro o recebimento físico de {item.sku}")
         if target < current_restocked or target > received:
             raise ValueError(
-                f"Quantidade de retorno ao estoque deve ficar entre {current_restocked} e {received} para {item.sku}"
+                f"Quantidade de retorno ao estoque deve ficar entre {current_restocked} e "
+                f"{received} para {item.sku}"
             )
         if decision.disposition == "restock" and target != received:
             raise ValueError(
-                "Para aprovar todas as unidades, a quantidade de retorno ao estoque deve igualar a recebida"
+                "Para aprovar todas as unidades, a quantidade de retorno ao estoque deve "
+                "igualar a recebida"
             )
         if decision.disposition in {"damaged", "discarded"} and target != 0:
             raise ValueError("Peça danificada ou descartada não pode gerar entrada no estoque")

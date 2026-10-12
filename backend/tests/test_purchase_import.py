@@ -290,7 +290,7 @@ def test_import_preview_matches_persisted_values_with_cent_residue(db: Session) 
     purchase = create_purchase(payload, db, user)
 
     assert sum(line.freight_amount for line in plan.lines) == Decimal("10.00")
-    for item, line in zip(purchase.items, plan.lines):
+    for item, line in zip(purchase.items, plan.lines, strict=True):
         assert item.base_unit_cost == line.base_unit_cost
         assert item.unit_cost == line.unit_cost
         assert item.freight_amount == line.freight_amount
@@ -308,7 +308,7 @@ def test_import_preview_matches_persisted_values_with_cent_residue(db: Session) 
         Decimal("13.35"),
     ]
     assert purchase.quotes[0].item_costs == {
-        item.id: line.base_unit_cost for item, line in zip(purchase.items, plan.lines)
+        item.id: line.base_unit_cost for item, line in zip(purchase.items, plan.lines, strict=True)
     }
 
 

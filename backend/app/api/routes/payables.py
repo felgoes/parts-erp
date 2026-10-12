@@ -316,7 +316,6 @@ def _summary(
         for payment in payable.payments:
             if not payment.reconciled:
                 unreconciled += 1
-            paid_at = _as_utc(payment.paid_at)
             day = _payment_day(payment)
             if (
                 day
@@ -410,7 +409,6 @@ def payables_report(
             if _days_overdue(payable) > 0:
                 entry["overdue"] = Decimal(entry["overdue"]) + balance
         for payment in payable.payments:
-            paid_at = _as_utc(payment.paid_at)
             day = _payment_day(payment)
             if not day:
                 continue
@@ -685,7 +683,8 @@ def delete_payment(
         db,
         payable.purchase,
         "payable_payment_removed",
-        f"Pagamento de {amount:.2f} removido por {user.full_name}. Saldo: {payable_balance(payable):.2f}.",
+        f"Pagamento de {amount:.2f} removido por {user.full_name}. "
+        f"Saldo: {payable_balance(payable):.2f}.",
         user,
     )
     db.commit()
@@ -715,7 +714,10 @@ def reconcile_payment(
         (
             f"Pagamento de {Decimal(payment.amount):.2f} conciliado por {user.full_name}."
             if payload.reconciled
-            else f"Conciliação do pagamento de {Decimal(payment.amount):.2f} desfeita por {user.full_name}."
+            else (
+                f"Conciliação do pagamento de {Decimal(payment.amount):.2f} desfeita por "
+                f"{user.full_name}."
+            )
         ),
         user,
     )

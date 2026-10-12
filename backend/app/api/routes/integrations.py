@@ -414,7 +414,8 @@ async def webhook(request: Request) -> dict[str, bool]:
     finally:
         await redis.close()
     logger.info(
-        "webhook accepted provider=mercadolivre topic=%s resource=%s seller_id=%s queue_ms=%.1f job_id=%s",
+        "webhook accepted provider=mercadolivre topic=%s resource=%s seller_id=%s "
+        "queue_ms=%.1f job_id=%s",
         topic,
         resource,
         seller_id,

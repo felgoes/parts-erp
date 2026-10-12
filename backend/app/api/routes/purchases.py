@@ -71,7 +71,10 @@ router = APIRouter(prefix="/purchases", tags=["Compras"])
 
 
 def _mask_costs(result: PurchaseOut, user: User) -> PurchaseOut:
-    """Esconde custo, valor de cotação e título de quem não lê financeiro (vale para lista e detalhe)."""
+    """Esconde custo, valor de cotação e título de quem não lê financeiro.
+
+    Vale para a lista e para o detalhe.
+    """
     if has_permission(getattr(user, "role", UserRole.admin), Permission.FINANCE_READ):
         return result
     return result.model_copy(
@@ -526,7 +529,8 @@ def _pay_purchase_now(
         db,
         purchase,
         "payable_settled",
-        f"Título a pagar de {Decimal(payable.amount):.2f} quitado no checkout por {user.full_name}.",
+        f"Título a pagar de {Decimal(payable.amount):.2f} quitado no checkout por "
+        f"{user.full_name}.",
         user=user,
     )
 
@@ -1261,7 +1265,8 @@ def _apply_receipt(
                 raise HTTPException(
                     status_code=422,
                     detail=(
-                        f"Vincule {item.sku or item.description} a um produto ou marque para cadastrá-lo no catálogo."
+                        f"Vincule {item.sku or item.description} a um produto ou marque "
+                        "para cadastrá-lo no catálogo."
                     ),
                 )
             if not item.sku.strip():
@@ -1318,7 +1323,8 @@ def _apply_receipt(
             db,
             purchase,
             "item_received",
-            f"{received.quantity:g} {item.unit} de {item.sku or item.description[:80]} recebidas por {user.full_name}."
+            f"{received.quantity:g} {item.unit} de {item.sku or item.description[:80]} "
+            f"recebidas por {user.full_name}."
             + (
                 f" Observação: {received.observation.strip()}"
                 if received.observation and received.observation.strip()
@@ -1420,12 +1426,17 @@ def _register_returns(
             if quantity > pending.get(item.id, Decimal("0")):
                 raise HTTPException(
                     status_code=422,
-                    detail=f"A devolução de {item.sku or item.description} excede o que foi recebido.",
+                    detail=(
+                        f"A devolução de {item.sku or item.description} excede o que foi recebido."
+                    ),
                 )
             if not item.product_id:
                 raise HTTPException(
                     status_code=422,
-                    detail=f"Vincule {item.sku or item.description} a um produto antes de registrar a devolução.",
+                    detail=(
+                        f"Vincule {item.sku or item.description} a um produto antes de "
+                        "registrar a devolução."
+                    ),
                 )
             target = Decimal(item.returned_quantity) + quantity
             move_stock(
@@ -1440,7 +1451,8 @@ def _register_returns(
             )
             item.returned_quantity = target
             detail = (
-                f"{quantity:g} {item.unit} de {item.sku or item.description[:80]} devolvidas ao fornecedor "
+                f"{quantity:g} {item.unit} de {item.sku or item.description[:80]} "
+                "devolvidas ao fornecedor "
                 f"por {user.full_name}."
             )
             if observation and observation.strip():
@@ -1552,8 +1564,10 @@ def delete_purchase(
         raise HTTPException(
             status_code=409,
             detail=(
-                "Este pedido tem pagamento registrado no título a pagar; excluir apagaria uma saída "
-                "de dinheiro já feita. Cancele a compra com estorno para manter o registro financeiro."
+                "Este pedido tem pagamento registrado no título a pagar; excluir apagaria "
+                "uma saída "
+                "de dinheiro já feita. Cancele a compra com estorno para manter o "
+                "registro financeiro."
             ),
         )
     for item, quantity in [
@@ -1630,7 +1644,10 @@ def update_purchase(
         if purchase.status not in {"ordered", "received", "partially_received"} or has_receipts:
             raise HTTPException(
                 status_code=409,
-                detail="Esta despesa já tem recebimento de material; use as ações de encerramento ou cancelamento.",
+                detail=(
+                    "Esta despesa já tem recebimento de material; use as ações de "
+                    "encerramento ou cancelamento."
+                ),
             )
         if payable and payable.status == "paid":
             raise HTTPException(
@@ -1755,5 +1772,7 @@ async def import_purchase_document(
         # Avoid returning or logging document contents or OCR output.
         raise HTTPException(
             status_code=422,
-            detail="Não foi possível interpretar o documento. Confira o arquivo e use a compra manual.",
+            detail=(
+                "Não foi possível interpretar o documento. Confira o arquivo e use a compra manual."
+            ),
         ) from exc

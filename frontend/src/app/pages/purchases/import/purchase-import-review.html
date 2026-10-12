@@ -128,6 +128,16 @@
             <small>{{ fieldOrigin(review.fields.tax) }}</small>
           }
         </label>
+        <label
+          >Taxas extras<input
+            appMoneyInput
+            [appMoneyInput]="importDraft().extras"
+            min="0"
+            (moneyInput)="updateImportNumber('extras', $event)"
+            (moneyValidity)="setImportMoneyValidity('extras', $event)"
+          />
+          <small>taxa de pagamento, processamento ou juros cobrados por fora das peças</small>
+        </label>
       </div>
       <div class="purchase-form-section">
         <div class="section-heading">

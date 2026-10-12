@@ -52,12 +52,16 @@ def add_quote(
         Decimal(payload.total)
         - Decimal(payload.freight_amount)
         - Decimal(payload.tax_amount)
+        - Decimal(payload.extras_amount)
         + Decimal(payload.discount_amount)
     )
     if net_amount < 0:
         raise HTTPException(
             status_code=422,
-            detail="O total da proposta é menor que o frete e os impostos menos o desconto.",
+            detail=(
+                "O total da proposta é menor que o frete, os impostos e as taxas extras "
+                "menos o desconto."
+            ),
         )
     item_subtotal = sum(
         (Decimal(payload.item_costs[item.id]) * item.quantity for item in purchase.items),
@@ -67,6 +71,7 @@ def add_quote(
         item_subtotal
         + Decimal(payload.freight_amount)
         + Decimal(payload.tax_amount)
+        + Decimal(payload.extras_amount)
         - Decimal(payload.discount_amount)
     )
     if abs(expected_total - Decimal(payload.total)) > Decimal("0.01") * max(1, len(purchase.items)):
@@ -74,7 +79,7 @@ def add_quote(
             status_code=422,
             detail=(
                 "A soma dos itens não fecha com o total da proposta. "
-                "Confira os custos unitários, o frete, os impostos e o desconto."
+                "Confira os custos unitários, o frete, os impostos, as taxas extras e o desconto."
             ),
         )
     quote_data = payload.model_dump(exclude={"item_costs"})

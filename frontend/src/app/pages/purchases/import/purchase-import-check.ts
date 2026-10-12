@@ -31,6 +31,7 @@ export class PurchaseImportCheck {
   readonly importPaidDate = this.flow.importPaidDate;
   readonly importPaidMethod = this.flow.importPaidMethod;
   readonly expenseCategories = this.flow.expenseCategories;
+  readonly suggestedExtras = this.flow.suggestedExtras;
   readonly creatingImport = this.flow.creatingImport;
 
   importBlockers() {
@@ -68,6 +69,9 @@ export class PurchaseImportCheck {
   }
   useImportCandidate(candidate: { text: string; quantity?: number; unit_cost?: number }) {
     this.flow.useImportCandidate(candidate);
+  }
+  applySuggestedExtras() {
+    this.flow.applySuggestedExtras();
   }
   closeImportReview() {
     this.flow.closeImportReview();

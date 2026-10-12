@@ -390,4 +390,5 @@ export class PurchasesPage implements OnInit {
             failures.push(`${target.number}: ${err.error?.detail || 'falha ao excluir'}`),
         });
     }
-  }}
+  }
+}

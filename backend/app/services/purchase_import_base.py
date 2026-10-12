@@ -82,6 +82,20 @@ FIELD_LABELS: dict[str, list[str]] = {
     "discount": ["todos os descontos", "discount", "desconto", "coupon"],
     "total": ["order total", "total do pedido", "total pago", "valor total", "total"],
     "tax": ["tax", "taxes", "taxa", "imposto", "impostos", "vat", "iva"],
+    # P5: taxa cobrada por fora do valor das peças. Os rótulos específicos vencem o "taxa"
+    # genérico de imposto: a leitura escolhe o rótulo mais longo que casa com a linha.
+    "extras": [
+        "payment processing fee",
+        "processing fee",
+        "payment fee",
+        "taxa de processamento de pagamento",
+        "taxa de processamento",
+        "taxa de pagamento",
+        "taxa de serviço",
+        "taxa de servico",
+        "juros de parcelamento",
+        "juros",
+    ],
 }
 MONEY = r"(?:(?:R\$|BRL|USD|US\$|\$)\s*)?-?\s*(?:\d{1,3}(?:[,.]\d{3})+|\d+)(?:,\d{2}|\.\d{2})"
 DATE_PATTERN = (

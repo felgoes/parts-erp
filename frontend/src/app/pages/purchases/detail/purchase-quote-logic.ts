@@ -40,6 +40,7 @@ export class PurchaseQuoteLogic {
     supplier_contact: [''],
     freight_amount: [0, [Validators.required, Validators.min(0)]],
     tax_amount: [0, [Validators.required, Validators.min(0)]],
+    extras_amount: [0, [Validators.required, Validators.min(0)]],
     discount_amount: [0, [Validators.required, Validators.min(0)]],
     allocation_method: ['proportional' as 'proportional' | 'quantity'],
     delivery_days: [null as number | null],
@@ -73,17 +74,19 @@ export class PurchaseQuoteLogic {
     return this.round2(
       this.quoteSubtotal(purchase) +
         Number(value.freight_amount || 0) +
-        Number(value.tax_amount || 0) -
+        Number(value.tax_amount || 0) +
+        Number(value.extras_amount || 0) -
         Number(value.discount_amount || 0),
     );
   }
-  /** Líquido das peças: total − frete − impostos + desconto. Negativo é proposta impossível. */
+  /** Líquido das peças: total − frete − impostos − taxas extras + desconto. */
   quoteNet(purchase: Purchase) {
     const value = this.quoteForm.getRawValue();
     return this.round2(
       this.quoteTotal(purchase) -
         Number(value.freight_amount || 0) -
-        Number(value.tax_amount || 0) +
+        Number(value.tax_amount || 0) -
+        Number(value.extras_amount || 0) +
         Number(value.discount_amount || 0),
     );
   }
@@ -181,7 +184,8 @@ export class PurchaseQuoteLogic {
     const netCents = Math.round(
       (total -
         Number(value.freight_amount || 0) -
-        Number(value.tax_amount || 0) +
+        Number(value.tax_amount || 0) -
+        Number(value.extras_amount || 0) +
         Number(value.discount_amount || 0)) *
         100,
     );
@@ -262,6 +266,7 @@ export class PurchaseQuoteLogic {
             supplier_contact: '',
             freight_amount: 0,
             tax_amount: 0,
+            extras_amount: 0,
             discount_amount: 0,
             allocation_method: 'proportional',
             delivery_days: null,

@@ -5,6 +5,7 @@
         <span>Itens {{ plan.items_subtotal | currency: 'BRL' }}</span
         ><span>+ frete {{ plan.freight_amount | currency: 'BRL' }}</span
         ><span>+ impostos {{ plan.tax_amount | currency: 'BRL' }}</span
+        ><span>+ taxas extras {{ plan.extras_amount | currency: 'BRL' }}</span
         ><span>− descontos {{ plan.discount_amount | currency: 'BRL' }}</span
         ><strong>= {{ plan.total | currency: 'BRL' }}</strong>
       </div>
@@ -179,6 +180,15 @@
         <li>{{ blocker }}</li>
       }
     </ul>
+  }
+  @if (suggestedExtras(); as suggested) {
+    <p class="check-warn" role="status">
+      O valor pago é maior que o total do pedido: a diferença é de
+      {{ suggested | currency: 'BRL' }} e pode ser taxa de pagamento ou juros.
+      <button type="button" class="secondary small" (click)="applySuggestedExtras()">
+        Usar como taxas extras
+      </button>
+    </p>
   }
   <div class="purchase-form-actions">
     <span class="muted">O arquivo original será anexado. Nenhum estoque será movimentado.</span>

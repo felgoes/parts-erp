@@ -19,6 +19,8 @@ class PurchaseQuoteCreate(BaseModel):
     total: Decimal = Field(ge=0)
     freight_amount: Decimal = Field(default=Decimal("0"), ge=0)
     tax_amount: Decimal = Field(default=Decimal("0"), ge=0)
+    # P5: taxa de pagamento/processamento cobrada por fora do valor das peças.
+    extras_amount: Decimal = Field(default=Decimal("0"), ge=0)
     discount_amount: Decimal = Field(default=Decimal("0"), ge=0)
     allocation_method: Literal["proportional", "quantity"] = "proportional"
     item_costs: dict[str, Decimal] = Field(min_length=1)
@@ -51,6 +53,7 @@ class PurchaseItemOut(ORMModel):
     unit_cost: Decimal | None = None
     freight_amount: Decimal | None = Decimal("0")
     tax_amount: Decimal | None = Decimal("0")
+    extras_amount: Decimal | None = Decimal("0")
     discount_amount: Decimal | None = Decimal("0")
     discount_percent: Decimal | None = Decimal("0")
 
@@ -62,6 +65,7 @@ class PurchaseQuoteOut(ORMModel):
     total: Decimal | None = None
     freight_amount: Decimal = Decimal("0")
     tax_amount: Decimal = Decimal("0")
+    extras_amount: Decimal | None = Decimal("0")
     discount_amount: Decimal = Decimal("0")
     allocation_method: str = "proportional"
     item_costs: dict[str, Decimal] | None = None

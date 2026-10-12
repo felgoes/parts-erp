@@ -75,6 +75,7 @@ class ImportLinePlan:
     unit_cost: Decimal
     freight_amount: Decimal
     tax_amount: Decimal
+    extras_amount: Decimal
     discount_amount: Decimal
 
 
@@ -86,6 +87,7 @@ class ImportPlan:
     items_subtotal: Decimal
     freight_amount: Decimal
     tax_amount: Decimal
+    extras_amount: Decimal
     discount_amount: Decimal
     computed_total: Decimal
     document_total: Decimal | None
@@ -102,6 +104,7 @@ def build_import_plan(
     *,
     freight_amount: Decimal | int | str = 0,
     tax_amount: Decimal | int | str = 0,
+    extras_amount: Decimal | int | str = 0,
     discount_amount: Decimal | int | str = 0,
     document_total: Decimal | int | str | None = None,
 ) -> ImportPlan:
@@ -135,27 +138,35 @@ def build_import_plan(
     ]
     freight_cents = to_cents(freight_amount)
     tax_cents = to_cents(tax_amount)
+    extras_cents = to_cents(extras_amount)
     discount_cents = to_cents(discount_amount)
     freight_share = split_cents(freight_cents, weights)
     tax_share = split_cents(tax_cents, weights)
+    extras_share = split_cents(extras_cents, weights)
     discount_share = split_cents(discount_cents, weights)
 
     document_cents = None if document_total is None else to_cents(document_total)
-    adjustments_cents = freight_cents + tax_cents - discount_cents
+    adjustments_cents = freight_cents + tax_cents + extras_cents - discount_cents
     if document_cents is not None and adjustments_cents > document_cents:
         raise ImportPlanError(
-            "O frete e os impostos menos o desconto superam o total do documento. "
+            "O frete, os impostos e as taxas extras menos o desconto superam o total do "
+            "documento. "
             "Revise os valores."
         )
 
     item_plans: list[ImportLinePlan] = []
     for index in range(len(lines)):
-        extra_cents = freight_share[str(index)] + tax_share[str(index)] - discount_share[str(index)]
+        extra_cents = (
+            freight_share[str(index)]
+            + tax_share[str(index)]
+            + extras_share[str(index)]
+            - discount_share[str(index)]
+        )
         landed_cents = base_cents[index] + half_up_div(extra_cents * MILLI, quantity_milli[index])
         if landed_cents < 0:
             raise ImportPlanError(
                 "Os descontos deixam o custo de alguma peça negativo. Revise frete, "
-                "impostos e desconto."
+                "impostos, taxas extras e desconto."
             )
         item_plans.append(
             ImportLinePlan(
@@ -163,6 +174,7 @@ def build_import_plan(
                 unit_cost=from_cents(landed_cents),
                 freight_amount=from_cents(freight_share[str(index)]),
                 tax_amount=from_cents(tax_share[str(index)]),
+                extras_amount=from_cents(extras_share[str(index)]),
                 discount_amount=from_cents(discount_share[str(index)]),
             )
         )
@@ -192,6 +204,7 @@ def build_import_plan(
         items_subtotal=from_cents(subtotal_cents),
         freight_amount=from_cents(freight_cents),
         tax_amount=from_cents(tax_cents),
+        extras_amount=from_cents(extras_cents),
         discount_amount=from_cents(discount_cents),
         computed_total=from_cents(computed_cents),
         document_total=None if document_cents is None else from_cents(document_cents),

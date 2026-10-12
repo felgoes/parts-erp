@@ -61,6 +61,7 @@ def _register_import_document(
         total=plan.total,
         freight_amount=plan.freight_amount,
         tax_amount=plan.tax_amount,
+        extras_amount=plan.extras_amount,
         discount_amount=plan.discount_amount,
         allocation_method="proportional",
         item_costs={

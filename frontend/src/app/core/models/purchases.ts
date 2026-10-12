@@ -19,6 +19,8 @@ export interface PurchaseItem {
   unit_cost: number | null;
   freight_amount: number | null;
   tax_amount: number | null;
+  /** P5: taxa de pagamento/processamento rateada nesta peça. */
+  extras_amount: number | null;
   discount_amount: number | null;
   discount_percent?: number | null;
 }
@@ -134,6 +136,8 @@ export interface PurchaseQuote {
   total: number | null;
   freight_amount: number;
   tax_amount: number;
+  /** P5: taxa de pagamento/processamento cobrada por fora do valor das peças. */
+  extras_amount: number | null;
   discount_amount: number;
   allocation_method: 'proportional' | 'quantity';
   item_costs: Record<string, number> | null;

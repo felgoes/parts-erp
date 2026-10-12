@@ -192,62 +192,80 @@ def _clean_text(value: str) -> str:
 
 
 def _extract_labeled(lines: list[str], labels: dict[str, list[str]]) -> dict[str, dict[str, Any]]:
+    """Casa cada linha com o rótulo mais específico e preenche cada campo uma única vez.
+
+    P5: "taxa de pagamento" também começa com "taxa" (rótulo genérico de imposto). A escolha
+    do rótulo mais longo que casa com a linha garante que a taxa de pagamento entre como taxa
+    extra, e o mesmo valor nunca é gravado em dois campos.
+    """
     output: dict[str, dict[str, Any]] = {}
-    money_fields = {"total", "subtotal", "shipping", "discount", "tax", "paid"}
+    money_fields = {"total", "subtotal", "shipping", "discount", "tax", "extras", "paid"}
     candidates: dict[str, list[dict[str, Any]]] = {}
+
+    # 1. Qual rótulo vence cada linha: o mais longo (mais específico) que casa no início dela.
+    winners: dict[int, tuple[str, str, str]] = {}
     for field, variants in labels.items():
-        normalized_variants = sorted((_normalize(x) for x in variants), key=len, reverse=True)
         for i, line in enumerate(lines):
             normalized_line = _normalize(line)
             matched = next(
                 (
                     label
-                    for label in normalized_variants
+                    for label in sorted((_normalize(x) for x in variants), key=len, reverse=True)
                     if re.match(rf"^{re.escape(label)}(?:\b|\s|:|#|-)", normalized_line)
                 ),
                 None,
             )
             if not matched:
                 continue
-            value_part = normalized_line[len(matched) :].strip(" :#-\t")
-            if not value_part and i + 1 < len(lines):
-                value_part = _normalize(lines[i + 1])
-            if not value_part:
+            current = winners.get(i)
+            if current is None or len(matched) > len(current[1]):
+                winners[i] = (field, matched, normalized_line)
+
+    # 2. Com o dono de cada linha definido, extrai o valor do jeito que cada campo pede.
+    for i in sorted(winners):
+        field, matched, normalized_line = winners[i]
+        variants = labels.get(field, [])
+        value_part = normalized_line[len(matched) :].strip(" :#-\t")
+        if not value_part and i + 1 < len(lines):
+            value_part = _normalize(lines[i + 1])
+        if not value_part:
+            continue
+        if field in money_fields:
+            entry = _money_entry(value_part)
+            if entry is None and field == "paid" and i:
+                entry = _money_entry(_normalize(lines[i - 1]))
+            if entry is None:
                 continue
-            if field in money_fields:
-                entry = _money_entry(value_part)
-                if entry is None and field == "paid" and i:
-                    entry = _money_entry(_normalize(lines[i - 1]))
-                if entry is None:
-                    continue
-                candidate = {
+            candidates.setdefault(field, []).append(
+                {
                     "value": entry[0],
                     "currency": entry[1],
                     "confidence": 0.78,
                     "source": "label",
                 }
-                candidates.setdefault(field, []).append(candidate)
+            )
+            continue
+        if field in output:
+            continue
+        if field == "date":
+            date_match = re.search(DATE_PATTERN, value_part)
+            value = _normalize_order_date(date_match.group(1)) if date_match else None
+        else:
+            raw_variant = next(
+                (original for original in variants if _normalize(original) == matched),
+                None,
+            )
+            raw_remainder = lines[i]
+            if raw_variant:
+                raw_match = re.match(rf"\s*{re.escape(raw_variant)}\s*[:\-#]?\s*", lines[i], re.I)
+                if raw_match:
+                    raw_remainder = lines[i][raw_match.end() :]
+            # A segunda coluna do recibo vem depois de um vão largo: corta ali.
+            value = _clean_text(re.split(r"\s{3,}", raw_remainder)[0].strip(" :#-\t"))[:160]
+            if _looks_like_column_label(value):
                 continue
-            if field == "date":
-                date_match = re.search(DATE_PATTERN, value_part)
-                value = _normalize_order_date(date_match.group(1)) if date_match else None
-            else:
-                raw_variant = next(
-                    (original for original in variants if _normalize(original) == matched),
-                    None,
-                )
-                raw_remainder = line
-                if raw_variant:
-                    raw_match = re.match(rf"\s*{re.escape(raw_variant)}\s*[:\-#]?\s*", line, re.I)
-                    if raw_match:
-                        raw_remainder = line[raw_match.end() :]
-                # A segunda coluna do recibo vem depois de um vão largo: corta ali.
-                value = _clean_text(re.split(r"\s{3,}", raw_remainder)[0].strip(" :#-\t"))[:160]
-                if _looks_like_column_label(value):
-                    continue
-            if value not in (None, ""):
-                output[field] = {"value": value, "confidence": 0.78, "source": "label"}
-                break
+        if value not in (None, ""):
+            output[field] = {"value": value, "confidence": 0.78, "source": "label"}
     for field, found in candidates.items():
         # O recibo da Alibaba traz o total em BRL e a mesma quantia em USD: a linha em reais vence.
         best = next((entry for entry in found if entry.get("currency") == "BRL"), found[0])

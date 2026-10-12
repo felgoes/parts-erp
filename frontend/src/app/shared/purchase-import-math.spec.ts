@@ -5,7 +5,7 @@ import {
   halfUpDiv,
 } from './purchase-import-math';
 
-const noDocument = { total: null, shipping: 0, discount: 0, tax: 0 };
+const noDocument = { total: null, shipping: 0, discount: 0, tax: 0, extras: 0 };
 
 describe('buildImportPlan', () => {
   it('keeps the same closing the backend stores for the imported document', () => {
@@ -13,6 +13,7 @@ describe('buildImportPlan', () => {
       total: 112,
       shipping: 10,
       tax: 5,
+      extras: 0,
       discount: 3,
     });
 
@@ -24,6 +25,7 @@ describe('buildImportPlan', () => {
       unit_cost: 56,
       freight_amount: 10,
       tax_amount: 5,
+      extras_amount: 0,
       discount_amount: 3,
     });
   });
@@ -50,6 +52,7 @@ describe('buildImportPlan', () => {
         total: 300,
         shipping: 10,
         tax: 5,
+        extras: 0,
         discount: 3,
       }),
     ).toThrowError(/diferença é de R\$ 188,00/);
@@ -61,6 +64,7 @@ describe('buildImportPlan', () => {
         total: 300,
         shipping: 10,
         tax: 5,
+        extras: 0,
         discount: 3,
       });
       throw new Error('A revisão deveria bloquear o documento');
@@ -80,6 +84,7 @@ describe('buildImportPlan', () => {
         total: 10,
         shipping: 20,
         tax: 0,
+        extras: 0,
         discount: 0,
       }),
     ).toThrowError(/superam o total do documento/);

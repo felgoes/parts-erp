@@ -33,6 +33,7 @@
               <span>Base: {{ item.base_unit_cost | currency: 'BRL' }}</span
               ><span>Frete: {{ item.freight_amount | currency: 'BRL' }}</span
               ><span>Impostos: {{ item.tax_amount | currency: 'BRL' }}</span
+              ><span>Taxas extras: {{ item.extras_amount | currency: 'BRL' }}</span
               ><span>Desconto: -{{ item.discount_amount | currency: 'BRL' }}</span>
             </div>
             <div class="receipt-progress">

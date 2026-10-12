@@ -103,6 +103,8 @@ class PurchaseItem(Base):
     unit_cost: Mapped[Decimal] = mapped_column(Numeric(14, 2), default=0)
     freight_amount: Mapped[Decimal] = mapped_column(Numeric(14, 2), default=0)
     tax_amount: Mapped[Decimal] = mapped_column(Numeric(14, 2), default=0)
+    # P5: taxa cobrada por fora do valor das peças (pagamento, processamento, juros).
+    extras_amount: Mapped[Decimal] = mapped_column(Numeric(14, 2), default=0)
     discount_amount: Mapped[Decimal] = mapped_column(Numeric(14, 2), default=0)
     discount_percent: Mapped[Decimal] = mapped_column(Numeric(5, 2), default=0)
     purchase: Mapped[PurchaseCase] = relationship(back_populates="items")
@@ -120,6 +122,8 @@ class PurchaseQuote(TimestampMixin, Base):
     total: Mapped[Decimal] = mapped_column(Numeric(14, 2))
     freight_amount: Mapped[Decimal] = mapped_column(Numeric(14, 2), default=0)
     tax_amount: Mapped[Decimal] = mapped_column(Numeric(14, 2), default=0)
+    # P5: taxa cobrada por fora do valor das peças, rateada no custo final de cada item.
+    extras_amount: Mapped[Decimal] = mapped_column(Numeric(14, 2), default=0)
     discount_amount: Mapped[Decimal] = mapped_column(Numeric(14, 2), default=0)
     allocation_method: Mapped[str] = mapped_column(String(30), default="proportional")
     item_costs: Mapped[dict[str, str]] = mapped_column(JSON, default=dict)

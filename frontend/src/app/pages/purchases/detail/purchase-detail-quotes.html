@@ -86,6 +86,10 @@
             placeholder="Telefone ou e-mail" /></label
         ><label>Frete<input appMoneyInput formControlName="freight_amount" min="0" /></label
         ><label>Impostos<input appMoneyInput formControlName="tax_amount" min="0" /></label
+        ><label
+          >Taxas extras<input appMoneyInput formControlName="extras_amount" min="0" /><small
+            >taxa de pagamento, processamento ou juros por fora das peças</small
+          ></label
         ><label>Desconto<input appMoneyInput formControlName="discount_amount" min="0" /></label
         ><label
           >Ratear acréscimos/desconto<select formControlName="allocation_method">

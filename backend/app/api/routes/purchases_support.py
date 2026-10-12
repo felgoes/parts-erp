@@ -154,9 +154,10 @@ def _recompute_purchase_costs(purchase: PurchaseCase, quote: PurchaseQuote | Non
         weights = [(item.id, quantities[item.id]) for item in purchase.items]
     freight = split_cents(to_cents(quote.freight_amount), weights)
     tax = split_cents(to_cents(quote.tax_amount), weights)
+    extras = split_cents(to_cents(quote.extras_amount), weights)
     discount = split_cents(to_cents(quote.discount_amount), weights)
     for item in purchase.items:
-        extra_cents = freight[item.id] + tax[item.id] - discount[item.id]
+        extra_cents = freight[item.id] + tax[item.id] + extras[item.id] - discount[item.id]
         landed_cents = base_cents[item.id] + half_up_div(extra_cents * MILLI, quantities[item.id])
         if landed_cents < 0:
             raise HTTPException(
@@ -164,6 +165,7 @@ def _recompute_purchase_costs(purchase: PurchaseCase, quote: PurchaseQuote | Non
             )
         item.freight_amount = from_cents(freight[item.id])
         item.tax_amount = from_cents(tax[item.id])
+        item.extras_amount = from_cents(extras[item.id])
         item.discount_amount = from_cents(discount[item.id])
         item.base_unit_cost = from_cents(base_cents[item.id])
         item.unit_cost = from_cents(landed_cents)

@@ -219,4 +219,3 @@ export class PurchaseDetailState {
     this.applyUpdate(purchase);
   }
 }
-

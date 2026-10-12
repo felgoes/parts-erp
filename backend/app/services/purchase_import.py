@@ -177,16 +177,45 @@ async def analyze_upload(upload: UploadFile, selected_profile: str | None = None
             "Nenhum item foi identificado com confiança suficiente; adicione ou corrija as linhas."
         )
     items_total = round(sum(item["line_total"] for item in items), 2) if items else None
+    # P5: quando o documento traz taxa de pagamento, o total de referência é o valor pago — é o
+    # que saiu do caixa e o que o título a pagar deve espelhar.
+    paid_value = (fields.get("paid") or {}).get("value")
+    extras_value = (fields.get("extras") or {}).get("value")
+    if paid_value is not None and extras_value is not None:
+        fields["total"] = {**(fields.get("total") or {}), "value": paid_value}
+        fields["total"].setdefault("source", "label")
+    elif paid_value is not None:
+        order_total = (fields.get("total") or {}).get("value")
+        if order_total is not None and paid_value > order_total:
+            fields["total"] = {**(fields.get("total") or {}), "value": paid_value}
+            fields["total"].setdefault("source", "label")
     shipping = (fields.get("shipping") or {}).get("value")
     tax = (fields.get("tax") or {}).get("value")
+    extras = (fields.get("extras") or {}).get("value")
     discount = (fields.get("discount") or {}).get("value")
     total = (fields.get("total") or {}).get("value")
     subtotal = (fields.get("subtotal") or {}).get("value")
     closing_difference = None
     if total is not None and items_total is not None:
         closing_difference = round(
-            items_total + (shipping or 0) + (tax or 0) - (discount or 0) - total, 2
+            items_total + (shipping or 0) + (tax or 0) + (extras or 0) - (discount or 0) - total,
+            2,
         )
+        # Sem rótulo de taxa, mas com valor pago maior que o total do pedido: sugere a diferença
+        # para a pessoa conferir. A sugestão não entra no cálculo sozinha.
+        if extras is None and paid_value is not None and paid_value > (total or 0):
+            difference = round(paid_value - (total or 0), 2)
+            if difference > 0:
+                fields["extras"] = {
+                    "value": difference,
+                    "confidence": 0.35,
+                    "source": "sugestao",
+                    "hint": "diferença entre total do pedido e valor pago — confira",
+                }
+                warnings.append(
+                    "O valor pago é maior que o total do pedido: confira se a diferença de "
+                    f"R$ {difference:.2f} é taxa de pagamento ou juros."
+                )
     subtotal_difference = None
     if subtotal is not None and items_total is not None:
         subtotal_difference = round(items_total - subtotal, 2)
@@ -231,6 +260,7 @@ async def analyze_upload(upload: UploadFile, selected_profile: str | None = None
             "subtotal_difference": subtotal_difference,
             "shipping": shipping,
             "tax": tax,
+            "extras": extras,
             "discount": discount,
             "total": total,
             "closing_difference": closing_difference,

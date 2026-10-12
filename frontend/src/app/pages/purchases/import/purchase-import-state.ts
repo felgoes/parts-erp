@@ -83,6 +83,11 @@ export class PurchaseImportState {
   >([]);
   readonly importDraft = signal(emptyImportDraft());
   readonly importDuplicate = signal<ImportDuplicate | null>(null);
+  /**
+   * P5: diferença entre o total do pedido e o valor pago, quando o documento não trouxe rótulo
+   * de taxa. Fica aqui — nunca é aplicada sozinha: a pessoa confere e decide usar.
+   */
+  readonly suggestedExtras = signal<number | null>(null);
   readonly importCheck = signal<ImportCheck | null>(null);
   readonly importType = signal<'parts' | 'expense'>('parts');
   readonly importCategory = signal('');
@@ -134,6 +139,9 @@ export class PurchaseImportState {
   }
   private applyImportReview(review: any) {
     this.importMoneyValidity.set({});
+    this.suggestedExtras.set(
+      review.fields?.extras?.source === 'sugestao' ? Number(review.fields.extras.value ?? 0) : null,
+    );
     this.importId.set(crypto.randomUUID());
     this.importProductSearch.set({});
     this.importProductResults.set({});
@@ -149,6 +157,12 @@ export class PurchaseImportState {
       discount:
         review.fields?.discount?.value == null ? null : Number(review.fields.discount.value),
       tax: review.fields?.tax?.value == null ? null : Number(review.fields.tax.value),
+      // P5: valor sugerido (diferença entre total e valor pago) NÃO entra sozinho no rascunho —
+      // fica na sugestão para a pessoa aplicar depois de conferir.
+      extras:
+        review.fields?.extras?.source === 'sugestao' || review.fields?.extras?.value == null
+          ? null
+          : Number(review.fields.extras.value),
       currency: review.currency ? String(review.currency) : null,
       exchangeRate: review.exchange_rate == null ? null : Number(review.exchange_rate),
       paidAmount: review.paid?.amount == null ? null : Number(review.paid.amount),
@@ -233,6 +247,13 @@ export class PurchaseImportState {
   setImportPaid(value: number | null) {
     this.importDraft.update((draft) => ({ ...draft, paidAmount: value }));
   }
+  /** P5: aplica a diferença sugerida (total do pedido × valor pago) como taxa extra. */
+  applySuggestedExtras() {
+    const suggested = this.suggestedExtras();
+    if (suggested === null) return;
+    this.importDraft.update((draft) => ({ ...draft, extras: suggested }));
+    this.suggestedExtras.set(null);
+  }
   importItemsTotal() {
     return itemsTotal(this.importDraft().items);
   }
@@ -262,7 +283,10 @@ export class PurchaseImportState {
   importNeedsRate() {
     return needsRate(this.importDraft().currency);
   }
-  updateImportNumber(field: 'total' | 'shipping' | 'discount' | 'tax', value: number | null) {
+  updateImportNumber(
+    field: 'total' | 'shipping' | 'discount' | 'tax' | 'extras',
+    value: number | null,
+  ) {
     this.importDraft.update((draft) => ({ ...draft, [field]: value }));
   }
   updateImportItem(

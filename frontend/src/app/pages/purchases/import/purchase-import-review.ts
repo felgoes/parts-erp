@@ -55,7 +55,10 @@ export class PurchaseImportReview {
   updateImportField(field: 'supplier' | 'orderNumber' | 'documentDate', value: string) {
     this.flow.updateImportField(field, value);
   }
-  updateImportNumber(field: 'total' | 'shipping' | 'discount' | 'tax', value: number | null) {
+  updateImportNumber(
+    field: 'total' | 'shipping' | 'discount' | 'tax' | 'extras',
+    value: number | null,
+  ) {
     this.flow.updateImportNumber(field, value);
   }
   setImportMoneyValidity(key: string, invalid: boolean) {
@@ -120,6 +123,7 @@ export class PurchaseImportReview {
             total: draft.total,
             freight_amount: draft.shipping ?? 0,
             tax_amount: draft.tax ?? 0,
+            extras_amount: draft.extras ?? 0,
             discount_amount: draft.discount ?? 0,
           },
       items: (isExpense

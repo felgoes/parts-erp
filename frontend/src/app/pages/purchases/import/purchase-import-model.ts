@@ -29,6 +29,8 @@ export interface ImportDraft {
   shipping: number | null;
   discount: number | null;
   tax: number | null;
+  /** P5: taxa de pagamento/processamento cobrada por fora do valor das peças. */
+  extras: number | null;
   currency: string | null;
   exchangeRate: number | null;
   paidAmount: number | null;
@@ -84,6 +86,7 @@ export function emptyImportDraft(): ImportDraft {
     shipping: null,
     discount: null,
     tax: null,
+    extras: null,
     currency: null,
     exchangeRate: null,
     paidAmount: null,

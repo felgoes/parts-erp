@@ -18,6 +18,8 @@ export interface ImportDocumentDraft {
   shipping: number | null;
   discount: number | null;
   tax: number | null;
+  /** P5: taxa de pagamento/processamento cobrada por fora do valor das peças. */
+  extras: number | null;
 }
 
 export interface ImportPlanLine {
@@ -25,6 +27,7 @@ export interface ImportPlanLine {
   unit_cost: number;
   freight_amount: number;
   tax_amount: number;
+  extras_amount: number;
   discount_amount: number;
 }
 
@@ -33,6 +36,7 @@ export interface ImportPlan {
   items_subtotal: number;
   freight_amount: number;
   tax_amount: number;
+  extras_amount: number;
   discount_amount: number;
   computed_total: number;
   document_total: number | null;
@@ -148,26 +152,33 @@ export function buildImportPlan(
   ]);
   const freightCents = toCents(document.shipping);
   const taxCents = toCents(document.tax);
+  const extrasCents = toCents(document.extras);
   const discountCents = toCents(document.discount);
   const freightShare = splitCents(freightCents, weights);
   const taxShare = splitCents(taxCents, weights);
+  const extrasShare = splitCents(extrasCents, weights);
   const discountShare = splitCents(discountCents, weights);
 
   const documentCents = document.total === null ? null : toCents(document.total);
-  const adjustmentsCents = freightCents + taxCents - discountCents;
+  const adjustmentsCents = freightCents + taxCents + extrasCents - discountCents;
   if (documentCents !== null && adjustmentsCents > documentCents) {
     throw new ImportPlanError(
-      'O frete e os impostos menos o desconto superam o total do documento. Revise os valores.',
+      'O frete, os impostos e as taxas extras menos o desconto superam o total do ' +
+        'documento. Revise os valores.',
     );
   }
 
   const planLines: ImportPlanLine[] = lines.map((_, index) => {
     const extraCents =
-      freightShare[String(index)] + taxShare[String(index)] - discountShare[String(index)];
+      freightShare[String(index)] +
+      taxShare[String(index)] +
+      extrasShare[String(index)] -
+      discountShare[String(index)];
     const landedCents = baseCents[index] + halfUpDiv(extraCents * MILLI, quantityMilli[index]);
     if (landedCents < 0) {
       throw new ImportPlanError(
-        'Os descontos deixam o custo de alguma peça negativo. Revise frete, impostos e desconto.',
+        'Os descontos deixam o custo de alguma peça negativo. Revise frete, impostos, ' +
+          'taxas extras e desconto.',
       );
     }
     return {
@@ -175,6 +186,7 @@ export function buildImportPlan(
       unit_cost: fromCents(landedCents),
       freight_amount: fromCents(freightShare[String(index)]),
       tax_amount: fromCents(taxShare[String(index)]),
+      extras_amount: fromCents(extrasShare[String(index)]),
       discount_amount: fromCents(discountShare[String(index)]),
     };
   });
@@ -186,7 +198,8 @@ export function buildImportPlan(
   const computedCents = subtotalCents + adjustmentsCents;
   if (computedCents < 0) {
     throw new ImportPlanError(
-      'O total é menor que o frete e os impostos menos o desconto. Revise os valores.',
+      'O total é menor que o frete, os impostos e as taxas extras menos o desconto. ' +
+        'Revise os valores.',
     );
   }
   let differenceCents = 0;
@@ -200,6 +213,7 @@ export function buildImportPlan(
     items_subtotal: fromCents(subtotalCents),
     freight_amount: fromCents(freightCents),
     tax_amount: fromCents(taxCents),
+    extras_amount: fromCents(extrasCents),
     discount_amount: fromCents(discountCents),
     computed_total: fromCents(computedCents),
     document_total: documentCents === null ? null : fromCents(documentCents),
@@ -209,7 +223,8 @@ export function buildImportPlan(
   if (documentCents !== null && Math.abs(differenceCents) > lines.length) {
     throw new ImportPlanError(
       'A soma dos itens não fecha com o total do documento: a diferença é de ' +
-        `${formatBrlCents(Math.abs(differenceCents))}. Confira itens, frete, impostos e desconto.`,
+        `${formatBrlCents(Math.abs(differenceCents))}. Confira itens, frete, impostos, ` +
+        'taxas extras e desconto.',
       plan,
     );
   }

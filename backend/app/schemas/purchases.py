@@ -21,6 +21,8 @@ class PurchaseItemCreate(BaseModel):
     unit_cost: Decimal = Field(default=Decimal("0"), ge=0)
     freight_amount: Decimal = Field(default=Decimal("0"), ge=0)
     tax_amount: Decimal = Field(default=Decimal("0"), ge=0)
+    # P5: taxa de pagamento/processamento cobrada por fora do valor das peças.
+    extras_amount: Decimal = Field(default=Decimal("0"), ge=0)
     discount_amount: Decimal = Field(default=Decimal("0"), ge=0)
     discount_percent: Decimal = Field(default=Decimal("0"), ge=0, le=100)
     # P0: desconto da linha do documento importado. Vira o custo unitário líquido da peça.

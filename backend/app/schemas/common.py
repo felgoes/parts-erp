@@ -804,44 +804,6 @@ class PurchaseOut(ORMModel):
     payables: list[PayableOut] = Field(default_factory=list)
 
 
-class PurchaseListRowItem(BaseModel):
-    """Item como a lista precisa dele: sem custo, frete, impostos nem desconto.
-
-    A tela de detalhe busca o registro completo ao abrir; aqui vão só os campos que a linha
-    mostra e que a seleção em lote e a cópia usam.
-    """
-
-    id: str
-    product_id: str | None = None
-    sku: str
-    description: str
-    unit: str = "un"
-    quantity: Decimal
-    received_quantity: Decimal
-
-
-class PurchaseListRowQuote(BaseModel):
-    """Cotação como a lista precisa dela: fornecedor e total, sem rateio nem condição."""
-
-    id: str
-    supplier_name: str
-    total: Decimal | None = None
-
-
-class PurchaseListItem(PurchaseOut):
-    """Projeção da lista de compras.
-
-    Sem histórico, anexos e títulos (que só o detalhe usa) e com itens e cotações na versão
-    leve, que é onde estava a maior parte do payload.
-    """
-
-    events: list[PurchaseEventOut] = Field(default_factory=list, exclude=True)
-    attachments: list[PurchaseAttachmentOut] = Field(default_factory=list, exclude=True)
-    payables: list[PayableOut] = Field(default_factory=list, exclude=True)
-    items: list[PurchaseListRowItem] = Field(default_factory=list)
-    quotes: list[PurchaseListRowQuote] = Field(default_factory=list)
-
-
 class CustomerCreate(BaseModel):
     name: str = Field(min_length=2, max_length=200)
     document: str | None = Field(default=None, max_length=20)

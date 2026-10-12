@@ -2,6 +2,8 @@
 
 ## 12 de outubro de 2026 — entregas confirmadas em PRD
 
+- [Sincronização do Mercado Livre dividida · b217cf3](https://github.com/felgoes/parts-erp/commit/b217cf3): a rotina que conversa com o Mercado Livre (1.022 linhas) foi separada em cinco partes — leitura do pedido e dados de apoio, pedidos, documentos fiscais e automação, envio e etiquetas, e catálogo e estoque. Sem mudança de comportamento: os mesmos pedidos, notas e etiquetas são sincronizados.
+
 - [Rotas de contas a pagar divididas · daaefd0](https://github.com/felgoes/parts-erp/commit/daaefd0): a rota de contas a pagar do servidor (726 linhas) foi separada em leitura (lista, relatório e exportação), ações (detalhe, ajuste e pagamentos) e as contas de data e faixa de atraso que as duas usam. Sem mudança de comportamento.
 
 - [Modelos do ERP divididos por área · a9663c4](https://github.com/felgoes/parts-erp/commit/a9663c4): a lista de tabelas do sistema saiu de um arquivo de 753 linhas para arquivos por área (usuários e dispositivos, catálogo, vendas e estoque, compras e títulos, marketplaces com pós-venda e os tipos de situação), mantendo a mesma lista de importação para o resto do sistema. Sem mudança de comportamento.

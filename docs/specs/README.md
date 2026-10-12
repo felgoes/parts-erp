@@ -7,6 +7,7 @@ As specs descrevem comportamento e critérios de aceite de cada item. A lista of
 3. [P11 — Cotação com total e custo unitário em tempo real](p11-cotacao-total-unitario-tempo-real.md)
 4. [P13 — Excluir pedido de compra pelos três pontos, com os registros ligados](p13-exclusao-compra-relacionados.md)
 5. [P14 — Importação de documento de marketplace: conferência, moeda e leitura de itens](p14-importacao-documento-marketplace.md)
+6. [P15 — O detalhe da compra cabe na tela em qualquer largura](p15-detalhe-compra-cabe-na-tela.md)
 
 ## Fila
 

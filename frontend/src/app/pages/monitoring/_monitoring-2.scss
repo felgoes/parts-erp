@@ -1,0 +1,132 @@
+.views-empty strong {
+  font-size: 15px;
+}
+.views-empty span {
+  color: #7b7e80;
+  font-size: 12px;
+}
+@media (max-width: 760px) {
+  .period-filter {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    align-items: end;
+  }
+  .period-filter > div {
+    grid-column: 1/-1;
+  }
+  .period-filter label input {
+    width: 100%;
+  }
+  .apply-filter {
+    grid-column: 1/-1;
+  }
+  .product-views-card {
+    padding: 18px 14px;
+  }
+  .product-views-card .card-title {
+    display: grid;
+  }
+  .product-views-card .views-total {
+    justify-self: start;
+  }
+  .product-views-card th,
+  .product-views-card td {
+    padding: 10px 8px;
+    font-size: 11px;
+  }
+  .view-bar {
+    width: 40px;
+    margin-right: 3px;
+  }
+  .product-views-card th:nth-child(4),
+  .product-views-card td:nth-child(4) {
+    min-width: 100px;
+  }
+}
+@media (max-width: 760px) {
+  .trend-card {
+    padding: 18px 14px;
+  }
+  .trend-card .card-title {
+    gap: 8px;
+  }
+  .trend-card .card-title p {
+    font-size: 12px;
+  }
+  .chart-period {
+    font-size: 10px;
+  }
+  .chart-legend {
+    gap: 4px 13px;
+    margin-top: 15px;
+  }
+  .legend-item {
+    font-size: 11px;
+  }
+  .activity-chart {
+    min-width: 520px;
+  }
+}
+.period-filter > div strong {
+  font-size: 14px;
+}
+.apply-filter {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+.event-bars {
+  display: grid;
+  gap: 17px;
+  margin-top: 22px;
+}
+.event-bar-row {
+  display: grid;
+  gap: 7px;
+}
+.event-bar-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.event-bar-heading span {
+  color: #34443c;
+  font-size: 13px;
+}
+.event-bar-heading strong {
+  margin: 0;
+  font-size: 15px;
+}
+.event-bar-track {
+  height: 9px;
+  overflow: hidden;
+  border-radius: 99px;
+  background: #eff1ed;
+}
+.event-bar-track span {
+  display: block;
+  height: 100%;
+  min-width: 2px;
+  border-radius: inherit;
+  transition: width 0.25s ease;
+}
+.event-bar-row small {
+  font-size: 11px;
+}
+.breakdown-card > p {
+  max-width: 38rem;
+}
+.period-filter > div strong {
+  margin: 0;
+}
+.product-views-card td strong {
+  display: inline;
+  font-size: 13px;
+  margin: 0;
+  color: #18382c;
+}
+@media (max-width: 1100px) {
+  .monitor-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

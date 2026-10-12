@@ -23,6 +23,7 @@ import {
   ProductChannelDraft,
   Purchase,
   PurchaseListItem,
+  PurchaseListOut,
   PayableDetail,
   PayableListResponse,
   PayableReport,
@@ -236,8 +237,24 @@ export class ApiService {
       reason,
     });
   }
-  purchases(): Observable<PurchaseListItem[]> {
-    return this.http.get<PurchaseListItem[]>(`${this.base}/purchases`);
+  purchases(params?: {
+    limit?: number;
+    offset?: number;
+    search?: string;
+    status?: string;
+    startDate?: string;
+    endDate?: string;
+  }): Observable<PurchaseListOut> {
+    return this.http.get<PurchaseListOut>(`${this.base}/purchases`, {
+      params: this.queryParams({
+        limit: params?.limit,
+        offset: params?.offset,
+        search: params?.search,
+        status: params?.status,
+        start_date: params?.startDate,
+        end_date: params?.endDate,
+      }),
+    });
   }
   purchase(id: string): Observable<Purchase> {
     return this.http.get<Purchase>(`${this.base}/purchases/${id}`);
@@ -443,7 +460,9 @@ export class ApiService {
       });
   }
 
-  private queryParams(params: Record<string, string | number | boolean>): Record<string, string> {
+  private queryParams(
+    params: Record<string, string | number | boolean | null | undefined>,
+  ): Record<string, string> {
     return Object.fromEntries(
       Object.entries(params)
         .filter(([, value]) => value !== undefined && value !== null && value !== '')

@@ -59,7 +59,7 @@
       aria-label="Buscar compras"
       placeholder="Buscar número, peça ou fornecedor…"
       [value]="search()"
-      (input)="search.set($any($event.target).value)"
+      (input)="onSearch($any($event.target).value)"
   /></label>
   <label class="purchase-select"
     >Etapa
@@ -70,7 +70,7 @@
       }
     </select></label
   >
-  <span class="muted">{{ filtered().length }} compras</span>
+  <span class="muted">{{ total() }} compras</span>
   @if (selectedPurchases().length) {
     <button
       type="button"
@@ -1889,7 +1889,7 @@
               </div>
             }
           </section>
-          @if (selectedQuote(purchase); as chosen) {
+          @if (selectedDetailQuote(purchase); as chosen) {
             <section class="purchase-aside-card quote-summary-card">
               <p class="eyebrow">Cotação escolhida</p>
               <div>

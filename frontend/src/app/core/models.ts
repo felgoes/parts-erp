@@ -377,11 +377,47 @@ export interface Purchase {
   payables?: PurchasePayable[];
 }
 
-/**
- * Item da lista de compras: mesmo contrato do detalhe, sem os blocos que só a tela de
- * detalhe usa (histórico e anexos). O detalhe é buscado ao abrir a compra.
- */
-export type PurchaseListItem = Omit<Purchase, 'events' | 'attachments' | 'payables'>;
+/** Linha de item na lista: só o que a lista mostra e usa (o detalhe traz o registro completo). */
+export interface PurchaseListRowItem {
+  id: string;
+  product_id: string | null;
+  sku: string;
+  description: string;
+  unit: string;
+  quantity: number;
+  received_quantity: number;
+}
+
+/** Cotação na lista: fornecedor e total, sem rateio nem condição. */
+export interface PurchaseListRowQuote {
+  id: string;
+  supplier_name: string;
+  total: number | null;
+}
+
+export interface PurchaseListItem extends Omit<
+  Purchase,
+  'events' | 'attachments' | 'payables' | 'items' | 'quotes'
+> {
+  items: PurchaseListRowItem[];
+  quotes: PurchaseListRowQuote[];
+}
+
+/** Contagens dos cartões, sempre do período escolhido. */
+export interface PurchaseListSummary {
+  negotiating: number;
+  ordered: number;
+  received: number;
+}
+
+/** Envelope da lista: a página, o total filtrado e o resumo do período. */
+export interface PurchaseListOut {
+  items: PurchaseListItem[];
+  total: number;
+  summary: PurchaseListSummary;
+  limit: number;
+  offset: number;
+}
 
 export interface PurchaseAttachment {
   id: string;

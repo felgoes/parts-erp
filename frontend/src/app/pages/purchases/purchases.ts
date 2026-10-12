@@ -1,5 +1,5 @@
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { debounceTime } from 'rxjs';
+import { Subject, debounceTime } from 'rxjs';
 import { CurrencyPipe, DatePipe, DecimalPipe } from '@angular/common';
 import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 import {
@@ -157,6 +157,7 @@ export class PurchasesPage implements OnInit {
   readonly error = signal('');
   readonly message = signal('');
   readonly search = signal('');
+  private readonly searchChanges = new Subject<string>();
   readonly statusFilter = signal('all');
   readonly receiveValues = signal<
     Record<string, { quantity: number; productId: string; create: boolean }>
@@ -322,60 +323,44 @@ export class PurchasesPage implements OnInit {
     notes: [''],
   });
   readonly lines = this.form.controls.items as FormArray;
-  readonly periodPurchases = computed(() => {
-    const startDate = this.startDate();
-    const endDate = this.endDate();
-    return this.purchases().filter((purchase) => {
-      const date = this.purchaseLocalDate(purchase);
-      return (!startDate || date >= startDate) && (!endDate || date <= endDate);
-    });
+  // Filtro, busca e paginação acontecem no servidor: a tela guarda só o estado da consulta.
+  readonly total = signal(0);
+  readonly summaryCounts = signal({ negotiating: 0, ordered: 0, received: 0 });
+  readonly summary = computed(() => {
+    const counts = this.summaryCounts();
+    return [
+      {
+        status: 'negotiating',
+        label: 'Em negociação',
+        count: counts.negotiating,
+        note: 'Aguardando propostas',
+      },
+      {
+        status: 'ordered',
+        label: 'Aguardando recebimento',
+        count: counts.ordered,
+        note: 'Peças e materiais pendentes',
+      },
+      {
+        status: 'received',
+        label: 'Concluídas',
+        count: counts.received,
+        note: 'Compras recebidas ou despesas lançadas',
+      },
+    ];
   });
-  readonly filtered = computed(() => {
-    const term = this.search().trim().toLocaleLowerCase('pt-BR');
-    return this.periodPurchases().filter((purchase) => {
-      const matchStatus = this.statusFilter() === 'all' || purchase.status === this.statusFilter();
-      const haystack = [
-        purchase.number,
-        ...purchase.items.flatMap((item) => [item.sku, item.description]),
-        ...purchase.quotes.map((quote) => quote.supplier_name),
-      ]
-        .join(' ')
-        .toLocaleLowerCase('pt-BR');
-      return matchStatus && (!term || haystack.includes(term));
-    });
-  });
-  readonly summary = computed(() => [
-    {
-      status: 'negotiating',
-      label: 'Em negociação',
-      count: this.periodPurchases().filter((p) => p.status === 'negotiating').length,
-      note: 'Aguardando propostas',
-    },
-    {
-      status: 'ordered',
-      label: 'Aguardando recebimento',
-      count: this.periodPurchases().filter((p) =>
-        ['ordered', 'partially_received'].includes(p.status),
-      ).length,
-      note: 'Peças e materiais pendentes',
-    },
-    {
-      status: 'received',
-      label: 'Concluídas',
-      count: this.periodPurchases().filter((p) => p.status === 'received').length,
-      note: 'Compras recebidas ou despesas lançadas',
-    },
-  ]);
-
-  private purchaseLocalDate(purchase: PurchaseListItem) {
-    const date = new Date(purchase.created_at);
-    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-  }
 
   ngOnInit() {
     this.load();
     this.refreshProducts();
     this.loadSuppliers();
+    // Busca no servidor: espera o usuário parar de digitar e volta para a primeira página.
+    this.searchChanges
+      .pipe(debounceTime(300), takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        this.page.set(1);
+        this.load();
+      });
     this.api.purchaseImportProfiles().subscribe({
       next: (result) => this.importProfiles.set(result.profiles),
       error: () => undefined,
@@ -1015,17 +1000,38 @@ export class PurchasesPage implements OnInit {
     });
   }
   load() {
-    this.api.purchases().subscribe({
-      next: (items) => this.purchases.set(items),
-      error: () => this.error.set('Não foi possível carregar as compras. Tente novamente.'),
-    });
+    this.api
+      .purchases({
+        limit: this.pageSize,
+        offset: (this.page() - 1) * this.pageSize,
+        search: this.search().trim() || undefined,
+        status: this.statusFilter() === 'all' ? undefined : this.statusFilter(),
+        startDate: this.startDate() || undefined,
+        endDate: this.endDate() || undefined,
+      })
+      .subscribe({
+        next: (page) => {
+          this.purchases.set(page.items);
+          this.total.set(page.total);
+          this.summaryCounts.set(page.summary);
+        },
+        error: () => this.error.set('Não foi possível carregar as compras. Tente novamente.'),
+      });
+  }
+  onSearch(value: string) {
+    this.search.set(value);
+    this.searchChanges.next(value);
   }
   applyPeriod(range: DateRange) {
     this.startDate.set(range.startDate);
     this.endDate.set(range.endDate);
+    this.page.set(1);
+    this.load();
   }
   toggleStatus(status: string) {
     this.statusFilter.set(this.statusFilter() === status ? 'all' : status);
+    this.page.set(1);
+    this.load();
   }
   openNew() {
     this.closeRowMenu();
@@ -1226,6 +1232,10 @@ export class PurchasesPage implements OnInit {
     return this.products().filter((product) => product.stock_type === stockType);
   }
   selectedQuote(purchase: PurchaseListItem) {
+    return purchase.quotes.find((quote) => quote.id === purchase.selected_quote_id) ?? null;
+  }
+  // O detalhe mostra o rateio e a condição da cotação: ali a compra é o registro completo.
+  selectedDetailQuote(purchase: Purchase): PurchaseQuote | null {
     return purchase.quotes.find((quote) => quote.id === purchase.selected_quote_id) ?? null;
   }
   statusLabel(status: PurchaseStatus) {
@@ -1668,7 +1678,7 @@ export class PurchasesPage implements OnInit {
       .pipe(finalize(() => this.saving.set(false)))
       .subscribe({
         next: () => {
-          this.api.purchases().subscribe((items) => this.purchases.set(items));
+          this.load();
           this.api.purchase(purchase.id).subscribe((full) => this.detail.set(full));
         },
         error: (err) =>
@@ -1788,21 +1798,19 @@ export class PurchasesPage implements OnInit {
   }
   purchaseTotal(purchase: PurchaseListItem) {
     if (purchase.purchase_type === 'expense') return purchase.expense_amount ?? 0;
-    return (
-      purchase.total_amount ??
-      purchase.items.reduce((sum, item) => sum + item.quantity * (item.unit_cost ?? 0), 0)
-    );
+    // A linha da lista não carrega custo por item: o total vem do servidor, e quem não lê
+    // financeiro recebe vazio — que é exatamente o comportamento desejado.
+    return purchase.total_amount ?? 0;
   }
   totalPages() {
-    return Math.max(1, Math.ceil(this.filtered().length / this.pageSize));
+    return Math.max(1, Math.ceil(this.total() / this.pageSize));
   }
   pagedPurchases() {
-    const page = Math.min(this.page(), this.totalPages());
-    const start = (page - 1) * this.pageSize;
-    return this.filtered().slice(start, start + this.pageSize);
+    return this.purchases();
   }
   goToPage(delta: number) {
     this.page.set(Math.min(this.totalPages(), Math.max(1, this.page() + delta)));
+    this.load();
   }
   isSelectable(purchase: PurchaseListItem) {
     return (

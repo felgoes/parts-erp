@@ -2,6 +2,8 @@
 
 ## 11 de outubro de 2026 — entregas confirmadas em PRD
 
+- [Base de código no padrão do projeto · 55feda7](https://github.com/felgoes/parts-erp/commit/55feda7): o código passou a seguir a formatação que o repositório já declara (100 colunas, aspas simples) e o lint ficou limpo, de ponta a ponta. Sem mudança de comportamento — é manutenção: fica mais rápido e mais seguro revisar e alterar qualquer tela.
+
 - [Telas de compras mais leves · df4b199](https://github.com/felgoes/parts-erp/commit/df4b199): a lista de compras passou a carregar só o que ela mostra — histórico, anexos e títulos a pagar são buscados no momento de abrir a compra, que passa a exibir sempre o estado atual. Internamente, os templates das telas saíram de dentro do código e viraram arquivos próprios, e os formulários de importação ganharam tipos nomeados: a manutenção fica mais simples, menor e mais segura.
 
 ## 11 de outubro de 2026 — entregas confirmadas em PRD

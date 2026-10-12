@@ -32,6 +32,22 @@ from app.services.after_sale import after_sales_for_invoices, invoice_after_sale
 from app.services.invoice_tracking import attach_invoice_tracking, tracking_last_update
 from app.services.sales import cancel_invoice, confirm_invoice, create_invoice
 
+
+def _locked_invoice(db: Session, invoice_id: str) -> SalesInvoice:
+    """Carrega a fatura travando a linha.
+
+    Confirmação e cancelamento mexem em estoque a partir de uma decisão tomada na leitura do
+    status; sem a trava, dois pedidos simultâneos leem "rascunho" e tentam a mesma baixa. Em
+    SQLite a trava é ignorada e quem protege é a chave de idempotência do movimento; em
+    Postgres ela fecha a janela antes de qualquer escrita.
+    """
+    invoice = db.scalar(
+        select(SalesInvoice).where(SalesInvoice.id == invoice_id).with_for_update()
+    )
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Fatura não encontrada")
+    return invoice
+
 router = APIRouter(prefix="/invoices", tags=["Faturas de venda"])
 BRAZIL_TZ = timezone(timedelta(hours=-3))
 
@@ -215,7 +231,7 @@ def confirm(
     db: Session = Depends(get_db),
     _: User = Depends(require_permission(Permission.INVOICE_CONFIRM)),
 ) -> SalesInvoice:
-    invoice = db.get(SalesInvoice, invoice_id)
+    invoice = _locked_invoice(db, invoice_id)
     if not invoice:
         raise HTTPException(status_code=404, detail="Fatura não encontrada")
     confirm_invoice(db, invoice)
@@ -231,7 +247,7 @@ def cancel(
     db: Session = Depends(get_db),
     _: User = Depends(require_permission(Permission.INVOICE_CANCEL)),
 ) -> SalesInvoice:
-    invoice = db.get(SalesInvoice, invoice_id)
+    invoice = _locked_invoice(db, invoice_id)
     if not invoice:
         raise HTTPException(status_code=404, detail="Fatura não encontrada")
     cancel_invoice(db, invoice)

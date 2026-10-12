@@ -28,6 +28,15 @@ def move_stock(
     if not product:
         raise HTTPException(status_code=404, detail="Produto não encontrado")
 
+    # Dupla submissão (dois cliques, reentrega do provedor) pode ter passado pela checagem
+    # acima antes de qualquer uma gravar. Depois de travar a linha do produto, a checagem é
+    # repetida: quem chega depois devolve o movimento que já existe, sem alterar o saldo de novo.
+    existing = db.scalar(
+        select(StockMovement).where(StockMovement.idempotency_key == idempotency_key)
+    )
+    if existing:
+        return existing
+
     new_balance = Decimal(product.current_stock) + Decimal(quantity)
     if new_balance < 0:
         raise HTTPException(

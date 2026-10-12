@@ -1,4 +1,3 @@
-1022 backend/app/integrations/mercadolivre/sync.py
 999 backend/tests/test_purchases.py
 712 backend/app/services/product_channels.py
 649 frontend/src/app/pages/products/products.html
@@ -8,7 +7,7 @@
 519 frontend/src/app/pages/payables/payables.html
 518 backend/app/services/market_research.py
 510 frontend/src/app/pages/finance/finance.scss
-507 backend/tests/test_marketplace_sync.py
+508 backend/tests/test_marketplace_sync.py
 507 frontend/src/app/pages/products/products.ts
 498 frontend/src/app/core/api.service.ts
 466 frontend/src/app/pages/marketplace/marketplace.html

@@ -5,6 +5,7 @@ import pytest
 from sqlalchemy import select
 
 from app.core.security import encrypt_secret
+from app.integrations.mercadolivre import ml_fiscal, ml_support
 from app.integrations.mercadolivre import sync as sync_module
 from app.integrations.mercadolivre.client import MercadoLivreClient, MercadoLivreError
 from app.models import (
@@ -78,7 +79,7 @@ def test_order_webhook_creates_invoice_and_documents(db, monkeypatch, tmp_path):
     monkeypatch.setattr(MercadoLivreClient, "get", fake_get)
     monkeypatch.setattr(MercadoLivreClient, "download", fake_download)
     monkeypatch.setattr(
-        sync_module,
+        ml_support,
         "get_settings",
         lambda: SimpleNamespace(
             documents_dir=str(tmp_path),
@@ -134,7 +135,7 @@ def test_shipment_api_failure_marks_order_for_retry(db, monkeypatch):
 def test_invoice_documents_are_idempotent(db, monkeypatch, tmp_path):
     account = marketplace_account(db)
     monkeypatch.setattr(
-        sync_module,
+        ml_support,
         "get_settings",
         lambda: SimpleNamespace(documents_dir=str(tmp_path)),
     )
@@ -184,7 +185,7 @@ def test_manual_invoice_request_works_when_automatic_issuance_is_disabled(db, mo
     calls = []
 
     monkeypatch.setattr(
-        sync_module,
+        ml_support,
         "_automation_config",
         lambda _db: SimpleNamespace(auto_issue_invoice=False),
     )
@@ -235,7 +236,7 @@ def test_label_waits_until_mercado_livre_releases_printing_substatus(db, monkeyp
         lambda self, path: downloads.append(path) or b"label-pdf",
     )
     monkeypatch.setattr(
-        sync_module,
+        ml_support,
         "get_settings",
         lambda: SimpleNamespace(documents_dir=str(tmp_path), mercadolivre_label_format="pdf"),
     )
@@ -362,7 +363,7 @@ def test_marketplace_cancellation_keeps_invoice_and_restores_stock_once(db, monk
     }
     monkeypatch.setattr(MercadoLivreClient, "get", lambda self, path, **kwargs: order)
     monkeypatch.setattr(
-        sync_module,
+        ml_support,
         "_automation_config",
         lambda db: SimpleNamespace(
             import_orders=True,
@@ -499,7 +500,7 @@ def test_polling_backoff_and_fair_ordering(db, monkeypatch):
     db.commit()
     processed = []
     monkeypatch.setattr(
-        sync_module,
+        ml_fiscal,
         "automate_order_documents",
         lambda db, order: processed.append(order.external_order_id),
     )

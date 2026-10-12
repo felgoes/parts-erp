@@ -2,7 +2,7 @@ from decimal import Decimal
 
 import pytest
 
-from app.integrations.mercadolivre import sync as ml_sync
+from app.integrations.mercadolivre import ml_products as ml_sync
 from app.integrations.mercadolivre.client import MercadoLivreError
 from app.models import MarketplaceAccount, Product, ProductMarketplaceListing
 from app.schemas.common import ProductChannelDraftIn

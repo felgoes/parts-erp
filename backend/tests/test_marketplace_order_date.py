@@ -18,6 +18,7 @@ from sqlalchemy import (
 )
 
 from app.core.security import encrypt_secret
+from app.integrations.mercadolivre import ml_orders
 from app.integrations.mercadolivre import sync as sync_module
 from app.integrations.mercadolivre.client import MercadoLivreClient
 from app.models import MarketplaceAccount, Product, SalesInvoice
@@ -53,7 +54,7 @@ def test_marketplace_invoice_uses_original_order_date_on_create_and_resync(db, m
     }
     monkeypatch.setattr(MercadoLivreClient, "get", lambda self, path, **kwargs: order)
     monkeypatch.setattr(
-        sync_module,
+        ml_orders,
         "automate_order_documents",
         lambda session, record, connected_account: record,
     )

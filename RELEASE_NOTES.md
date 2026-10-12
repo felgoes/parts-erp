@@ -2,6 +2,8 @@
 
 ## 11 de outubro de 2026 — entregas confirmadas em PRD
 
+- [Venda e baixa de estoque à prova de clique duplo · f9018b5](https://github.com/felgoes/parts-erp/commit/f9018b5): confirmar ou cancelar a mesma fatura duas vezes ao mesmo tempo, ou receber a mesma notificação de pedido repetida, deixa de arriscar erro — a baixa de estoque e a confirmação acontecem uma única vez. É manutenção de confiabilidade, sem mudança de comportamento na operação normal.
+
 - [Robustez das notificações dos marketplaces · 9275133](https://github.com/felgoes/parts-erp/commit/9275133): as notificações de pedido dos marketplaces passaram a ter limites de tamanho e de frequência e a ignorar repetições, para que um volume anormal não atrapalhe a sincronização das vendas. Também ficou registrado em código que o processamento nunca confia no conteúdo da notificação: ele sempre relê o pedido na plataforma.
 
 - [Base de código no padrão do projeto · 55feda7](https://github.com/felgoes/parts-erp/commit/55feda7): o código passou a seguir a formatação que o repositório já declara (100 colunas, aspas simples) e o lint ficou limpo, de ponta a ponta. Sem mudança de comportamento — é manutenção: fica mais rápido e mais seguro revisar e alterar qualquer tela.

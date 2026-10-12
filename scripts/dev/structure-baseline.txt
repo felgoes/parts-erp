@@ -1,4 +1,3 @@
-999 backend/tests/test_purchases.py
 649 frontend/src/app/pages/products/products.html
 527 frontend/src/app/pages/market-studies/market-studies.html
 519 frontend/src/app/pages/payables/payables.html
@@ -7,5 +6,4 @@
 498 frontend/src/app/core/api.service.ts
 466 frontend/src/app/pages/marketplace/marketplace.html
 452 frontend/src/app/pages/dashboard/dashboard.html
-436 backend/tests/test_purchase_import.py
 404 backend/app/workers/settings.py

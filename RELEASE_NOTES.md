@@ -1,5 +1,15 @@
 # Notas de atualização — Parts ERP
 
+## 12 de outubro de 2026 — entregas confirmadas em PRD
+
+- [Limite de tentativas no login, com liberação pela tela de Usuários · 66a0ab5](https://github.com/felgoes/parts-erp/commit/66a0ab5): repetir senha errada passou a ter limite. Muitas falhas vindas do mesmo lugar barram temporariamente aquele acesso (a janela é de 5 minutos) e falhas na mesma conta apenas acrescentam uma pequena espera antes de checar a senha — quem sabe a senha continua entrando, e não existe bloqueio de conta. A tela de login avisa, com o tempo restante, quando o acesso está temporariamente barrado, e a tela de Usuários ganhou o cartão "Tentativas de login bloqueadas", onde o administrador vê o que está barrado e devolve o acesso com um clique, por origem ou por e-mail.
+
+- [Número de fatura deixa de repetir · 5e87257](https://github.com/felgoes/parts-erp/commit/5e87257): a sequência de faturas (VEN-AAAA-NNNNNN) passou a continuar do maior número já usado. Duas faturas criadas no mesmo instante deixam de disputar o mesmo número — a segunda recebe o número seguinte — e apagar uma fatura não devolve mais o número dela para a próxima.
+
+- [Leitura do XML da nota fiscal mais restrita · 31598c3](https://github.com/felgoes/parts-erp/commit/31598c3): a leitura do XML da NF-e na importação de compras passou a usar um leitor que recusa declarações externas ao documento antes de interpretar qualquer conteúdo, e o trecho ganhou módulo e testes próprios. Sem mudança na conferência: os mesmos campos e itens continuam sendo lidos.
+
+- [Organização interna dos serviços da API do ERP · cb7c360](https://github.com/felgoes/parts-erp/commit/cb7c360): os serviços que o sistema usa para falar com a API foram separados por área (compras, produtos, faturas, financeiro, clientes, usuários, integrações e outras), mantendo a mesma lista de operações para as telas. Sem mudança de comportamento.
+
 ## 11 de outubro de 2026 — entregas confirmadas em PRD
 
 - [Organização interna dos tipos do ERP · 0a9d864](https://github.com/felgoes/parts-erp/commit/0a9d864): a lista de tipos compartilhados do sistema foi dividida por área (compras, produtos, faturas, financeiro, catálogo, notificações e outras), deixando a manutenção mais direta. Sem mudança de comportamento.

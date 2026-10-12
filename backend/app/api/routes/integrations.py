@@ -1,12 +1,8 @@
 import logging
-import re
-import time
 from datetime import UTC, datetime, timedelta
 from urllib.parse import urlencode
 
 import jwt
-from arq import create_pool
-from arq.connections import RedisSettings
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse, RedirectResponse
 from sqlalchemy import select
@@ -15,6 +11,7 @@ from sqlalchemy.orm import Session, selectinload
 from app.api.deps import require_permission
 from app.core.config import get_settings
 from app.core.permissions import Permission
+from app.core.queue import get_queue_pool
 from app.core.security import decode_token, encrypt_secret
 from app.db.session import get_db
 from app.integrations.mercadolivre.client import MercadoLivreClient, MercadoLivreError
@@ -184,9 +181,8 @@ async def callback(code: str, state: str, db: Session = Depends(get_db)) -> Redi
         db.add(account)
         db.commit()
         try:
-            redis = await create_pool(RedisSettings.from_dsn(settings.redis_url))
-            await redis.enqueue_job("sync_mercadolivre_account", account.seller_id)
-            await redis.close()
+            queue = await get_queue_pool()
+            await queue.enqueue_job("sync_mercadolivre_account", account.seller_id)
         except Exception:
             # A conexao nao deve impedir a conclusao do OAuth; o worker pode ser reexecutado.
             logger.warning("OAuth concluído, mas a sincronização inicial não entrou na fila.")
@@ -375,54 +371,9 @@ async def sync_now(
                 "reconecte a conta para importar os pedidos pendentes."
             ),
         ) from exc
-    redis = await create_pool(RedisSettings.from_dsn(get_settings().redis_url))
-    await redis.enqueue_job("sync_mercadolivre_account", account.seller_id)
-    await redis.close()
+    queue = await get_queue_pool()
+    await queue.enqueue_job("sync_mercadolivre_account", account.seller_id)
     return {"accepted": True, "message": "Sincronização do Mercado Livre enfileirada"}
-
-
-@router.post("/webhook", status_code=202)
-@router.post("/notifications", status_code=202)
-async def webhook(request: Request) -> dict[str, bool]:
-    payload = await request.json()
-    topic = str(payload.get("topic", ""))
-    resource = str(payload.get("resource", ""))
-    seller_id = str(payload.get("user_id", ""))
-    if (
-        topic not in {"orders_v2", "shipments", "payments", "invoices", "claims", "returns"}
-        or not resource.startswith("/")
-        or not seller_id.isdigit()
-    ):
-        raise HTTPException(status_code=400, detail="Notificação inválida")
-    valid_resource = (
-        bool(re.fullmatch(r"/orders/\d+", resource))
-        if topic == "orders_v2"
-        else (
-            resource.startswith(f"/users/{seller_id}/invoices/")
-            if topic == "invoices"
-            else bool(re.fullmatch(r"/(shipments|collections|claims|returns)/\d+", resource))
-        )
-    )
-    if not valid_resource:
-        raise HTTPException(status_code=400, detail="Recurso de notificação inválido")
-    received_at = time.monotonic()
-    redis = await create_pool(RedisSettings.from_dsn(get_settings().redis_url))
-    try:
-        job = await redis.enqueue_job(
-            "process_mercadolivre_notification", topic, resource, seller_id
-        )
-    finally:
-        await redis.close()
-    logger.info(
-        "webhook accepted provider=mercadolivre topic=%s resource=%s seller_id=%s "
-        "queue_ms=%.1f job_id=%s",
-        topic,
-        resource,
-        seller_id,
-        (time.monotonic() - received_at) * 1000,
-        getattr(job, "job_id", "unknown"),
-    )
-    return {"accepted": True}
 
 
 @shopee_router.get("/status", response_model=ShopeeStatus)
@@ -578,9 +529,8 @@ async def shopee_callback(
             config.shop_id = str(shop_id)
         db.commit()
         try:
-            redis = await create_pool(RedisSettings.from_dsn(settings.redis_url))
-            await redis.enqueue_job("sync_shopee_account", str(shop_id))
-            await redis.close()
+            queue = await get_queue_pool()
+            await queue.enqueue_job("sync_shopee_account", str(shop_id))
         except Exception:
             logger.warning("OAuth concluído, mas a sincronização inicial não entrou na fila.")
     except (jwt.PyJWTError, KeyError, ShopeeError, ValueError):
@@ -590,27 +540,3 @@ async def shopee_callback(
     response = RedirectResponse(f"{settings.frontend_url}/integrations?shopee_connected=true")
     response.delete_cookie("shopee_oauth_state")
     return response
-
-
-@shopee_router.post("/webhook", status_code=202)
-async def shopee_webhook(request: Request) -> dict[str, bool]:
-    payload = await request.json()
-    if not isinstance(payload, dict):
-        raise HTTPException(status_code=400, detail="Notificacao Shopee invalida")
-    shop_id = str(payload.get("shop_id") or payload.get("shopid") or "")
-    if not shop_id:
-        raise HTTPException(status_code=400, detail="Loja Shopee ausente")
-    received_at = time.monotonic()
-    redis = await create_pool(RedisSettings.from_dsn(get_settings().redis_url))
-    try:
-        job = await redis.enqueue_job("process_shopee_notification", payload)
-    finally:
-        await redis.close()
-    logger.info(
-        "webhook accepted provider=shopee shop_id=%s order_sn=%s queue_ms=%.1f job_id=%s",
-        shop_id,
-        str((payload.get("data") or {}).get("ordersn") or payload.get("ordersn") or ""),
-        (time.monotonic() - received_at) * 1000,
-        getattr(job, "job_id", "unknown"),
-    )
-    return {"accepted": True}

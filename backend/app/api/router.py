@@ -19,6 +19,7 @@ from app.api.routes import (
     suppliers,
     telemetry,
     users,
+    webhooks,
 )
 
 api_router = APIRouter()
@@ -38,6 +39,8 @@ api_router.include_router(telemetry.router)
 api_router.include_router(customers.router)
 api_router.include_router(invoices.router)
 api_router.include_router(live_updates.router)
+api_router.include_router(webhooks.router)
+api_router.include_router(webhooks.shopee_router)
 api_router.include_router(market_studies.router)
 api_router.include_router(integrations.router)
 api_router.include_router(integrations.shopee_router)

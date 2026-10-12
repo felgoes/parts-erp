@@ -2,6 +2,8 @@
 
 ## 11 de outubro de 2026 — entregas confirmadas em PRD
 
+- [Lista de compras mais leve · 7c233fb](https://github.com/felgoes/parts-erp/commit/7c233fb): a lista de compras passou a trafegar só o que ela mostra de cada peça — descrição, quantidade e recebido — em vez dos valores de custo, frete, impostos e desconto, que ficam na tela de detalhe. A resposta ficou 43% menor desde o início deste trabalho, o que deixa a tela mais rápida em lojas com muitas compras.
+
 - [Venda e baixa de estoque à prova de clique duplo · f9018b5](https://github.com/felgoes/parts-erp/commit/f9018b5): confirmar ou cancelar a mesma fatura duas vezes ao mesmo tempo, ou receber a mesma notificação de pedido repetida, deixa de arriscar erro — a baixa de estoque e a confirmação acontecem uma única vez. É manutenção de confiabilidade, sem mudança de comportamento na operação normal.
 
 - [Robustez das notificações dos marketplaces · 9275133](https://github.com/felgoes/parts-erp/commit/9275133): as notificações de pedido dos marketplaces passaram a ter limites de tamanho e de frequência e a ignorar repetições, para que um volume anormal não atrapalhe a sincronização das vendas. Também ficou registrado em código que o processamento nunca confia no conteúdo da notificação: ele sempre relê o pedido na plataforma.

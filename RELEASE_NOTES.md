@@ -2,6 +2,14 @@
 
 ## 12 de outubro de 2026 — entregas confirmadas em PRD
 
+- [Rotas de contas a pagar divididas · daaefd0](https://github.com/felgoes/parts-erp/commit/daaefd0): a rota de contas a pagar do servidor (726 linhas) foi separada em leitura (lista, relatório e exportação), ações (detalhe, ajuste e pagamentos) e as contas de data e faixa de atraso que as duas usam. Sem mudança de comportamento.
+
+- [Modelos do ERP divididos por área · a9663c4](https://github.com/felgoes/parts-erp/commit/a9663c4): a lista de tabelas do sistema saiu de um arquivo de 753 linhas para arquivos por área (usuários e dispositivos, catálogo, vendas e estoque, compras e títulos, marketplaces com pós-venda e os tipos de situação), mantendo a mesma lista de importação para o resto do sistema. Sem mudança de comportamento.
+
+- [Folhas de estilo grandes divididas · 5d010eb](https://github.com/felgoes/parts-erp/commit/5d010eb): os arquivos de estilo mais longos (global, compras, estudos de mercado, layout, catálogo, painel, produtos e marketplaces) passaram a ser carregados em partes, na mesma ordem e com o mesmo resultado na tela. Manutenção: cada pedaço de estilo fica no tamanho em que dá para ler de uma vez.
+
+- [Leitura de documento e contratos da API divididos · 2ec139b](https://github.com/felgoes/parts-erp/commit/2ec139b): a leitura de documento de compra (1.213 linhas) foi separada em perfis e rótulos, dinheiro e datas, colunas e DANFE, itens, OCR e constantes; os contratos da API (1.174 linhas) foram separados por assunto (usuários, produtos, compras e títulos, clientes, faturas e pós-venda, estudos, painel, marketplaces e telemetria). Sem mudança de comportamento — a mesma leitura de documento e os mesmos campos de resposta.
+
 - [Detalhe da compra separado da tela · c34b14d](https://github.com/felgoes/parts-erp/commit/c34b14d): a tela de compras terminou de ser dividida — o painel de detalhe (rascunho, itens e recebimento, cotações, resumo lateral, histórico e título a pagar) virou componentes próprios com o estado em serviços separados. A tela saiu de 2.019 para 393 linhas de código e de 2.075 para 276 linhas de template, ficando dentro do teto que o projeto usa para manter o código legível. Nada muda para quem usa: conferido abrindo uma compra, registrando recebimento e copiando o pedido.
 
 - [Tela de compras dividida em partes menores · 6dabecd](https://github.com/felgoes/parts-erp/commit/6dabecd): a revisão da importação de documento, o cadastro de nova compra (inclusive copiar um pedido) e a confirmação de exclusão saíram de dentro do arquivo da tela e viraram componentes próprios, com o estilo compartilhado em um arquivo comum. Nada muda para quem usa: as telas ficaram do mesmo jeito, e a exclusão e a cópia — que podiam aparecer atrás do painel da compra — agora ficam sempre na frente. É manutenção: deixa a tela de compras bem menor e mais rápida de alterar.

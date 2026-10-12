@@ -1,11 +1,8 @@
 999 backend/tests/test_purchases.py
-712 backend/app/services/product_channels.py
 649 frontend/src/app/pages/products/products.html
-618 backend/app/services/after_sale.py
 542 backend/app/api/routes/integrations.py
 527 frontend/src/app/pages/market-studies/market-studies.html
 519 frontend/src/app/pages/payables/payables.html
-518 backend/app/services/market_research.py
 508 backend/tests/test_marketplace_sync.py
 507 frontend/src/app/pages/products/products.ts
 498 frontend/src/app/core/api.service.ts

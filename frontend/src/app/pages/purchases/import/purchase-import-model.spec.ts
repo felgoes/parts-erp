@@ -50,6 +50,19 @@ describe('revisão de importação — contas puras', () => {
     expect(paidDifference(draftWith({ total: 10, paidAmount: null }))).toBe(0);
   });
 
+  it('inclui as taxas extras no fechamento do documento', () => {
+    // Recibo do Alibaba: 128,42 de itens + 181,92 de frete + 9,31 de taxa = 319,65 pago.
+    const draft = draftWith({
+      total: 319.65,
+      shipping: 181.92,
+      extras: 9.31,
+      items: [{ ...emptyImportLine(), line_total: 128.42 }],
+    });
+    expect(closingDifference(draft)).toBe(0);
+    // Sem contar a taxa, o mesmo documento acusaria a diferença que bloqueava a importação.
+    expect(closingDifference({ ...draft, extras: 0 })).toBe(-9.31);
+  });
+
   it('exige cotação apenas quando o documento não está em reais', () => {
     expect(needsRate('USD')).toBe(true);
     expect(needsRate('brl')).toBe(false);

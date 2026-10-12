@@ -9,7 +9,7 @@
         ><span>− descontos {{ plan.discount_amount | currency: 'BRL' }}</span
         ><strong>= {{ plan.total | currency: 'BRL' }}</strong>
       </div>
-      @if (plan.document_total !== null && plan.difference !== 0) {
+      @if (importPlan().error === '' && plan.document_total !== null && plan.difference !== 0) {
         <small
           >Total lido no documento {{ plan.document_total | currency: 'BRL' }} · diferença de
           {{ plan.difference | currency: 'BRL' }} dentro da tolerância de R$ 0,01 por item.</small
@@ -146,7 +146,7 @@
         [class.check-warn]="importPaidDifference() > 0.05 || importPaidDifference() < -0.05"
         >{{ importPaidDifference() | currency: 'BRL' }}</strong
       >
-      <span>Fechamento: itens + frete + impostos − descontos − total</span>
+      <span>Fechamento: itens + frete + impostos + taxas extras − descontos − total</span>
       @if (importHasItemsToCheck()) {
         <strong
           [class.check-warn]="importClosingDifference() > 0.05 || importClosingDifference() < -0.05"

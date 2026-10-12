@@ -11,6 +11,8 @@ export interface ImportLineDraft {
   quantity: number;
   unit_cost: number;
   discount_amount: number;
+  /** Total impresso na linha do documento; quando existe, manda no fechamento. */
+  line_total?: number | null;
 }
 
 export interface ImportDocumentDraft {
@@ -129,26 +131,32 @@ export function buildImportPlan(
     throw new ImportPlanError('Adicione pelo menos uma peça antes de confirmar a importação.');
   }
 
-  const baseCents: number[] = [];
+  const lineBaseCents: number[] = [];
   const quantityMilli: number[] = [];
   for (const line of lines) {
     const milli = toMilli(line.quantity);
     if (milli <= 0) {
       throw new ImportPlanError('Informe uma quantidade maior que zero em todas as peças.');
     }
-    const lineNet = milli * toCents(line.unit_cost) - MILLI * toCents(line.discount_amount);
+    let lineNet = milli * toCents(line.unit_cost) - MILLI * toCents(line.discount_amount);
     if (lineNet < 0) {
       throw new ImportPlanError(
         'O desconto da linha é maior que o total desta peça. Revise o desconto.',
       );
     }
+    if (line.line_total != null && line.line_total > 0) {
+      // O papel arredonda o unitário na vitrine (20 × 6,43 = 128,60) e cobra o total exato
+      // da linha (128,42): recalcular por unidade criaria centavos de diferença no fechamento.
+      lineNet = toCents(line.line_total) * MILLI;
+    }
     quantityMilli.push(milli);
-    baseCents.push(halfUpDiv(lineNet, milli));
+    lineBaseCents.push(lineNet);
   }
+  const baseCents = lineBaseCents.map((cents, index) => halfUpDiv(cents, quantityMilli[index]));
 
-  const weights: Array<[string, number]> = baseCents.map((base, index) => [
+  const weights: Array<[string, number]> = lineBaseCents.map((cents, index) => [
     String(index),
-    base * quantityMilli[index],
+    cents,
   ]);
   const freightCents = toCents(document.shipping);
   const taxCents = toCents(document.tax);
@@ -192,7 +200,7 @@ export function buildImportPlan(
   });
 
   const subtotalCents = halfUpDiv(
-    baseCents.reduce((sum, base, index) => sum + base * quantityMilli[index], 0),
+    lineBaseCents.reduce((sum, cents) => sum + cents, 0),
     MILLI,
   );
   const computedCents = subtotalCents + adjustmentsCents;

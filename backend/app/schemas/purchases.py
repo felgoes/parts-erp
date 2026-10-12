@@ -27,6 +27,9 @@ class PurchaseItemCreate(BaseModel):
     discount_percent: Decimal = Field(default=Decimal("0"), ge=0, le=100)
     # P0: desconto da linha do documento importado. Vira o custo unitário líquido da peça.
     line_discount_amount: Decimal = Field(default=Decimal("0"), ge=0)
+    # Total que o documento imprime para a linha: manda no fechamento quando existe, porque o
+    # papel arredonda o unitário na vitrine (20 × 6,43 = 128,60) e cobra o total exato (128,42).
+    line_total_amount: Decimal | None = Field(default=None, ge=0)
 
 
 class PurchaseItemUpdate(BaseModel):
@@ -246,6 +249,8 @@ class PurchaseImportDocument(BaseModel):
     total: Decimal | None = Field(default=None, ge=0)
     freight_amount: Decimal = Field(default=Decimal("0"), ge=0)
     tax_amount: Decimal = Field(default=Decimal("0"), ge=0)
+    # P5: taxa de pagamento/processamento cobrada por fora do valor das peças.
+    extras_amount: Decimal = Field(default=Decimal("0"), ge=0)
     discount_amount: Decimal = Field(default=Decimal("0"), ge=0)
 
 

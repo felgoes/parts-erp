@@ -54,6 +54,34 @@ def test_fee_plus_freight_and_tax_above_the_document_total_is_refused():
         )
 
 
+def test_printed_line_total_wins_over_the_recalculated_unit_price():
+    """Recibo do Alibaba: 20 × 6,43 = 128,60, mas o papel cobra 128,42 pela linha.
+
+    Sem respeitar o total impresso, o fechamento acusava R$ 0,18 de diferença e a importação
+    ficava bloqueada num documento que fecha.
+    """
+    plan = build_import_plan(
+        [(Decimal("20"), Decimal("6.43"), Decimal("0"), Decimal("128.42"))],
+        freight_amount=Decimal("181.92"),
+        extras_amount=Decimal("9.31"),
+        document_total=Decimal("319.65"),
+    )
+
+    assert plan.items_subtotal == Decimal("128.42")
+    assert plan.computed_total == Decimal("319.65")
+    assert plan.difference == Decimal("0.00")
+    assert plan.total == Decimal("319.65")
+    # O custo final por peça: base da linha (128,42 / 20 = 6,42) mais frete e taxa rateados
+    # (191,23 / 20 = 9,56).
+    assert plan.lines[0].base_unit_cost == Decimal("6.42")
+    assert plan.lines[0].unit_cost == Decimal("15.98")
+
+
+def test_line_without_printed_total_keeps_the_recalculated_value():
+    plan = build_import_plan([(Decimal("2"), Decimal("10.00"), Decimal("0"))])
+    assert plan.items_subtotal == Decimal("20.00")
+
+
 def test_portuguese_payment_fee_is_not_read_as_tax():
     """P5: "taxa de pagamento" vence o rótulo genérico "taxa" de imposto."""
     lines = [

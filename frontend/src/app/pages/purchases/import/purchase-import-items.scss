@@ -1,3 +1,102 @@
+/* P6: a revisão é onde o documento é conferido linha a linha. Os campos ganham grade própria
+   (4 colunas no desktop, 2 no tablet, 1 no celular), respiro constante de 16px entre linhas e
+   12px entre colunas, e largura suficiente para mostrar R$ 12.345,67 inteiro — sem cortar o
+   valor durante a conferência nem encostar um rótulo no campo vizinho. */
+.import-line {
+  grid-template-columns: repeat(4, minmax(150px, 1fr));
+  row-gap: 16px;
+  column-gap: 12px;
+  padding: 14px 30px 14px 14px;
+}
+
+.import-line > label {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+/* Rótulo acima do campo, em uma linha: nada de "Total da / linha:" quebrado. */
+.import-line > label > span,
+.import-line .line-total small {
+  white-space: nowrap;
+}
+
+.import-line .line-description {
+  grid-column: span 2;
+}
+.import-line .line-sku,
+.import-line .import-stock-control {
+  grid-column: span 1;
+  align-self: end;
+}
+/* Vínculo do produto em faixa própria: busca, selecionado, remover e cadastrar com respiro. */
+.import-line .import-product-search {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 10px;
+  padding-top: 4px;
+  border-top: 1px solid var(--line);
+}
+.import-line .import-product-search > label > input,
+.import-line .import-product-search select,
+.import-line .import-product-search button {
+  min-height: 40px;
+}
+.import-line .line-total {
+  display: grid;
+  gap: 5px;
+  align-content: start;
+  justify-items: end;
+  grid-column: span 1;
+}
+.import-line .line-total small {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.import-line .line-total strong {
+  font-size: 13px;
+  white-space: nowrap;
+}
+/* Composição do custo separada do bloco de campos por espaçamento, não por encostar. */
+.import-line .import-landed-cost,
+.import-line .import-confidence {
+  grid-column: 1 / -1;
+}
+.import-line .import-landed-cost {
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+@media (max-width: 850px) {
+  .import-line {
+    grid-template-columns: repeat(2, minmax(150px, 1fr));
+    padding-right: 26px;
+  }
+  .import-line .line-description,
+  .import-line .import-product-search,
+  .import-line .import-landed-cost {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 600px) {
+  .import-line {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .import-line .line-description,
+  .import-line .line-sku,
+  .import-line .import-stock-control,
+  .import-line .line-total {
+    grid-column: 1 / -1;
+  }
+  .import-line .line-total {
+    justify-items: start;
+  }
+}
+
 .import-product-select {
   display: grid;
   gap: 4px;

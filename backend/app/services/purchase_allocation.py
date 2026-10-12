@@ -100,7 +100,7 @@ class ImportPlan:
 
 
 def build_import_plan(
-    lines: Sequence[tuple[Decimal, Decimal, Decimal]],
+    lines: Sequence[tuple[Decimal, Decimal, Decimal] | tuple[Decimal, Decimal, Decimal, Decimal]],
     *,
     freight_amount: Decimal | int | str = 0,
     tax_amount: Decimal | int | str = 0,
@@ -110,16 +110,21 @@ def build_import_plan(
 ) -> ImportPlan:
     """Rateia o documento importado.
 
-    `lines` traz `(quantidade, custo unitário do papel, desconto da linha)`. O desconto da
-    linha vira custo unitário líquido da própria linha; frete, impostos e desconto do
-    documento são rateados proporcionalmente ao subtotal de cada linha.
+    `lines` traz `(quantidade, custo unitário do papel, desconto da linha)` e, quando o
+    documento imprime o total da linha, um quarto valor com ele. O total impresso manda no
+    fechamento: o papel arredonda o unitário na vitrine (20 × 6,43 = 128,60) e cobra o total
+    exato da linha (128,42), então recalcular por unidade criaria centavos de diferença.
+    O desconto da linha vira custo unitário líquido da própria linha; frete, impostos, taxas
+    extras e desconto do documento são rateados proporcionalmente ao subtotal de cada linha.
     """
     if not lines:
         raise ImportPlanError("Adicione pelo menos uma peça antes de confirmar a importação.")
 
-    base_cents: list[int] = []
+    line_base_cents: list[int] = []
     quantity_milli: list[int] = []
-    for quantity, unit_cost, line_discount in lines:
+    for line in lines:
+        quantity, unit_cost, line_discount = line[0], line[1], line[2]
+        printed_total = line[3] if len(line) > 3 else None
         milli = to_milli(quantity)
         if milli <= 0:
             raise ImportPlanError("Informe uma quantidade maior que zero em todas as peças.")
@@ -130,12 +135,16 @@ def build_import_plan(
             raise ImportPlanError(
                 "O desconto da linha é maior que o total desta peça. Revise o desconto."
             )
+        if printed_total is not None:
+            # O total impresso vence: é o valor que o documento cobra pela linha.
+            line_net = to_cents(printed_total) * MILLI
         quantity_milli.append(milli)
-        base_cents.append(half_up_div(line_net, milli))
+        line_base_cents.append(line_net)
 
-    weights = [
-        (str(index), base_cents[index] * quantity_milli[index]) for index in range(len(lines))
+    base_cents = [
+        half_up_div(line_base_cents[index], quantity_milli[index]) for index in range(len(lines))
     ]
+    weights = [(str(index), line_base_cents[index]) for index in range(len(lines))]
     freight_cents = to_cents(freight_amount)
     tax_cents = to_cents(tax_amount)
     extras_cents = to_cents(extras_amount)
@@ -179,9 +188,7 @@ def build_import_plan(
             )
         )
 
-    subtotal_cents = half_up_div(
-        sum(base_cents[index] * quantity_milli[index] for index in range(len(lines))), MILLI
-    )
+    subtotal_cents = half_up_div(sum(line_base_cents), MILLI)
     computed_cents = subtotal_cents + adjustments_cents
     if computed_cents < 0:
         raise ImportPlanError(

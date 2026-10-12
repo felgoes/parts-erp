@@ -188,7 +188,8 @@ export function closingDifference(draft: ImportDraft): number {
     (
       itemsTotal(draft.items) +
       Number(draft.shipping || 0) +
-      Number(draft.tax || 0) -
+      Number(draft.tax || 0) +
+      Number(draft.extras || 0) -
       Number(draft.discount || 0) -
       Number(draft.total)
     ).toFixed(2),

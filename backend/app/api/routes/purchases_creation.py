@@ -180,11 +180,17 @@ def create_purchase(
                 # pedido registrado e título a pagar — e nada é criado se a proposta não fecha.
                 import_plan = build_import_plan(
                     [
-                        (item.quantity, item.unit_cost, item.line_discount_amount)
+                        (
+                            item.quantity,
+                            item.unit_cost,
+                            item.line_discount_amount,
+                            item.line_total_amount,
+                        )
                         for item in payload.items
                     ],
                     freight_amount=document.freight_amount,
                     tax_amount=document.tax_amount,
+                    extras_amount=document.extras_amount,
                     discount_amount=document.discount_amount,
                     document_total=document.total,
                 )
@@ -264,7 +270,7 @@ def create_purchase(
         source_import_id=payload.source_import_id,
         items=[
             PurchaseItem(
-                **item.model_dump(exclude={"line_discount_amount"}),
+                **item.model_dump(exclude={"line_discount_amount", "line_total_amount"}),
                 base_unit_cost=item.unit_cost,
             )
             for item in payload.items

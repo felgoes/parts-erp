@@ -6,7 +6,7 @@
           [value]="item.description"
           (input)="updateImportItem(i, 'description', $any($event.target).value)"
       /></label>
-      <label
+      <label class="line-sku"
         >SKU / código<input
           [value]="item.sku"
           (input)="updateImportItem(i, 'sku', $any($event.target).value)"
@@ -95,8 +95,12 @@
           [appMoneyInput]="item.discount_amount"
           min="0"
           (moneyInput)="updateImportItem(i, 'discount_amount', $event)"
-          (moneyValidity)="setImportMoneyValidity('discount-' + i, $event)" /></label
-      ><small>Total da linha: {{ item.line_total | currency: 'BRL' }}</small>
+          (moneyValidity)="setImportMoneyValidity('discount-' + i, $event)"
+      /></label>
+      <div class="line-total">
+        <small>Total da linha</small>
+        <strong>{{ item.line_total | currency: 'BRL' }}</strong>
+      </div>
       @if (importPlanLine(i); as planLine) {
         <small class="import-landed-cost"
           >Custo final: {{ planLine.unit_cost | currency: 'BRL' }} / un.

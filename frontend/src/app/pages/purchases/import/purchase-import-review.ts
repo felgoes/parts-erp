@@ -136,6 +136,9 @@ export class PurchaseImportReview {
         unit_cost: item.unit_cost,
         product_id: item.product_id,
         line_discount_amount: item.discount_amount,
+        // O total impresso na linha manda no fechamento: o papel arredonda o unitário na
+        // vitrine e cobra o total exato da linha.
+        line_total_amount: item.line_total || null,
       })),
     };
     this.api

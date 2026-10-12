@@ -2,6 +2,10 @@
 
 ## 12 de outubro de 2026 — entregas confirmadas em PRD
 
+- [Tela de compras dividida em partes menores · 6dabecd](https://github.com/felgoes/parts-erp/commit/6dabecd): a revisão da importação de documento, o cadastro de nova compra (inclusive copiar um pedido) e a confirmação de exclusão saíram de dentro do arquivo da tela e viraram componentes próprios, com o estilo compartilhado em um arquivo comum. Nada muda para quem usa: as telas ficaram do mesmo jeito, e a exclusão e a cópia — que podiam aparecer atrás do painel da compra — agora ficam sempre na frente. É manutenção: deixa a tela de compras bem menor e mais rápida de alterar.
+
+- [Modelos e contratos do ERP divididos por assunto · f322882](https://github.com/felgoes/parts-erp/commit/f322882): as peças comuns dos modelos (identificador, marca de tempo, hora UTC) e os eventos de telemetria ganharam arquivos próprios, e os contratos da cotação de compra saíram do arquivo compartilhado de contratos. Sem mudança de comportamento.
+
 - [Organização interna da área de compras na API · d2f050e](https://github.com/felgoes/parts-erp/commit/d2f050e): a rota de compras do servidor (1.725 linhas) foi separada por assunto — criação, itens e anexos, cotações, recebimento, ciclo de vida, contas a pagar e importação de documento — mantendo exatamente as mesmas rotas públicas. Sem mudança de comportamento.
 
 - [Organização interna da área de compras no ERP · 226e635](https://github.com/felgoes/parts-erp/commit/226e635): a revisão de importação de documento ficou com o modelo e as contas de fechamento em um arquivo próprio (com testes), em vez de misturados às 2 mil linhas da tela de compras. Sem mudança de comportamento — é manutenção: fica mais rápido e mais seguro alterar qualquer ponto da conferência.

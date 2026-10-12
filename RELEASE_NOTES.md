@@ -2,6 +2,10 @@
 
 ## 11 de outubro de 2026 — entregas confirmadas em PRD
 
+- [Telas de compras mais leves · 99a4d36](https://github.com/felgoes/parts-erp/commit/99a4d36): a lista de compras passou a carregar só o que ela mostra — histórico, anexos e títulos a pagar são buscados no momento de abrir a compra, que passa a exibir sempre o estado atual. Internamente, os templates das telas saíram de dentro do código e viraram arquivos próprios, deixando a manutenção mais simples e segura.
+
+## 11 de outubro de 2026 — entregas confirmadas em PRD
+
 - [Compra importada entra como compra já feita · 25a365e](https://github.com/felgoes/parts-erp/commit/25a365e): ao confirmar a revisão de um documento, a compra nasce com a cotação do documento aceita, o pedido registrado e o título a pagar criado (à vista, vencimento em 30 dias corridos da data do documento), pronta para receber — sem cadastrar uma cotação manual só para destravar. A revisão mostra o custo final por peça, com base, frete, impostos e desconto rateados, e o fechamento `itens + frete + impostos − descontos = total`; a confirmação é bloqueada, com o motivo na tela, quando a soma não fecha, quando frete e impostos superam o total, quando o desconto passa do valor da linha e quando falta SKU ou produto na linha.
 
 - [Recebimento e datas no detalhe da compra · 25a365e](https://github.com/felgoes/parts-erp/commit/25a365e): o resumo da compra não soma mais texto no lugar de números — o que travava a tela e impedia registrar o recebimento — e o vencimento do título aparece como a data combinada, sem pular um dia na conversão de fuso.

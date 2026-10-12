@@ -14,6 +14,7 @@ from app.api.routes import (
     payables,
     products,
     purchases,
+    purchases_list,
     push,
     settings,
     suppliers,
@@ -32,6 +33,7 @@ api_router.include_router(dashboard.router)
 api_router.include_router(finance.router)
 api_router.include_router(products.router)
 api_router.include_router(purchases.router)
+api_router.include_router(purchases_list.router)
 api_router.include_router(suppliers.router)
 api_router.include_router(payables.router)
 api_router.include_router(catalog.router)

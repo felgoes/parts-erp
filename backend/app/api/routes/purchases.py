@@ -40,9 +40,6 @@ from app.schemas.common import (
     PurchaseImportDocument,
     PurchaseItemCreate,
     PurchaseItemUpdate,
-    PurchaseListItem,
-    PurchaseListRowItem,
-    PurchaseListRowQuote,
     PurchaseOut,
     PurchaseQuoteCreate,
     PurchaseReceive,
@@ -134,58 +131,6 @@ def _present(purchase: PurchaseCase, user: User) -> PurchaseOut:
     result = PurchaseOut.model_validate(purchase)
     if has_permission(getattr(user, "role", UserRole.admin), Permission.FINANCE_READ):
         result = result.model_copy(update={"total_amount": _purchase_total(purchase)})
-    return _mask_costs(result, user)
-
-
-def _present_list_item(purchase: PurchaseCase, user: User) -> PurchaseListItem:
-    """Item da lista sem carregar histórico, anexos e títulos — a consulta nem os seleciona."""
-    result = PurchaseListItem(
-        id=purchase.id,
-        number=purchase.number,
-        status=purchase.status,
-        purchase_type=purchase.purchase_type,
-        expense_category=purchase.expense_category,
-        expense_amount=purchase.expense_amount,
-        supplier_name=purchase.supplier_name,
-        supplier_id=purchase.supplier_id,
-        supplier_order_number=purchase.supplier_order_number,
-        purchase_origin=purchase.purchase_origin,
-        document_access_key=purchase.document_access_key,
-        document_number=purchase.document_number,
-        document_series=purchase.document_series,
-        issuer_cnpj=purchase.issuer_cnpj,
-        original_currency=purchase.original_currency,
-        original_total=purchase.original_total,
-        exchange_rate=purchase.exchange_rate,
-        paid_amount=purchase.paid_amount,
-        document_date=purchase.document_date,
-        selected_quote_id=purchase.selected_quote_id,
-        needed_by=purchase.needed_by,
-        ordered_at=purchase.ordered_at,
-        cancel_reason=purchase.cancel_reason,
-        cancelled_at=purchase.cancelled_at,
-        closed_at=purchase.closed_at,
-        notes=purchase.notes,
-        created_at=purchase.created_at,
-        updated_at=purchase.updated_at,
-        items=[
-            PurchaseListRowItem(
-                id=item.id,
-                product_id=item.product_id,
-                sku=item.sku,
-                description=item.description,
-                unit=item.unit,
-                quantity=item.quantity,
-                received_quantity=item.received_quantity,
-            )
-            for item in purchase.items
-        ],
-        quotes=[
-            PurchaseListRowQuote(id=quote.id, supplier_name=quote.supplier_name, total=quote.total)
-            for quote in purchase.quotes
-        ],
-        total_amount=_purchase_total(purchase),
-    )
     return _mask_costs(result, user)
 
 
@@ -610,30 +555,6 @@ def _deletion_effects(purchase: PurchaseCase) -> str:
         amount = sum((Decimal(payable.amount) for payable in payables), Decimal("0"))
         effects.append(f"título a pagar de {amount:.2f} apagado")
     return "; ".join(effects)
-
-
-@router.get("", response_model=list[PurchaseListItem])
-def list_purchases(
-    limit: int = Query(default=500, ge=1, le=500),
-    offset: int = Query(default=0, ge=0),
-    db: Session = Depends(get_db),
-    user: User = Depends(require_permission(Permission.PURCHASE_READ)),
-) -> list[PurchaseListItem]:
-    # A lista não carrega histórico, anexos nem títulos: eles só aparecem no detalhe
-    # (GET /{id}), então a consulta fica em duas relações e a resposta sem esses blocos.
-    purchases = list(
-        db.scalars(
-            select(PurchaseCase)
-            .options(
-                selectinload(PurchaseCase.items),
-                selectinload(PurchaseCase.quotes),
-            )
-            .order_by(PurchaseCase.created_at.desc())
-            .offset(offset)
-            .limit(limit)
-        )
-    )
-    return [_present_list_item(purchase, user) for purchase in purchases]
 
 
 @router.post("", response_model=PurchaseOut, status_code=201)

@@ -1,0 +1,197 @@
+@if (importReview(); as review) {
+  @if (importPlan().plan; as plan) {
+    <div class="purchase-import-closing">
+      <div class="import-closing-line">
+        <span>Itens {{ plan.items_subtotal | currency: 'BRL' }}</span
+        ><span>+ frete {{ plan.freight_amount | currency: 'BRL' }}</span
+        ><span>+ impostos {{ plan.tax_amount | currency: 'BRL' }}</span
+        ><span>− descontos {{ plan.discount_amount | currency: 'BRL' }}</span
+        ><strong>= {{ plan.total | currency: 'BRL' }}</strong>
+      </div>
+      @if (plan.document_total !== null && plan.difference !== 0) {
+        <small
+          >Total lido no documento {{ plan.document_total | currency: 'BRL' }} · diferença de
+          {{ plan.difference | currency: 'BRL' }} dentro da tolerância de R$ 0,01 por item.</small
+        >
+      } @else if (plan.document_total === null) {
+        <small
+          >O documento não trouxe o total: o valor acima é a soma dos itens com frete e impostos
+          menos descontos.</small
+        >
+      }
+      <small
+        >Ao confirmar, a compra nasce com esta cotação aceita, o pedido registrado e o título a
+        pagar com vencimento em 30 dias da data do documento.</small
+      >
+    </div>
+  }
+  @if (importPlan().error) {
+    <p class="purchase-error" role="alert">{{ importPlan().error }}</p>
+  }
+  @if (importError()) {
+    <p class="purchase-error" role="alert">{{ importError() }}</p>
+  }
+  @if (importDuplicate(); as duplicate) {
+    <p class="purchase-error" role="alert">
+      Este documento já foi importado na compra <strong>{{ duplicate.purchase_number }}</strong>
+      @if (duplicate.cancelled) {
+        , que está cancelada — você pode continuar.
+      } @else {
+        . Abra a compra existente antes de criar outra.
+      }
+    </p>
+  }
+  <section class="import-check">
+    <p class="eyebrow">Lançamento</p>
+    <div class="import-check-grid">
+      <span>Tipo</span
+      ><label
+        ><select [value]="importType()" (change)="setImportType($any($event.target).value)">
+          <option value="parts">Peças para estoque</option>
+          <option value="expense">Despesa da empresa</option>
+        </select></label
+      >
+      @if (importType() === 'expense') {
+        <span>Categoria da despesa</span
+        ><label
+          ><select
+            [value]="importCategory()"
+            (change)="importCategory.set($any($event.target).value)"
+          >
+            @for (category of expenseCategories; track category) {
+              <option [value]="category">{{ category }}</option>
+            }
+          </select></label
+        >
+      }
+      <span>Já pago no checkout</span
+      ><label class="check-field"
+        ><input
+          type="checkbox"
+          [checked]="importPaidNow()"
+          (change)="setImportPaidNow($any($event.target).checked)"
+        />
+        o título nasce baixado</label
+      >
+      @if (importPaidNow()) {
+        <span>Data do pagamento</span
+        ><label
+          ><input
+            type="date"
+            [value]="importPaidDate()"
+            (input)="importPaidDate.set($any($event.target).value)" /></label
+        ><span>Forma do pagamento</span
+        ><label
+          ><input
+            type="text"
+            [value]="importPaidMethod()"
+            (input)="importPaidMethod.set($any($event.target).value)"
+            placeholder="Visa, Google Pay…"
+        /></label>
+      }
+    </div>
+    @if (!importDraft().items.length && review.candidates?.length) {
+      <div class="import-candidates">
+        <p class="eyebrow">Nenhum item reconhecido</p>
+        <p class="muted">Marque uma linha do documento como item para começar a revisão.</p>
+        <ul>
+          @for (candidate of review.candidates; track candidate.text) {
+            <li>
+              <span>{{ candidate.text }}</span
+              ><button
+                type="button"
+                class="secondary small"
+                (click)="useImportCandidate(candidate)"
+              >
+                Usar como item
+              </button>
+            </li>
+          }
+        </ul>
+      </div>
+    }
+  </section>
+  <section class="import-check">
+    <p class="eyebrow">Conferência do documento</p>
+    <div class="import-check-grid">
+      <span>Moeda lida</span><strong>{{ importDraft().currency || 'não identificada' }}</strong>
+      <span>Cotação usada (1 unidade da moeda em R$)</span>
+      @if (importNeedsRate() || importDraft().exchangeRate !== null) {
+        <input
+          type="number"
+          min="0"
+          step="0.000001"
+          [value]="importDraft().exchangeRate ?? ''"
+          (input)="setImportRateFromInput($any($event.target).value)"
+          placeholder="Obrigatória"
+        />
+      } @else {
+        <strong>não se aplica</strong>
+      }
+      <span>Valor efetivamente pago</span
+      ><label class="import-paid"
+        ><input
+          appMoneyInput
+          [appMoneyInput]="importDraft().paidAmount ?? 0"
+          min="0"
+          (moneyInput)="setImportPaid($event)"
+        />
+        @if (importDraft().paidAmount === null) {
+          <small class="muted">não identificado</small>
+        }
+      </label>
+      <span>Diferença paga ÷ total</span
+      ><strong
+        [class.check-warn]="importPaidDifference() > 0.05 || importPaidDifference() < -0.05"
+        >{{ importPaidDifference() | currency: 'BRL' }}</strong
+      >
+      <span>Fechamento: itens + frete + impostos − descontos − total</span>
+      @if (importHasItemsToCheck()) {
+        <strong
+          [class.check-warn]="importClosingDifference() > 0.05 || importClosingDifference() < -0.05"
+          >{{ importClosingDifference() | currency: 'BRL' }}</strong
+        >
+      } @else {
+        <strong class="muted">sem itens lidos para conferir</strong>
+      }
+      @if (importSubtotalDifference() !== null) {
+        <span>Soma dos itens ÷ subtotal do documento</span
+        ><strong
+          [class.check-warn]="
+            (importSubtotalDifference() ?? 0) > 0.05 || (importSubtotalDifference() ?? 0) < -0.05
+          "
+          >{{ importSubtotalDifference() | currency: 'BRL' }}</strong
+        >
+      }
+    </div>
+    <details class="import-text">
+      <summary>Ver o que foi lido</summary>
+      @if (review.text) {
+        <pre>{{ review.text }}</pre>
+      } @else {
+        <p class="muted">Este formato não devolve texto de leitura (por exemplo, XML de NF-e).</p>
+      }
+    </details>
+  </section>
+  @if (importBlockers().length) {
+    <ul class="import-blockers" role="status">
+      @for (blocker of importBlockers(); track blocker) {
+        <li>{{ blocker }}</li>
+      }
+    </ul>
+  }
+  <div class="purchase-form-actions">
+    <span class="muted">O arquivo original será anexado. Nenhum estoque será movimentado.</span>
+    <div class="import-review-actions">
+      <button type="button" class="secondary" (click)="closeImportReview()">Cancelar</button
+      ><button
+        type="button"
+        class="primary"
+        [disabled]="creatingImport() || !canConfirmImport()"
+        (click)="createImportedPurchase()"
+      >
+        {{ creatingImport() ? 'Criando…' : 'Confirmar e criar compra' }}
+      </button>
+    </div>
+  </div>
+}

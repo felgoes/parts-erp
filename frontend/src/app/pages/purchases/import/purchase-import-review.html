@@ -1,0 +1,151 @@
+@if (importReview(); as review) {
+  <div class="modal-backdrop" (click)="closeImportReview()">
+    <section
+      class="modal wide purchase-modal purchase-import-review"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="purchase-import-title"
+      (click)="$event.stopPropagation()"
+    >
+      <div class="modal-head">
+        <div>
+          <p class="eyebrow">Importação assistida · {{ review.filename }}</p>
+          <h2 id="purchase-import-title">Revise antes de criar a compra</h2>
+          <p class="modal-intro">
+            A extração é uma sugestão. Confira os campos e valores no documento original.
+          </p>
+        </div>
+        <button class="close" aria-label="Fechar revisão" (click)="closeImportReview()">×</button>
+      </div>
+      @if (review.warnings?.length) {
+        <div class="purchase-import-warnings" role="status">
+          <strong>Confira estes pontos</strong>
+          <ul>
+            @for (warning of review.warnings; track warning) {
+              <li>{{ warning }}</li>
+            }
+          </ul>
+        </div>
+      }
+      <div class="purchase-form-meta import-meta">
+        <label
+          >Perfil do documento<select
+            [ngModel]="review.profile.profile_id || ''"
+            [ngModelOptions]="{ standalone: true }"
+            (ngModelChange)="changeImportProfile($event)"
+          >
+            <option value="">Não identificado</option>
+            @for (profile of importProfiles(); track profile.profile_id) {
+              <option [value]="profile.profile_id">{{ profile.name }}</option>
+            }</select
+          ><small>
+            @if (review.profile.selected) {
+              Perfil escolhido manualmente · sempre revise antes de salvar
+            } @else {
+              {{ review.profile.confidence * 100 | number: '1.0-0' }}% de evidência automática ·
+              sempre revise antes de salvar
+            }
+          </small>
+          @if (importLoading()) {
+            <small role="status">Reanalisando com o perfil selecionado…</small>
+          }
+        </label>
+        <label
+          >Fornecedor<input
+            [value]="importDraft().supplier"
+            (input)="updateImportField('supplier', $any($event.target).value)"
+            placeholder="Conferir fornecedor"
+          />
+          @if (review.fields.supplier) {
+            <small>{{ fieldOrigin(review.fields.supplier) }}</small>
+          }
+        </label>
+        <label
+          >Número do pedido<input
+            [value]="importDraft().orderNumber"
+            (input)="updateImportField('orderNumber', $any($event.target).value)"
+            placeholder="Opcional"
+          />
+          @if (review.fields.order_number) {
+            <small>{{ fieldOrigin(review.fields.order_number) }}</small>
+          }
+        </label>
+        <label
+          >Data do documento<input
+            [value]="importDraft().documentDate"
+            (input)="updateImportField('documentDate', $any($event.target).value)"
+            placeholder="Como aparece no recibo"
+          />
+          @if (review.fields.date) {
+            <small>{{ fieldOrigin(review.fields.date) }}</small>
+          }
+        </label>
+        <label
+          >Total do documento<input
+            appMoneyInput
+            [appMoneyInput]="importDraft().total"
+            min="0"
+            (moneyInput)="updateImportNumber('total', $event)"
+            (moneyValidity)="setImportMoneyValidity('total', $event)"
+          />
+          @if (review.fields.total) {
+            <small>{{ fieldOrigin(review.fields.total) }}</small>
+          }
+        </label>
+        <label
+          >Frete identificado<input
+            appMoneyInput
+            [appMoneyInput]="importDraft().shipping"
+            min="0"
+            (moneyInput)="updateImportNumber('shipping', $event)"
+            (moneyValidity)="setImportMoneyValidity('shipping', $event)"
+          />
+          @if (review.fields.shipping) {
+            <small>{{ fieldOrigin(review.fields.shipping) }}</small>
+          }
+        </label>
+        <label
+          >Desconto identificado<input
+            appMoneyInput
+            [appMoneyInput]="importDraft().discount"
+            min="0"
+            (moneyInput)="updateImportNumber('discount', $event)"
+            (moneyValidity)="setImportMoneyValidity('discount', $event)"
+          />
+          @if (review.fields.discount) {
+            <small>{{ fieldOrigin(review.fields.discount) }}</small>
+          }
+        </label>
+        <label
+          >Impostos identificados<input
+            appMoneyInput
+            [appMoneyInput]="importDraft().tax"
+            min="0"
+            (moneyInput)="updateImportNumber('tax', $event)"
+            (moneyValidity)="setImportMoneyValidity('tax', $event)"
+          />
+          @if (review.fields.tax) {
+            <small>{{ fieldOrigin(review.fields.tax) }}</small>
+          }
+        </label>
+      </div>
+      <div class="purchase-form-section">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Campos extraídos</p>
+            <h3>Itens da compra</h3>
+          </div>
+          <button type="button" class="secondary small" (click)="addImportLine()">
+            + Adicionar linha
+          </button>
+        </div>
+        <p class="purchase-flow-hint">
+          Campos sem evidência não são inventados. Compare quantidade × unitário com o total da
+          linha e com o total do recibo.
+        </p>
+        <app-purchase-import-items />
+      </div>
+      <app-purchase-import-check (confirm)="createImportedPurchase()" />
+    </section>
+  </div>
+}

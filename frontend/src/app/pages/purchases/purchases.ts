@@ -34,29 +34,9 @@ import { PageHeader } from '../../shared/page-header';
 import { PeriodFilter } from '../../shared/period-filter';
 import { MoneyInputDirective } from '../../shared/money-input.directive';
 import { dateOnlyLabel, dateOnlyValue } from '../../shared/date-only';
-import { ImportPlanError, buildImportPlan } from '../../shared/purchase-import-math';
-
-import {
-  ImportCheck,
-  ImportDraft,
-  ImportDraftItem,
-  ImportDuplicate,
-  ImportProductDraft,
-  closingDifference,
-  emptyImportDraft,
-  emptyImportLine,
-  emptyImportProductDraft,
-  fieldOriginText,
-  hasItemsToCheck,
-  importBlockers,
-  importNotes,
-  itemOriginText,
-  itemsTotal,
-  needsRate,
-  paidDifference,
-  subtotalDifference,
-  today,
-} from './import/purchase-import-model';
+import { PurchaseImportProducts } from './import/purchase-import-products';
+import { PurchaseImportReview } from './import/purchase-import-review';
+import { PurchaseImportState } from './import/purchase-import-state';
 
 @Component({
   selector: 'app-purchases',
@@ -69,9 +49,11 @@ import {
     ReactiveFormsModule,
     PageHeader,
     PeriodFilter,
+    PurchaseImportReview,
   ],
   templateUrl: './purchases.html',
   styleUrl: './purchases.scss',
+  providers: [PurchaseImportState, PurchaseImportProducts],
   host: { '(document:click)': 'closeRowMenu()', '(window:scroll)': 'closeRowMenu()' },
 })
 export class PurchasesPage implements OnInit {
@@ -80,7 +62,27 @@ export class PurchasesPage implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
   private readonly auth = inject(AuthService);
   private readonly fb = inject(FormBuilder);
+  private readonly importFlow = inject(PurchaseImportState);
+  // A revisão vive em componentes próprios; a página só mostra o aviso e o estado do botão.
+  readonly importError = this.importFlow.importError;
+  readonly importLoading = this.importFlow.importLoading;
+  readonly importReview = this.importFlow.importReview;
   readonly purchases = signal<PurchaseListItem[]>([]);
+
+  onImportDocument(event: Event) {
+    this.importFlow.startAnalysis(event);
+  }
+  /** Compra criada pela revisão do documento: entra na lista, avisa do anexo e abre o detalhe. */
+  onImported(result: { purchase: Purchase; document: { filename: string; size: number } }) {
+    const { purchase, document } = result;
+    this.purchases.update((list) => [purchase, ...list]);
+    const attached = purchase.attachments.some(
+      (attachment) =>
+        attachment.filename === document.filename && attachment.size_bytes === document.size,
+    );
+    if (!attached) this.error.set('O documento não voltou anexado; confira o anexo na compra.');
+    this.openDetails(purchase);
+  }
   canManagePurchases() {
     return canManagePurchases(this.auth.user()?.role);
   }
@@ -144,49 +146,7 @@ export class PurchasesPage implements OnInit {
   } | null>(null);
   readonly deleteTarget = signal<Purchase | null>(null);
   readonly deleteReason = signal('');
-  readonly importMoneyValidity = signal<Record<string, boolean>>({});
-  readonly importProductSearch = signal<Record<number, string>>({});
-  readonly importProductResults = signal<Record<number, Product[]>>({});
-  private readonly importSearchRevision = signal<Record<number, number>>({});
-  readonly importProductModal = signal(false);
-  readonly importProductLine = signal<number | null>(null);
-  readonly savingImportProduct = signal(false);
-  readonly importProductError = signal('');
-  readonly importProductDraft = signal(emptyImportProductDraft());
-  private readonly importId = signal<string | null>(null);
   readonly selectedFiles = signal<File[]>([]);
-  readonly importReview = signal<any | null>(null);
-  readonly importProfiles = signal<
-    Array<{ profile_id: string; name: string; kind: string; version: number }>
-  >([]);
-  readonly importDraft = signal(emptyImportDraft());
-  readonly importDuplicate = signal<ImportDuplicate | null>(null);
-  readonly importCheck = signal<ImportCheck | null>(null);
-  readonly importType = signal<'parts' | 'expense'>('parts');
-  readonly importCategory = signal('');
-  readonly importPaidNow = signal(false);
-  readonly importPaidDate = signal('');
-  readonly importPaidMethod = signal('');
-  readonly importFile = signal<File | null>(null);
-  readonly importLoading = signal(false);
-  readonly creatingImport = signal(false);
-  readonly importError = signal('');
-  // P0: mesmo rateio que o backend grava — a revisão mostra o custo final por peça e o fechamento.
-  readonly importPlan = computed(() => {
-    const draft = this.importDraft();
-    try {
-      return { plan: buildImportPlan(draft.items, draft), error: '' };
-    } catch (error) {
-      return {
-        // A revisão continua mostrando o rateio quando só o fechamento do documento falha.
-        plan: error instanceof ImportPlanError ? error.plan : null,
-        error:
-          error instanceof ImportPlanError
-            ? error.message
-            : 'Não foi possível fechar os valores do documento. Revise os campos.',
-      };
-    }
-  });
   readonly expenseCategories = [
     'Aluguel',
     'Energia e água',
@@ -287,10 +247,6 @@ export class PurchasesPage implements OnInit {
         this.page.set(1);
         this.load();
       });
-    this.api.purchaseImportProfiles().subscribe({
-      next: (result) => this.importProfiles.set(result.profiles),
-      error: () => undefined,
-    });
     this.live.changes$
       .pipe(debounceTime(250), takeUntilDestroyed(this.destroyRef))
       .subscribe(() => {
@@ -313,519 +269,6 @@ export class PurchasesPage implements OnInit {
     this.api
       .suppliers()
       .subscribe({ next: (items) => this.suppliers.set(items), error: () => undefined });
-  }
-  onImportDocument(event: Event) {
-    const input = event.target as HTMLInputElement;
-    const file = input.files?.[0];
-    input.value = '';
-    if (!file) return;
-    this.importFile.set(file);
-    this.importError.set('');
-    this.importLoading.set(true);
-    this.api
-      .analyzePurchaseDocument(file)
-      .pipe(finalize(() => this.importLoading.set(false)))
-      .subscribe({
-        next: (review) => this.applyImportReview(review),
-        error: (err) => {
-          const message =
-            err?.error?.detail ||
-            'Não foi possível analisar o documento. A compra manual continua disponível.';
-          this.importError.set(message);
-          this.error.set(message);
-        },
-      });
-  }
-  private applyImportReview(review: any) {
-    this.importMoneyValidity.set({});
-    this.importId.set(crypto.randomUUID());
-    this.importProductSearch.set({});
-    this.importProductResults.set({});
-    this.importSearchRevision.set({});
-    this.importReview.set(review);
-    this.importDraft.set({
-      supplier: String(review.fields?.supplier?.value || ''),
-      orderNumber: String(review.fields?.order_number?.value || ''),
-      documentDate: String(review.fields?.date?.value || ''),
-      total: review.fields?.total?.value == null ? null : Number(review.fields.total.value),
-      shipping:
-        review.fields?.shipping?.value == null ? null : Number(review.fields.shipping.value),
-      discount:
-        review.fields?.discount?.value == null ? null : Number(review.fields.discount.value),
-      tax: review.fields?.tax?.value == null ? null : Number(review.fields.tax.value),
-      currency: review.currency ? String(review.currency) : null,
-      exchangeRate: review.exchange_rate == null ? null : Number(review.exchange_rate),
-      paidAmount: review.paid?.amount == null ? null : Number(review.paid.amount),
-      items: (review.items || []).map((item: any) => {
-        const sku = String(item.sku || '').trim();
-        // Vínculo automático só com correspondência exata de SKU ou código de barras (P14).
-        const match = sku
-          ? this.products().find(
-              (product) =>
-                product.sku.toLowerCase() === sku.toLowerCase() ||
-                (!!product.barcode && product.barcode === sku),
-            )
-          : undefined;
-        return {
-          description: String(item.description || ''),
-          sku,
-          product_id: match ? match.id : null,
-          stock_controlled: true,
-          quantity: Number(item.quantity ?? 0),
-          unit_cost: Number(item.unit_cost ?? 0),
-          line_total: Number(
-            item.line_total ?? Number(item.quantity ?? 0) * Number(item.unit_cost ?? 0),
-          ),
-          discount_amount: Number(item.discount_amount ?? 0),
-          confidence: Number(item.confidence ?? 0),
-          source: String(item.source || ''),
-          quantityDerived: !!item.quantity_derived,
-        };
-      }),
-    });
-    this.importError.set('');
-    this.importCheck.set(review.check || null);
-    this.checkImportDuplicate();
-  }
-  private checkImportDuplicate() {
-    const review = this.importReview();
-    const number = String(review?.fields?.order_number?.value || '').trim();
-    const origin = String(review?.profile?.profile_id || '').trim();
-    this.importDuplicate.set(null);
-    if (!number || !origin) return;
-    this.api
-      .purchaseImportDuplicates({ order_number: number, origin })
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (result) => this.importDuplicate.set(result.match),
-        error: () => this.importDuplicate.set(null),
-      });
-  }
-  changeImportProfile(profileId: string) {
-    const file = this.importFile();
-    if (!file) return;
-    this.importLoading.set(true);
-    this.api
-      .analyzePurchaseDocument(file, profileId || undefined)
-      .pipe(finalize(() => this.importLoading.set(false)))
-      .subscribe({
-        next: (review) => this.applyImportReview(review),
-        error: (err) =>
-          this.importError.set(err?.error?.detail || 'Não foi possível processar com este perfil.'),
-      });
-  }
-  updateImportField(field: 'supplier' | 'orderNumber' | 'documentDate', value: string) {
-    this.importDraft.update((draft) => ({ ...draft, [field]: value }));
-  }
-  setImportRate(value: number | null) {
-    this.importDraft.update((draft) => ({ ...draft, exchangeRate: value }));
-  }
-  setImportRateFromInput(value: string) {
-    this.setImportRate(value === '' ? null : Number(value));
-  }
-  fieldOrigin(field: { source?: string; confidence?: number } | undefined): string {
-    return fieldOriginText(field);
-  }
-  itemOrigin(item: {
-    source?: string;
-    confidence?: number;
-    quantity_derived?: boolean;
-    quantityDerived?: boolean;
-  }): string {
-    return itemOriginText(item);
-  }
-  setImportPaid(value: number | null) {
-    this.importDraft.update((draft) => ({ ...draft, paidAmount: value }));
-  }
-  importItemsTotal() {
-    return itemsTotal(this.importDraft().items);
-  }
-  importClosingDifference() {
-    return closingDifference(this.importDraft());
-  }
-  importHasItemsToCheck() {
-    return hasItemsToCheck(this.importCheck(), this.importDraft());
-  }
-  importSubtotalDifference() {
-    return subtotalDifference(this.importDraft(), this.importCheck()?.subtotal ?? null);
-  }
-  /** Motivos visíveis que impedem a confirmação — ninguém fica preso sem saber por quê. */
-  importBlockers(): string[] {
-    return importBlockers({
-      draft: this.importDraft(),
-      duplicate: this.importDuplicate(),
-      needsRate: this.importNeedsRate(),
-      moneyInvalid: Object.values(this.importMoneyValidity()).some(Boolean),
-      kind: this.importType(),
-      category: this.importCategory(),
-    });
-  }
-  importPaidDifference() {
-    return paidDifference(this.importDraft());
-  }
-  importNeedsRate() {
-    return needsRate(this.importDraft().currency);
-  }
-  updateImportNumber(field: 'total' | 'shipping' | 'discount' | 'tax', value: number | null) {
-    this.importDraft.update((draft) => ({ ...draft, [field]: value }));
-  }
-  updateImportItem(
-    index: number,
-    field: 'description' | 'sku' | 'quantity' | 'unit_cost' | 'discount_amount',
-    value: string | number | null,
-  ) {
-    this.importDraft.update((draft) => ({
-      ...draft,
-      items: draft.items.map((item, i) => {
-        if (i !== index) return item;
-        const updated = {
-          ...item,
-          [field]: field === 'description' || field === 'sku' ? value : Number(value ?? 0),
-        };
-        if (field === 'quantity' || field === 'unit_cost' || field === 'discount_amount')
-          updated.line_total = Math.max(
-            0,
-            Number(updated.quantity) * Number(updated.unit_cost) - Number(updated.discount_amount),
-          );
-        return updated;
-      }),
-    }));
-  }
-  setImportMoneyValidity(key: string, invalid: boolean) {
-    this.importMoneyValidity.update((values) => ({ ...values, [key]: invalid }));
-  }
-  searchImportProducts(index: number, value: string) {
-    this.importProductSearch.update((rows) => ({ ...rows, [index]: value }));
-    const revision = (this.importSearchRevision()[index] || 0) + 1;
-    this.importSearchRevision.update((rows) => ({ ...rows, [index]: revision }));
-    if (!value.trim()) {
-      this.importProductResults.update((rows) => ({ ...rows, [index]: [] }));
-      return;
-    }
-    this.api.products(value.trim(), false).subscribe({
-      next: (products) => {
-        if (this.importSearchRevision()[index] === revision)
-          this.importProductResults.update((rows) => ({
-            ...rows,
-            [index]: products.filter(
-              (product) => product.stock_type === 'product' || product.stock_type === 'warehouse',
-            ),
-          }));
-      },
-      error: () => {
-        if (this.importSearchRevision()[index] === revision)
-          this.importProductResults.update((rows) => ({ ...rows, [index]: [] }));
-      },
-    });
-  }
-  selectedImportProduct(id: string | null) {
-    return id
-      ? this.products().find((product) => product.id === id) ||
-          Object.values(this.importProductResults())
-            .flat()
-            .find((product) => product.id === id) ||
-          null
-      : null;
-  }
-  selectImportedProduct(index: number, product: Product) {
-    this.importDraft.update((draft) => ({
-      ...draft,
-      items: draft.items.map((item, i) =>
-        i === index
-          ? {
-              ...item,
-              product_id: product.id,
-              stock_controlled: true,
-              sku: item.sku || product.sku,
-            }
-          : item,
-      ),
-    }));
-    this.products.update((items) =>
-      items.some((entry) => entry.id === product.id) ? items : [...items, product],
-    );
-    this.importProductSearch.update((rows) => ({ ...rows, [index]: '' }));
-    this.importProductResults.update((rows) => ({ ...rows, [index]: [] }));
-  }
-  selectImportedProductById(index: number, productId: string) {
-    if (!productId) {
-      this.clearImportedProduct(index);
-      return;
-    }
-    const product =
-      this.products().find((entry) => entry.id === productId) ??
-      Object.values(this.importProductResults())
-        .flat()
-        .find((entry) => entry.id === productId);
-    if (product) this.selectImportedProduct(index, product);
-  }
-  setImportStockControlled(index: number, value: boolean) {
-    this.importDraft.update((draft) => ({
-      ...draft,
-      items: draft.items.map((item, i) =>
-        i === index
-          ? { ...item, stock_controlled: value, product_id: value ? item.product_id : null }
-          : item,
-      ),
-    }));
-  }
-  clearImportedProduct(index: number) {
-    this.importDraft.update((draft) => ({
-      ...draft,
-      items: draft.items.map((item, i) => (i === index ? { ...item, product_id: null } : item)),
-    }));
-  }
-  openImportProductCreate(index: number) {
-    const item = this.importDraft().items[index];
-    this.importProductLine.set(index);
-    this.importProductError.set('');
-    this.importProductDraft.set({
-      sku: item.sku,
-      stock_type: 'product',
-      name: item.description,
-      description: item.description,
-      sale_price: 0,
-      cost_price: 0,
-      minimum_stock: 0,
-      brand: '',
-      manufacturer: '',
-      manufacturer_part_number: '',
-      barcode: '',
-      category: '',
-      item_condition: 'new',
-      warranty_days: null,
-      origin_country: '',
-      weight_g: null,
-      package_length_cm: null,
-      package_width_cm: null,
-      package_height_cm: null,
-    });
-    this.importProductModal.set(true);
-  }
-  closeImportProductCreate() {
-    if (!this.savingImportProduct()) this.importProductModal.set(false);
-  }
-  updateImportProduct(field: string, value: string | number | null) {
-    this.importProductDraft.update((draft) => {
-      const numeric = [
-        'sale_price',
-        'cost_price',
-        'minimum_stock',
-        'warranty_days',
-        'weight_g',
-        'package_length_cm',
-        'package_width_cm',
-        'package_height_cm',
-      ].includes(field);
-      return {
-        ...draft,
-        [field]: numeric ? (value === '' || value == null ? null : Number(value)) : value,
-      } as typeof draft;
-    });
-  }
-  canSaveImportProduct() {
-    const value = this.importProductDraft();
-    return (
-      value.sku.trim().length > 0 &&
-      value.sku.trim().length <= 80 &&
-      value.name.trim().length >= 2 &&
-      value.name.trim().length <= 200
-    );
-  }
-  saveImportProduct() {
-    if (!this.canSaveImportProduct() || this.savingImportProduct()) return;
-    const index = this.importProductLine(),
-      draft = this.importProductDraft();
-    if (index == null) return;
-    this.savingImportProduct.set(true);
-    this.importProductError.set('');
-    this.api
-      .createProduct({
-        ...draft,
-        sku: draft.sku.trim(),
-        name: draft.name.trim(),
-        current_stock: 0,
-        sale_price: draft.sale_price ?? 0,
-        cost_price: draft.cost_price ?? 0,
-        minimum_stock: draft.minimum_stock ?? 0,
-        attributes: {},
-        fitments: [],
-      })
-      .pipe(finalize(() => this.savingImportProduct.set(false)))
-      .subscribe({
-        next: (product) => {
-          this.selectImportedProduct(index, product);
-          this.importProductModal.set(false);
-        },
-        error: (err) =>
-          this.importProductError.set(
-            err?.error?.detail ||
-              'Não foi possível cadastrar o produto. Confira SKU e campos obrigatórios.',
-          ),
-      });
-  }
-  private importNotes(
-    review: any,
-    draft: {
-      orderNumber: string;
-      documentDate: string;
-      total: number | null;
-      shipping: number | null;
-      discount: number | null;
-      tax: number | null;
-    },
-  ): string {
-    return importNotes(review.profile.name, draft);
-  }
-  importPlanLine(index: number) {
-    return this.importPlan().plan?.lines[index] ?? null;
-  }
-  canConfirmImport() {
-    // P0: além dos bloqueios da revisão (P14), o fechamento do documento precisa fechar — a
-    // compra já nasce com a cotação do papel aceita e o pedido registrado.
-    return this.importPlan().error === '' && this.importBlockers().length === 0;
-  }
-  setImportType(value: 'parts' | 'expense') {
-    this.importType.set(value);
-    if (value === 'expense' && !this.importCategory())
-      this.importCategory.set(this.expenseCategories[0]);
-  }
-  setImportPaidNow(value: boolean) {
-    this.importPaidNow.set(value);
-    if (value && !this.importPaidDate()) this.importPaidDate.set(today());
-  }
-  useImportCandidate(candidate: { text: string; quantity?: number; unit_cost?: number }) {
-    const quantity = Number(candidate.quantity ?? 1) || 1;
-    const unitCost = Number(candidate.unit_cost ?? 0);
-    this.importDraft.update((draft) => ({
-      ...draft,
-      items: [
-        ...draft.items,
-        {
-          description: candidate.text,
-          sku: '',
-          quantity,
-          unit_cost: unitCost,
-          line_total: Number((quantity * unitCost).toFixed(2)),
-          discount_amount: 0,
-          confidence: 0,
-          product_id: null,
-          stock_controlled: true,
-          source: 'candidato',
-          quantityDerived: candidate.quantity === undefined,
-        },
-      ],
-    }));
-  }
-  addImportLine() {
-    this.importDraft.update((draft) => ({
-      ...draft,
-      items: [...draft.items, emptyImportLine()],
-    }));
-  }
-  removeImportLine(index: number) {
-    this.importDraft.update((draft) => ({
-      ...draft,
-      items: draft.items.filter((_, i) => i !== index),
-    }));
-    this.importMoneyValidity.update((values) =>
-      Object.fromEntries(Object.entries(values).filter(([key]) => !key.startsWith('item-'))),
-    );
-  }
-  closeImportReview() {
-    if (this.creatingImport()) return;
-    this.importReview.set(null);
-    this.importFile.set(null);
-    this.importId.set(null);
-    this.importError.set('');
-    this.importProductModal.set(false);
-  }
-  createImportedPurchase() {
-    const review = this.importReview(),
-      file = this.importFile(),
-      draft = this.importDraft(),
-      importId = this.importId();
-    if (!review || !file || !importId || !this.canConfirmImport() || this.creatingImport()) return;
-    this.creatingImport.set(true);
-    this.importError.set('');
-    const isExpense = this.importType() === 'expense';
-    const payload = {
-      purchase_type: this.importType(),
-      source_import_id: importId,
-      supplier_name: draft.supplier.trim() || null,
-      expense_category: isExpense ? this.importCategory().trim() || null : null,
-      expense_amount: isExpense ? draft.total : null,
-      supplier_id: this.supplierByName(draft.supplier)?.id ?? null,
-      supplier_order_number: draft.orderNumber.trim() || null,
-      purchase_origin: review.profile?.profile_id || null,
-      document_access_key: review.fields?.access_key?.value ?? null,
-      document_number: review.fields?.document_number?.value ?? null,
-      document_series: review.fields?.document_series?.value ?? null,
-      issuer_cnpj: review.fields?.issuer_cnpj?.value ?? null,
-      original_currency: draft.currency,
-      original_total: draft.total,
-      exchange_rate: draft.exchangeRate,
-      paid_amount: draft.paidAmount,
-      paid_now: this.importPaidNow(),
-      paid_date: this.importPaidNow() ? this.importPaidDate() || null : null,
-      paid_method: this.importPaidNow() ? this.importPaidMethod().trim() || null : null,
-      document_date: draft.documentDate || null,
-      notes: this.importNotes(review, draft),
-      // P0: o documento é a cotação da compra — os valores do papel entram uma única vez e
-      // são rateados por peça no mesmo algoritmo mostrado na revisão. Lançamento de despesa
-      // segue o fluxo de despesa (P14) e não leva a cotação do documento.
-      import_document: isExpense
-        ? null
-        : {
-            filename: file.name,
-            total: draft.total,
-            freight_amount: draft.shipping ?? 0,
-            tax_amount: draft.tax ?? 0,
-            discount_amount: draft.discount ?? 0,
-          },
-      items: (isExpense
-        ? draft.items.filter((item) => item.stock_controlled && item.product_id)
-        : draft.items
-      ).map((item) => ({
-        sku: item.sku.trim(),
-        description: item.description.trim(),
-        quantity: item.quantity,
-        unit_cost: item.unit_cost,
-        product_id: item.product_id,
-        line_discount_amount: item.discount_amount,
-      })),
-    };
-    this.api
-      .confirmImportedPurchase(file, payload)
-      .pipe(finalize(() => this.creatingImport.set(false)))
-      .subscribe({
-        next: (purchase) => {
-          this.importReview.set(null);
-          this.importFile.set(null);
-          this.purchases.update((list) => [purchase, ...list]);
-          const alreadyAttached = purchase.attachments.some(
-            (attachment) =>
-              attachment.filename === file.name && attachment.size_bytes === file.size,
-          );
-          if (!alreadyAttached)
-            this.error.set('O documento não voltou anexado; confira o anexo na compra.');
-          this.openDetails(purchase);
-        },
-        error: (err) => this.importError.set(this.importErrorText(err)),
-      });
-  }
-  private importErrorText(err: any): string {
-    const detail = err?.error?.detail;
-    if (typeof detail === 'string') return detail;
-    if (Array.isArray(detail))
-      return (
-        detail
-          .map((entry) => entry?.msg || '')
-          .filter(Boolean)
-          .join(' · ') || 'Confira os campos da revisão.'
-      );
-    if (detail?.message) return String(detail.message);
-    return 'Não foi possível criar a compra revisada.';
   }
 
   private newLine() {

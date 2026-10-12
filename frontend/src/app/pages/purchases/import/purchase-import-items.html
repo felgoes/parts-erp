@@ -1,0 +1,288 @@
+<div class="purchase-line-list import-line-list">
+  @for (item of importDraft().items; track $index; let i = $index) {
+    <div class="purchase-line-form import-line">
+      <label class="line-description"
+        >Descrição<input
+          [value]="item.description"
+          (input)="updateImportItem(i, 'description', $any($event.target).value)"
+      /></label>
+      <label
+        >SKU / código<input
+          [value]="item.sku"
+          (input)="updateImportItem(i, 'sku', $any($event.target).value)"
+          placeholder="Opcional"
+      /></label>
+      <label class="import-stock-control"
+        ><input
+          type="checkbox"
+          [checked]="item.stock_controlled"
+          (change)="setImportStockControlled(i, $any($event.target).checked)"
+        />
+        Controlado no estoque</label
+      >
+      <div class="import-product-search">
+        <label
+          >Produto do estoque<input
+            [value]="importProductSearch()[i] || ''"
+            (input)="searchImportProducts(i, $any($event.target).value)"
+            placeholder="Buscar nome, SKU ou código de barras"
+            autocomplete="off"
+        /></label>
+        <label class="import-product-select"
+          >Selecionar existente<select
+            [value]="item.product_id || ''"
+            (change)="selectImportedProductById(i, $any($event.target).value)"
+          >
+            <option value="">Escolher do catálogo…</option>
+            @for (product of products(); track product.id) {
+              <option [value]="product.id">{{ product.sku }} · {{ product.name }}</option>
+            }
+          </select></label
+        >
+        <div class="import-product-results" [hidden]="!importProductSearch()[i]">
+          @for (product of importProductResults()[i] || []; track product.id) {
+            <button type="button" (click)="selectImportedProduct(i, product)">
+              <strong>{{ product.name }}</strong
+              ><small
+                >SKU {{ product.sku }} · EAN {{ product.barcode || 'sem código' }} ·
+                {{ product.current_stock | number: '1.0-3' }} un. em estoque</small
+              >
+            </button>
+          }
+          @if (importProductSearch()[i] && !(importProductResults()[i] || []).length) {
+            <small>Nenhum produto encontrado. Confira nome, SKU e código.</small>
+          }
+        </div>
+        @if (item.stock_controlled && item.product_id) {
+          <small
+            >Vinculado: {{ selectedImportProduct(item.product_id)?.sku }} ·
+            {{ selectedImportProduct(item.product_id)?.name }}
+            <button type="button" class="text-button" (click)="clearImportedProduct(i)">
+              Remover vínculo
+            </button></small
+          >
+        }
+        @if (canManageCatalog()) {
+          <button
+            type="button"
+            class="secondary small"
+            [disabled]="!item.stock_controlled"
+            (click)="openImportProductCreate(i)"
+          >
+            + Cadastrar produto
+          </button>
+        }
+      </div>
+      <label
+        >Quantidade<input
+          type="number"
+          min="0.001"
+          step="0.001"
+          [value]="item.quantity"
+          (input)="updateImportItem(i, 'quantity', $any($event.target).value)"
+      /></label>
+      <label
+        >Valor unitário<input
+          appMoneyInput
+          [appMoneyInput]="item.unit_cost"
+          min="0"
+          (moneyInput)="updateImportItem(i, 'unit_cost', $event)"
+          (moneyValidity)="setImportMoneyValidity('item-' + i, $event)"
+      /></label>
+      <label
+        >Desconto da linha<input
+          appMoneyInput
+          [appMoneyInput]="item.discount_amount"
+          min="0"
+          (moneyInput)="updateImportItem(i, 'discount_amount', $event)"
+          (moneyValidity)="setImportMoneyValidity('discount-' + i, $event)" /></label
+      ><small>Total da linha: {{ item.line_total | currency: 'BRL' }}</small>
+      @if (importPlanLine(i); as planLine) {
+        <small class="import-landed-cost"
+          >Custo final: {{ planLine.unit_cost | currency: 'BRL' }} / un.
+          <span
+            >base {{ planLine.base_unit_cost | currency: 'BRL' }} · frete
+            {{ planLine.freight_amount | currency: 'BRL' }} · impostos
+            {{ planLine.tax_amount | currency: 'BRL' }} · desconto -{{
+              planLine.discount_amount | currency: 'BRL'
+            }}</span
+          ></small
+        >
+      }
+      <small class="import-confidence">{{ itemOrigin(item) }}</small>
+      <button
+        type="button"
+        class="remove-line"
+        [attr.aria-label]="'Remover item ' + (i + 1)"
+        (click)="removeImportLine(i)"
+      >
+        ×
+      </button>
+    </div>
+  } @empty {
+    <p class="muted">Nenhum item detectado. Adicione as linhas manualmente para continuar.</p>
+  }
+</div>
+
+@if (importProductModal()) {
+  <div class="modal-backdrop import-product-backdrop" (click)="closeImportProductCreate()">
+    <section
+      class="modal purchase-modal import-product-modal"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="import-product-title"
+      (click)="$event.stopPropagation()"
+    >
+      <div class="modal-head">
+        <div>
+          <p class="eyebrow">Catálogo · nova peça</p>
+          <h2 id="import-product-title">Cadastrar e vincular produto</h2>
+          <p class="modal-intro">
+            Preencha os mesmos dados básicos exigidos no catálogo. O cadastro só será criado ao
+            confirmar.
+          </p>
+        </div>
+        <button
+          class="close"
+          type="button"
+          aria-label="Fechar"
+          (click)="closeImportProductCreate()"
+        >
+          ×
+        </button>
+      </div>
+      <div class="purchase-form-meta">
+        <label
+          >Tipo de estoque<select
+            [value]="importProductDraft().stock_type"
+            (change)="updateImportProduct('stock_type', $any($event.target).value)"
+          >
+            <option value="product">Produto</option>
+            <option value="warehouse">Almoxarifado</option>
+          </select></label
+        ><label
+          >SKU *<input
+            [value]="importProductDraft().sku"
+            (input)="updateImportProduct('sku', $any($event.target).value)" /></label
+        ><label
+          >Nome *<input
+            [value]="importProductDraft().name"
+            (input)="updateImportProduct('name', $any($event.target).value)" /></label
+        ><label
+          >Marca<input
+            [value]="importProductDraft().brand"
+            (input)="updateImportProduct('brand', $any($event.target).value)" /></label
+        ><label
+          >Fabricante<input
+            [value]="importProductDraft().manufacturer"
+            (input)="updateImportProduct('manufacturer', $any($event.target).value)" /></label
+        ><label
+          >Número OEM / MPN<input
+            [value]="importProductDraft().manufacturer_part_number"
+            (input)="
+              updateImportProduct('manufacturer_part_number', $any($event.target).value)
+            " /></label
+        ><label
+          >GTIN / código de barras<input
+            [value]="importProductDraft().barcode"
+            (input)="updateImportProduct('barcode', $any($event.target).value)" /></label
+        ><label
+          >Categoria<input
+            [value]="importProductDraft().category"
+            (input)="updateImportProduct('category', $any($event.target).value)" /></label
+        ><label
+          >Condição<select
+            [value]="importProductDraft().item_condition"
+            (change)="updateImportProduct('item_condition', $any($event.target).value)"
+          >
+            <option value="new">Nova</option>
+            <option value="used">Usada</option>
+            <option value="refurbished">Recondicionada</option>
+          </select></label
+        ><label
+          >Garantia (dias)<input
+            type="number"
+            min="0"
+            max="3650"
+            [value]="importProductDraft().warranty_days ?? ''"
+            (input)="updateImportProduct('warranty_days', $any($event.target).value)" /></label
+        ><label
+          >País de origem<input
+            [value]="importProductDraft().origin_country"
+            (input)="updateImportProduct('origin_country', $any($event.target).value)" /></label
+        ><label
+          >Preço de venda<input
+            appMoneyInput
+            [appMoneyInput]="importProductDraft().sale_price"
+            min="0"
+            (moneyInput)="updateImportProduct('sale_price', $event)"
+        /></label>
+        @if (canReadCosts()) {
+          <label
+            >Custo<input
+              appMoneyInput
+              [appMoneyInput]="importProductDraft().cost_price"
+              min="0"
+              (moneyInput)="updateImportProduct('cost_price', $event)"
+          /></label>
+        }
+        <label
+          >Estoque mínimo<input
+            type="number"
+            min="0"
+            step="0.001"
+            [value]="importProductDraft().minimum_stock"
+            (input)="updateImportProduct('minimum_stock', $any($event.target).value)" /></label
+        ><label
+          >Peso embalado (g)<input
+            type="number"
+            min="0"
+            step="0.001"
+            [value]="importProductDraft().weight_g ?? ''"
+            (input)="updateImportProduct('weight_g', $any($event.target).value)" /></label
+        ><label
+          >Comprimento (cm)<input
+            type="number"
+            min="0"
+            step="0.01"
+            [value]="importProductDraft().package_length_cm ?? ''"
+            (input)="updateImportProduct('package_length_cm', $any($event.target).value)" /></label
+        ><label
+          >Largura (cm)<input
+            type="number"
+            min="0"
+            step="0.01"
+            [value]="importProductDraft().package_width_cm ?? ''"
+            (input)="updateImportProduct('package_width_cm', $any($event.target).value)" /></label
+        ><label
+          >Altura (cm)<input
+            type="number"
+            min="0"
+            step="0.01"
+            [value]="importProductDraft().package_height_cm ?? ''"
+            (input)="updateImportProduct('package_height_cm', $any($event.target).value)" /></label
+        ><label class="notes-field"
+          >Descrição<textarea
+            rows="2"
+            [value]="importProductDraft().description"
+            (input)="updateImportProduct('description', $any($event.target).value)"
+          ></textarea>
+        </label>
+      </div>
+      @if (importProductError()) {
+        <p class="purchase-error" role="alert">{{ importProductError() }}</p>
+      }
+      <div class="purchase-form-actions">
+        <span class="muted">Estoque inicial zero · sem movimentação.</span
+        ><button
+          type="button"
+          class="primary"
+          [disabled]="savingImportProduct() || !canSaveImportProduct()"
+          (click)="saveImportProduct()"
+        >
+          {{ savingImportProduct() ? 'Salvando…' : 'Criar e vincular à linha' }}
+        </button>
+      </div>
+    </section>
+  </div>
+}

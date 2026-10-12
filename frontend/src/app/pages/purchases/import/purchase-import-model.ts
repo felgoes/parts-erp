@@ -91,6 +91,21 @@ export function emptyImportDraft(): ImportDraft {
   };
 }
 
+/** Categorias de despesa oferecidas na revisão e no cadastro de despesa da página. */
+export const EXPENSE_CATEGORIES = [
+  'Aluguel',
+  'Energia e água',
+  'Internet e telefonia',
+  'Contabilidade',
+  'Marketing',
+  'Frete e transporte',
+  'Material de escritório',
+  'Materiais de consumo e embalagem',
+  'Impostos e taxas',
+  'Serviços',
+  'Outros',
+];
+
 export function emptyImportProductDraft(): ImportProductDraft {
   return {
     sku: '',

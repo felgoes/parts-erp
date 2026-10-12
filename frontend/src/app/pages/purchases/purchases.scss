@@ -227,16 +227,6 @@
 .purchase-empty button {
   margin-top: 7px;
 }
-.purchase-modal {
-  max-height: min(88vh, 900px);
-  overflow-y: auto;
-}
-.purchase-modal .modal-head {
-  align-items: flex-start;
-}
-.purchase-modal .modal-head h2 {
-  margin-bottom: 0;
-}
 .attachment-picker {
   margin-top: 16px;
   padding: 12px;
@@ -301,119 +291,6 @@
 }
 .expense-banner span {
   color: var(--muted);
-}
-.modal-intro {
-  margin: 8px 0 0;
-  color: var(--muted);
-  font-size: 13px;
-  line-height: 1.5;
-}
-.purchase-form-meta {
-  display: grid;
-  grid-template-columns: minmax(190px, 0.7fr) minmax(0, 1.8fr);
-  gap: 14px;
-  margin: 20px 0;
-}
-.purchase-modal label {
-  display: grid;
-  align-content: start;
-  gap: 6px;
-  min-width: 0;
-  color: #59665e;
-  font-size: 11px;
-  font-weight: 750;
-}
-.purchase-modal input:not([type='checkbox']),
-.purchase-modal select,
-.purchase-modal textarea {
-  box-sizing: border-box;
-  width: 100%;
-  min-height: 40px;
-  padding: 9px 10px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: #fff;
-  color: var(--text);
-  font: inherit;
-  font-size: 13px;
-}
-.purchase-form-section {
-  margin-top: 22px;
-  padding-top: 18px;
-  border-top: 1px solid var(--line);
-}
-.purchase-form-section .section-heading {
-  margin-bottom: 13px;
-}
-.purchase-form-section .section-heading h3 {
-  margin: 0;
-  font-size: 18px;
-}
-.purchase-line-list {
-  display: grid;
-  gap: 9px;
-}
-.purchase-line-form {
-  position: relative;
-  display: grid;
-  grid-template-columns: repeat(12, minmax(0, 1fr));
-  align-items: start;
-  gap: 10px;
-  padding: 12px;
-  border: 1px solid var(--line);
-  border-radius: 11px;
-  background: #fbfcfa;
-}
-.purchase-line-form > label:nth-child(1) {
-  grid-column: span 3;
-}
-.purchase-line-form > label:nth-child(2) {
-  grid-column: span 2;
-}
-.purchase-line-form > label:nth-child(3) {
-  grid-column: span 5;
-}
-.purchase-line-form > label:nth-child(4) {
-  grid-column: span 2;
-}
-.purchase-flow-hint {
-  margin: -3px 0 12px;
-  color: var(--muted);
-  font-size: 12px;
-  line-height: 1.45;
-}
-.purchase-line-form input,
-.purchase-line-form select {
-  min-width: 0;
-}
-.purchase-line-form .remove-line {
-  position: absolute;
-  top: -8px;
-  right: 2px;
-  width: 24px;
-  height: 24px;
-  border: 1px solid var(--line);
-  border-radius: 50%;
-  background: #fff;
-  color: #97524a;
-  cursor: pointer;
-}
-.purchase-form-actions {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding-top: 18px;
-}
-.purchase-form-actions .muted {
-  font-size: 11px;
-}
-.purchase-error {
-  padding: 10px 12px;
-  border-radius: 8px;
-  background: #fff0ee;
-  color: #963b35;
-  font-size: 13px;
 }
 .detail-head-actions {
   display: flex;
@@ -910,92 +787,10 @@
   color: #984b43;
   font-weight: 600;
 }
-.import-check {
-  margin: 14px 0;
-  padding: 14px;
-  border: 1px solid var(--line);
-  border-radius: 11px;
-  background: #fbfcf9;
-}
-.import-product-select {
-  display: grid;
-  gap: 4px;
-  margin-top: 6px;
-  font-size: 10px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--muted);
-}
-.import-product-select select {
-  width: 100%;
-}
-.import-blockers {
-  display: grid;
-  gap: 6px;
-  margin: 12px 0 0;
-  padding: 12px 14px 12px 30px;
-  border: 1px solid #e8ccc8;
-  border-radius: 10px;
-  background: #fdf7f6;
-  color: #7c403a;
-  font-size: 12px;
-  line-height: 1.45;
-}
-.import-check > .eyebrow {
-  margin: 0 0 10px;
-}
-.import-check-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 8px 14px;
-  align-items: center;
-  font-size: 12px;
-}
-.import-check-grid > span {
-  color: var(--muted);
-}
-.import-check-grid > strong {
-  text-align: right;
-  font-size: 13px;
-}
-.import-check-grid input {
-  width: 100%;
-  height: 36px;
-}
-.import-check-grid .import-paid {
-  display: block;
-}
 .check-warn {
   color: #984b43;
 }
-.import-text {
-  margin-top: 12px;
-}
-.import-text summary {
-  cursor: pointer;
-  color: var(--muted);
-  font-size: 11px;
-}
-.import-text pre {
-  max-height: 240px;
-  margin: 10px 0 0;
-  padding: 10px;
-  overflow: auto;
-  border: 1px solid var(--line);
-  border-radius: 9px;
-  background: #fff;
-  color: #4b4a42;
-  font-size: 11px;
-  white-space: pre-wrap;
-}
 @media (max-width: 620px) {
-  .import-check-grid {
-    grid-template-columns: minmax(0, 1fr);
-  }
-  .import-check-grid > strong {
-    text-align: left;
-  }
 }
 .overdue-chip {
   display: inline-block;
@@ -1135,16 +930,6 @@
     grid-template-columns: minmax(0, 1fr) 220px;
     gap: 15px;
   }
-  .purchase-line-form {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    padding-right: 22px;
-  }
-  .purchase-line-form > label:nth-child(n) {
-    grid-column: auto;
-  }
-  .purchase-line-form .line-description {
-    grid-column: span 2;
-  }
   .purchase-table-card table {
     min-width: 780px;
   }
@@ -1239,30 +1024,6 @@
   .purchase-table-card .row-menu-trigger {
     font-size: 24px;
   }
-  .purchase-modal {
-    width: 100%;
-    max-height: 92dvh;
-    padding: 20px 16px calc(20px + env(safe-area-inset-bottom));
-    border-radius: 20px 20px 0 0;
-  }
-  .purchase-form-meta {
-    grid-template-columns: 1fr;
-  }
-  .purchase-line-form {
-    grid-template-columns: 1fr 1fr;
-    gap: 9px;
-  }
-  .purchase-line-form > label:first-child,
-  .purchase-line-form .line-description {
-    grid-column: 1 / -1;
-  }
-  .purchase-form-actions {
-    align-items: stretch;
-    flex-direction: column;
-  }
-  .purchase-form-actions .primary {
-    width: 100%;
-  }
   .purchase-steps {
     gap: 4px;
   }
@@ -1354,31 +1115,4 @@
   font-size: 12px;
   font-weight: 700;
   content: 'Aguardando cotação';
-}
-
-.purchase-modal .money-field {
-  color: #344a3b;
-  font-size: 12px;
-}
-.purchase-modal .money-field input[appMoneyInput] {
-  min-width: 0;
-  min-height: 46px;
-  padding-inline: 12px;
-  border-color: #b8c9b9;
-  font-size: 15px;
-  font-variant-numeric: tabular-nums;
-  font-weight: 700;
-}
-.purchase-modal .money-field input[appMoneyInput]:focus-visible {
-  border-color: var(--forest);
-  outline: 3px solid #557a4b33;
-  outline-offset: 1px;
-}
-.purchase-line-form > label.money-field {
-  grid-column: span 3;
-}
-@media (max-width: 640px) {
-  .purchase-line-form > label.money-field {
-    grid-column: 1 / -1;
-  }
 }

@@ -41,6 +41,8 @@ from app.schemas.common import (
     PurchaseItemCreate,
     PurchaseItemUpdate,
     PurchaseListItem,
+    PurchaseListRowItem,
+    PurchaseListRowQuote,
     PurchaseOut,
     PurchaseQuoteCreate,
     PurchaseReceive,
@@ -77,37 +79,47 @@ def _mask_costs(result: PurchaseOut, user: User) -> PurchaseOut:
     """
     if has_permission(getattr(user, "role", UserRole.admin), Permission.FINANCE_READ):
         return result
+    # A projeção da lista não carrega custo por item: ali a máscara só precisa esconder o
+    # total da cotação, então cada bloco é tratado conforme os campos que realmente existem.
+    items = (
+        [
+            item.model_copy(
+                update={
+                    "base_unit_cost": None,
+                    "unit_cost": None,
+                    "freight_amount": None,
+                    "tax_amount": None,
+                    "discount_amount": None,
+                }
+            )
+            for item in result.items
+        ]
+        if result.items and hasattr(result.items[0], "unit_cost")
+        else result.items
+    )
+    quotes = [
+        quote.model_copy(update={"total": None})
+        if not hasattr(quote, "item_costs")
+        else quote.model_copy(
+            update={
+                "total": None,
+                "item_costs": {},
+                "freight_amount": Decimal("0"),
+                "tax_amount": Decimal("0"),
+                "discount_amount": Decimal("0"),
+                "payment_type": None,
+                "installment_count": None,
+                "first_due_days": None,
+                "interval_days": None,
+            }
+        )
+        for quote in result.quotes
+    ]
     return result.model_copy(
         update={
             "total_amount": None,
-            "items": [
-                item.model_copy(
-                    update={
-                        "base_unit_cost": None,
-                        "unit_cost": None,
-                        "freight_amount": None,
-                        "tax_amount": None,
-                        "discount_amount": None,
-                    }
-                )
-                for item in result.items
-            ],
-            "quotes": [
-                quote.model_copy(
-                    update={
-                        "total": None,
-                        "item_costs": {},
-                        "freight_amount": Decimal("0"),
-                        "tax_amount": Decimal("0"),
-                        "discount_amount": Decimal("0"),
-                        "payment_type": None,
-                        "installment_count": None,
-                        "first_due_days": None,
-                        "interval_days": None,
-                    }
-                )
-                for quote in result.quotes
-            ],
+            "items": items,
+            "quotes": quotes,
             "events": [
                 event.model_copy(update={"detail": "Cotação selecionada."})
                 if event.event_type == "quote_selected"
@@ -156,8 +168,22 @@ def _present_list_item(purchase: PurchaseCase, user: User) -> PurchaseListItem:
         notes=purchase.notes,
         created_at=purchase.created_at,
         updated_at=purchase.updated_at,
-        items=purchase.items,
-        quotes=purchase.quotes,
+        items=[
+            PurchaseListRowItem(
+                id=item.id,
+                product_id=item.product_id,
+                sku=item.sku,
+                description=item.description,
+                unit=item.unit,
+                quantity=item.quantity,
+                received_quantity=item.received_quantity,
+            )
+            for item in purchase.items
+        ],
+        quotes=[
+            PurchaseListRowQuote(id=quote.id, supplier_name=quote.supplier_name, total=quote.total)
+            for quote in purchase.quotes
+        ],
         total_amount=_purchase_total(purchase),
     )
     return _mask_costs(result, user)

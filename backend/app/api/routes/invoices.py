@@ -41,12 +41,11 @@ def _locked_invoice(db: Session, invoice_id: str) -> SalesInvoice:
     SQLite a trava é ignorada e quem protege é a chave de idempotência do movimento; em
     Postgres ela fecha a janela antes de qualquer escrita.
     """
-    invoice = db.scalar(
-        select(SalesInvoice).where(SalesInvoice.id == invoice_id).with_for_update()
-    )
+    invoice = db.scalar(select(SalesInvoice).where(SalesInvoice.id == invoice_id).with_for_update())
     if not invoice:
         raise HTTPException(status_code=404, detail="Fatura não encontrada")
     return invoice
+
 
 router = APIRouter(prefix="/invoices", tags=["Faturas de venda"])
 BRAZIL_TZ = timezone(timedelta(hours=-3))

@@ -1,11 +1,11 @@
 2075 frontend/src/app/pages/purchases/purchases.html
 2011 frontend/src/app/pages/purchases/purchases.ts
-1778 backend/app/api/routes/purchases.py
+1804 backend/app/api/routes/purchases.py
 1384 frontend/src/app/pages/purchases/purchases.scss
 1286 backend/app/services/purchase_import.py
-1258 backend/app/schemas/common.py
+1284 backend/app/schemas/common.py
 1151 frontend/src/styles.scss
-1023 backend/tests/test_purchases.py
+1030 backend/tests/test_purchases.py
 1022 backend/app/integrations/mercadolivre/sync.py
 791 backend/app/models/entities.py
 784 frontend/src/app/core/models.ts
@@ -18,9 +18,9 @@
 650 frontend/src/app/pages/dashboard/dashboard.scss
 649 frontend/src/app/pages/products/products.html
 618 backend/app/services/after_sale.py
-616 backend/app/api/routes/integrations.py
 604 frontend/src/app/pages/products/products.scss
 554 frontend/src/app/pages/marketplace/marketplace.scss
+542 backend/app/api/routes/integrations.py
 527 frontend/src/app/pages/market-studies/market-studies.html
 519 frontend/src/app/pages/payables/payables.html
 518 backend/app/services/market_research.py

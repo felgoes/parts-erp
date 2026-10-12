@@ -773,10 +773,17 @@ def test_purchase_list_is_a_light_projection(db: Session) -> None:
     assert listed[0].events == []
     assert listed[0].attachments == []
     assert listed[0].payables == []
+    # Projeção leve de verdade: a linha da lista não carrega custo, frete, impostos nem desconto.
+    row = listed[0].items[0]
+    assert row.sku == "L-1"
+    assert row.quantity == Decimal("1")
+    assert "unit_cost" not in row.model_dump()
+    assert "freight_amount" not in row.model_dump()
 
     detail = get_purchase(purchase.id, db=db, user=user)
     assert detail.number == purchase.number
     assert detail.events, "o detalhe continua trazendo o histórico"
+    assert detail.items[0].unit_cost is not None, "o detalhe continua trazendo o custo do item"
 
 
 def test_supplier_creation_reuses_the_existing_record(db: Session) -> None:

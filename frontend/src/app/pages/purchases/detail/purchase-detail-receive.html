@@ -1,0 +1,107 @@
+@if (detail(); as purchase) {
+  @if (purchase.items.length) {
+    <section class="purchase-form-section">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">Itens e recebimento</p>
+          <h3>
+            {{ purchase.purchase_type === 'expense' ? 'Materiais da despesa' : 'Peças da compra' }}
+          </h3>
+        </div>
+      </div>
+      <div class="purchase-item-cards">
+        @for (item of purchase.items; track item.id) {
+          <article class="purchase-item-card">
+            <div class="item-title">
+              <div>
+                <strong>{{ item.description }}</strong
+                ><small
+                  ><code>{{ item.sku }}</code>
+                  @if (item.product_id) {
+                    · vinculada ao catálogo
+                  } @else {
+                    · ainda sem produto no catálogo
+                  }
+                </small>
+              </div>
+              <strong
+                >{{ item.unit_cost | currency: 'BRL' }}
+                <small>/ {{ item.unit }} final</small></strong
+              >
+            </div>
+            <div class="item-cost-breakdown">
+              <span>Base: {{ item.base_unit_cost | currency: 'BRL' }}</span
+              ><span>Frete: {{ item.freight_amount | currency: 'BRL' }}</span
+              ><span>Impostos: {{ item.tax_amount | currency: 'BRL' }}</span
+              ><span>Desconto: -{{ item.discount_amount | currency: 'BRL' }}</span>
+            </div>
+            <div class="receipt-progress">
+              <span
+                >Recebido
+                <b
+                  >{{ item.received_quantity | number: '1.0-3' }} /
+                  {{ item.quantity | number: '1.0-3' }} {{ item.unit }} ·
+                  {{ item.quantity - item.received_quantity | number: '1.0-3' }} pendente</b
+                ></span
+              >
+              <div><i [style.width.%]="progress(item)"></i></div>
+            </div>
+            @if (purchase.status === 'ordered' || purchase.status === 'partially_received') {
+              <div class="receive-controls">
+                <label
+                  >Receber agora<input
+                    type="number"
+                    min="0.001"
+                    [max]="item.quantity - item.received_quantity"
+                    step="0.001"
+                    [value]="receiveQty(item)"
+                    (input)="setReceiveQty(item, $any($event.target).value)"
+                /></label>
+                @if (!item.product_id) {
+                  <label class="map-product"
+                    >Vincular produto existente<select
+                      [value]="receiveProduct(item)"
+                      (change)="setReceiveProduct(item, $any($event.target).value)"
+                    >
+                      <option value="">Selecione um produto…</option>
+                      @for (
+                        product of availableProducts(
+                          purchase.purchase_type === 'expense' ? 'warehouse' : 'product'
+                        );
+                        track product.id
+                      ) {
+                        <option [value]="product.id">{{ product.sku }} · {{ product.name }}</option>
+                      }
+                    </select></label
+                  ><label class="create-product-check"
+                    ><input
+                      type="checkbox"
+                      [checked]="createNewProduct(item)"
+                      (change)="setCreateNewProduct(item, $any($event.target).checked)"
+                    />
+                    Criar produto no catálogo ao receber</label
+                  >
+                }
+                <label class="receipt-note"
+                  >Observação (avaria/divergência)<input
+                    type="text"
+                    maxlength="160"
+                    [value]="receiveObservation(item)"
+                    (input)="setReceiveObservation(item, $any($event.target).value)"
+                    placeholder="Opcional" /></label
+                ><button
+                  type="button"
+                  class="secondary small"
+                  [disabled]="saving() || receiveQty(item) <= 0"
+                  (click)="receive(item)"
+                >
+                  Registrar recebimento
+                </button>
+              </div>
+            }
+          </article>
+        }
+      </div>
+    </section>
+  }
+}

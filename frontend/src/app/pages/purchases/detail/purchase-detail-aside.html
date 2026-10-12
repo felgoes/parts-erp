@@ -1,0 +1,201 @@
+@if (detail(); as purchase) {
+  <aside class="purchase-aside">
+    <section class="purchase-aside-card">
+      <p class="eyebrow">Resumo</p>
+      <div>
+        <span>Itens</span><strong>{{ purchase.items.length }}</strong>
+      </div>
+      @if (purchase.purchase_type === 'parts') {
+        <div>
+          <span>Unidades pedidas</span><strong>{{ totalUnits(purchase) | number: '1.0-3' }}</strong>
+        </div>
+        <div>
+          <span>Recebidas</span><strong>{{ receivedUnits(purchase) | number: '1.0-3' }}</strong>
+        </div>
+      }
+      @if (selectedQuote(purchase); as quote) {
+        <div>
+          <span>Fornecedor escolhido</span><strong>{{ quote.supplier_name }}</strong>
+        </div>
+        <div>
+          <span>Valor acordado</span><strong>{{ quote.total | currency: 'BRL' }}</strong>
+        </div>
+      }
+    </section>
+    @if (selectedDetailQuote(purchase); as chosen) {
+      <section class="purchase-aside-card quote-summary-card">
+        <p class="eyebrow">Cotação escolhida</p>
+        <div>
+          <span>Fornecedor</span><strong>{{ chosen.supplier_name }}</strong>
+        </div>
+        <div>
+          <span>Condição</span><strong>{{ quoteConditionLabel(chosen) }}</strong>
+        </div>
+        <div class="quote-cost-summary">
+          @for (item of purchase.items; track item.id) {
+            <small
+              >{{ item.sku }} · base {{ chosen.item_costs?.[item.id] | currency: 'BRL' }} → final
+              {{ item.unit_cost | currency: 'BRL' }}/un.</small
+            >
+          }
+        </div>
+        <small class="quote-locked">Cotação escolhida · valores travados</small>
+        @if (chosen.notes) {
+          <small>{{ chosen.notes }}</small>
+        }
+      </section>
+    }
+    @if (purchase.payables?.length) {
+      <section class="purchase-aside-card payable-card">
+        <p class="eyebrow">Contas a pagar</p>
+        @for (payable of purchase.payables; track payable.id) {
+          <div class="payable-row">
+            <div>
+              <strong>{{ payable.amount | currency: 'BRL' }}</strong
+              ><small>{{ payableLabel(payable) }}</small>
+              @if (payable.payment_terms) {
+                <small>Condição {{ payable.payment_terms }}</small>
+              }
+              @if (payable.installments?.length) {
+                <div class="payable-installments">
+                  @for (installment of payable.installments; track installment.id) {
+                    <small
+                      >{{ installment.number }}ª · {{ dateOnly(installment.due_date) }} ·
+                      {{ installment.amount | currency: 'BRL' }}
+                      @if ((installment.paid_amount ?? 0) > 0) {
+                        · pago {{ installment.paid_amount | currency: 'BRL' }}
+                      }
+                    </small>
+                  }
+                </div>
+              }
+              @if ((payable.paid_amount ?? 0) > 0) {
+                <small
+                  >Pago {{ payable.paid_amount | currency: 'BRL' }} · saldo
+                  {{ payable.amount - (payable.paid_amount ?? 0) | currency: 'BRL' }}</small
+                >
+              }
+            </div>
+            @if (
+              canManagePurchases() && (payable.status === 'open' || payable.status === 'partial')
+            ) {
+              <button
+                type="button"
+                class="secondary small"
+                [disabled]="saving()"
+                (click)="settlePayable(purchase, payable)"
+              >
+                Registrar pagamento
+              </button>
+            }
+          </div>
+        }
+      </section>
+    }
+    <section class="purchase-aside-card timeline-card">
+      <p class="eyebrow">Histórico da compra</p>
+      @for (event of purchase.events; track event.id) {
+        <div class="purchase-event">
+          <i></i>
+          <div>
+            <strong>{{ event.detail }}</strong
+            ><small>{{ event.created_at | date: 'dd/MM/yyyy HH:mm' }}</small>
+          </div>
+        </div>
+      }
+    </section>
+    @if (purchaseStatusNote(purchase); as note) {
+      <p class="purchase-status-note">{{ note }}</p>
+    }
+    @if (canManagePurchases() && isActive(purchase)) {
+      <div class="purchase-lifecycle-actions">
+        @if (purchase.status === 'ordered' || purchase.status === 'partially_received') {
+          <button
+            type="button"
+            class="secondary"
+            [disabled]="saving()"
+            (click)="receiveAll(purchase)"
+          >
+            Receber tudo
+          </button>
+        }
+        @if (purchase.status === 'ordered' || purchase.status === 'partially_received') {
+          <button
+            type="button"
+            class="secondary"
+            [disabled]="saving()"
+            (click)="openLifecycleForm('close')"
+          >
+            Encerrar saldo
+          </button>
+        }
+        <button
+          type="button"
+          class="cancel-purchase"
+          [disabled]="saving()"
+          (click)="openLifecycleForm('cancel')"
+        >
+          Cancelar compra
+        </button>
+        <button
+          type="button"
+          class="danger-outline"
+          [disabled]="saving()"
+          (click)="openDelete(purchase)"
+        >
+          Excluir compra
+        </button>
+      </div>
+    }
+    @if (lifecycleForm(); as form) {
+      <section class="purchase-aside-card lifecycle-form">
+        <p class="eyebrow">
+          {{ form.mode === 'cancel' ? 'Cancelar compra' : 'Encerrar saldo pendente' }}
+        </p>
+        <label
+          >Motivo<input
+            type="text"
+            maxlength="255"
+            [value]="form.reason"
+            (input)="setLifecycleReason($any($event.target).value)"
+            placeholder="Ex.: fornecedor não entregou o restante"
+        /></label>
+        @if (form.mode === 'cancel' && hasReceived(purchase)) {
+          <fieldset class="lifecycle-resolution">
+            <legend>O que fazer com o material já recebido?</legend>
+            <label
+              ><input
+                type="radio"
+                name="resolution"
+                [checked]="form.resolution === 'keep_received'"
+                (change)="setLifecycleResolution('keep_received')"
+              />
+              Manter o recebido e encerrar o saldo</label
+            >
+            <label
+              ><input
+                type="radio"
+                name="resolution"
+                [checked]="form.resolution === 'return_received'"
+                (change)="setLifecycleResolution('return_received')"
+              />
+              Registrar devolução ao fornecedor (saída de estoque)</label
+            >
+          </fieldset>
+        }
+        <div class="lifecycle-actions">
+          <button type="button" class="secondary small" (click)="lifecycleForm.set(null)">
+            Voltar</button
+          ><button
+            type="button"
+            class="primary small"
+            [disabled]="saving() || form.reason.trim().length < 3"
+            (click)="submitLifecycle(purchase)"
+          >
+            Confirmar
+          </button>
+        </div>
+      </section>
+    }
+  </aside>
+}

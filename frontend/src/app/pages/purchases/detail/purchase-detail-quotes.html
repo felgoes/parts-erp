@@ -1,0 +1,209 @@
+@if (detail(); as purchase) {
+  @if (
+    purchase.purchase_type === 'parts' &&
+    (purchase.status === 'negotiating' || purchase.status === 'approved')
+  ) {
+    <section class="purchase-form-section">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">Concorrência</p>
+          <h3>Cotações de fornecedores</h3>
+        </div>
+      </div>
+      @if (purchase.selected_quote_id) {
+        <p class="muted">
+          A cotação escolhida está travada. Registre uma nova proposta e escolha de novo para trocar
+          preço ou prazo.
+        </p>
+      }
+      @if (purchase.quotes.length) {
+        <div class="quote-cards">
+          @for (quote of purchase.quotes; track quote.id) {
+            <article
+              class="quote-card"
+              [class.quote-selected]="purchase.selected_quote_id === quote.id"
+            >
+              <div>
+                <strong>{{ quote.supplier_name }}</strong
+                ><b>{{ quote.total | currency: 'BRL' }}</b>
+              </div>
+              <p>
+                {{
+                  quote.delivery_days !== null
+                    ? quote.delivery_days + ' dias para entrega'
+                    : 'Prazo não informado'
+                }}
+                @if (quote.payment_terms) {
+                  · {{ quote.payment_terms }}
+                }
+              </p>
+              <div class="quote-cost-summary">
+                @for (item of purchase.items; track item.id) {
+                  <small
+                    >{{ item.sku }} · {{ quote.item_costs?.[item.id] | currency: 'BRL' }}/un.</small
+                  >
+                }
+              </div>
+              <small>Condição: {{ quoteConditionLabel(quote) }}</small>
+              @if (quote.notes) {
+                <small>{{ quote.notes }}</small>
+              }
+              @if (purchase.selected_quote_id === quote.id) {
+                <small class="quote-locked">Cotação escolhida · valores travados</small>
+              } @else {
+                <button type="button" class="secondary small" (click)="selectQuote(quote.id)">
+                  Escolher esta cotação
+                </button>
+              }
+            </article>
+          }
+        </div>
+      } @else {
+        <p class="muted">Registre as propostas recebidas para comparar preço e prazo.</p>
+      }
+      <form class="quote-form" [formGroup]="quoteForm" (ngSubmit)="addQuote()">
+        <div class="quote-item-costs">
+          <strong>Custo unitário dos itens</strong>
+          @for (item of purchase.items; track item.id) {
+            <label class="money-field"
+              >Custo unitário (R$) &#183; {{ item.sku }} &#183; {{ item.description
+              }}<input
+                appMoneyInput
+                [appMoneyInput]="quoteUnitCost(item)"
+                min="0"
+                (moneyInput)="setQuoteUnitCost(item, $event)"
+                (moneyValidity)="setQuoteCostValidity(item.id, $event)"
+            /></label>
+          }
+        </div>
+        <label
+          >Fornecedor<input
+            formControlName="supplier_name"
+            placeholder="Nome do fornecedor" /></label
+        ><label
+          >Contato<input
+            formControlName="supplier_contact"
+            placeholder="Telefone ou e-mail" /></label
+        ><label>Frete<input appMoneyInput formControlName="freight_amount" min="0" /></label
+        ><label>Impostos<input appMoneyInput formControlName="tax_amount" min="0" /></label
+        ><label>Desconto<input appMoneyInput formControlName="discount_amount" min="0" /></label
+        ><label
+          >Ratear acréscimos/desconto<select formControlName="allocation_method">
+            <option value="proportional">Proporcional ao subtotal de cada item</option>
+            <option value="quantity">Por quantidade de peças</option>
+          </select></label
+        ><label
+          >Total final da proposta<input
+            appMoneyInput
+            [appMoneyInput]="quoteTotal(purchase)"
+            min="0"
+            (moneyInput)="setQuoteTotal($event)" /></label
+        ><label>Prazo (dias)<input type="number" min="0" formControlName="delivery_days" /></label
+        ><label
+          >Condição de pagamento<select
+            [value]="quoteForm.controls.payment_type.value"
+            (change)="setQuoteConditionType($any($event.target).value)"
+          >
+            <option value="cash">À vista</option>
+            <option value="installments">Parcelado</option>
+            <option value="entry">Entrada + parcelas</option>
+          </select></label
+        >
+        @if (quoteForm.controls.payment_type.value !== 'cash') {
+          <label
+            >Parcelas<input
+              type="number"
+              min="1"
+              max="36"
+              [value]="quoteForm.controls.installment_count.value"
+              (input)="
+                setQuoteConditionNumber('installment_count', $any($event.target).value)
+              " /></label
+          ><label
+            >1º vencimento (dias)<input
+              type="number"
+              min="0"
+              max="3650"
+              [value]="quoteForm.controls.first_due_days.value"
+              (input)="
+                setQuoteConditionNumber('first_due_days', $any($event.target).value)
+              " /></label
+          ><label
+            >Intervalo (dias)<input
+              type="number"
+              min="1"
+              max="3650"
+              [value]="quoteForm.controls.interval_days.value"
+              (input)="setQuoteConditionNumber('interval_days', $any($event.target).value)"
+          /></label>
+        }
+        <div class="quote-presets">
+          <span>Atalhos</span
+          ><button
+            type="button"
+            class="secondary small"
+            (click)="applyQuoteConditionPreset('cash')"
+          >
+            À vista</button
+          ><button type="button" class="secondary small" (click)="applyQuoteConditionPreset('30')">
+            30 dias</button
+          ><button
+            type="button"
+            class="secondary small"
+            (click)="applyQuoteConditionPreset('30/60')"
+          >
+            30/60</button
+          ><button
+            type="button"
+            class="secondary small"
+            (click)="applyQuoteConditionPreset('30/60/90')"
+          >
+            30/60/90
+          </button>
+        </div>
+        <label class="quote-notes"
+          >Observação da condição<input
+            formControlName="payment_terms"
+            placeholder="Ex.: boleto combinado com o fornecedor" /></label
+        ><small class="quote-cost-hint">Parcelas do título: {{ quoteConditionPreview() }}</small
+        ><label class="quote-notes"
+          >Observações<input
+            formControlName="notes"
+            placeholder="Validade ou detalhes da proposta…" /></label
+        ><small class="quote-cost-hint"
+          >Custo considerado: {{ quoteTotal(purchase) | currency: 'BRL' }} ·
+          {{ quoteDirectionNote() }}</small
+        >
+        @if (quoteRounding() !== 0) {
+          <small class="quote-cost-hint"
+            >Ajuste de centavos de {{ quoteRounding() | currency: 'BRL' }} aplicado no maior item
+            para fechar o total.</small
+          >
+        }
+        @if (quoteNet(purchase) < 0) {
+          <p class="purchase-error" role="alert">
+            O total da proposta é menor que o frete e os impostos menos o desconto.
+          </p>
+        }
+        @if (quoteMismatch(purchase)) {
+          <p class="purchase-error" role="alert">
+            A soma dos itens não fecha com o total da proposta. Revise o rateio ou os valores.
+          </p>
+        }
+        <button
+          class="primary"
+          [disabled]="
+            quoteForm.invalid ||
+            quoteCostHasErrors() ||
+            !quoteCostsComplete(purchase) ||
+            quoteNet(purchase) < 0 ||
+            quoteMismatch(purchase) ||
+            saving()
+          "
+        >
+          Registrar cotação
+        </button>
+      </form>
+    </section>
+  }
+}

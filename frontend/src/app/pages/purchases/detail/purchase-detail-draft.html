@@ -1,0 +1,158 @@
+@if (detail(); as purchase) {
+  <section class="purchase-form-section draft-editor">
+    <div class="section-heading">
+      <div>
+        <p class="eyebrow">Rascunho</p>
+        <h3>Dados do pedido</h3>
+      </div>
+      <button
+        type="button"
+        class="secondary small"
+        [disabled]="saving()"
+        (click)="saveDraftHeader(purchase)"
+      >
+        Salvar dados
+      </button>
+    </div>
+    <div class="purchase-form-meta">
+      <label
+        >Fornecedor<input
+          type="text"
+          list="supplierOptionsDetail"
+          [value]="draftHeader().supplier_name"
+          (input)="setDraftHeader('supplier_name', $any($event.target).value)"
+          placeholder="Nome da empresa ou pessoa" /><datalist id="supplierOptionsDetail">
+          @for (supplier of suppliers(); track supplier.id) {
+            <option [value]="supplier.name"></option>
+          }</datalist
+      ></label>
+      <label
+        >Previsão desejada<input
+          type="date"
+          [value]="draftHeader().needed_by"
+          (input)="setDraftHeader('needed_by', $any($event.target).value)"
+      /></label>
+      <label
+        >Nº do pedido do fornecedor<input
+          type="text"
+          [value]="draftHeader().supplier_order_number"
+          (input)="setDraftHeader('supplier_order_number', $any($event.target).value)"
+          placeholder="Opcional"
+      /></label>
+      <label
+        >Data do documento<input
+          type="date"
+          [value]="draftHeader().document_date"
+          (input)="setDraftHeader('document_date', $any($event.target).value)"
+      /></label>
+      <label class="notes-field"
+        >Observações<textarea
+          rows="2"
+          [value]="draftHeader().notes"
+          (input)="setDraftHeader('notes', $any($event.target).value)"
+        ></textarea>
+      </label>
+    </div>
+    <div class="section-heading">
+      <div>
+        <p class="eyebrow">Peças da negociação</p>
+        <h3>Editar linhas</h3>
+      </div>
+    </div>
+    <div class="draft-lines">
+      @for (item of purchase.items; track item.id) {
+        <div class="draft-line">
+          <label
+            >Descrição<input
+              type="text"
+              [value]="lineDrafts()[item.id]?.description ?? item.description"
+              (input)="setLineDraft(item.id, 'description', $any($event.target).value)"
+          /></label>
+          <label
+            >SKU<input
+              type="text"
+              [value]="lineDrafts()[item.id]?.sku ?? item.sku"
+              (input)="setLineDraft(item.id, 'sku', $any($event.target).value)"
+              placeholder="Opcional no rascunho"
+          /></label>
+          <label
+            >Unidade<input
+              type="text"
+              [value]="lineDrafts()[item.id]?.unit ?? item.unit"
+              (input)="setLineDraft(item.id, 'unit', $any($event.target).value)"
+          /></label>
+          <label
+            >Quantidade<input
+              type="number"
+              min="0.001"
+              step="0.001"
+              [value]="lineDrafts()[item.id]?.quantity ?? item.quantity"
+              (input)="setLineDraft(item.id, 'quantity', $any($event.target).value)"
+          /></label>
+          <div class="draft-line-actions">
+            <button
+              type="button"
+              class="secondary small"
+              [disabled]="saving()"
+              (click)="saveLine(purchase, item)"
+            >
+              Salvar peça
+            </button>
+            @if (purchase.status === 'negotiating' && purchase.items.length > 1) {
+              <button
+                type="button"
+                class="danger-outline"
+                [disabled]="saving()"
+                (click)="removePurchaseLine(purchase, item)"
+              >
+                Remover
+              </button>
+            }
+          </div>
+        </div>
+      }
+      @if (purchase.status === 'negotiating') {
+        <div class="draft-line draft-line-new">
+          <label
+            >Descrição<input
+              type="text"
+              [value]="newLineDraft().description"
+              (input)="setNewLineDraft('description', $any($event.target).value)"
+              placeholder="Nova peça"
+          /></label>
+          <label
+            >SKU<input
+              type="text"
+              [value]="newLineDraft().sku"
+              (input)="setNewLineDraft('sku', $any($event.target).value)"
+              placeholder="Opcional no rascunho"
+          /></label>
+          <label
+            >Unidade<input
+              type="text"
+              [value]="newLineDraft().unit"
+              (input)="setNewLineDraft('unit', $any($event.target).value)"
+          /></label>
+          <label
+            >Quantidade<input
+              type="number"
+              min="0.001"
+              step="0.001"
+              [value]="newLineDraft().quantity"
+              (input)="setNewLineDraft('quantity', $any($event.target).value)"
+          /></label>
+          <div class="draft-line-actions">
+            <button
+              type="button"
+              class="primary small"
+              [disabled]="saving() || !newLineDraft().description.trim()"
+              (click)="addDraftLine(purchase)"
+            >
+              + Adicionar peça
+            </button>
+          </div>
+        </div>
+      }
+    </div>
+  </section>
+}

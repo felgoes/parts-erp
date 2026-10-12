@@ -2,6 +2,8 @@
 
 ## 11 de outubro de 2026 — entregas confirmadas em PRD
 
+- [Organização interna dos tipos do ERP · 0a9d864](https://github.com/felgoes/parts-erp/commit/0a9d864): a lista de tipos compartilhados do sistema foi dividida por área (compras, produtos, faturas, financeiro, catálogo, notificações e outras), deixando a manutenção mais direta. Sem mudança de comportamento.
+
 - [Lista de compras filtra e pagina no servidor · de3c0c8](https://github.com/felgoes/parts-erp/commit/de3c0c8): buscar, trocar a etapa e mudar o período passaram a ser feitos no servidor, e a lista agora traz só a página que está na tela — não o acervo inteiro. Numa loja com 500 compras, a tela deixa de baixar cerca de 770 KB e passa a baixar cerca de 38 KB. Os cartões de resumo continuam mostrando o período escolhido.
 
 - [Lista de compras mais leve · 7c233fb](https://github.com/felgoes/parts-erp/commit/7c233fb): a lista de compras passou a trafegar só o que ela mostra de cada peça — descrição, quantidade e recebido — em vez dos valores de custo, frete, impostos e desconto, que ficam na tela de detalhe. A resposta ficou 43% menor desde o início deste trabalho, o que deixa a tela mais rápida em lojas com muitas compras.

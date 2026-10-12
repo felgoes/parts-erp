@@ -1,0 +1,62 @@
+@if (purchase(); as target) {
+  <div class="modal-backdrop" (click)="cancelDelete()">
+    <section
+      class="modal purchase-modal delete-modal"
+      role="dialog"
+      aria-modal="true"
+      [attr.aria-label]="'Excluir compra ' + target.number"
+      (click)="$event.stopPropagation()"
+    >
+      <div class="modal-head">
+        <div>
+          <p class="eyebrow">Suprimentos · {{ target.number }}</p>
+          <h2>Excluir compra</h2>
+          <p class="modal-intro">
+            {{ target.supplier_name || 'Sem fornecedor' }} ·
+            {{ purchaseTotal(target) | currency: 'BRL' }} · esta ação não pode ser desfeita.
+          </p>
+        </div>
+        <button class="close" aria-label="Fechar" (click)="cancelDelete()">×</button>
+      </div>
+      <p class="delete-lead">Serão apagados junto com o pedido:</p>
+      <ul class="delete-effects">
+        @for (effect of deletionEffects(target); track effect) {
+          <li>{{ effect }}</li>
+        }
+      </ul>
+      @if (deleteBlockedByPayment(target)) {
+        <p class="purchase-error" role="alert">
+          Este pedido tem pagamento registrado no título a pagar. Excluir apagaria uma saída de
+          dinheiro já feita — use <strong>Cancelar compra</strong> com estorno para manter o
+          registro financeiro.
+        </p>
+      }
+      <label
+        >Motivo (opcional)<input
+          type="text"
+          maxlength="255"
+          [value]="reason()"
+          (input)="reason.set($any($event.target).value)"
+          placeholder="Ex.: pedido criado por engano"
+      /></label>
+      <p class="delete-note">
+        A exclusão fica registrada na auditoria com número, fornecedor, itens, valor, autor e data.
+        O estoque recebido volta por movimento de estorno.
+      </p>
+      @if (error()) {
+        <p class="purchase-error" role="alert">{{ error() }}</p>
+      }
+      <div class="purchase-form-actions">
+        <button type="button" class="secondary" (click)="cancelDelete()">Cancelar</button
+        ><button
+          type="button"
+          class="danger-outline"
+          [disabled]="saving() || deleteBlockedByPayment(target)"
+          (click)="confirmDelete(target)"
+        >
+          {{ saving() ? 'Excluindo…' : 'Excluir compra' }}
+        </button>
+      </div>
+    </section>
+  </div>
+}

@@ -1,0 +1,275 @@
+@if (showNew()) {
+  <div class="modal-backdrop" (click)="showNew.set(false)">
+    <section
+      class="modal wide purchase-modal"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="new-purchase-title"
+      (click)="$event.stopPropagation()"
+    >
+      <div class="modal-head">
+        <div>
+          <p class="eyebrow">Suprimentos</p>
+          <h2 id="new-purchase-title">Nova compra</h2>
+          <p class="modal-intro">
+            Cadastre peças para o estoque ou uma despesa da empresa com seus documentos.
+          </p>
+        </div>
+        <button class="close" aria-label="Fechar" (click)="showNew.set(false)">×</button>
+      </div>
+      <form [formGroup]="form" (ngSubmit)="create()">
+        <div class="purchase-form-meta">
+          <label
+            >Tipo de lançamento<select formControlName="purchase_type">
+              <option value="parts">Peças para estoque</option>
+              <option value="expense">Despesa da empresa</option>
+            </select></label
+          ><label
+            >Fornecedor / favorecido<input
+              formControlName="supplier_name"
+              list="supplierOptions"
+              placeholder="Nome da empresa ou pessoa"
+              (change)="applySupplierDefaults()"
+            /><datalist id="supplierOptions">
+              @for (supplier of suppliers(); track supplier.id) {
+                <option [value]="supplier.name"></option>
+              }
+            </datalist>
+            @if (supplierByName(form.controls.supplier_name.value); as known) {
+              <small
+                >Cadastrado ·
+                {{
+                  known.default_delivery_days
+                    ? known.default_delivery_days + ' dias de prazo padrão'
+                    : 'sem prazo padrão'
+                }}{{
+                  known.default_payment_terms ? ' · ' + known.default_payment_terms : ''
+                }}</small
+              >
+            } @else if (form.controls.supplier_name.value) {
+              <button
+                type="button"
+                class="secondary small"
+                [disabled]="saving()"
+                (click)="registerSupplier(form.controls.supplier_name.value)"
+              >
+                Cadastrar fornecedor
+              </button>
+            }</label
+          ><label>Previsão desejada<input type="date" formControlName="needed_by" /></label
+          ><label
+            >Nº do pedido do fornecedor<input
+              formControlName="supplier_order_number"
+              placeholder="Opcional" /></label
+          ><label>Data do documento<input type="date" formControlName="document_date" /></label
+          ><label class="notes-field"
+            >Observações<textarea
+              rows="2"
+              formControlName="notes"
+              placeholder="Detalhes do lançamento"
+            ></textarea>
+          </label>
+        </div>
+        @if (form.controls.purchase_type.value === 'expense') {
+          <div class="purchase-form-section expense-fields">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">Despesa operacional</p>
+                <h3>Dados do gasto</h3>
+              </div>
+            </div>
+            <div class="purchase-form-meta">
+              <label
+                >Categoria<select formControlName="expense_category">
+                  <option value="">Selecione…</option>
+                  @for (category of expenseCategories; track category) {
+                    <option [value]="category">{{ category }}</option>
+                  }
+                </select></label
+              ><label
+                >Valor total<input appMoneyInput formControlName="expense_amount" min="0" /></label
+              ><label
+                >Condição de pagamento<select formControlName="payment_type">
+                  <option value="cash">À vista (na data do documento)</option>
+                  <option value="installments">Parcelado</option>
+                  <option value="entry">Entrada + parcelas</option>
+                </select></label
+              >
+              @if (form.controls.payment_type.value !== 'cash') {
+                <label
+                  >Parcelas<input
+                    type="number"
+                    min="1"
+                    max="36"
+                    formControlName="installment_count" /></label
+                ><label
+                  >1º vencimento (dias)<input
+                    type="number"
+                    min="0"
+                    max="3650"
+                    formControlName="first_due_days" /></label
+                ><label
+                  >Intervalo (dias)<input
+                    type="number"
+                    min="1"
+                    max="3650"
+                    formControlName="interval_days"
+                /></label>
+              }
+            </div>
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">Estoque opcional</p>
+                <h3>Materiais controlados no almoxarifado</h3>
+              </div>
+              <button type="button" class="secondary small" (click)="addLine()">
+                + Adicionar material
+              </button>
+            </div>
+            <p class="purchase-flow-hint">
+              Inclua somente materiais que deseja controlar no estoque. O saldo só muda quando o
+              recebimento for confirmado.
+            </p>
+            <div formArrayName="items" class="purchase-line-list">
+              @for (line of lines.controls; track $index; let i = $index) {
+                <div class="purchase-line-form expense-line" [formGroupName]="i">
+                  <label
+                    >Produto existente<select
+                      formControlName="product_id"
+                      (change)="selectProduct(i, $any($event.target).value)"
+                    >
+                      <option value="">Vincular no recebimento</option>
+                      @for (product of availableProducts('warehouse'); track product.id) {
+                        <option [value]="product.id">{{ product.sku }} · {{ product.name }}</option>
+                      }
+                    </select></label
+                  ><label>SKU<input formControlName="sku" placeholder="SKU do material" /></label
+                  ><label class="line-description"
+                    >Material / descrição<input
+                      formControlName="description"
+                      placeholder="Ex.: Fita crepe" /></label
+                  ><label>Unidade<input formControlName="unit" placeholder="un, cx, rolo…" /></label
+                  ><label
+                    >Quantidade<input
+                      type="number"
+                      min="0.001"
+                      step="0.001"
+                      formControlName="quantity" /></label
+                  ><label class="money-field"
+                    >Custo unitário (R$)<input
+                      appMoneyInput
+                      formControlName="unit_cost"
+                      min="0"
+                      inputmode="decimal"
+                  /></label>
+                  @if (lines.length > 1) {
+                    <button
+                      type="button"
+                      class="remove-line"
+                      aria-label="Remover material"
+                      (click)="removeLine(i)"
+                    >
+                      ×
+                    </button>
+                  }
+                </div>
+              }
+            </div>
+          </div>
+        } @else {
+          <div class="purchase-form-section">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">Lista de compra</p>
+                <h3>Peças em negociação</h3>
+              </div>
+              <button type="button" class="secondary small" (click)="addLine()">
+                + Adicionar peça
+              </button>
+            </div>
+            <p class="purchase-flow-hint">
+              Nesta etapa, informe somente as peças e quantidades. Preços, frete, impostos e
+              descontos entram em cada cotação de fornecedor.
+            </p>
+            <div formArrayName="items" class="purchase-line-list">
+              @for (line of lines.controls; track $index; let i = $index) {
+                <div class="purchase-line-form" [formGroupName]="i">
+                  <label
+                    >Produto cadastrado<select
+                      formControlName="product_id"
+                      (change)="selectProduct(i, $any($event.target).value)"
+                    >
+                      <option value="">Cadastrar/vincular depois</option>
+                      @for (product of availableProducts('product'); track product.id) {
+                        <option [value]="product.id">{{ product.sku }} · {{ product.name }}</option>
+                      }
+                    </select></label
+                  ><label>SKU<input formControlName="sku" placeholder="Ex.: LR174890" /></label
+                  ><label class="line-description"
+                    >Peça / descrição<input
+                      formControlName="description"
+                      placeholder="Nome da peça" /></label
+                  ><label
+                    >Quantidade<input
+                      type="number"
+                      min="0.001"
+                      step="0.001"
+                      formControlName="quantity"
+                  /></label>
+                  @if (lines.length > 1) {
+                    <button
+                      type="button"
+                      class="remove-line"
+                      aria-label="Remover peça"
+                      (click)="removeLine(i)"
+                    >
+                      ×
+                    </button>
+                  }
+                </div>
+              }
+            </div>
+          </div>
+        }
+        <label class="attachment-picker"
+          >Documentos
+          <input
+            type="file"
+            multiple
+            accept=".pdf,.xml,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx"
+            (change)="setAttachments($any($event.target).files)"
+          /><small>{{
+            selectedFiles().length
+              ? selectedFiles().length + ' arquivo(s) selecionado(s)'
+              : 'Nota fiscal, recibo, boleto ou comprovante (até 10 arquivos)'
+          }}</small></label
+        >
+        @if (error()) {
+          <p class="purchase-error" role="alert">{{ error() }}</p>
+        }
+        <div class="purchase-form-actions">
+          <span class="muted">{{
+            form.controls.purchase_type.value === 'expense'
+              ? 'Itens físicos só alteram o estoque após o recebimento'
+              : lines.length +
+                (lines.length === 1 ? ' peça' : ' peças') +
+                ' · estoque só muda no recebimento'
+          }}</span
+          ><button
+            class="primary"
+            [disabled]="
+              saving() ||
+              (form.controls.purchase_type.value === 'parts' && form.invalid) ||
+              (form.controls.purchase_type.value === 'expense' &&
+                (!form.controls.expense_category.value ||
+                  form.controls.expense_amount.value === null ||
+                  lines.controls.some((line) => line.value.description && line.invalid)))
+            "
+          >
+            {{ saving() ? 'Salvando…' : 'Salvar compra' }}
+          </button>
+        </div>
+      </form>
+    </section>
+  </div>
+}

@@ -1,7 +1,7 @@
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Subject, debounceTime } from 'rxjs';
 import { CurrencyPipe, DatePipe, DecimalPipe } from '@angular/common';
-import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, OnInit, computed, inject, signal, viewChild } from '@angular/core';
 import {
   FormArray,
   FormBuilder,
@@ -34,6 +34,8 @@ import { PageHeader } from '../../shared/page-header';
 import { PeriodFilter } from '../../shared/period-filter';
 import { MoneyInputDirective } from '../../shared/money-input.directive';
 import { dateOnlyLabel, dateOnlyValue } from '../../shared/date-only';
+import { PurchaseDelete } from './purchase-delete';
+import { PurchaseNew, SupplierOption } from './purchase-new';
 import { PurchaseImportProducts } from './import/purchase-import-products';
 import { PurchaseImportReview } from './import/purchase-import-review';
 import { PurchaseImportState } from './import/purchase-import-state';
@@ -50,6 +52,8 @@ import { PurchaseImportState } from './import/purchase-import-state';
     PageHeader,
     PeriodFilter,
     PurchaseImportReview,
+    PurchaseDelete,
+    PurchaseNew,
   ],
   templateUrl: './purchases.html',
   styleUrl: './purchases.scss',
@@ -68,6 +72,35 @@ export class PurchasesPage implements OnInit {
   readonly importLoading = this.importFlow.importLoading;
   readonly importReview = this.importFlow.importReview;
   readonly purchases = signal<PurchaseListItem[]>([]);
+  private readonly newPurchase = viewChild(PurchaseNew);
+
+  /** Abre o cadastro manual; o menu da linha sai de cena antes. */
+  openNew() {
+    this.closeRowMenu();
+    this.newPurchase()?.open();
+  }
+  /** Compra criada no cadastro manual: entra na lista e abre o detalhe. */
+  onCreated(purchase: Purchase) {
+    this.purchases.update((list) => [purchase, ...list]);
+    this.openDetails(purchase);
+  }
+  /** Fornecedor cadastrado dentro do cadastro de compra entra na lista da página. */
+  onSupplierCreated(supplier: SupplierOption) {
+    this.suppliers.update((items) =>
+      items.some((entry) => entry.id === supplier.id) ? items : [...items, supplier],
+    );
+  }
+  /** Produtos do catálogo disponíveis para vincular numa linha da compra. */
+  availableProducts(stockType: 'product' | 'warehouse') {
+    return this.products().filter((product) => product.stock_type === stockType);
+  }
+  /** Fornecedor pelo nome digitado (o cadastro rápido e o rascunho usam o mesmo atalho). */
+  supplierByName(name: string | null | undefined) {
+    const key = (name || '').trim().toLowerCase();
+    return key
+      ? (this.suppliers().find((supplier) => supplier.name.toLowerCase() === key) ?? null)
+      : null;
+  }
 
   onImportDocument(event: Event) {
     this.importFlow.startAnalysis(event);
@@ -123,7 +156,6 @@ export class PurchasesPage implements OnInit {
   readonly newLineDraft = signal({ description: '', sku: '', unit: 'un', quantity: 1 });
   readonly rowMenuId = signal<string | null>(null);
   readonly rowMenuPosition = signal<{ top: number; left: number } | null>(null);
-  readonly showNew = signal(false);
   readonly saving = signal(false);
   readonly error = signal('');
   readonly message = signal('');
@@ -145,7 +177,6 @@ export class PurchasesPage implements OnInit {
     resolution: 'keep_received' | 'return_received';
   } | null>(null);
   readonly deleteTarget = signal<Purchase | null>(null);
-  readonly deleteReason = signal('');
   readonly selectedFiles = signal<File[]>([]);
   readonly expenseCategories = [
     'Aluguel',
@@ -178,21 +209,6 @@ export class PurchasesPage implements OnInit {
     { value: 'ordered', label: 'Pedido' },
     { value: 'received', label: 'Recebimento' },
   ];
-  readonly form = this.fb.group({
-    purchase_type: ['parts'],
-    supplier_name: [''],
-    supplier_order_number: [''],
-    document_date: [''],
-    expense_category: [''],
-    expense_amount: [0, [Validators.min(0)]],
-    needed_by: [''],
-    notes: [''],
-    payment_type: ['cash' as PaymentConditionType],
-    installment_count: [1, [Validators.min(1), Validators.max(36)]],
-    first_due_days: [0, [Validators.min(0)]],
-    interval_days: [30, [Validators.min(1)]],
-    items: this.fb.array([this.newLine()]),
-  });
   readonly quoteForm = this.fb.nonNullable.group({
     supplier_name: ['', Validators.required],
     supplier_contact: [''],
@@ -208,8 +224,6 @@ export class PurchasesPage implements OnInit {
     payment_terms: [''],
     notes: [''],
   });
-  readonly lines = this.form.controls.items as FormArray;
-  // Filtro, busca e paginação acontecem no servidor: a tela guarda só o estado da consulta.
   readonly total = signal(0);
   readonly summaryCounts = signal({ negotiating: 0, ordered: 0, received: 0 });
   readonly summary = computed(() => {
@@ -271,16 +285,6 @@ export class PurchasesPage implements OnInit {
       .subscribe({ next: (items) => this.suppliers.set(items), error: () => undefined });
   }
 
-  private newLine() {
-    return this.fb.group({
-      product_id: [''],
-      sku: [''],
-      description: ['', Validators.required],
-      unit: ['un', Validators.required],
-      quantity: [1, [Validators.required, Validators.min(0.001)]],
-      unit_cost: [0, [Validators.required, Validators.min(0)]],
-    });
-  }
   load() {
     this.api
       .purchases({
@@ -315,26 +319,6 @@ export class PurchasesPage implements OnInit {
     this.page.set(1);
     this.load();
   }
-  openNew() {
-    this.closeRowMenu();
-    this.error.set('');
-    this.selectedFiles.set([]);
-    this.form.reset({
-      purchase_type: 'parts',
-      supplier_name: '',
-      expense_category: '',
-      expense_amount: 0,
-      needed_by: '',
-      notes: '',
-      payment_type: 'cash',
-      installment_count: 1,
-      first_due_days: 0,
-      interval_days: 30,
-    });
-    while (this.lines.length) this.lines.removeAt(0);
-    this.addLine();
-    this.showNew.set(true);
-  }
   toggleRowMenu(id: string, event: Event) {
     event.stopPropagation();
     if (this.rowMenuId() === id) {
@@ -364,96 +348,8 @@ export class PurchasesPage implements OnInit {
   }
   copyPurchase(purchase: PurchaseListItem) {
     this.closeRowMenu();
-    this.error.set('');
-    this.selectedFiles.set([]);
-    this.form.reset({
-      purchase_type: purchase.purchase_type,
-      supplier_name: purchase.supplier_name ?? '',
-      expense_category: purchase.expense_category ?? '',
-      expense_amount: purchase.expense_amount ?? 0,
-      needed_by: '',
-      notes: purchase.notes
-        ? `Cópia de ${purchase.number}\n${purchase.notes}`
-        : `Cópia de ${purchase.number}`,
-    });
-    while (this.lines.length) this.lines.removeAt(0);
-    if (purchase.purchase_type === 'parts') {
-      for (const item of purchase.items) {
-        const line = this.newLine();
-        line.patchValue({
-          product_id: item.product_id ?? '',
-          sku: item.sku,
-          description: item.description,
-          quantity: item.quantity,
-        });
-        this.lines.push(line);
-      }
-    } else {
-      this.addLine();
-    }
     this.detail.set(null);
-    this.showNew.set(true);
-  }
-  addLine() {
-    this.lines.push(this.newLine());
-  }
-  removeLine(index: number) {
-    this.lines.removeAt(index);
-  }
-  selectProduct(index: number, id: string) {
-    const line = this.lines.at(index);
-    const product = this.products().find((entry) => entry.id === id);
-    if (product) line.patchValue({ product_id: id, sku: product.sku, description: product.name });
-    else line.patchValue({ product_id: '', sku: '', description: '' });
-  }
-  create() {
-    const isExpense = this.form.controls.purchase_type.value === 'expense';
-    if (
-      this.saving() ||
-      (!isExpense && this.form.invalid) ||
-      (isExpense &&
-        (!this.form.controls.expense_category.value ||
-          Number(this.form.controls.expense_amount.value) < 0 ||
-          this.lines.controls.some((line) => line.value.description && line.invalid)))
-    )
-      return;
-    this.saving.set(true);
-    this.error.set('');
-    const value = this.form.getRawValue();
-    this.api
-      .createPurchase({
-        purchase_type: value.purchase_type,
-        payment_type: value.payment_type,
-        installment_count: value.installment_count,
-        first_due_days: value.first_due_days,
-        interval_days: value.interval_days,
-        supplier_name: value.supplier_name || null,
-        supplier_id: this.supplierByName(value.supplier_name)?.id ?? null,
-        supplier_order_number: value.supplier_order_number || null,
-        document_date: value.document_date || null,
-        expense_category: value.expense_category || null,
-        expense_amount: value.expense_amount || null,
-        needed_by: value.needed_by || null,
-        notes: value.notes || null,
-        items: value.items
-          .filter((item) => String(item.description || '').trim())
-          .map((item) => ({ ...item, product_id: item.product_id || null })),
-      })
-      .pipe(finalize(() => this.saving.set(false)))
-      .subscribe({
-        next: (purchase) => {
-          this.showNew.set(false);
-          this.purchases.update((list) => [purchase, ...list]);
-          const files = this.selectedFiles();
-          if (files.length) {
-            this.api
-              .uploadPurchaseAttachments(purchase.id, files)
-              .subscribe({ next: (updated) => this.setPurchase(updated) });
-          }
-          this.openDetails(purchase);
-        },
-        error: (err) => this.error.set(err.error?.detail || 'Não foi possível salvar a compra.'),
-      });
+    this.newPurchase()?.openCopy(purchase);
   }
   setAttachments(files: FileList | null) {
     this.selectedFiles.set(files ? Array.from(files).slice(0, 10) : []);
@@ -509,9 +405,6 @@ export class PurchasesPage implements OnInit {
     this.primeDrafts(purchase);
     this.draftEditor.set(false);
     this.detail.set(purchase);
-  }
-  availableProducts(stockType: 'product' | 'warehouse') {
-    return this.products().filter((product) => product.stock_type === stockType);
   }
   selectedQuote(purchase: PurchaseListItem) {
     return purchase.quotes.find((quote) => quote.id === purchase.selected_quote_id) ?? null;
@@ -967,11 +860,10 @@ export class PurchasesPage implements OnInit {
           this.error.set(err.error?.detail || 'Não foi possível registrar o pagamento.'),
       });
   }
-  requestDelete(purchase: PurchaseListItem, event?: Event) {
+  openDelete(purchase: PurchaseListItem, event?: Event) {
     event?.stopPropagation();
     this.closeRowMenu();
-    this.error.set('');
-    this.deleteReason.set('');
+    this.deleteTarget.set(null);
     // O aviso de exclusão lista o que será apagado (inclui título a pagar), então busca a
     // compra completa antes de abrir a confirmação.
     this.api.purchase(purchase.id).subscribe({
@@ -979,97 +871,13 @@ export class PurchasesPage implements OnInit {
       error: () => this.error.set('Não foi possível abrir a compra. Tente novamente.'),
     });
   }
-  cancelDelete() {
+  /** Compra excluída pelo componente de confirmação: sai da lista e fecha o detalhe. */
+  onDeleted(id: string) {
+    const removed = this.purchases().find((item) => item.id === id);
+    if (this.detail()?.id === id) this.detail.set(null);
     this.deleteTarget.set(null);
-  }
-  deleteBlockedByPayment(purchase: Purchase) {
-    return (purchase.payables ?? []).some(
-      (payable) => payable.status !== 'cancelled' && (payable.paid_amount ?? 0) > 0,
-    );
-  }
-  deletionEffects(purchase: Purchase) {
-    const effects: string[] = [`${purchase.items.length} item(ns) do pedido`];
-    if (purchase.quotes.length)
-      effects.push(`${purchase.quotes.length} cotação(ões) registrada(s)`);
-    if (purchase.attachments.length)
-      effects.push(`${purchase.attachments.length} anexo(s), inclusive o arquivo armazenado`);
-    const received = purchase.items.filter(
-      (item) => item.received_quantity - (item.returned_quantity ?? 0) > 0,
-    );
-    if (received.length) {
-      const quantity = received.reduce(
-        (sum, item) => sum + item.received_quantity - (item.returned_quantity ?? 0),
-        0,
-      );
-      effects.push(
-        `estorno de ${quantity} unidade(s) recebida(s) no estoque, com movimentação rastreável`,
-      );
-    }
-    const payable = (purchase.payables ?? []).find((entry) => entry.status !== 'cancelled');
-    if (payable)
-      effects.push(
-        `título a pagar de ${Number(payable.amount).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`,
-      );
-    if (purchase.events.length)
-      effects.push(`${purchase.events.length} evento(s) do histórico do pedido`);
-    return effects;
-  }
-  confirmDelete(purchase: Purchase) {
-    if (this.saving() || this.deleteBlockedByPayment(purchase)) return;
-    this.saving.set(true);
-    this.error.set('');
-    const reason = this.deleteReason().trim();
-    this.api
-      .deletePurchase(purchase.id, reason || undefined)
-      .pipe(finalize(() => this.saving.set(false)))
-      .subscribe({
-        next: () => {
-          this.deleteTarget.set(null);
-          if (this.detail()?.id === purchase.id) this.detail.set(null);
-          this.purchases.update((items) => items.filter((item) => item.id !== purchase.id));
-          this.message.set(`${purchase.number} foi excluída com os registros ligados.`);
-        },
-        error: (err) => this.error.set(err.error?.detail || 'Não foi possível excluir a compra.'),
-      });
-  }
-  supplierByName(name: string | null | undefined) {
-    const key = (name || '').trim().toLowerCase();
-    return key
-      ? (this.suppliers().find((supplier) => supplier.name.toLowerCase() === key) ?? null)
-      : null;
-  }
-  applySupplierDefaults() {
-    const supplier = this.supplierByName(this.form.controls.supplier_name.value);
-    if (!supplier) return;
-    if (supplier.default_delivery_days && !this.form.controls.needed_by.value) {
-      const date = new Date();
-      date.setDate(date.getDate() + supplier.default_delivery_days);
-      this.form.controls.needed_by.setValue(date.toISOString().slice(0, 10));
-    }
-    if (supplier.default_payment_terms && !this.quoteForm.controls.payment_terms.value) {
-      this.quoteForm.controls.payment_terms.setValue(supplier.default_payment_terms);
-    }
-  }
-  registerSupplier(name: string) {
-    const trimmed = (name || '').trim();
-    if (trimmed.length < 2 || this.saving()) return;
-    this.saving.set(true);
-    this.error.set('');
-    this.api
-      .createSupplier({ name: trimmed })
-      .pipe(finalize(() => this.saving.set(false)))
-      .subscribe({
-        next: (supplier) => {
-          this.suppliers.update((items) =>
-            items.some((entry) => entry.id === supplier.id)
-              ? items
-              : [...items, { ...supplier, contact: null }],
-          );
-          this.applySupplierDefaults();
-        },
-        error: (err) =>
-          this.error.set(err.error?.detail || 'Não foi possível cadastrar o fornecedor.'),
-      });
+    this.purchases.update((items) => items.filter((item) => item.id !== id));
+    this.message.set(`${removed?.number ?? 'A compra'} foi excluída com os registros ligados.`);
   }
   isOverdue(purchase: PurchaseListItem) {
     if (!purchase.needed_by || !['ordered', 'partially_received'].includes(purchase.status))

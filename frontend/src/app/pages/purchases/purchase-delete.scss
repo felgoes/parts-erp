@@ -1,0 +1,4 @@
+/* Acima do painel de detalhe, que usa a mesma camada de modal e vem depois no documento. */
+.modal-backdrop {
+  z-index: 1100;
+}

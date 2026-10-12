@@ -2,7 +2,8 @@ from datetime import UTC, datetime
 from decimal import Decimal
 
 from fastapi import HTTPException
-from sqlalchemy import func, select
+from sqlalchemy import Integer, cast, func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.models import (
@@ -17,16 +18,30 @@ from app.models import (
 from app.schemas.common import InvoiceCreate
 from app.services.stock import move_stock
 
+_NUMBER_ATTEMPTS = 5
+
 
 def next_invoice_number(db: Session) -> str:
+    """Próximo número da sequência do ano: maior número já usado + 1.
+
+    Não é a contagem de faturas: contar reaproveitaria o número de uma fatura apagada e
+    repetiria o número quando duas criações acontecessem juntas. O maior valor do sufixo
+    é extraído como número (não como texto), para continuar certo acima de seis dígitos.
+    """
     year = datetime.now(UTC).year
-    count = (
-        db.scalar(
-            select(func.count(SalesInvoice.id)).where(SalesInvoice.number.like(f"VEN-{year}-%"))
+    prefix = f"VEN-{year}-"
+    highest = db.scalar(
+        select(func.max(cast(func.substr(SalesInvoice.number, len(prefix) + 1), Integer))).where(
+            SalesInvoice.number.like(f"{prefix}%")
         )
-        or 0
     )
-    return f"VEN-{year}-{count + 1:06d}"
+    return f"{prefix}{(highest or 0) + 1:06d}"
+
+
+def _is_number_collision(error: IntegrityError) -> bool:
+    """Distingue a corrida pelo número de um erro de integridade de outra natureza."""
+    text = str(getattr(error, "orig", error)).lower()
+    return "number" in text and ("unique" in text or "duplicate" in text)
 
 
 def create_invoice(
@@ -36,6 +51,35 @@ def create_invoice(
     source: InvoiceSource = InvoiceSource.manual,
     marketplace_order_id: str | None = None,
 ) -> SalesInvoice:
+    # Duas criações simultâneas podem calcular o mesmo número; quem perder a corrida
+    # ganha outro número no próximo laço em vez de devolver erro para o operador.
+    for _ in range(_NUMBER_ATTEMPTS):
+        invoice = _build_invoice(
+            db, payload, source=source, marketplace_order_id=marketplace_order_id
+        )
+        try:
+            with db.begin_nested():
+                db.add(invoice)
+                db.flush()
+        except IntegrityError as error:
+            if not _is_number_collision(error):
+                raise
+            continue
+        return invoice
+    raise HTTPException(
+        status_code=503,
+        detail="Não foi possível reservar o número da fatura; tente novamente.",
+    )
+
+
+def _build_invoice(
+    db: Session,
+    payload: InvoiceCreate,
+    *,
+    source: InvoiceSource,
+    marketplace_order_id: str | None,
+) -> SalesInvoice:
+    """Valida as linhas e monta a fatura (sem número ainda reservado no banco)."""
     invoice = SalesInvoice(
         number=next_invoice_number(db),
         customer_id=payload.customer_id,
@@ -69,8 +113,6 @@ def create_invoice(
     invoice.total = subtotal - Decimal(payload.discount) + Decimal(payload.shipping)
     if invoice.total < 0:
         raise HTTPException(status_code=422, detail="Total da fatura não pode ser negativo")
-    db.add(invoice)
-    db.flush()
     return invoice
 
 

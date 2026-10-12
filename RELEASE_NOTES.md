@@ -2,7 +2,7 @@
 
 ## 11 de outubro de 2026 — entregas confirmadas em PRD
 
-- [Telas de compras mais leves · 99a4d36](https://github.com/felgoes/parts-erp/commit/99a4d36): a lista de compras passou a carregar só o que ela mostra — histórico, anexos e títulos a pagar são buscados no momento de abrir a compra, que passa a exibir sempre o estado atual. Internamente, os templates das telas saíram de dentro do código e viraram arquivos próprios, deixando a manutenção mais simples e segura.
+- [Telas de compras mais leves · df4b199](https://github.com/felgoes/parts-erp/commit/df4b199): a lista de compras passou a carregar só o que ela mostra — histórico, anexos e títulos a pagar são buscados no momento de abrir a compra, que passa a exibir sempre o estado atual. Internamente, os templates das telas saíram de dentro do código e viraram arquivos próprios, e os formulários de importação ganharam tipos nomeados: a manutenção fica mais simples, menor e mais segura.
 
 ## 11 de outubro de 2026 — entregas confirmadas em PRD
 

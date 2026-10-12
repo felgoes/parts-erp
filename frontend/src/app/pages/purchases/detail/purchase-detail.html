@@ -139,7 +139,7 @@
             }
           </section>
         </div>
-        <app-purchase-detail-aside />
+        <app-purchase-detail-aside (remove)="remove.emit($event)" />
       </div>
       @if (error()) {
         <p class="purchase-error" role="alert">{{ error() }}</p>

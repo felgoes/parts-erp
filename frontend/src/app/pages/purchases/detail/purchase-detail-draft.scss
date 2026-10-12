@@ -1,0 +1,19 @@
+/* Observações do rascunho: largura da seção, rótulo acima e texto do tamanho do resto do formulário. */
+.notes-field {
+  display: grid;
+  gap: 5px;
+  grid-column: 1 / -1;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.notes-field textarea {
+  min-height: 72px;
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: normal;
+  text-transform: none;
+}

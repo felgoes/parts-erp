@@ -2,3 +2,29 @@
 .modal-backdrop {
   z-index: 1100;
 }
+
+/* Campos de despesa e de observação: ocupam a largura da seção e ficam legíveis. */
+.expense-fields,
+.expense-line {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  align-items: start;
+}
+.notes-field {
+  display: grid;
+  gap: 5px;
+  grid-column: 1 / -1;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.notes-field textarea {
+  min-height: 72px;
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: normal;
+  text-transform: none;
+}

@@ -14,6 +14,7 @@ import { PurchaseDetailState } from './purchase-detail-state';
   selector: 'app-purchase-detail-draft',
   imports: [CurrencyPipe, DecimalPipe, FormsModule],
   templateUrl: './purchase-detail-draft.html',
+  styleUrl: './purchase-detail-draft.scss',
 })
 export class PurchaseDetailDraft {
   private readonly flow = inject(PurchaseDetailState);

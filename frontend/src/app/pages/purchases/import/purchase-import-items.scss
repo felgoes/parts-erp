@@ -1,3 +1,23 @@
+/* Observação da linha da revisão (avaria/divergência): largura da faixa e texto legível. */
+.notes-field {
+  display: grid;
+  gap: 5px;
+  grid-column: 1 / -1;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.notes-field textarea {
+  min-height: 64px;
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: normal;
+  text-transform: none;
+}
+
 /* P6: a revisão é onde o documento é conferido linha a linha. Os campos ganham grade própria
    (4 colunas no desktop, 2 no tablet, 1 no celular), respiro constante de 16px entre linhas e
    12px entre colunas, e largura suficiente para mostrar R$ 12.345,67 inteiro — sem cortar o

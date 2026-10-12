@@ -70,3 +70,14 @@
     text-align: left;
   }
 }
+/* Lista de linhas candidatas do documento quando nada foi reconhecido. */
+.import-candidates {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.import-candidates button {
+  min-height: 40px;
+  text-align: left;
+}

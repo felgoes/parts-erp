@@ -2,3 +2,40 @@
 .modal-backdrop {
   z-index: 1100;
 }
+
+/* Regras do modal de exclusão que viviam no scss da página de compras. */
+.delete-modal {
+  width: min(520px, 100%);
+}
+.delete-lead {
+  margin: 0 0 8px;
+  font-size: 13px;
+}
+.delete-effects {
+  display: grid;
+  gap: 6px;
+  margin: 0 0 14px;
+  padding-left: 18px;
+  color: #4b4a42;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.delete-modal > label {
+  display: grid;
+  gap: 5px;
+  margin-bottom: 12px;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.delete-modal > label input {
+  height: 38px;
+}
+.delete-note {
+  margin: 0 0 14px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.5;
+}

@@ -1,0 +1,329 @@
+/* Estilos da tela de compras que os componentes extraídos usam.
+   Global de propósito: o estilo escopado da página não alcança componentes separados. */
+
+.purchase-badge {
+  display: inline-flex;
+  padding: 6px 9px;
+  border-radius: 7px;
+  background: #eff1ed;
+  color: #55615a;
+  font-size: 11px;
+  font-weight: 750;
+  white-space: nowrap;
+}
+.purchase-badge[data-status='negotiating'] {
+  color: #8a650b;
+  background: #fbf2d9;
+}
+.purchase-badge[data-status='approved'] {
+  color: #355d91;
+  background: #e7effb;
+}
+.purchase-badge[data-status='ordered'],
+.purchase-badge[data-status='partially_received'] {
+  color: #895323;
+  background: #fff0df;
+}
+.purchase-badge[data-status='received'] {
+  color: #276c43;
+  background: #e5f3e9;
+}
+.purchase-badge[data-status='cancelled'] {
+  color: #963b35;
+  background: #f9e8e6;
+}
+.attachment-picker {
+  margin-top: 16px;
+  padding: 12px;
+  border: 1px dashed #b9c9b5;
+  border-radius: 10px;
+  background: #f7faf5;
+}
+.attachment-picker input {
+  min-height: auto !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+}
+.attachment-picker small {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 500;
+}
+.attachment-inline {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 6px;
+  color: var(--forest) !important;
+  cursor: pointer;
+}
+.attachment-inline input {
+  display: none;
+}
+.attachment-list {
+  display: grid;
+  gap: 7px;
+}
+.attachment-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+.attachment-row:hover {
+  border-color: var(--forest);
+  background: #f8faf7;
+}
+.attachment-row small {
+  color: var(--muted);
+}
+.expense-banner {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 20px 0 4px;
+  padding: 14px 16px;
+  border: 1px solid #dce8d8;
+  border-radius: 10px;
+  background: #f3f8f0;
+}
+.expense-banner span {
+  color: var(--muted);
+}
+.detail-head-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.purchase-steps {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  margin: 22px 0 4px;
+}
+.purchase-step {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: #98a19b;
+}
+.purchase-step:not(:last-child)::after {
+  position: absolute;
+  left: 29px;
+  right: 8px;
+  top: 15px;
+  height: 2px;
+  background: #e6e9e5;
+  content: '';
+}
+.purchase-step > span {
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  border: 1px solid #dce2dc;
+  border-radius: 50%;
+  background: #fff;
+  font-size: 11px;
+  font-weight: 800;
+}
+.purchase-step small {
+  position: relative;
+  z-index: 1;
+  padding-right: 5px;
+  background: #fff;
+  font-size: 11px;
+  font-weight: 700;
+}
+.purchase-step.step-done {
+  color: #36704a;
+}
+.purchase-step.step-done > span {
+  border-color: #c5dfc9;
+  background: #e8f3e9;
+}
+.purchase-step.step-current {
+  color: var(--forest);
+}
+.purchase-step.step-current > span {
+  border-color: var(--forest);
+  background: var(--forest);
+  color: #fff;
+}
+.purchase-detail-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 270px;
+  align-items: start;
+  gap: 25px;
+}
+.purchase-detail-main {
+  min-width: 0;
+}
+.purchase-item-cards {
+  display: grid;
+  gap: 10px;
+}
+.purchase-item-card,
+.quote-card,
+.purchase-aside-card {
+  padding: 15px;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: #fff;
+}
+.item-title {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+.item-title > div {
+  display: grid;
+  gap: 5px;
+}
+.item-title > div > strong {
+  font-size: 14px;
+}
+.item-title > div > small {
+  color: var(--muted);
+  font-size: 11px;
+}
+.item-title > strong {
+  white-space: nowrap;
+  font-size: 14px;
+}
+.item-title > strong small {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 500;
+}
+.item-cost-breakdown {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  margin-top: 10px;
+  color: var(--muted);
+  font-size: 11px;
+}
+.receipt-progress {
+  display: grid;
+  gap: 7px;
+  margin-top: 14px;
+  color: var(--muted);
+  font-size: 11px;
+}
+.receipt-progress b {
+  color: var(--text);
+}
+.receipt-progress > div {
+  height: 6px;
+  overflow: hidden;
+  border-radius: 20px;
+  background: #edf0ec;
+}
+.receipt-progress i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #8ab341;
+}
+.receive-controls {
+  display: grid;
+  grid-template-columns: 120px minmax(180px, 1fr) auto;
+  align-items: end;
+  gap: 10px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+.receive-controls > label:first-child {
+  grid-column: 1;
+}
+.receive-controls .map-product {
+  grid-column: 2;
+}
+.receive-controls .create-product-check {
+  grid-column: 2;
+  display: flex;
+  align-items: center;
+  font-weight: 500;
+}
+.receive-controls .create-product-check input {
+  width: 15px;
+  min-height: 15px;
+}
+.receive-controls button {
+  grid-column: 3;
+  grid-row: 1 / span 2;
+}
+.quote-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 10px;
+  margin-bottom: 13px;
+}
+.quote-card {
+  display: grid;
+  align-content: start;
+  gap: 7px;
+}
+.quote-card.quote-selected {
+  border-color: #7ba84a;
+  box-shadow: inset 0 0 0 1px #7ba84a;
+}
+.quote-card > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+.quote-cost-summary {
+  display: grid;
+  gap: 3px;
+}
+.quote-cost-summary small {
+  color: var(--muted);
+  font-size: 10px;
+}
+.quote-card > div strong {
+  font-size: 13px;
+}
+.quote-card > div b {
+  color: var(--forest);
+  white-space: nowrap;
+}
+.quote-card p,
+.quote-card > small {
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+.quote-card button {
+  justify-self: start;
+  margin-top: 4px;
+}
+.quote-locked {
+  color: var(--forest);
+  font-weight: 700;
+}
+.quote-presets {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  grid-column: 1 / -1;
+}
+.quote-presets span {
+  color: var(--muted);
+  font-size: 11px;
+}

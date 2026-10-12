@@ -1,0 +1,83 @@
+/* Rede de seguranca do modal de detalhe: nomes de fornecedor, descricoes de peca e valores
+   vem do documento importado e podem ser longos. Sem estas regras, o navegador mantem a
+   largura minima do texto, a coluna do resumo cresce alem dos 270px dela, o cartao sai do
+   modal e o modal ganha barra horizontal cortando o resumo (defeito visto em 12/10/2026). */
+.purchase-detail {
+  max-width: 100%;
+}
+
+/* A faixa do resumo e a coluna principal precisam poder encolher; a faixa fica com o teto
+   em 270px justamente para nao ser esticada por conteudo. */
+.purchase-detail-grid {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 270px);
+}
+
+.purchase-detail-grid > *,
+.purchase-detail-main,
+.purchase-aside,
+.purchase-aside-card,
+.quote-card,
+.quote-cost-summary,
+.timeline-card,
+.item-title,
+.item-title > div,
+.quote-card > div {
+  min-width: 0;
+}
+
+/* O cartao do resumo e um grid de coluna unica: sem minmax(0, 1fr) a coluna assume o
+   min-content do conteudo (botao "Registrar pagamento", nome do fornecedor) e vaza. */
+.purchase-aside-card {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.purchase-aside-card > div,
+.purchase-lifecycle-actions,
+.payable-card .payable-row,
+.payable-card .payable-row > div {
+  min-width: 0;
+}
+
+.purchase-lifecycle-actions {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+/* Texto que nao pode quebrar continua empurrando a caixa: aqui pode quebrar em qualquer
+   ponto. Vale para cartoes do detalhe (pecas, cotacoes, resumo), que exibem dados do
+   documento importado. */
+.purchase-item-card,
+.quote-card,
+.purchase-aside-card {
+  overflow-wrap: anywhere;
+}
+
+/* O preco unitario final fica na ponta direita da linha do item: ele mantem o tamanho do
+   proprio texto e quem cede espaco e a descricao da esquerda. */
+.item-title > strong {
+  flex: 0 0 auto;
+}
+
+/* Botoes do resumo: quem cede espaco primeiro e o texto ao lado, para o rotulo seguir em uma
+   linha. Se ainda faltar espaco, o rotulo quebra em vez de vazar do cartao. */
+.purchase-aside button {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.payable-card .payable-row > button {
+  flex: 0 0 auto;
+  max-width: 100%;
+  white-space: normal;
+}
+
+@media (max-width: 850px) {
+  .purchase-detail-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 220px);
+  }
+}
+
+@media (max-width: 700px) {
+  .purchase-detail-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

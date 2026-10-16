@@ -1,16 +1,16 @@
 # Especificações — Parts ERP
 
-As specs descrevem comportamento e critérios de aceite de cada item. A lista oficial do que está pendente é o `TASKS.md` do projeto; concluída a tarefa, o histórico fica aqui (linha `Status:`) e no `RELEASE_NOTES.md`.
+As specs descrevem comportamento e critérios de aceite de cada item. A lista oficial do que está pendente é o `TASKS.md` do projeto.
 
-1. [P0 — Compra importada entra com a cotação do documento aceita e o pedido registrado](p0-compra-importada-cotacao-aceita.md)
-2. [P10 — Máscara de valores forte, somente inclusão](p10-mascara-valores-somente-inclusao.md)
-3. [P11 — Cotação com total e custo unitário em tempo real](p11-cotacao-total-unitario-tempo-real.md)
-4. [P13 — Excluir pedido de compra pelos três pontos, com os registros ligados](p13-exclusao-compra-relacionados.md)
-5. [P14 — Importação de documento de marketplace: conferência, moeda e leitura de itens](p14-importacao-documento-marketplace.md)
-6. [P15 — O detalhe da compra cabe na tela em qualquer largura](p15-detalhe-compra-cabe-na-tela.md)
+## Abertas
 
-## Fila
+1. [P5 — Taxa extra na compra de importação](p5-taxa-extra-compra-importacao.md)
+2. [P16 — Backup automático que avisa, guarda cópia local e sobrevive à queda do Drive](p16-backup-automatico-confiavel.md)
+3. [P17 — Atualizar a tela no app: puxar para atualizar e retomar a atualização automática](p17-atualizacao-tela-app.md)
 
-Fila em 11 de outubro de 2026: **P0 é a única tarefa pendente e a primeira da fila** (prioridade alta).
+## Histórico
 
-As specs que não aparecem neste índice foram removidas a pedido do PO em 11/10/2026 e permanecem no histórico do Git; o que já foi entregue em produção continua registrado no `RELEASE_NOTES.md`.
+Specs de tarefas concluídas são removidas a pedido do PO e permanecem no histórico do Git; o que foi entregue em produção fica registrado no `RELEASE_NOTES.md`.
+
+- Removidas em 11/10/2026: P1, P2, P3, P4, P7, P8, P9 e P12.
+- Removidas em 16/10/2026: P0, P6, P10, P11, P13, P14 e P15, todas entregues em produção.

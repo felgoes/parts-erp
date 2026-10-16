@@ -42,12 +42,14 @@ export function backupStateTone(state: string | null | undefined): 'ok' | 'warn'
 export function backupAlert(snapshot: BackupSnapshot | null | undefined): BackupAlert | null {
   if (!snapshot) return null;
   if (snapshot.backup_state === 'late') {
+    const base = snapshot.backup_last_success_at
+      ? 'O último backup concluído passou do prazo esperado. Confira a conexão com o Drive e rode um backup agora.'
+      : 'Nenhum backup foi concluído ainda. Confira a conexão com o Drive e rode um backup agora.';
+    const reason = (snapshot.backup_last_error || '').trim();
     return {
       state: 'late',
       title: 'Backup atrasado',
-      detail: snapshot.backup_last_success_at
-        ? 'O último backup concluído passou do prazo esperado. Confira a conexão com o Drive e rode um backup agora.'
-        : 'Nenhum backup foi concluído ainda. Confira a conexão com o Drive e rode um backup agora.',
+      detail: reason ? `${base} Último motivo registrado: ${reason}` : base,
     };
   }
   if (snapshot.backup_state === 'failed') {

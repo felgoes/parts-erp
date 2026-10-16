@@ -45,6 +45,19 @@ describe('estado do backup', () => {
     expect(alert?.detail).toContain('passou do prazo');
   });
 
+  it('mostra o último motivo registrado quando o backup está atrasado', () => {
+    const alert = backupAlert({
+      backup_state: 'late',
+      backup_last_success_at: '2026-10-14T05:00:00Z',
+      backup_last_attempt_at: '2026-10-16T14:43:45Z',
+      backup_next_run_at: '2026-10-17T05:00:00Z',
+      backup_last_error: 'A autorização do Google Drive expirou ou foi revogada.',
+    });
+
+    expect(alert?.detail).toContain('passou do prazo');
+    expect(alert?.detail).toContain('expirou ou foi revogada');
+  });
+
   it('usa o motivo em português devolvido pelo servidor quando o backup falha', () => {
     const alert = backupAlert({
       backup_state: 'failed',

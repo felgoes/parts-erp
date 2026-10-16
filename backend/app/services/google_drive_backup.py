@@ -182,10 +182,12 @@ def run_backup(db: Session) -> str:
         # A cópia local é gravada antes de falar com o Google: se a autorização estiver
         # vencida ou o Drive inacessível, o dia continua tendo cópia no servidor.
         _sqlite_snapshot(snapshot)
+        # A retenção local também não depende do Drive: o disco não pode esperar a
+        # autorização voltar para ser limpo.
+        cleanup_local_backups(settings_row)
         token = _access_token(settings_row)
         _upload_snapshot(token, settings_row, snapshot, filename)
         _cleanup_old_backups(token, settings_row)
-        cleanup_local_backups(settings_row)
         settings_row.backup_last_at = now
         settings_row.backup_last_success_at = now
         settings_row.backup_last_status = "success"

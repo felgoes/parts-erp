@@ -273,4 +273,5 @@
   (supplierCreated)="onSupplierCreated($event)"
 />
 
-<app-purchase-detail />
+<!-- Copiar e excluir continuam sendo ações da página: a casca do detalhe só pede. -->
+<app-purchase-detail (copy)="copyPurchase($event)" (remove)="openDelete($event)" />

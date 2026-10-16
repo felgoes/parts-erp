@@ -31,6 +31,7 @@ LOCAL_COPY_PATTERNS = (
     "code-*.tar.gz",
     "db-*.sqlite",
     "frontend-pre-*",
+    "parts-erp-pre-*",
     "hardening-*",
 )
 
@@ -60,8 +61,10 @@ def last_success_at(row: Any) -> datetime | None:
     explicit = _as_utc(getattr(row, "backup_last_success_at", None))
     if explicit is not None:
         return explicit
-    # Registros anteriores à P16 gravavam `backup_last_at` apenas no sucesso.
-    if getattr(row, "backup_last_status", None) == "success":
+    # Registros anteriores à P16 gravavam `backup_last_at` apenas no sucesso — e nunca
+    # preenchiam `backup_last_attempt_at`. Depois da P16, `backup_last_at` é a última
+    # tentativa (que pode ter falhado), então o valor não serve mais como sucesso.
+    if getattr(row, "backup_last_attempt_at", None) is None:
         return _as_utc(getattr(row, "backup_last_at", None))
     return None
 

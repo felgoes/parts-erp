@@ -62,6 +62,30 @@ def test_late_state_does_not_depend_on_the_last_recorded_status():
     assert health.backup_state(settings, now) == "late"
 
 
+def test_linha_anterior_a_p16_usa_backup_last_at_como_ultimo_sucesso():
+    now = datetime(2026, 10, 16, 12, 0, tzinfo=UTC)
+    legado = _settings(
+        backup_last_status="failed",
+        backup_last_at=now - timedelta(days=2),
+        backup_last_error="400 Bad Request",
+    )
+
+    assert health.last_success_at(legado) == now - timedelta(days=2)
+    assert health.backup_state(legado, now) == "late"
+
+
+def test_depois_da_p16_a_ultima_tentativa_nao_vira_ultimo_sucesso():
+    now = datetime(2026, 10, 16, 12, 0, tzinfo=UTC)
+    settings = _settings(
+        backup_last_status="failed",
+        backup_last_at=now - timedelta(hours=1),
+        backup_last_attempt_at=now - timedelta(hours=1),
+    )
+
+    assert health.last_success_at(settings) is None
+    assert health.backup_state(settings, now) == "failed"
+
+
 def test_state_reports_failure_after_the_last_success():
     now = datetime(2026, 10, 16, 12, 0, tzinfo=UTC)
     failed = _settings(
@@ -121,6 +145,7 @@ def test_cleanup_removes_expired_copies_and_keeps_the_fresh_ones(tmp_path: Path)
         "parts-erp-backup-20261001-020000.db",
         "code-20261001-020000.tar.gz",
         "db-20261001-020000.sqlite",
+        "parts-erp-pre-ef0ec53-20261001.tar.gz",
     ]
     fresh = ["parts-erp-backup-20261016-020000.db", "code-20261016-020000.tar.gz"]
     old_folder = tmp_path / "frontend-pre-20261001-020000"

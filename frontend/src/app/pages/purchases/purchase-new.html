@@ -71,7 +71,7 @@
           </label>
         </div>
         @if (form.controls.purchase_type.value === 'expense') {
-          <div class="purchase-form-section expense-fields">
+          <div class="purchase-form-section">
             <div class="section-heading">
               <div>
                 <p class="eyebrow">Despesa operacional</p>
@@ -132,7 +132,7 @@
             </p>
             <div formArrayName="items" class="purchase-line-list">
               @for (line of lines.controls; track $index; let i = $index) {
-                <div class="purchase-line-form expense-line" [formGroupName]="i">
+                <div class="purchase-line-form" [formGroupName]="i">
                   <label
                     >Produto existente<select
                       formControlName="product_id"

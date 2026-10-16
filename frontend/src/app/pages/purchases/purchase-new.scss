@@ -3,14 +3,9 @@
   z-index: 1100;
 }
 
-/* Campos de despesa e de observação: ocupam a largura da seção e ficam legíveis. */
-.expense-fields,
-.expense-line {
-  display: grid;
-  gap: 12px;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  align-items: start;
-}
+/* Observações: rótulo em caixa alta como os demais e caixa de texto na largura da seção.
+   A seção de despesa e a linha de material usam as folhas compartilhadas
+   (shared/purchase-forms.scss): a grade de campos vive no bloco de campos, não na seção. */
 .notes-field {
   display: grid;
   gap: 5px;
@@ -27,4 +22,18 @@
   font-weight: 400;
   letter-spacing: normal;
   text-transform: none;
+}
+
+/* A linha de material da despesa tem um campo a mais que a de peça (unidade antes da
+   quantidade). Na grade de 12 colunas, quantidade e custo cairiam em faixas de 1/12 e o campo
+   ficaria ilegível. Fica aqui, e não na folha compartilhada, porque a revisão da importação usa
+   a mesma classe de linha com a grade própria dela. */
+.purchase-line-form > label:nth-child(5) {
+  grid-column: span 2;
+}
+
+@media (max-width: 850px) {
+  .purchase-line-form > label:nth-child(5) {
+    grid-column: auto;
+  }
 }

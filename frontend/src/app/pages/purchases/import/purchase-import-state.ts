@@ -91,6 +91,8 @@ export class PurchaseImportState {
   readonly importCheck = signal<ImportCheck | null>(null);
   readonly importType = signal<'parts' | 'expense'>('parts');
   readonly importCategory = signal('');
+  /** Título do gasto: só para o lançamento que não é compra de estoque. */
+  readonly importDescription = signal('');
   readonly importPaidNow = signal(false);
   readonly importPaidDate = signal('');
   readonly importPaidMethod = signal('');

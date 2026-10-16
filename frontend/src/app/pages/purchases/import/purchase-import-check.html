@@ -53,6 +53,14 @@
         </select></label
       >
       @if (importType() === 'expense') {
+        <span>Descrição do gasto</span
+        ><label
+          ><input
+            maxlength="200"
+            placeholder="Ex.: Certificado digital A1, imposto do mês"
+            [value]="importDescription()"
+            (input)="importDescription.set($any($event.target).value)"
+        /></label>
         <span>Categoria da despesa</span
         ><label
           ><select

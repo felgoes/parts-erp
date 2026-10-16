@@ -24,6 +24,11 @@
   text-transform: none;
 }
 
+/* Título do gasto: identifica a despesa depois de lançada, então ocupa a linha inteira da grade. */
+.wide-field {
+  grid-column: 1 / -1;
+}
+
 /* A linha de material da despesa tem um campo a mais que a de peça (unidade antes da
    quantidade). Na grade de 12 colunas, quantidade e custo cairiam em faixas de 1/12 e o campo
    ficaria ilegível. Fica aqui, e não na folha compartilhada, porque a revisão da importação usa

@@ -149,6 +149,7 @@ def _item(payable: PurchasePayable) -> PayableListItem:
         purchase_type=purchase.purchase_type,
         purchase_status=purchase.status,
         expense_category=purchase.expense_category,
+        expense_description=purchase.expense_description,
         supplier_id=payable.supplier_id,
         supplier_name=payable.supplier_name or purchase.supplier_name,
         amount=Decimal(payable.amount),

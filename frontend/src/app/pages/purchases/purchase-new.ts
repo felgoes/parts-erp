@@ -67,6 +67,7 @@ export class PurchaseNew {
     supplier_order_number: [''],
     document_date: [''],
     expense_category: [''],
+    expense_description: [''],
     expense_amount: [0, [Validators.min(0)]],
     needed_by: [''],
     notes: [''],
@@ -96,6 +97,7 @@ export class PurchaseNew {
       purchase_type: 'parts',
       supplier_name: '',
       expense_category: '',
+      expense_description: '',
       expense_amount: 0,
       needed_by: '',
       notes: '',
@@ -117,6 +119,7 @@ export class PurchaseNew {
       purchase_type: purchase.purchase_type,
       supplier_name: purchase.supplier_name ?? '',
       expense_category: purchase.expense_category ?? '',
+      expense_description: purchase.expense_description ?? '',
       expense_amount: purchase.expense_amount ?? 0,
       needed_by: '',
       notes: purchase.notes
@@ -179,6 +182,7 @@ export class PurchaseNew {
         document_date: value.document_date || null,
         expense_category: value.expense_category || null,
         expense_amount: value.expense_amount || null,
+        expense_description: value.expense_description?.trim() || null,
         needed_by: value.needed_by || null,
         notes: value.notes || null,
         items: value.items

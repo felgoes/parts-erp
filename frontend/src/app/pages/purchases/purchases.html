@@ -148,8 +148,12 @@
             <td>
               <div class="purchase-products">
                 @if (purchase.purchase_type === 'expense') {
-                  <span>{{ purchase.expense_category }}</span
-                  ><small>{{ purchase.expense_amount | currency: 'BRL' }}</small>
+                  <span>{{
+                    purchase.expense_description || purchase.expense_category || 'Despesa'
+                  }}</span>
+                  @if (purchase.expense_description) {
+                    <small>{{ purchase.expense_category }}</small>
+                  }
                 } @else {
                   @for (item of purchase.items.slice(0, 2); track item.id) {
                     <span>{{ item.description }}</span>

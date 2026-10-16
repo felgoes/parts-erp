@@ -41,6 +41,9 @@ class PurchaseCase(TimestampMixin, Base):
     purchase_type: Mapped[str] = mapped_column(String(30), default="parts", index=True)
     expense_category: Mapped[str | None] = mapped_column(String(80))
     expense_amount: Mapped[Decimal | None] = mapped_column(Numeric(14, 2))
+    # O que foi a despesa ("Certificado digital", "Imposto", "Contador"): a categoria é um
+    # balde, isto é o que o operador escreve para identificar o gasto depois.
+    expense_description: Mapped[str | None] = mapped_column(String(200))
     supplier_name: Mapped[str | None] = mapped_column(String(200))
     supplier_id: Mapped[str | None] = mapped_column(
         ForeignKey("suppliers.id", ondelete="SET NULL"), index=True

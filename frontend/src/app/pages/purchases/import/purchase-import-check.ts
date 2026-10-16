@@ -27,6 +27,7 @@ export class PurchaseImportCheck {
   readonly importError = this.flow.importError;
   readonly importType = this.flow.importType;
   readonly importCategory = this.flow.importCategory;
+  readonly importDescription = this.flow.importDescription;
   readonly importPaidNow = this.flow.importPaidNow;
   readonly importPaidDate = this.flow.importPaidDate;
   readonly importPaidMethod = this.flow.importPaidMethod;

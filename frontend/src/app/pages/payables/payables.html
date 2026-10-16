@@ -137,11 +137,7 @@
               </td>
               <td>
                 {{ item.supplier_name || 'Sem fornecedor'
-                }}<small>{{
-                  item.purchase_type === 'expense'
-                    ? item.expense_category || 'Despesa'
-                    : 'Compra de peças'
-                }}</small>
+                }}<small>{{ payableContext(item) }}</small>
               </td>
               <td>
                 <code>{{ item.purchase_number }}</code

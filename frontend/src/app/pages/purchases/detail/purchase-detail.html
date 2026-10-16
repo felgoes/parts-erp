@@ -73,7 +73,7 @@
         </div>
       } @else {
         <div class="expense-banner">
-          <strong>Despesa da empresa</strong
+          <strong>{{ purchase.expense_description || 'Despesa da empresa' }}</strong
           ><span
             >{{ purchase.expense_category }} · {{ purchase.expense_amount | currency: 'BRL' }}</span
           >

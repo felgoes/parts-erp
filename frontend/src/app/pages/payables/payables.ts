@@ -98,6 +98,13 @@ export class PayablesPage implements OnInit {
       ] ?? status
     );
   }
+  /** O que é o título: na despesa vale o título do gasto, com a categoria ao lado. */
+  payableContext(item: PayableListItem) {
+    if (item.purchase_type !== 'expense') return 'Compra de peças';
+    return [item.expense_description, item.expense_category || 'Despesa']
+      .filter(Boolean)
+      .join(' · ');
+  }
   private today() {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;

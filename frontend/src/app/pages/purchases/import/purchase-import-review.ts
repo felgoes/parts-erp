@@ -111,6 +111,7 @@ export class PurchaseImportReview {
       source_import_id: importId,
       supplier_name: draft.supplier.trim() || null,
       expense_category: isExpense ? this.flow.importCategory().trim() || null : null,
+      expense_description: isExpense ? this.flow.importDescription().trim() || null : null,
       expense_amount: isExpense ? draft.total : null,
       supplier_id: this.flow.supplierByName(draft.supplier)?.id ?? null,
       supplier_order_number: draft.orderNumber.trim() || null,

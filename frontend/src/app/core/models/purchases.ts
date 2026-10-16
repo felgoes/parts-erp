@@ -61,6 +61,8 @@ export interface PayableListItem {
   purchase_type: 'parts' | 'expense';
   purchase_status: string;
   expense_category: string | null;
+  /** Título do gasto lançado no tópico (ex.: "Certificado digital A1"). */
+  expense_description?: string | null;
   supplier_id: string | null;
   supplier_name: string | null;
   amount: number;
@@ -165,6 +167,8 @@ export interface Purchase {
   purchase_type: 'parts' | 'expense';
   expense_category: string | null;
   expense_amount: number | null;
+  /** Título do gasto: identifica a despesa na lista e no painel de detalhe. */
+  expense_description: string | null;
   supplier_name: string | null;
   supplier_id?: string | null;
   supplier_order_number?: string | null;

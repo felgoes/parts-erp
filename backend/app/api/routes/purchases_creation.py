@@ -252,6 +252,7 @@ def create_purchase(
         purchase_type=payload.purchase_type,
         expense_category=payload.expense_category,
         expense_amount=payload.expense_amount,
+        expense_description=(payload.expense_description or "").strip() or None,
         supplier_name=payload.supplier_name or (supplier.name if supplier else None),
         supplier_id=supplier.id if supplier else None,
         supplier_order_number=payload.supplier_order_number,

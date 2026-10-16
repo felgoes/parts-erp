@@ -50,6 +50,7 @@ class PurchaseUpdate(BaseModel):
     notes: str | None = Field(default=None, max_length=4000)
     expense_category: str | None = Field(default=None, max_length=80)
     expense_amount: Decimal | None = Field(default=None, ge=0)
+    expense_description: str | None = Field(default=None, max_length=200)
 
 
 class PurchaseReturnItem(BaseModel):
@@ -156,6 +157,7 @@ class PayableListItem(ORMModel):
     purchase_type: str
     purchase_status: str
     expense_category: str | None
+    expense_description: str | None = None
     supplier_id: str | None
     supplier_name: str | None
     amount: Decimal
@@ -258,6 +260,7 @@ class PurchaseCreate(BaseModel):
     purchase_type: Literal["parts", "expense"] = "parts"
     expense_category: str | None = Field(default=None, max_length=80)
     expense_amount: Decimal | None = Field(default=None, ge=0)
+    expense_description: str | None = Field(default=None, max_length=200)
     supplier_name: str | None = Field(default=None, max_length=200)
     supplier_id: str | None = None
     supplier_order_number: str | None = Field(default=None, max_length=80)
@@ -340,6 +343,7 @@ class PurchaseOut(ORMModel):
     purchase_type: str
     expense_category: str | None
     expense_amount: Decimal | None
+    expense_description: str | None
     supplier_name: str | None
     supplier_id: str | None = None
     supplier_order_number: str | None = None

@@ -116,6 +116,7 @@ def _present_list_item(purchase: PurchaseCase, user: User) -> PurchaseListItem:
         purchase_type=purchase.purchase_type,
         expense_category=purchase.expense_category,
         expense_amount=purchase.expense_amount,
+        expense_description=purchase.expense_description,
         supplier_name=purchase.supplier_name,
         supplier_id=purchase.supplier_id,
         supplier_order_number=purchase.supplier_order_number,

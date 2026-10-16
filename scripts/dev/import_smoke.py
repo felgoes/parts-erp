@@ -215,6 +215,83 @@ def main() -> int:
                 str(after["items"][0]["received_quantity"]),
             )
 
+        # Despesa da empresa importada do documento: o lançamento precisa levar o título do gasto
+        # ("o que foi") e o título tem que aparecer tanto no detalhe quanto em contas a pagar.
+        expense_description = "Certificado digital A1 (smoke)"
+        expense_document = client.post(
+            f"{API}/purchases/import-document",
+            files={"file": ("smoke-nfe-despesa.xml", sample_document(), "application/xml")},
+        )
+        check(
+            "documento da despesa analisado",
+            expense_document.status_code == 200,
+            expense_document.text[:200],
+        )
+        expense_fields = (expense_document.json() if expense_document.status_code == 200 else {}).get(
+            "fields", {}
+        )
+        expense_total = float(expense_fields.get("total", {}).get("value") or DOCUMENT_TOTAL)
+        expense_response = client.post(
+            f"{API}/purchases",
+            json={
+                "purchase_type": "expense",
+                "source_import_id": str(uuid.uuid4()),
+                "supplier_name": expense_fields.get("supplier", {}).get("value")
+                or "Certificadora Exemplo",
+                "expense_category": "Serviços",
+                "expense_amount": expense_total,
+                "expense_description": expense_description,
+                "document_date": expense_fields.get("date", {}).get("value") or DOCUMENT_DATE,
+                "notes": "Importação de documento. Despesa do smoke automático do fluxo.",
+                "import_document": {
+                    "filename": "smoke-nfe-despesa.xml",
+                    "total": expense_total,
+                    "freight_amount": float(expense_fields.get("shipping", {}).get("value") or 0),
+                    "tax_amount": float(expense_fields.get("tax", {}).get("value") or 0),
+                    "discount_amount": float(expense_fields.get("discount", {}).get("value") or 0),
+                },
+            },
+        )
+        check("despesa importada criada", expense_response.status_code == 201, expense_response.text[:300])
+        expense = expense_response.json() if expense_response.status_code == 201 else {}
+        check(
+            "despesa nasce com o título do gasto",
+            expense.get("expense_description") == expense_description,
+            str(expense.get("expense_description")),
+        )
+        detail_response = client.get(f"{API}/purchases/{expense.get('id', '')}")
+        check(
+            "detalhe da despesa devolve o título",
+            detail_response.status_code == 200
+            and detail_response.json().get("expense_description") == expense_description,
+            detail_response.text[:200],
+        )
+        listing = client.get(
+            f"{API}/purchases", params={"search": expense.get("number", ""), "limit": 5}
+        )
+        rows = listing.json().get("items", []) if listing.status_code == 200 else []
+        row = next((item for item in rows if item.get("id") == expense.get("id")), {})
+        check(
+            "lista de compras mostra o título da despesa",
+            row.get("expense_description") == expense_description,
+            str(row.get("expense_description")),
+        )
+        payables_response = client.get(f"{API}/payables", params={"overdue_only": "false"})
+        check(
+            "contas a pagar responde",
+            payables_response.status_code == 200,
+            f"HTTP {payables_response.status_code}",
+        )
+        payable_rows = payables_response.json().get("items", []) if payables_response.status_code == 200 else []
+        payable_row = next(
+            (item for item in payable_rows if item.get("purchase_id") == expense.get("id")), {}
+        )
+        check(
+            "título a pagar identifica o gasto",
+            payable_row.get("expense_description") == expense_description,
+            str(payable_row.get("expense_description")),
+        )
+
     if failures:
         print(f"\nsmoke do fluxo de importação REPROVOU em {len(failures)} verificação(ões).")
         return 1

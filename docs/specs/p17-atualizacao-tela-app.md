@@ -1,6 +1,6 @@
 # P17 — Atualizar a tela no app: puxar para atualizar e retomar a atualização automática
 
-**Status:** pronta para implementação — decisões fechadas em 16/10/2026
+**Status:** entregue em 16/10/2026 (`7e50cd4`), validado no HML local: gesto, faixa de "sem atualização recente" e a conta da retomada estão cobertos por teste, e a faixa foi conferida na tela. A conferência em **aparelho Android real** (critério 9) continua pendente e depende do aparelho do operador — a mesma ressalva vale para o gesto dentro do WebView, que não é reproduzível no navegador de desenvolvimento.
 **Prioridade:** P2
 
 ## Contexto

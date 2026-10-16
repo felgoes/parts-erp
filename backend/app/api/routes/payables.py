@@ -42,7 +42,9 @@ from app.api.routes.payables_support import (  # noqa: F401  # noqa: F401
     _today,
 )
 
-router = APIRouter(prefix="/payables", tags=["Contas a pagar"])
+# Os módulos por assunto já trazem o prefixo: aqui não entra outro, senão as rotas saem em
+# /payables/payables (foi o que aconteceu na divisão de 12/10 e a tela ficou em 404).
+router = APIRouter()
 
 router.include_router(payables_support.router)
 router.include_router(payables_reading.router)

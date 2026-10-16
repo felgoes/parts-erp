@@ -25,17 +25,6 @@ WEEKLY_LATE_AFTER = timedelta(days=8)
 RETRY_INTERVAL = timedelta(minutes=30)
 MAX_ATTEMPTS_PER_WINDOW = 4
 DEFAULT_RETENTION_DAYS = 30
-# Cópias locais sob a retenção: as do próprio backup e as geradas pelo deploy.
-LOCAL_COPY_PATTERNS = (
-    "parts-erp-backup-*.db",
-    "code-*.tar.gz",
-    "db-*.sqlite",
-    "frontend-pre-*",
-    "parts-erp-pre-*",
-    "hardening-*",
-)
-
-
 def _as_utc(moment: datetime | None) -> datetime | None:
     if moment is None:
         return None
@@ -204,24 +193,30 @@ def _project_root() -> Path:
 def cleanup_local_backups(
     row: Any, directory: Path | None = None, now: datetime | None = None
 ) -> list[str]:
-    """Remove as cópias locais vencidas e devolve o nome do que saiu."""
+    """Remove as cópias locais vencidas e devolve o nome do que saiu.
+
+    A pasta é exclusiva para cópias, então a validade vale para todo o conteúdo dela —
+    inclusive os pacotes que o deploy deixa antes de trocar o código. Arquivos com nome
+    começando em ponto ficam intocados: é a marca de "não apagar" do operador.
+    """
     target_dir = directory or local_backup_dir(row)
     if not target_dir.is_dir():
         return []
     cutoff = retention_cutoff(row, now).timestamp()
     removed: list[str] = []
-    for pattern in LOCAL_COPY_PATTERNS:
-        for entry in sorted(target_dir.glob(pattern)):
-            try:
-                if entry.stat().st_mtime >= cutoff:
-                    continue
-                if entry.is_dir():
-                    shutil.rmtree(entry)
-                else:
-                    entry.unlink()
-            except OSError:
+    for entry in sorted(target_dir.iterdir()):
+        if entry.name.startswith("."):
+            continue
+        try:
+            if entry.stat().st_mtime >= cutoff:
                 continue
-            removed.append(entry.name)
+            if entry.is_dir() and not entry.is_symlink():
+                shutil.rmtree(entry)
+            else:
+                entry.unlink()
+        except OSError:
+            continue
+        removed.append(entry.name)
     return removed
 
 

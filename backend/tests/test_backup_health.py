@@ -167,15 +167,38 @@ def test_cleanup_removes_expired_copies_and_keeps_the_fresh_ones(tmp_path: Path)
     assert sorted(path.name for path in tmp_path.iterdir()) == sorted(fresh)
 
 
-def test_cleanup_ignores_files_outside_the_backup_patterns(tmp_path: Path):
+def test_cleanup_deixa_intocado_o_que_esta_no_prazo(tmp_path: Path):
     now = datetime(2026, 10, 16, 12, 0, tzinfo=UTC)
     settings = _settings(backup_retention_days=1)
-    keep = tmp_path / "parts-erp.db"
-    keep.write_bytes(b"banco em uso")
-    _set_age(keep, now - timedelta(days=90))
+    recentes = ["parts-erp-backup-20261016-020000.db", "start.sh-before-pythonpath-20261016.sh"]
+    for name in recentes:
+        (tmp_path / name).write_bytes(b"copia do dia")
+        _set_age(tmp_path / name, now - timedelta(hours=2))
 
     assert health.cleanup_local_backups(settings, tmp_path, now) == []
-    assert keep.exists()
+    assert sorted(path.name for path in tmp_path.iterdir()) == sorted(recentes)
+
+
+def test_cleanup_alcanca_toda_copia_vencida_da_pasta(tmp_path: Path):
+    now = datetime(2026, 10, 16, 12, 0, tzinfo=UTC)
+    settings = _settings(backup_retention_days=7)
+    vencidos = [
+        "parts-erp-before-ml-automation-20260930.db",
+        "documents-pre-sanitize-20261003-162503.tar.gz",
+        "index.html.pre-27f1da2",
+        "recovery-2006908",
+        "failed-deploy-2006908",
+    ]
+    for name in vencidos:
+        (tmp_path / name).write_bytes(b"copia antiga")
+        _set_age(tmp_path / name, now - timedelta(days=45))
+    (tmp_path / ".keep").write_bytes(b"nao apagar")
+    _set_age(tmp_path / ".keep", now - timedelta(days=400))
+
+    removed = health.cleanup_local_backups(settings, tmp_path, now)
+
+    assert sorted(removed) == sorted(vencidos)
+    assert [path.name for path in tmp_path.iterdir()] == [".keep"]
 
 
 def test_pasta_de_backup_relativa_nao_depende_do_diretorio_de_trabalho(monkeypatch, tmp_path):

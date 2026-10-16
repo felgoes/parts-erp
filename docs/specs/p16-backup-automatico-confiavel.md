@@ -14,11 +14,12 @@ O backup automático do ERP está ligado, roda todo dia às 02:00 no horário de
 
 A causa mais provável, pela data: a conexão foi criada em 06/10/2026 e parou em 15/10/2026. Autorização de aplicativo em modo de **teste** no Google Cloud expira em cerca de 7 dias — exatamente o intervalo observado.
 
-Três falhas do próprio ERP ficaram expostas junto com isso:
+Quatro falhas do próprio ERP ficaram expostas junto com isso:
 
 1. **Ninguém avisa.** O ERP grava a falha, mas não notifica, e a tela de Configurações mostra a data do último backup bem-sucedido ao lado de um status técnico, o que dá aparência de normalidade.
 2. **O motivo real se perde.** Fica guardado apenas o `400 Bad Request`; o código devolvido pelo Google, que diria se a autorização expirou ou foi revogada, não é registrado.
 3. **Existe um único destino.** Toda a proteção depende do Drive. Autorização expirada, internet fora ou Google indisponível deixam a loja sem nenhuma cópia nova do banco.
+4. **A falha se repete de minuto em minuto.** O agendador tenta novamente a cada minuto depois do horário configurado; como a autorização está inválida, toda tentativa falha. São centenas de tentativas por dia contra o provedor, e a tela não mostra nada disso, porque o ERP regrava sempre o mesmo status e o registro não muda.
 
 Além disso, há **1,3 GB** de backups locais gerados pelos deploys, sem rotina de limpeza.
 
@@ -60,6 +61,9 @@ Fazer o backup falhar alto, e não em silêncio: avisar o responsável no mesmo 
 10. **Restaurar continua sendo procedimento do operador**, não um botão na interface.
     - Por quê: restauração é operação de risco e feita fora do horário de uso; automatizar isso na tela é convite a acidente.
     - Alternativa descartada: botão de restaurar pela interface nesta entrega.
+11. **Depois de falhar, o ERP tenta de novo em intervalo controlado**, e não de minuto em minuto, registrando cada tentativa e avisando uma vez por dia enquanto o problema não for resolvido.
+    - Por quê: repetir a cada minuto não resolve autorização expirada, castiga o provedor com centenas de chamadas por dia e ainda esconde a falha, porque nada muda na tela.
+    - Alternativa descartada: continuar tentando a cada minuto até dar certo.
 
 ## Escopo
 
@@ -89,6 +93,7 @@ Fazer o backup falhar alto, e não em silêncio: avisar o responsável no mesmo 
 10. A retenção remove backups vencidos no Drive e nas cópias locais, e não remove nenhum arquivo dentro do prazo.
 11. A tela nunca mostra a data do último sucesso sem indicar que houve falha depois dela.
 12. Todas as datas aparecem no fuso America/Sao_Paulo, sem deslocar o dia.
+13. Quando o backup falha, o ERP não repete a tentativa a cada minuto: as tentativas ficam em intervalo controlado, cada uma fica registrada e o aviso é enviado uma vez por dia enquanto o problema persistir.
 
 ## Fora de escopo
 

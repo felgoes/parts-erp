@@ -14,3 +14,4 @@ Specs de tarefas concluídas são removidas a pedido do PO e permanecem no hist�
 - Removidas em 16/10/2026: P0, P6, P10, P11, P13, P14 e P15, todas entregues em produção.
 - P16 — backup que avisa, guarda cópia local e sobrevive à queda do Drive — entregue em 16/10/2026 (`835d511`). A spec fica aqui como documentação do comportamento que existe.
 - P17 — atualizar a tela no app (puxar para atualizar e retomar a atualização automática) — entregue em 16/10/2026 (`7e50cd4`), com a conferência em aparelho Android real ainda pendente.
+- P14 — importação de documento de marketplace: as fases 1 e 2 estão entregues em produção (moeda e cotação, valor pago, duplicidade, conferência de fechamento, leitura de itens por coluna e por OCR, vínculo por SKU e tipo do lançamento). A **fase 3** — salvar os rótulos revisados como perfil da loja e analisar vários documentos em fila — foi descartada pelo PO em 16/10/2026; a importação segue com revisão e correção a cada documento.

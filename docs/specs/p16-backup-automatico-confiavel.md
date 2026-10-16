@@ -1,6 +1,6 @@
 # P16 — Backup automático que avisa, guarda cópia local e sobrevive à queda do Drive
 
-**Status:** pronta para implementação — decisões fechadas em 16/10/2026 a partir da falha verificada em produção
+**Status:** entregue em 16/10/2026 (`835d511`), com as duas entregas do faseamento validadas no HML local e na suíte de testes. A reconexão da conta do Google Drive em produção e a publicação da tela de consentimento no Google Cloud são ação do operador e continuam pendentes — o código passa a avisar e a guardar cópia local enquanto isso.
 **Prioridade:** P1
 
 ## Contexto

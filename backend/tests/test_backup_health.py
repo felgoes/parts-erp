@@ -1,6 +1,7 @@
 """Regras do backup da P16: atraso, motivo em português e retenção das cópias locais."""
 
 import os
+from types import SimpleNamespace
 
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -175,6 +176,22 @@ def test_cleanup_ignores_files_outside_the_backup_patterns(tmp_path: Path):
 
     assert health.cleanup_local_backups(settings, tmp_path, now) == []
     assert keep.exists()
+
+
+def test_pasta_de_backup_relativa_nao_depende_do_diretorio_de_trabalho(monkeypatch, tmp_path):
+    monkeypatch.chdir(tmp_path)
+    esperado = Path(health.__file__).resolve().parents[3] / "data" / "backups"
+
+    assert health.local_backup_dir() == esperado.resolve()
+    assert health.local_backup_dir(SimpleNamespace(backup_local_dir="")) == esperado.resolve()
+
+
+def test_pasta_de_backup_absoluta_e_respeitada(tmp_path):
+    escolhida = tmp_path / "compartilhado"
+
+    assert health.local_backup_dir(SimpleNamespace(backup_local_dir=str(escolhida))) == (
+        escolhida.resolve()
+    )
 
 
 def test_invalid_grant_has_a_clear_portuguese_message():

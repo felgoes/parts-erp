@@ -185,8 +185,20 @@ def retention_cutoff(row: Any, now: datetime | None = None) -> datetime:
 def local_backup_dir(row: Any = None) -> Path:
     from app.core.config import get_settings
 
-    directory = str(getattr(row, "backup_local_dir", "") or "").strip()
-    return Path(directory or get_settings().backup_dir).expanduser().resolve()
+    configured = str(getattr(row, "backup_local_dir", "") or "").strip()
+    path = Path(configured or get_settings().backup_dir).expanduser()
+    if not path.is_absolute():
+        # A API e o worker do ARQ sobem com diretórios de trabalho diferentes (na produção
+        # o CWD é `backend/`), então um caminho relativo ao CWD espalharia as cópias em dois
+        # lugares — e a retenção nunca acharia os arquivos que o deploy deixa em `data/`.
+        # Relativo aqui é sempre relativo à raiz do checkout.
+        path = _project_root() / path
+    return path.resolve()
+
+
+def _project_root() -> Path:
+    """Raiz do checkout (a pasta que contém `backend/`), independente do CWD do processo."""
+    return Path(__file__).resolve().parents[3]
 
 
 def cleanup_local_backups(

@@ -113,9 +113,12 @@
           <h2>Backups</h2>
           <p>Defina sua política de cópias e retenção.</p>
         </div>
-        <span class="status-pill" [class.is-ready]="settings().backup_ready">{{
-          settings().backup_ready ? 'Em execução' : 'Configuração pendente'
-        }}</span>
+        <span
+          class="status-pill"
+          [class.is-ready]="backupStateTone() === 'ok'"
+          [class.is-alert]="backupStateTone() === 'danger'"
+          >{{ backupStateLabel() }}</span
+        >
       </div>
       <div class="backup-notice">
         <strong>{{
@@ -126,6 +129,30 @@
         ><span
           >O Client ID, o segredo OAuth e a pasta de destino ficam protegidos no servidor. A
           autorização acontece na sua conta Google e não exige chave dentro do APK.</span
+        >
+      </div>
+      @if (backupAlert(); as alert) {
+        <div class="backup-alert" role="alert">
+          <div>
+            <strong>{{ alert.title }}</strong>
+            <span>{{ alert.detail }}</span>
+          </div>
+          <button
+            class="secondary"
+            type="button"
+            [disabled]="driveConnecting()"
+            (click)="connectGoogleDrive()"
+          >
+            {{ driveConnecting() ? 'Abrindo Google…' : 'Reconectar conta do Google Drive' }}
+          </button>
+        </div>
+      }
+      <div class="backup-notice is-hint">
+        <strong>Conta em modo de produção no Google Cloud</strong
+        ><span
+          >Autorização em modo de teste expira em cerca de 7 dias e derruba o backup automático.
+          Publique a tela de consentimento da conta no Google Cloud antes de contar com o
+          Drive.</span
         >
       </div>
       <div class="backup-grid">
@@ -209,22 +236,47 @@
         </div>
       </div>
       <div class="backup-footer">
-        <span
-          >Último backup
-          <strong>{{
-            settings().backup_last_at
-              ? (settings().backup_last_at | date: 'dd/MM/yyyy HH:mm')
-              : 'Ainda não realizado'
-          }}</strong></span
-        ><span
-          >Status <strong>{{ settings().backup_last_status }}</strong></span
-        ><button
+        <div class="backup-status-grid">
+          <span
+            >Último sucesso
+            <strong>{{
+              settings().backup_last_success_at
+                ? (settings().backup_last_success_at | date: 'dd/MM/yyyy HH:mm')
+                : 'Nenhum ainda'
+            }}</strong></span
+          ><span
+            >Última tentativa
+            <strong>{{
+              settings().backup_last_attempt_at
+                ? (settings().backup_last_attempt_at | date: 'dd/MM/yyyy HH:mm')
+                : 'Nenhuma ainda'
+            }}</strong></span
+          ><span
+            >Próximo previsto
+            <strong>{{
+              settings().backup_next_run_at
+                ? (settings().backup_next_run_at | date: 'dd/MM/yyyy HH:mm')
+                : 'Fora do ar'
+            }}</strong></span
+          ><span
+            >Status
+            <strong [class.is-alert]="backupStateTone() === 'danger'">{{
+              backupStateLabel()
+            }}</strong></span
+          >
+        </div>
+        <p class="backup-paths">
+          Cópias guardadas por {{ settings().backup_retention_days }} dias em
+          <code>{{ settings().backup_local_dir || 'data/backups' }}</code> no servidor e no Google
+          Drive. A restauração é feita pelo operador, fora do horário de uso.
+        </p>
+        <button
           class="secondary"
           type="button"
           [disabled]="backupRunning() || !settings().drive_connected"
           (click)="runBackup()"
         >
-          {{ backupRunning() ? 'Enviando…' : 'Executar backup agora' }}
+          {{ backupRunning() ? 'Executando…' : 'Fazer backup agora' }}
         </button>
       </div>
     </section>

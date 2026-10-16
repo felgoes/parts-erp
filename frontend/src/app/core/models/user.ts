@@ -23,6 +23,12 @@ export interface ErpSettings {
   backup_last_at: string | null;
   backup_last_status: string;
   backup_last_error: string | null;
+  backup_last_success_at: string | null;
+  backup_last_attempt_at: string | null;
+  backup_next_run_at: string | null;
+  backup_state: string;
+  backup_last_error_code: string | null;
+  backup_local_dir: string | null;
 }
 export interface AuthToken {
   access_token: string;

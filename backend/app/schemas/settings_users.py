@@ -33,6 +33,12 @@ class ErpSettingsOut(BaseModel):
     backup_last_at: datetime | None = None
     backup_last_status: str = "setup_required"
     backup_last_error: str | None = None
+    backup_last_success_at: datetime | None = None
+    backup_last_attempt_at: datetime | None = None
+    backup_next_run_at: datetime | None = None
+    backup_state: str = "setup_required"
+    backup_last_error_code: str | None = None
+    backup_local_dir: str | None = None
 
 
 class ErpSettingsUpdate(BaseModel):

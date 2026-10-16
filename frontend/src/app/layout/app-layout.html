@@ -232,5 +232,17 @@
       </section>
     </div>
   }
-  <main><router-outlet /></main>
+  <main>
+    @if (backupAlert(); as alert) {
+      <div class="backup-banner" role="alert">
+        <span class="backup-banner-icon" aria-hidden="true">↻</span>
+        <div>
+          <strong>{{ alert.title }}</strong>
+          <p>{{ alert.detail }}</p>
+        </div>
+        <a class="backup-banner-action" routerLink="/settings">Ver backups</a>
+      </div>
+    }
+    <router-outlet />
+  </main>
 </div>

@@ -1,9 +1,8 @@
 import asyncio
 import logging
 import time as clock
-from datetime import UTC, datetime, time, timedelta, timezone
+from datetime import UTC, datetime
 from typing import Any
-from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from arq import cron
 from arq.connections import RedisSettings
@@ -25,16 +24,10 @@ from app.integrations.shopee.sync import sync_order as sync_shopee_order
 from app.models import ErpSettings, MarketplaceAccount, MarketplaceOrder, MarketplaceOrderEvent
 from app.services.after_sale import after_sale_notification, upsert_after_sale_case
 from app.services.google_drive_backup import run_backup
+from app.services.backup_health import current_window_day, scheduled_backup_due
 from app.services.push_notifications import deliver_pending_notifications, enqueue_sale_notification
 
 logger = logging.getLogger(__name__)
-try:
-    BACKUP_TIMEZONE = ZoneInfo("America/Sao_Paulo")
-except ZoneInfoNotFoundError:
-    # Termux deployments may not include the optional tzdata package. São
-    # Paulo has used UTC-03:00 year-round since 2019, so this keeps the worker
-    # operational there while desktop/server environments use the IANA zone.
-    BACKUP_TIMEZONE = timezone(timedelta(hours=-3), name="America/Sao_Paulo")
 
 
 def _process_mercadolivre_notification(topic: str, resource: str, seller_id: str) -> None:
@@ -304,38 +297,26 @@ async def retry_pending_push_notifications(ctx: dict[str, Any]) -> int:
 
 
 def _scheduled_backup_is_due(settings: ErpSettings, now_utc: datetime | None = None) -> bool:
-    """Return whether the configured backup window has been reached.
+    """Return whether the worker should attempt the backup now.
 
-    ``backup_time`` is a local São Paulo time. The worker runs every minute,
-    so this intentionally uses a catch-up window (after the target time) and
-    records the last run by local calendar date instead of requiring an exact
-    ``HH:MM`` match.
+    A janela continua sendo o horário local de São Paulo (com tolerância de catch-up, porque
+    o worker roda a cada minuto), mas depois de uma falha a nova tentativa espera
+    ``RETRY_INTERVAL`` e existe um teto de tentativas por janela — antes o ERP insistia de
+    minuto em minuto contra o provedor. A decisão em si vive em ``app.services.backup_health``
+    para ser testada sem banco e sem rede.
     """
-    now = now_utc or datetime.now(UTC)
-    if now.tzinfo is None:
-        now = now.replace(tzinfo=UTC)
-    now = now.astimezone(UTC)
-    local_now = now.astimezone(BACKUP_TIMEZONE)
-    try:
-        target_hour, target_minute = (int(part) for part in settings.backup_time.split(":", 1))
-        target = time(target_hour, target_minute)
-    except (AttributeError, TypeError, ValueError):
-        target = time(2, 0)
-    if local_now.time() < target:
-        return False
+    return scheduled_backup_due(settings, now_utc)
 
-    if not settings.backup_last_at:
-        return True
-    last = settings.backup_last_at
-    if last.tzinfo is None:
-        # SQLite drops timezone metadata for DateTime columns. Backup timestamps
-        # are written in UTC by run_backup(), so restore UTC before conversion.
-        last = last.replace(tzinfo=UTC)
-    last_local = last.astimezone(BACKUP_TIMEZONE)
-    elapsed_days = (local_now.date() - last_local.date()).days
-    if settings.backup_frequency == "weekly":
-        return elapsed_days >= 7
-    return elapsed_days >= 1
+
+def _record_backup_attempt(settings: ErpSettings, now_utc: datetime | None = None) -> None:
+    """Conta a tentativa na janela do dia: é o que limita a insistência."""
+    window = current_window_day(settings, now_utc)
+    if window is None:
+        return
+    if settings.backup_attempts_date != window.isoformat():
+        settings.backup_attempts_date = window.isoformat()
+        settings.backup_attempts_today = 0
+    settings.backup_attempts_today = int(settings.backup_attempts_today or 0) + 1
 
 
 def _run_scheduled_backup() -> str | None:
@@ -349,6 +330,9 @@ def _run_scheduled_backup() -> str | None:
             return None
         if not _scheduled_backup_is_due(settings):
             return None
+        _record_backup_attempt(settings)
+        # Grava a tentativa antes de tentar: se o processo morrer no meio, ela já conta.
+        db.commit()
         try:
             return run_backup(db)
         except Exception:

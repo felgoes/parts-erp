@@ -106,3 +106,8 @@ class ErpSettings(TimestampMixin, Base):
     backup_last_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     backup_last_status: Mapped[str] = mapped_column(String(30), default="setup_required")
     backup_last_error: Mapped[str | None] = mapped_column(Text)
+    backup_last_success_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    backup_last_attempt_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    backup_last_error_code: Mapped[str | None] = mapped_column(String(60))
+    backup_attempts_today: Mapped[int] = mapped_column(default=0)
+    backup_attempts_date: Mapped[str | None] = mapped_column(String(10))

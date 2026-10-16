@@ -18,10 +18,18 @@ from app.db.session import get_db
 from app.models import ErpSettings, User
 from app.schemas.common import ErpSettingsOut, ErpSettingsUpdate
 from app.services.google_drive_backup import (
+    DriveAccessError,
     authorization_url,
     callback_url,
     exchange_code,
     run_backup,
+)
+from app.services.backup_health import (
+    backup_state,
+    last_attempt_at,
+    last_success_at,
+    local_backup_dir,
+    next_run_at,
 )
 from app.services.purchase_import import PROFILE_SCHEMA, delete_profile, list_profiles, save_profile
 
@@ -99,6 +107,12 @@ def _settings_out(current: ErpSettings) -> ErpSettingsOut:
         backup_last_at=current.backup_last_at,
         backup_last_status=current.backup_last_status,
         backup_last_error=current.backup_last_error,
+        backup_last_success_at=last_success_at(current),
+        backup_last_attempt_at=last_attempt_at(current),
+        backup_next_run_at=next_run_at(current),
+        backup_state=backup_state(current),
+        backup_last_error_code=current.backup_last_error_code,
+        backup_local_dir=str(local_backup_dir(current)),
     )
 
 
@@ -157,6 +171,11 @@ def google_drive_callback(
         exchange_code(current, code)
         db.commit()
         return RedirectResponse(f"{destination}?drive_connected=true")
+    except DriveAccessError:
+        # A autorização voltou do Google, mas o Drive não respondeu como esperado:
+        # nada é gravado e a tela diz o que aconteceu em vez de marcar o backup como pronto.
+        db.rollback()
+        return RedirectResponse(f"{destination}?drive_error=validation")
     except Exception:
         db.rollback()
         return RedirectResponse(f"{destination}?drive_error=oauth")
@@ -169,9 +188,14 @@ def run_google_drive_backup(
 ) -> dict[str, str]:
     try:
         filename = run_backup(db)
-        return {"filename": filename, "message": "Backup concluído e enviado ao Google Drive."}
+        return {
+            "filename": filename,
+            "message": (
+                "Backup concluído: cópia guardada no servidor e enviada ao Google Drive."
+            ),
+        }
     except Exception as exc:
-        raise HTTPException(status_code=502, detail=str(exc)) from exc
+        raise HTTPException(status_code=502, detail=str(exc)[:300]) from exc
 
 
 @router.get("/purchase-import-profiles")

@@ -26,17 +26,67 @@ def test_scheduled_backup_catches_up_after_configured_local_time():
     )
 
 
-def test_scheduled_backup_does_not_repeat_same_local_day():
+def test_scheduled_backup_does_not_repeat_after_success_in_the_same_window():
     settings = ErpSettings(
         backup_enabled=True,
         backup_frequency="daily",
         backup_time="02:00",
         backup_last_at=datetime(2026, 10, 8, 5, 10, tzinfo=UTC),
+        backup_last_status="success",
     )
 
     assert (
         worker_settings._scheduled_backup_is_due(settings, datetime(2026, 10, 8, 8, 0, tzinfo=UTC))
         is False
+    )
+
+
+def test_failed_backup_waits_for_the_controlled_interval():
+    attempt = datetime(2026, 10, 8, 5, 0, tzinfo=UTC)
+    settings = ErpSettings(
+        backup_enabled=True,
+        backup_frequency="daily",
+        backup_time="02:00",
+        backup_last_status="failed",
+        backup_last_at=attempt,
+        backup_last_attempt_at=attempt,
+        backup_attempts_date="2026-10-08",
+        backup_attempts_today=1,
+    )
+
+    # 05:29 UTC é 02:29 em São Paulo: menos de 30 minutos depois da falha.
+    assert (
+        worker_settings._scheduled_backup_is_due(settings, datetime(2026, 10, 8, 5, 29, tzinfo=UTC))
+        is False
+    )
+    assert (
+        worker_settings._scheduled_backup_is_due(settings, datetime(2026, 10, 8, 5, 31, tzinfo=UTC))
+        is True
+    )
+
+
+def test_failed_backup_stops_after_the_window_attempt_limit():
+    attempt = datetime(2026, 10, 8, 5, 0, tzinfo=UTC)
+    settings = ErpSettings(
+        backup_enabled=True,
+        backup_frequency="daily",
+        backup_time="02:00",
+        backup_last_status="failed",
+        backup_last_at=attempt,
+        backup_last_attempt_at=attempt,
+        backup_attempts_date="2026-10-08",
+        backup_attempts_today=4,
+    )
+
+    # Já tentou quatro vezes nesta janela: não insiste mais hoje, nem horas depois.
+    assert (
+        worker_settings._scheduled_backup_is_due(settings, datetime(2026, 10, 8, 15, 0, tzinfo=UTC))
+        is False
+    )
+    # No dia seguinte a janela reinicia.
+    assert (
+        worker_settings._scheduled_backup_is_due(settings, datetime(2026, 10, 9, 6, 0, tzinfo=UTC))
+        is True
     )
 
 

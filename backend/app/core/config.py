@@ -24,6 +24,9 @@ class Settings(BaseSettings):
     redis_url: str = "redis://localhost:6379/0"
     documents_dir: str = "data/documents"
     product_images_dir: str = "data/product-images"
+    # Cópias locais do banco (backup diário e artefatos dos deploys). Fica no
+    # mesmo diretório que o deploy usa, para a retenção valer para todos.
+    backup_dir: str = "data/backups"
     # Kept outside version control. This credential authorizes server-to-device
     # notifications and must never be bundled in the Android app.
     firebase_service_account_file: str = ""

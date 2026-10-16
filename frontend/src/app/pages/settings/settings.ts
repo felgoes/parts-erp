@@ -6,6 +6,12 @@ import { ApiService } from '../../core/api.service';
 import { AppearanceService, AppearanceTheme } from '../../core/appearance.service';
 import { ErpBrandService } from '../../core/erp-brand.service';
 import { ErpSettings } from '../../core/models';
+import {
+  BackupAlert,
+  backupAlert as buildBackupAlert,
+  backupStateLabel,
+  backupStateTone,
+} from '../../shared/backup-health';
 import { PageHeader } from '../../shared/page-header';
 
 @Component({
@@ -48,6 +54,12 @@ export class SettingsPage implements OnInit {
     backup_last_at: null,
     backup_last_status: 'setup_required',
     backup_last_error: null,
+    backup_last_success_at: null,
+    backup_last_attempt_at: null,
+    backup_next_run_at: null,
+    backup_state: 'setup_required',
+    backup_last_error_code: null,
+    backup_local_dir: null,
   });
   readonly draft = {
     company_name: 'Parts ERP',
@@ -67,7 +79,12 @@ export class SettingsPage implements OnInit {
     const params = new URLSearchParams(window.location.search);
     if (params.get('drive_connected') === 'true')
       this.message.set('Google Drive conectado. Salve a política de backup para ativá-la.');
-    if (params.get('drive_error'))
+    if (params.get('drive_error') === 'validation')
+      this.error.set(
+        'O Google autorizou o acesso, mas o ERP não conseguiu ler o Drive com essa permissão. ' +
+          'Confira a pasta informada e autorize de novo.',
+      );
+    else if (params.get('drive_error'))
       this.error.set(
         'Não foi possível autorizar o Google Drive. Confira o Client ID, o segredo e o redirect URI.',
       );
@@ -211,6 +228,12 @@ export class SettingsPage implements OnInit {
       },
     });
   }
+
+  readonly backupStateLabel = (): string => backupStateLabel(this.settings().backup_state);
+
+  readonly backupStateTone = (): string => backupStateTone(this.settings().backup_state);
+
+  readonly backupAlert = (): BackupAlert | null => buildBackupAlert(this.settings());
 
   runBackup(): void {
     this.backupRunning.set(true);

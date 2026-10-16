@@ -1,5 +1,5 @@
 import { DatePipe } from '@angular/common';
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { filter } from 'rxjs';
@@ -10,6 +10,7 @@ import { ApiService } from '../core/api.service';
 import { canAccessPage, ROLE_LABELS } from '../core/user-access';
 import { PushNotification } from '../core/models';
 import { PushNotificationsService } from '../core/push-notifications.service';
+import { BackupAlert, backupAlert as buildBackupAlert } from '../shared/backup-health';
 
 @Component({
   selector: 'app-layout',
@@ -17,7 +18,7 @@ import { PushNotificationsService } from '../core/push-notifications.service';
   templateUrl: './app-layout.html',
   styleUrl: './app-layout.scss',
 })
-export class AppLayout implements OnInit {
+export class AppLayout implements OnInit, OnDestroy {
   readonly auth = inject(AuthService);
   readonly brand = inject(ErpBrandService);
   readonly appearance = inject(AppearanceService);
@@ -35,6 +36,8 @@ export class AppLayout implements OnInit {
   readonly notificationLoading = signal(false);
   readonly notificationHistory = signal<PushNotification[]>([]);
   readonly notificationCount = signal(0);
+  readonly backupAlert = signal<BackupAlert | null>(null);
+  private backupTimer: ReturnType<typeof setInterval> | null = null;
   private readonly api = inject(ApiService);
   private readonly pushNotifications = inject(PushNotificationsService);
   private readonly fb = inject(FormBuilder);
@@ -45,6 +48,9 @@ export class AppLayout implements OnInit {
     this.brand.load();
     this.loadAvatar();
     this.loadNotifications();
+    this.loadBackupAlert();
+    // O aviso de backup não depende de push: a faixa acompanha o estado do servidor.
+    this.backupTimer = setInterval(() => this.loadBackupAlert(), 15 * 60 * 1000);
     void this.pushNotifications.enableForCurrentDevice();
     this.settingsOpen.set(this.isConfigurationRoute());
     this.router.events
@@ -54,6 +60,21 @@ export class AppLayout implements OnInit {
         this.settingsOpen.set(['settings', 'integrations', 'users'].includes(route));
         this.notificationsOpen.set(false);
       });
+  }
+  ngOnDestroy(): void {
+    if (this.backupTimer !== null) clearInterval(this.backupTimer);
+  }
+  private loadBackupAlert(): void {
+    // A faixa é para quem administra o ERP: administrador e gerente.
+    const role = this.auth.user()?.role;
+    if (role !== 'admin' && role !== 'manager') {
+      this.backupAlert.set(null);
+      return;
+    }
+    this.api.erpSettings().subscribe({
+      next: (settings) => this.backupAlert.set(buildBackupAlert(settings)),
+      error: () => undefined,
+    });
   }
   notificationPreview(): PushNotification[] {
     return this.notificationHistory().slice(0, 4);

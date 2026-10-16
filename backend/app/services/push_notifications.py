@@ -22,7 +22,15 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
-from app.models import MarketplaceOrder, PushDevice, PushNotification, PushPreference, SalesInvoice
+from app.models import (
+    MarketplaceOrder,
+    PushDevice,
+    PushNotification,
+    PushPreference,
+    SalesInvoice,
+    User,
+    UserRole,
+)
 
 logger = logging.getLogger(__name__)
 MAX_ATTEMPTS = 5
@@ -171,24 +179,13 @@ def enqueue_document_notification(
     return notification
 
 
-def enqueue_backup_notification(db: Session, filename: str) -> PushNotification | None:
-    """Notify once after a backup has been uploaded successfully."""
-    dedupe_key = f"backup:{filename}"
-    existing = db.scalar(select(PushNotification).where(PushNotification.dedupe_key == dedupe_key))
-    if existing is not None:
-        return existing
-    notification = PushNotification(
-        dedupe_key=dedupe_key,
-        category="backup",
-        title="Backup concluído",
-        body=f"Cópia do Parts ERP enviada ao Google Drive: {filename}"[:500],
-        data={"type": "backup_completed", "filename": filename, "route": "/settings"},
-    )
-    db.add(notification)
-    db.commit()
-    db.refresh(notification)
-    deliver_pending_notifications(db, only_id=notification.id)
-    return notification
+def _audience_user_ids(db: Session, notification: PushNotification) -> set[str] | None:
+    """Restringe o aviso a administrador e gerente quando a notificação pede isso."""
+    data = notification.data if isinstance(notification.data, dict) else {}
+    if str(data.get("audience") or "") != "managers":
+        return None
+    rows = db.execute(select(User.id).where(User.role.in_((UserRole.admin, UserRole.manager))))
+    return {str(row[0]) for row in rows}
 
 
 _ORDER_STATUS_LABELS = {
@@ -305,8 +302,13 @@ def deliver_pending_notifications(db: Session, only_id: str | None = None) -> in
         sound_by_user = {
             user_id: preference.sound for user_id, preference in preferences_by_user.items()
         }
+        audience_users = _audience_user_ids(db, notification)
         recipients = [
-            device for device in devices if device.active and device.user_id not in disabled_users
+            device
+            for device in devices
+            if device.active
+            and device.user_id not in disabled_users
+            and (audience_users is None or device.user_id in audience_users)
         ]
         if not recipients:
             notification.error = "Nenhum celular autorizado para receber notificações"

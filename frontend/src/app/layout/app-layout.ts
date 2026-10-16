@@ -1,5 +1,5 @@
 import { DatePipe } from '@angular/common';
-import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { filter } from 'rxjs';
@@ -10,6 +10,13 @@ import { ApiService } from '../core/api.service';
 import { canAccessPage, ROLE_LABELS } from '../core/user-access';
 import { PushNotification } from '../core/models';
 import { PushNotificationsService } from '../core/push-notifications.service';
+import { LiveUpdatesService } from '../core/live-updates.service';
+import {
+  PULL_TRIGGER_PX,
+  pullBandHeight,
+  pullOffset,
+  shouldRefresh,
+} from '../core/app-refresh';
 import { BackupAlert, backupAlert as buildBackupAlert } from '../shared/backup-health';
 
 @Component({
@@ -22,6 +29,7 @@ export class AppLayout implements OnInit, OnDestroy {
   readonly auth = inject(AuthService);
   readonly brand = inject(ErpBrandService);
   readonly appearance = inject(AppearanceService);
+  readonly live = inject(LiveUpdatesService);
   private readonly router = inject(Router);
   readonly menuOpen = signal(false);
   readonly settingsOpen = signal(false);
@@ -37,7 +45,15 @@ export class AppLayout implements OnInit, OnDestroy {
   readonly notificationHistory = signal<PushNotification[]>([]);
   readonly notificationCount = signal(0);
   readonly backupAlert = signal<BackupAlert | null>(null);
+  /** Faixa do gesto: cresce com o dedo e fica de pé enquanto a tela recarrega. */
+  readonly pullBand = computed(() => pullBandHeight(this.live.pullOffset()));
+  readonly pullReady = computed(() => shouldRefresh(this.live.pullOffset()));
+  readonly showPullBand = computed(() => this.pullBand() > 0 || this.live.refreshing());
+  readonly canPull = computed(() => this.live.isAndroidApp());
+  readonly lastUpdateLabel = computed(() => this.live.lastUpdateAt());
   private backupTimer: ReturnType<typeof setInterval> | null = null;
+  private pullStartY = 0;
+  private pulling = false;
   private readonly api = inject(ApiService);
   private readonly pushNotifications = inject(PushNotificationsService);
   private readonly fb = inject(FormBuilder);
@@ -63,6 +79,36 @@ export class AppLayout implements OnInit, OnDestroy {
   }
   ngOnDestroy(): void {
     if (this.backupTimer !== null) clearInterval(this.backupTimer);
+  }
+  /**
+   * Gesto de puxar para atualizar (P17). Só vale no aplicativo Android — no navegador do celular o
+   * gesto é do próprio navegador e no desktop a tela já se atualiza sozinha — e só quando a tela
+   * está no topo, para não disputar com a rolagem.
+   */
+  onTouchStart(event: TouchEvent): void {
+    if (!this.canPull() || this.live.refreshing()) return;
+    this.pullStartY = event.touches[0]?.clientY ?? 0;
+    this.pulling = true;
+  }
+
+  onTouchMove(event: TouchEvent): void {
+    if (!this.pulling) return;
+    const offset = pullOffset(this.pullStartY, event.touches[0]?.clientY ?? 0, window.scrollY);
+    if (offset <= 0) {
+      this.live.pullOffset.set(0);
+      return;
+    }
+    // Sem isto o WebView devolve o "elástico" e o gesto briga com a rolagem.
+    if (offset > 4) event.preventDefault();
+    this.live.pullOffset.set(offset);
+  }
+
+  onTouchEnd(): void {
+    if (!this.pulling) return;
+    this.pulling = false;
+    const offset = this.live.pullOffset();
+    this.live.pullOffset.set(0);
+    if (offset >= PULL_TRIGGER_PX) this.live.refreshNow();
   }
   private loadBackupAlert(): void {
     // A faixa é para quem administra o ERP: administrador e gerente.

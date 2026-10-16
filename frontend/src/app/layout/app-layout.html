@@ -232,7 +232,37 @@
       </section>
     </div>
   }
-  <main>
+  <main
+    (touchstart)="onTouchStart($event)"
+    (touchmove)="onTouchMove($event)"
+    (touchend)="onTouchEnd()"
+    (touchcancel)="onTouchEnd()"
+  >
+    @if (showPullBand()) {
+      <div class="pull-band" [class.is-ready]="pullReady()" [style.height.px]="pullBand()">
+        <span class="pull-spinner" [class.is-spinning]="live.refreshing()" aria-hidden="true"></span>
+        <small>{{
+          live.refreshing()
+            ? 'Atualizando…'
+            : pullReady()
+              ? 'Solte para atualizar'
+              : 'Puxe para atualizar'
+        }}</small>
+      </div>
+    }
+    @if (live.offline()) {
+      <div class="offline-banner" role="status">
+        <span class="offline-dot" aria-hidden="true"></span>
+        <div>
+          <strong>Sem atualização recente</strong>
+          <p>
+            Não conseguimos falar com o servidor agora. Última atualização às
+            {{ live.lastUpdateAt() ? (live.lastUpdateAt() | date: 'HH:mm') : '—' }}.
+          </p>
+        </div>
+        <button type="button" (click)="live.refreshNow()">Tentar agora</button>
+      </div>
+    }
     @if (backupAlert(); as alert) {
       <div class="backup-banner" role="alert">
         <span class="backup-banner-icon" aria-hidden="true">↻</span>

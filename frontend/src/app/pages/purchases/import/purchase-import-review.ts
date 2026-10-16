@@ -1,9 +1,10 @@
 import { DecimalPipe } from '@angular/common';
-import { Component, inject, output } from '@angular/core';
+import { Component, effect, inject, output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { finalize } from 'rxjs';
 
 import { ApiService } from '../../../core/api.service';
+import { LiveUpdatesService } from '../../../core/live-updates.service';
 import { Purchase } from '../../../core/models';
 import { MoneyInputDirective } from '../../../shared/money-input.directive';
 import { PurchaseImportCheck } from './purchase-import-check';
@@ -31,6 +32,20 @@ import { PurchaseImportState } from './purchase-import-state';
 export class PurchaseImportReview {
   private readonly api = inject(ApiService);
   private readonly flow = inject(PurchaseImportState);
+  private readonly live = inject(LiveUpdatesService);
+  private holdingReview = false;
+
+  constructor() {
+    // Com documento lido na revisão, a recarga automática espera: refazer a leitura por baixo
+    // apagaria o que o operador já corrigiu campo a campo (decisão 4 da P17).
+    effect(() => {
+      const reviewing = this.importReview() !== null;
+      if (reviewing === this.holdingReview) return;
+      this.holdingReview = reviewing;
+      if (reviewing) this.live.beginEdit();
+      else this.live.endEdit();
+    });
+  }
   /** Compra criada a partir do documento: a página cuida da lista, do aviso e do detalhe. */
   readonly created = output<{ purchase: Purchase; document: { filename: string; size: number } }>();
 

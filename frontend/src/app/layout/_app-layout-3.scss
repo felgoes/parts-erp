@@ -45,6 +45,80 @@
   background: color-mix(in srgb, #c0453b 10%, var(--surface));
   color: var(--text);
 }
+
+.pull-band {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 12px;
+}
+.pull-band.is-ready {
+  color: #4f7a2c;
+}
+.pull-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid color-mix(in srgb, var(--muted) 35%, transparent);
+  border-top-color: #6f9c3d;
+  border-radius: 50%;
+}
+.pull-spinner.is-spinning {
+  animation: pull-spin 700ms linear infinite;
+}
+@keyframes pull-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.offline-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  max-width: 1100px;
+  margin: 0 auto 14px;
+  padding: 10px 16px;
+  border-left: 3px solid #6b8fb5;
+  border-radius: 0 10px 10px 0;
+  background: color-mix(in srgb, #6b8fb5 10%, var(--surface));
+  color: var(--text);
+}
+.offline-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #6b8fb5;
+}
+.offline-banner div {
+  display: grid;
+  gap: 3px;
+  flex: 1 1 16rem;
+}
+.offline-banner strong {
+  font-size: 13px;
+  color: #46678a;
+}
+.offline-banner p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.offline-banner button {
+  flex: 0 0 auto;
+  padding: 7px 12px;
+  border: 1px solid #6b8fb5;
+  border-radius: 8px;
+  color: #46678a;
+  background: transparent;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
 .backup-banner-icon {
   font-size: 18px;
   color: #a63831;

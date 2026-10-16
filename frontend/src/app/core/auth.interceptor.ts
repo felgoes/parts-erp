@@ -1,10 +1,12 @@
-import { HttpErrorResponse, HttpInterceptorFn } from '@angular/common/http';
+import { HttpErrorResponse, HttpInterceptorFn, HttpResponse } from '@angular/common/http';
 import { inject } from '@angular/core';
-import { catchError, throwError } from 'rxjs';
+import { catchError, tap, throwError } from 'rxjs';
 import { AuthService } from './auth.service';
+import { NetworkActivityService } from './network-activity.service';
 
 export const authInterceptor: HttpInterceptorFn = (request, next) => {
   const auth = inject(AuthService);
+  const activity = inject(NetworkActivityService);
   const apiRequest =
     typeof window !== 'undefined' &&
     (window.location.protocol === 'capacitor:' ||
@@ -15,8 +17,13 @@ export const authInterceptor: HttpInterceptorFn = (request, next) => {
   const secured = auth.token
     ? apiRequest.clone({ setHeaders: { Authorization: `Bearer ${auth.token}` } })
     : apiRequest;
+  activity.started();
   return next(secured).pipe(
+    tap((event) => {
+      if (event instanceof HttpResponse) activity.settled(event.status);
+    }),
     catchError((error: HttpErrorResponse) => {
+      activity.settled(error.status ?? 0);
       if (
         error.status === 401 &&
         !request.url.endsWith('/auth/login') &&

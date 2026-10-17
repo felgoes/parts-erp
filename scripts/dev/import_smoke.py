@@ -292,6 +292,106 @@ def main() -> int:
             str(payable_row.get("expense_description")),
         )
 
+        # Despesa importada com material controlado no estoque e ainda sem produto vinculado: a
+        # linha entra na compra (antes era descartada em silêncio) e o recebimento cria o produto
+        # no almoxarifado, creditando o estoque pelo custo do documento.
+        material_document = client.post(
+            f"{API}/purchases/import-document",
+            files={"file": ("smoke-nfe-material.xml", sample_document(), "application/xml")},
+        )
+        check(
+            "documento do material analisado",
+            material_document.status_code == 200,
+            material_document.text[:200],
+        )
+        material_review = material_document.json() if material_document.status_code == 200 else {}
+        material_fields = material_review.get("fields", {})
+        material_lines = material_review.get("items", [])
+        first_line = material_lines[0] if material_lines else {}
+        material_quantity = float(first_line.get("quantity") or 1)
+        # SKU próprio do ensaio: o documento de amostra repete o código do fluxo de peças, e o
+        # catálogo não pode ter o mesmo SKU como peça e como material de almoxarifado.
+        material_sku = f"SMOKE-MAT-{datetime.now(UTC).strftime('%H%M%S')}"
+        material_response = client.post(
+            f"{API}/purchases",
+            json={
+                "purchase_type": "expense",
+                "source_import_id": str(uuid.uuid4()),
+                "supplier_name": material_fields.get("supplier", {}).get("value")
+                or "Distribuidora Exemplo de Autopecas",
+                "expense_category": "Materiais de consumo e embalagem",
+                "expense_amount": float(material_fields.get("total", {}).get("value") or DOCUMENT_TOTAL),
+                "expense_description": "Material de embalagem (smoke)",
+                "document_date": material_fields.get("date", {}).get("value") or DOCUMENT_DATE,
+                "notes": "Importação de documento. Despesa com material do smoke automático.",
+                "items": [
+                    {
+                        "sku": material_sku,
+                        "description": first_line.get("description") or "Material de amostra",
+                        "quantity": material_quantity,
+                        "unit_cost": float(first_line.get("unit_cost") or 0),
+                    }
+                ],
+            },
+        )
+        check(
+            "despesa com material criada",
+            material_response.status_code == 201,
+            material_response.text[:300],
+        )
+        material_purchase = material_response.json() if material_response.status_code == 201 else {}
+        material_items = material_purchase.get("items") or []
+        check("material entra como item da despesa", len(material_items) == 1, str(len(material_items)))
+        check(
+            "material sem produto fica para o recebimento",
+            bool(material_items) and not material_items[0].get("product_id"),
+            str(material_items[0].get("product_id") if material_items else None),
+        )
+        check(
+            "despesa com material aguarda recebimento",
+            material_purchase.get("status") == "ordered",
+            str(material_purchase.get("status")),
+        )
+        received_material = client.post(
+            f"{API}/purchases/{material_purchase.get('id', '')}/receive-all",
+            params={"create_products": "true", "observation": "Smoke do material de despesa"},
+        )
+        check(
+            "recebimento do material aceito",
+            received_material.status_code == 200,
+            received_material.text[:300],
+        )
+        if received_material.status_code == 200:
+            received_purchase = received_material.json()
+            received_item = received_purchase["items"][0]
+            check(
+                "material recebido credita o almoxarifado",
+                float(received_item["received_quantity"]) == material_quantity,
+                str(received_item["received_quantity"]),
+            )
+            check(
+                "despesa fica recebida depois do material",
+                received_purchase["status"] == "received",
+                received_purchase["status"],
+            )
+            product_response = client.get(f"{API}/products/{received_item['product_id']}/detail")
+            product = product_response.json() if product_response.status_code == 200 else {}
+            check(
+                "produto do material consultado",
+                product_response.status_code == 200,
+                f"HTTP {product_response.status_code}",
+            )
+            check(
+                "produto de almoxarifado criado no recebimento",
+                product.get("stock_type") == "warehouse",
+                str(product.get("stock_type")),
+            )
+            check(
+                "estoque do material creditado",
+                float(product.get("current_stock") or 0) >= material_quantity,
+                str(product.get("current_stock")),
+            )
+
     if failures:
         print(f"\nsmoke do fluxo de importação REPROVOU em {len(failures)} verificação(ões).")
         return 1

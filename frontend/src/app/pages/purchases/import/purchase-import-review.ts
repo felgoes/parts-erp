@@ -9,6 +9,7 @@ import { Purchase } from '../../../core/models';
 import { MoneyInputDirective } from '../../../shared/money-input.directive';
 import { PurchaseImportCheck } from './purchase-import-check';
 import { PurchaseImportItems } from './purchase-import-items';
+import { expenseMaterialLines } from './purchase-import-model';
 import { PurchaseImportState } from './purchase-import-state';
 
 /**
@@ -142,15 +143,12 @@ export class PurchaseImportReview {
             extras_amount: draft.extras ?? 0,
             discount_amount: draft.discount ?? 0,
           },
-      items: (isExpense
-        ? draft.items.filter((item) => item.stock_controlled && item.product_id)
-        : draft.items
-      ).map((item) => ({
+      items: (isExpense ? expenseMaterialLines(draft.items) : draft.items).map((item) => ({
         sku: item.sku.trim(),
         description: item.description.trim(),
         quantity: item.quantity,
         unit_cost: item.unit_cost,
-        product_id: item.product_id,
+        product_id: item.product_id || null,
         line_discount_amount: item.discount_amount,
         // O total impresso na linha manda no fechamento: o papel arredonda o unitário na
         // vitrine e cobra o total exato da linha.

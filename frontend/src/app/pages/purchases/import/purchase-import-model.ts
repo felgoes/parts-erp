@@ -214,6 +214,15 @@ export function hasItemsToCheck(check: ImportCheck | null, draft: ImportDraft): 
   return !!check?.items_total || draft.items.length > 0;
 }
 
+/**
+ * Material de despesa que vira item da compra. Basta a linha estar marcada como controlada no
+ * estoque: exigir o produto vinculado aqui descartava a linha em silêncio, e o produto pode ser
+ * criado no recebimento (o painel de detalhe oferece "Criar produto no catálogo ao receber").
+ */
+export function expenseMaterialLines(items: readonly ImportDraftItem[]): ImportDraftItem[] {
+  return items.filter((item) => item.stock_controlled);
+}
+
 /** Motivos visíveis que impedem a confirmação — ninguém fica preso sem saber por quê. */
 export function importBlockers(input: {
   draft: ImportDraft;

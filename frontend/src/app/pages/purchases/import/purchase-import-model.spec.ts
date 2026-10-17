@@ -4,6 +4,7 @@ import {
   closingDifference,
   emptyImportDraft,
   emptyImportLine,
+  expenseMaterialLines,
   hasItemsToCheck,
   importBlockers,
   itemsTotal,
@@ -17,6 +18,23 @@ function draftWith(overrides: Partial<ReturnType<typeof emptyImportDraft>> = {})
 }
 
 describe('revisão de importação — contas puras', () => {
+  it('leva para a despesa o material controlado mesmo sem produto vinculado', () => {
+    const semVinculo = { ...emptyImportLine(), description: 'Fita', stock_controlled: true };
+    const foraDoEstoque = { ...emptyImportLine(), description: 'Fita', stock_controlled: false };
+    const vinculado = {
+      ...emptyImportLine(),
+      description: 'Fita',
+      stock_controlled: true,
+      product_id: 'produto-1',
+    };
+
+    const levadas = expenseMaterialLines([semVinculo, foraDoEstoque, vinculado]);
+
+    expect(levadas).toHaveLength(2);
+    expect(levadas[0].product_id).toBeNull();
+    expect(levadas[1].product_id).toBe('produto-1');
+  });
+
   it('fecha a diferença do documento com itens, frete, impostos e desconto', () => {
     const draft = draftWith({
       total: 100,

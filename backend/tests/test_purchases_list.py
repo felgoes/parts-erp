@@ -5,6 +5,7 @@ from types import SimpleNamespace
 
 from sqlalchemy.orm import Session
 
+from app.core.periods import BRAZIL_TZ
 from app.api.routes.purchases import create_purchase, get_purchase
 from app.api.routes.purchases_list import list_purchases
 from app.schemas.common import PurchaseCreate, PurchaseItemCreate
@@ -64,7 +65,9 @@ def test_status_and_period_filter_on_the_server(db: Session) -> None:
     page = list_purchases(limit=25, offset=0, status="received", db=db, user=_actor())
     assert page.total == 0 and page.items == []
 
-    today = datetime.now(UTC).date()
+    # A janela do filtro é o dia de calendário da operação (America/Sao_Paulo), não o dia UTC:
+    # entre 21h e meia-noite de São Paulo o dia UTC já virou e o teste falhava sozinho.
+    today = datetime.now(BRAZIL_TZ).date()
     page = list_purchases(
         limit=25, offset=0, start_date=today, end_date=today, db=db, user=_actor()
     )

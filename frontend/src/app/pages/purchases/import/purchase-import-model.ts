@@ -6,6 +6,8 @@
  * menores e para as regras de fechamento serem testáveis sem montar componente.
  */
 
+import { dateOnlyLabel } from '../../../shared/date-only';
+
 export interface ImportDraftItem {
   description: string;
   sku: string;
@@ -223,6 +225,25 @@ export function expenseMaterialLines(items: readonly ImportDraftItem[]): ImportD
   return items.filter((item) => item.stock_controlled);
 }
 
+/**
+ * Data do documento no formato do campo (aaaa-mm-dd). O leitor pode devolver ISO,
+ * "dd/mm/aaaa" ou "aaaa/mm/dd" conforme o papel; o campo de data do navegador e o payload só
+ * trabalham com ISO — antes o texto cru ia para a tela e para o envio.
+ */
+export function documentDateValue(raw: string | null | undefined): string {
+  const text = String(raw ?? '').trim();
+  if (!text) return '';
+  const iso = /^(\d{4})-(\d{1,2})-(\d{1,2})/.exec(text);
+  if (iso) return `${iso[1]}-${iso[2].padStart(2, '0')}-${iso[3].padStart(2, '0')}`;
+  const brazilian = /^(\d{1,2})[/.](\d{1,2})[/.](\d{2,4})$/.exec(text);
+  if (brazilian) {
+    const [, day, month, year] = brazilian;
+    const fullYear = year.length === 2 ? `20${year}` : year;
+    return `${fullYear}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+  }
+  return '';
+}
+
 /** Motivos visíveis que impedem a confirmação — ninguém fica preso sem saber por quê. */
 export function importBlockers(input: {
   draft: ImportDraft;
@@ -284,7 +305,7 @@ export function importNotes(
   const metadata = [
     `Perfil: ${profileName}`,
     draft.orderNumber ? `Pedido: ${draft.orderNumber}` : '',
-    draft.documentDate ? `Data no documento: ${draft.documentDate}` : '',
+    draft.documentDate ? `Data no documento: ${dateOnlyLabel(draft.documentDate)}` : '',
     draft.shipping != null ? `Frete no documento: ${draft.shipping}` : '',
     draft.discount != null ? `Desconto no documento: ${draft.discount}` : '',
     draft.tax != null ? `Impostos no documento: ${draft.tax}` : '',

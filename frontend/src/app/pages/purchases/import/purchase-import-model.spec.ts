@@ -2,11 +2,13 @@ import { describe, expect, it } from 'vitest';
 
 import {
   closingDifference,
+  documentDateValue,
   emptyImportDraft,
   emptyImportLine,
   expenseMaterialLines,
   hasItemsToCheck,
   importBlockers,
+  importNotes,
   itemsTotal,
   needsRate,
   paidDifference,
@@ -18,6 +20,26 @@ function draftWith(overrides: Partial<ReturnType<typeof emptyImportDraft>> = {})
 }
 
 describe('revisão de importação — contas puras', () => {
+  it('normaliza a data lida do documento para o campo de data', () => {
+    expect(documentDateValue('2026-09-25T00:00:00Z')).toBe('2026-09-25');
+    expect(documentDateValue('2026-9-5')).toBe('2026-09-05');
+    expect(documentDateValue('25/09/2026')).toBe('2026-09-25');
+    expect(documentDateValue('25.09.26')).toBe('2026-09-25');
+    expect(documentDateValue('sem data')).toBe('');
+    expect(documentDateValue('')).toBe('');
+  });
+
+  it('escreve a data da nota da importação no formato brasileiro', () => {
+    const notes = importNotes('Alibaba', {
+      ...emptyImportDraft(),
+      documentDate: '2026-10-12',
+      total: 319.65,
+    });
+
+    expect(notes).toContain('Data no documento: 12/10/2026');
+    expect(notes).not.toContain('2026-10-12');
+  });
+
   it('leva para a despesa o material controlado mesmo sem produto vinculado', () => {
     const semVinculo = { ...emptyImportLine(), description: 'Fita', stock_controlled: true };
     const foraDoEstoque = { ...emptyImportLine(), description: 'Fita', stock_controlled: false };

@@ -72,9 +72,9 @@
         </label>
         <label
           >Data do documento<input
+            type="date"
             [value]="importDraft().documentDate"
-            (input)="updateImportField('documentDate', $any($event.target).value)"
-            placeholder="Como aparece no recibo"
+            (change)="updateImportField('documentDate', $any($event.target).value)"
           />
           @if (review.fields.date) {
             <small>{{ fieldOrigin(review.fields.date) }}</small>

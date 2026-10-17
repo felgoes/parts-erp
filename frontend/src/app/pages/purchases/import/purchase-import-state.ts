@@ -11,6 +11,7 @@ import {
   EXPENSE_CATEGORIES,
   ImportDraft,
   closingDifference,
+  documentDateValue,
   emptyImportDraft,
   emptyImportLine,
   emptyImportProductDraft,
@@ -152,7 +153,7 @@ export class PurchaseImportState {
     this.importDraft.set({
       supplier: String(review.fields?.supplier?.value || ''),
       orderNumber: String(review.fields?.order_number?.value || ''),
-      documentDate: String(review.fields?.date?.value || ''),
+      documentDate: documentDateValue(String(review.fields?.date?.value || '')),
       total: review.fields?.total?.value == null ? null : Number(review.fields.total.value),
       shipping:
         review.fields?.shipping?.value == null ? null : Number(review.fields.shipping.value),

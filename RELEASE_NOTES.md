@@ -1,5 +1,9 @@
 # Notas de atualização — Parts ERP
 
+## 18 de outubro de 2026 — listagem de vendas mais limpa
+
+- [XML fora da listagem de vendas · d756f6c](https://github.com/felgoes/parts-erp/commit/d756f6c): a coluna Documentos deixou de mostrar o link de XML. A nota em PDF e a etiqueta de envio continuam disponíveis na listagem, e o XML segue acessível no detalhe da venda.
+
 ## 18 de outubro de 2026 — Visão geral mais direta
 
 - [Visão geral sem ações rápidas · 21ff4df](https://github.com/felgoes/parts-erp/commit/21ff4df): o bloco de atalhos laterais saiu da Visão geral, e a lista de vendas recentes agora ocupa toda a largura disponível. As mesmas ações continuam acessíveis pelo menu principal.

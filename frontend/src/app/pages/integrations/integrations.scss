@@ -211,3 +211,67 @@
     grid-template-columns: 1fr;
   }
 }
+.assistant-pricing-note {
+  align-self: end;
+  padding-bottom: 8px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.assistant-pricing-note a {
+  color: var(--forest);
+}
+
+.assistant-budget {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+}
+
+.assistant-budget-value {
+  font-size: 26px;
+  line-height: 1.1;
+}
+
+.assistant-budget-value small {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.assistant-usage-bar {
+  height: 9px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--line) 70%, transparent);
+}
+
+.assistant-usage-bar span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+  transition: width 180ms ease;
+}
+
+.assistant-budget-alert {
+  margin: 0;
+  padding: 9px 10px;
+  border-radius: 9px;
+  background: #fff3e2;
+  color: #8a5518;
+  font-size: 12px;
+}
+
+.assistant-budget-note {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+:host-context(body[data-theme='dark']) .assistant-budget-alert {
+  background: #3a2a14;
+  color: #f0c68a;
+}
+

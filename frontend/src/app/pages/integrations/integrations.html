@@ -4,6 +4,133 @@
   subtitle="Canais de venda, credenciais e regras de sincronização."
 ></app-page-header>
 <div class="integration-groups">
+  <div class="group-label">ASSISTENTE DE IA</div>
+  <section class="settings-layout">
+    <form class="settings-panel assistant-settings" (ngSubmit)="saveAssistant()">
+      <div class="section-title">
+        <div>
+          <h2>Provedor do assistente</h2>
+          <p>Configuração compartilhada entre administradores; o histórico é individual.</p>
+        </div>
+        <span class="status" [class.ok]="assistantConfig()?.has_api_key">
+          {{
+            assistantConfig()?.has_api_key
+              ? 'Configurado'
+              : assistantConfig()?.provider
+                ? 'Sem chave'
+                : 'Pendente'
+          }}
+        </span>
+      </div>
+      <div class="form-grid">
+        <label
+          >Provedor<select
+            name="assistant_provider"
+            [(ngModel)]="assistantForm.provider"
+            (ngModelChange)="changeAssistantProvider()"
+            required
+          >
+            @for (provider of assistantConfig()?.providers; track provider.id) {
+              <option [value]="provider.id">{{ provider.label }}</option>
+            }
+          </select></label
+        >
+        <label
+          >Modelo<select name="assistant_model" [(ngModel)]="assistantForm.model" required>
+            @for (model of assistantModels(); track model.id) {
+              <option [value]="model.id">{{ model.label }}</option>
+            }
+          </select></label
+        >
+        <label class="span-2"
+          >Chave de API<input
+            name="assistant_api_key"
+            type="password"
+            autocomplete="off"
+            [(ngModel)]="assistantForm.api_key"
+            [placeholder]="
+              assistantConfig()?.has_api_key
+                ? 'Mantida — informe para substituir'
+                : 'Informe a chave do provedor'
+            "
+        /></label>
+        <label
+          >Limite mensal (US$)<input
+            name="assistant_budget"
+            type="number"
+            min="0"
+            step="0.01"
+            [(ngModel)]="assistantForm.monthly_budget_usd"
+            placeholder="Ex.: 20,00"
+        /></label>
+        <div class="assistant-pricing-note">
+          Preços de referência: {{ assistantSelected()?.pricing_updated_at }} ·
+          <a [href]="assistantSelected()?.pricing_source" target="_blank" rel="noopener"
+            >fonte do provedor</a
+          >
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="primary" [disabled]="assistantSaving() || !assistantForm.model">
+          {{ assistantSaving() ? 'Salvando…' : 'Salvar assistente' }}
+        </button>
+        <button
+          type="button"
+          class="text-button"
+          [disabled]="assistantTesting()"
+          (click)="testAssistant()"
+        >
+          {{ assistantTesting() ? 'Testando…' : 'Testar conexão' }}
+        </button>
+        <button
+          type="button"
+          class="text-button"
+          [disabled]="assistantSaving() || !assistantConfig()?.has_api_key"
+          (click)="saveAssistant(true)"
+        >
+          Remover chave
+        </button>
+      </div>
+      @if (assistantMessage()) {
+        <p class="form-message">{{ assistantMessage() }}</p>
+      }
+    </form>
+    <aside class="help-panel assistant-budget">
+      <h2>Consumo estimado do mês</h2>
+      @if (assistantConfig()?.budget; as budget) {
+        <strong class="assistant-budget-value">
+          US$ {{ usd(budget.used_usd) }}
+          @if (budget.monthly_limit_usd) {
+            <small>de US$ {{ usd(budget.monthly_limit_usd) }}</small>
+          }
+        </strong>
+        <div class="assistant-usage-bar" aria-hidden="true">
+          <span [style.width.%]="budgetPercent()"></span>
+        </div>
+        <p>
+          {{ budget.percent_used || '0' }}% do limite · reinicia em
+          {{ budget.resets_at | date: 'dd/MM/yyyy' : 'America/Sao_Paulo' }}.
+        </p>
+        @if (budget.blocked) {
+          <p class="assistant-budget-alert">
+            Limite atingido: novas solicitações estão bloqueadas até o próximo mês ou até
+            aumentar o limite.
+          </p>
+        } @else if (budget.alert) {
+          <p class="assistant-budget-alert">Atenção: consumo acima de 80% do limite.</p>
+        }
+        <p class="assistant-budget-note">
+          Estimativa pelo uso informado pelo provedor; não é a fatura. Sem preço ou uso
+          confiável, o assistente bloqueia novas solicitações.
+        </p>
+      }
+      <p class="assistant-budget-note">
+        A chave fica protegida no servidor e não volta para a tela. Cada administrador vê
+        apenas as próprias conversas.
+      </p>
+    </aside>
+  </section>
+
   <div class="group-label">CANAIS DE VENDA</div>
   <section class="settings-layout">
     <form class="settings-panel" (ngSubmit)="saveMercadoLivre()">

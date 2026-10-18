@@ -1,0 +1,60 @@
+@use './assistant-chat-panel';
+
+:host {
+  position: relative;
+  z-index: 40;
+}
+
+.assistant-fab {
+  position: fixed;
+  right: 22px;
+  bottom: 86px;
+  z-index: 40;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 46px;
+  padding: 0 16px 0 11px;
+  border: 1px solid color-mix(in srgb, var(--accent) 60%, var(--line));
+  border-radius: 999px;
+  background: var(--forest);
+  color: #f4f7f1;
+  box-shadow: 0 10px 28px #14251d33;
+  cursor: pointer;
+  transition:
+    transform 140ms ease,
+    box-shadow 140ms ease;
+}
+
+.assistant-fab:hover,
+.assistant-fab:focus-visible {
+  transform: translateY(-1px);
+  box-shadow: 0 14px 32px #14251d44;
+}
+
+.assistant-fab.is-open {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.assistant-fab-mark {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--forest);
+  font-size: 15px;
+}
+
+.assistant-fab-label {
+  font: 600 13px/1 'Segoe UI', Arial, sans-serif;
+}
+
+@media (max-width: 640px) {
+  .assistant-fab {
+    right: 14px;
+    bottom: 84px;
+  }
+}

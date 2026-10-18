@@ -1,5 +1,7 @@
+import { DatePipe } from '@angular/common';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { AssistantApi } from '../../core/api/assistant-api';
 import { ApiService } from '../../core/api.service';
 import {
   MarketplaceConfig,
@@ -7,6 +9,7 @@ import {
   ShopeeConfig,
   ShopeeStatus,
 } from '../../core/models';
+import { AssistantConfiguration } from '../../core/models/assistant';
 import { PageHeader } from '../../shared/page-header';
 
 type Rules = { import_orders: boolean; automatic_stock: boolean; sync_documents: boolean };
@@ -26,12 +29,13 @@ type ShopeeForm = Rules & {
 
 @Component({
   selector: 'app-integrations',
-  imports: [FormsModule, PageHeader],
+  imports: [DatePipe, FormsModule, PageHeader],
   templateUrl: './integrations.html',
   styleUrl: './integrations.scss',
 })
 export class IntegrationsPage implements OnInit {
   private readonly api = inject(ApiService);
+  private readonly assistantApi = inject(AssistantApi);
   readonly mlStatus = signal<MarketplaceStatus | null>(null);
   readonly mlConfig = signal<MarketplaceConfig | null>(null);
   readonly mlSaving = signal(false);
@@ -43,6 +47,29 @@ export class IntegrationsPage implements OnInit {
   readonly shopeeSaving = signal(false);
   readonly shopeeConnecting = signal(false);
   readonly shopeeMessage = signal('');
+  readonly assistantConfig = signal<AssistantConfiguration | null>(null);
+  readonly assistantSaving = signal(false);
+  readonly assistantTesting = signal(false);
+  readonly assistantMessage = signal('');
+  assistantModels() {
+    const config = this.assistantConfig();
+    return config?.providers.find((item) => item.id === this.assistantForm.provider)?.models ?? [];
+  }
+  assistantSelected() {
+    return this.assistantConfig()?.providers.find(
+      (item) => item.id === this.assistantForm.provider,
+    );
+  }
+  budgetPercent(): number {
+    const value = this.assistantConfig()?.budget.percent_used;
+    return value ? Math.min(100, Number(value)) : 0;
+  }
+  usd(value: string | null | undefined): string {
+    return Number(value || 0).toLocaleString('pt-BR', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+  }
 
   mlForm: MlForm = {
     client_id: '',
@@ -62,6 +89,12 @@ export class IntegrationsPage implements OnInit {
     import_orders: true,
     automatic_stock: true,
     sync_documents: true,
+  };
+  assistantForm = {
+    provider: '',
+    model: '',
+    api_key: '',
+    monthly_budget_usd: null as number | null,
   };
 
   ngOnInit() {
@@ -88,6 +121,101 @@ export class IntegrationsPage implements OnInit {
       this.shopeeConfig.set(v);
       this.shopeeForm = { ...this.shopeeForm, ...v, partner_key: '', shop_id: v.shop_id || '' };
     });
+    this.loadAssistant();
+  }
+
+  loadAssistant() {
+    this.assistantApi.configuration().subscribe({
+      next: (config) => {
+        this.assistantConfig.set(config);
+        const provider = config.provider || config.providers[0]?.id || '';
+        const models = config.providers.find((item) => item.id === provider)?.models ?? [];
+        this.assistantForm = {
+          provider,
+          model: config.model || models[0]?.id || '',
+          api_key: '',
+          monthly_budget_usd: config.budget.monthly_limit_usd
+            ? Number(config.budget.monthly_limit_usd)
+            : null,
+        };
+      },
+      error: (err) => {
+        this.assistantMessage.set(
+          err?.error?.detail || 'Não foi possível carregar a configuração do assistente.',
+        );
+      },
+    });
+  }
+
+  changeAssistantProvider() {
+    this.assistantForm = {
+      ...this.assistantForm,
+      model: this.assistantModels()[0]?.id || '',
+    };
+  }
+
+  saveAssistant(removeKey = false) {
+    const config = this.assistantConfig();
+    const sameProvider = config?.provider === this.assistantForm.provider;
+    const keyAction = removeKey
+      ? 'remove'
+      : this.assistantForm.api_key.trim()
+        ? 'replace'
+        : sameProvider
+          ? 'keep'
+          : 'remove';
+    this.assistantSaving.set(true);
+    this.assistantMessage.set('');
+    this.assistantApi
+      .saveConfiguration({
+        provider: this.assistantForm.provider,
+        model: this.assistantForm.model,
+        key_action: keyAction,
+        api_key:
+          keyAction === 'replace' ? this.assistantForm.api_key.trim() : undefined,
+        monthly_budget_usd: this.assistantForm.monthly_budget_usd,
+      })
+      .subscribe({
+        next: (value) => {
+          this.assistantConfig.set(value);
+          this.assistantForm = { ...this.assistantForm, api_key: '' };
+          this.assistantSaving.set(false);
+          this.assistantMessage.set(
+            removeKey
+              ? 'Chave removida. O assistente fica sem credencial até você salvar outra.'
+              : 'Configuração do assistente salva.',
+          );
+        },
+        error: (err) => {
+          this.assistantSaving.set(false);
+          this.assistantMessage.set(
+            err?.error?.detail || 'Não foi possível salvar a configuração do assistente.',
+          );
+        },
+      });
+  }
+
+  testAssistant() {
+    this.assistantTesting.set(true);
+    this.assistantMessage.set('');
+    this.assistantApi
+      .testConnection({
+        provider: this.assistantForm.provider,
+        model: this.assistantForm.model,
+        api_key: this.assistantForm.api_key.trim() || undefined,
+      })
+      .subscribe({
+        next: () => {
+          this.assistantTesting.set(false);
+          this.assistantMessage.set('Conexão com o provedor respondeu corretamente.');
+        },
+        error: (err) => {
+          this.assistantTesting.set(false);
+          this.assistantMessage.set(
+            err?.error?.detail || 'O provedor não respondeu ao teste.',
+          );
+        },
+      });
   }
 
   saveMercadoLivre() {

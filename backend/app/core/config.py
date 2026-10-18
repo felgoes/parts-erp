@@ -19,6 +19,9 @@ class Settings(BaseSettings):
     access_token_minutes: int = 30
     biometric_credential_days: int = Field(default=180, ge=1, le=365)
     telemetry_rate_limit_per_minute: int = Field(default=120, ge=1, le=10_000)
+    # Somente desenvolvimento/HML: permite apontar os adaptadores para um provedor simulado.
+    # Ignorado em produção para que uma variável de ambiente não desvie a chave real.
+    assistant_base_url_override: str = ""
 
     database_url: str = "postgresql+psycopg://parts_erp:parts_erp@localhost:5432/parts_erp"
     redis_url: str = "redis://localhost:6379/0"

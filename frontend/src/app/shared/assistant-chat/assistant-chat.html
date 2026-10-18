@@ -1,0 +1,184 @@
+@if (isAdmin()) {
+  <button
+    class="assistant-fab"
+    type="button"
+    [class.is-open]="open()"
+    [attr.aria-expanded]="open()"
+    aria-controls="assistant-panel"
+    aria-label="Abrir assistente de IA"
+    (click)="toggle()"
+  >
+    <span class="assistant-fab-mark" aria-hidden="true">✦</span>
+    <span class="assistant-fab-label">Assistente</span>
+  </button>
+
+  @if (open()) {
+    <section
+      id="assistant-panel"
+      class="assistant-panel"
+      role="dialog"
+      aria-label="Assistente de IA"
+      (keydown.escape)="close()"
+    >
+      <header class="assistant-head">
+        <div class="assistant-title">
+          <span class="assistant-avatar" aria-hidden="true">✦</span>
+          <div>
+            <strong>Assistente do ERP</strong>
+            <small>
+              {{ conversation()?.title || 'Nova conversa' }}
+              @if (budgetLabel()) {
+                · {{ budgetLabel() }}
+              }
+            </small>
+          </div>
+        </div>
+        <div class="assistant-head-actions">
+          <button
+            type="button"
+            class="assistant-icon"
+            [attr.aria-expanded]="showHistory()"
+            aria-label="Ver histórico de conversas"
+            (click)="showHistory.set(!showHistory())"
+          >
+            ☰
+          </button>
+          <button
+            type="button"
+            class="assistant-icon"
+            aria-label="Nova conversa"
+            (click)="newConversation()"
+          >
+            ＋
+          </button>
+          <button type="button" class="assistant-icon" aria-label="Fechar assistente" (click)="close()">
+            ×
+          </button>
+        </div>
+      </header>
+
+      @if (budget()?.alert) {
+        <p class="assistant-warning" role="status">
+          O consumo estimado chegou a {{ budget()?.percent_used }}% do limite mensal.
+        </p>
+      }
+
+      @if (showHistory()) {
+        <div class="assistant-history" aria-label="Histórico de conversas">
+          @if (loading()) {
+            <p class="assistant-muted">Carregando…</p>
+          } @else if (!conversations().length) {
+            <p class="assistant-muted">Nenhuma conversa salva ainda.</p>
+          }
+          @for (item of conversations(); track item.id) {
+            <div
+              class="assistant-history-row"
+              [class.active]="conversation()?.id === item.id"
+            >
+              <button type="button" (click)="openConversation(item.id)">
+                <strong>{{ item.title }}</strong>
+                <small>{{ item.updated_at | date: 'dd/MM/yyyy HH:mm' : 'America/Sao_Paulo' }}</small>
+              </button>
+              <button
+                type="button"
+                class="assistant-delete"
+                aria-label="Excluir conversa"
+                (click)="deleteConversation(item.id, $event)"
+              >
+                ×
+              </button>
+            </div>
+          }
+        </div>
+      }
+
+      <div class="assistant-messages">
+        @if (!conversation() || !conversation()?.messages?.length) {
+          <div class="assistant-empty">
+            <span aria-hidden="true">✦</span>
+            <strong>Como posso ajudar?</strong>
+            <p>Consulto produtos, compras, vendas e a situação fiscal registrada no ERP.</p>
+            <div class="assistant-suggestions">
+              <button type="button" (click)="draft.set('Quanto há do produto filtro de óleo?')">
+                Consultar estoque
+              </button>
+              <button type="button" (click)="draft.set('A venda VEN-1 não emitiu nota; o que houve?')">
+                Investigar nota fiscal
+              </button>
+              <button type="button" (click)="draft.set('Quero ajustar o estoque de um produto.')">
+                Ajustar estoque
+              </button>
+            </div>
+          </div>
+        }
+        @for (message of conversation()?.messages; track message.id) {
+          <article class="assistant-bubble" [class.user]="message.role === 'user'">
+            <p>{{ message.content }}</p>
+            <small>{{ message.created_at | date: 'dd/MM HH:mm' : 'America/Sao_Paulo' }}</small>
+          </article>
+        }
+        @for (action of pending(); track action.id) {
+          <article class="assistant-action" [class.expired]="action.expired">
+            <strong>
+              {{ action.status === 'stale' ? 'Confirmação vencida' : 'Aguardando sua confirmação' }}
+            </strong>
+            <p>{{ action.summary }}</p>
+            <p class="assistant-muted">
+              Nada foi gravado ainda. Confira os dados antes de confirmar.
+            </p>
+            <div class="assistant-action-buttons">
+              <button
+                type="button"
+                class="primary"
+                [disabled]="sending() || action.expired || action.status === 'stale'"
+                (click)="confirm(action)"
+              >
+                {{ sending() ? 'Executando…' : 'Confirmar' }}
+              </button>
+              <button
+                type="button"
+                class="text-button"
+                [disabled]="sending()"
+                (click)="cancel(action)"
+              >
+                Cancelar
+              </button>
+            </div>
+          </article>
+        }
+        @if (sending()) {
+          <p class="assistant-typing" role="status">O assistente está analisando…</p>
+        }
+        <div #messagesEnd></div>
+      </div>
+
+      @if (error()) {
+        <p class="assistant-error" role="alert">{{ error() }}</p>
+      }
+
+      <div class="assistant-composer">
+        <textarea
+          #composer
+          name="assistant-message"
+          rows="2"
+          maxlength="4000"
+          placeholder="Pergunte sobre produtos, vendas, compras ou estoque…"
+          aria-label="Mensagem para o assistente"
+          [(ngModel)]="draft"
+          (keydown)="onKeydown($event)"
+        ></textarea>
+        <button
+          type="button"
+          class="assistant-send"
+          [disabled]="!draft().trim() || sending()"
+          (click)="send()"
+        >
+          {{ sending() ? '…' : 'Enviar' }}
+        </button>
+      </div>
+      <p class="assistant-footnote">
+        Estimativa de uso em dólar; não é a fatura do provedor. Confira ações antes de confirmar.
+      </p>
+    </section>
+  }
+}

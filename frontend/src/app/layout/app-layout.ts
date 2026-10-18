@@ -18,10 +18,18 @@ import {
   shouldRefresh,
 } from '../core/app-refresh';
 import { BackupAlert, backupAlert as buildBackupAlert } from '../shared/backup-health';
+import { AssistantChat } from '../shared/assistant-chat/assistant-chat';
 
 @Component({
   selector: 'app-layout',
-  imports: [DatePipe, RouterOutlet, RouterLink, RouterLinkActive, ReactiveFormsModule],
+  imports: [
+    DatePipe,
+    RouterOutlet,
+    RouterLink,
+    RouterLinkActive,
+    ReactiveFormsModule,
+    AssistantChat,
+  ],
   templateUrl: './app-layout.html',
   styleUrl: './app-layout.scss',
 })

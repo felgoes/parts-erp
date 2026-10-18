@@ -44,17 +44,17 @@ def test_shared_configuration_protects_key_and_restricts_access(db):
                 path,
                 json={
                     "provider": "openai",
-                    "model": "example-model",
+                    "model": "gpt-4.1-mini",
                     "key_action": "replace",
                     "api_key": dummy_key,
+                    "monthly_budget_usd": "25.00",
                 },
             )
             assert saved.status_code == 200
-            assert saved.json() == {
-                "provider": "openai",
-                "model": "example-model",
-                "has_api_key": True,
-            }
+            assert saved.json()["provider"] == "openai"
+            assert saved.json()["model"] == "gpt-4.1-mini"
+            assert saved.json()["has_api_key"] is True
+            assert saved.json()["budget"]["monthly_limit_usd"] == "25.00"
             assert dummy_key not in saved.text
             assert saved.headers["cache-control"] == "no-store"
             config = db.scalar(select(AssistantConfiguration))
@@ -63,22 +63,27 @@ def test_shared_configuration_protects_key_and_restricts_access(db):
 
             current[0] = second
             shared = client.get(path)
-            assert shared.json() == saved.json()
+            assert shared.json()["provider"] == "openai"
+            assert shared.json()["model"] == "gpt-4.1-mini"
+            assert shared.json()["has_api_key"] is True
             assert shared.headers["cache-control"] == "no-store"
             assert dummy_key not in shared.text
             denied_change = client.put(
-                path, json={"provider": "gemini", "model": "example-model", "key_action": "keep"}
+                path,
+                json={"provider": "gemini", "model": "gemini-2.5-flash", "key_action": "keep"},
             )
             assert denied_change.status_code == 409
             assert client.get(path).json()["provider"] == "openai"
             switched = client.put(
-                path, json={"provider": "gemini", "model": "example-model", "key_action": "remove"}
+                path,
+                json={
+                    "provider": "gemini",
+                    "model": "gemini-2.5-flash",
+                    "key_action": "remove",
+                },
             )
-            assert switched.json() == {
-                "provider": "gemini",
-                "model": "example-model",
-                "has_api_key": False,
-            }
+            assert switched.json()["provider"] == "gemini"
+            assert switched.json()["has_api_key"] is False
             db.refresh(config)
             assert config.encrypted_api_key is None
 
@@ -89,7 +94,7 @@ def test_shared_configuration_protects_key_and_restricts_access(db):
                     path,
                     json={
                         "provider": "deepseek",
-                        "model": "x",
+                        "model": "deepseek-chat",
                         "key_action": "replace",
                         "api_key": dummy_key,
                     },
@@ -168,8 +173,16 @@ def test_concurrent_updates_are_not_silently_overwritten(db):
     assert db.get(AssistantConfiguration, "shared").model == "first"
 
 
-@pytest.mark.parametrize("provider", ["openai", "deepseek", "gemini", "anthropic"])
-def test_supported_provider_names_are_configurable(db, provider):
+@pytest.mark.parametrize(
+    ("provider", "model"),
+    [
+        ("openai", "gpt-4.1-mini"),
+        ("deepseek", "deepseek-chat"),
+        ("gemini", "gemini-2.5-flash"),
+        ("anthropic", "claude-sonnet-4-5"),
+    ],
+)
+def test_supported_provider_names_are_configurable(db, provider, model):
     admin = User(
         email="providers@example.test", full_name="Admin", password_hash="x", role=UserRole.admin
     )
@@ -181,7 +194,7 @@ def test_supported_provider_names_are_configurable(db, provider):
         with TestClient(app) as client:
             response = client.put(
                 "/api/v1/assistant/configuration",
-                json={"provider": provider, "model": "sample-model", "key_action": "remove"},
+                json={"provider": provider, "model": model, "key_action": "remove"},
             )
             assert response.status_code == 200
             assert response.json()["provider"] == provider

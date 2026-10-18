@@ -2,6 +2,7 @@ from fastapi import APIRouter
 
 from app.api.routes import (
     after_sales,
+    assistant_chat,
     assistant_configuration,
     assistant_history,
     auth,
@@ -27,6 +28,7 @@ from app.api.routes import (
 
 api_router = APIRouter()
 api_router.include_router(after_sales.router)
+api_router.include_router(assistant_chat.router)
 api_router.include_router(assistant_configuration.router)
 api_router.include_router(assistant_history.router)
 api_router.include_router(auth.router)

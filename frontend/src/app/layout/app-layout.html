@@ -1,70 +1,33 @@
 <div class="app-shell" [class.menu-open]="menuOpen()">
   <aside class="sidebar">
-    <div class="brand">
-      @if (brand.logo()) {
-        <img class="brand-logo" [src]="brand.logo()" alt="" />
-      } @else {
-        <span class="brand-mark" aria-hidden="true"
-          ><svg viewBox="0 0 48 48" focusable="false">
-            <path d="M12 36V12h13c7 0 11 3 11 9s-4 9-11 9H18" />
-            <path d="M25 30l9-9" /></svg
-        ></span>
-      }
-      <div>
-        <strong>{{ brand.shortName() }}</strong
-        ><small>{{ brand.suffix() }}</small>
+    <div class="sidebar-head">
+      <div class="brand">
+        @if (brand.logo()) {
+          <img class="brand-logo" [src]="brand.logo()" alt="" />
+        } @else {
+          <span class="brand-mark" aria-hidden="true"
+            ><svg viewBox="0 0 48 48" focusable="false">
+              <path d="M12 36V12h13c7 0 11 3 11 9s-4 9-11 9H18" />
+              <path d="M25 30l9-9" /></svg
+          ></span>
+        }
+        <div>
+          <strong>{{ brand.shortName() }}</strong
+          ><small>{{ brand.suffix() }}</small>
+        </div>
       </div>
-    </div>
-    <nav aria-label="Menu principal">
-      <a
-        class="overview-link"
-        routerLink="/dashboard"
-        routerLinkActive="active"
+      <button
+        class="sidebar-close"
+        type="button"
+        aria-label="Fechar menu"
         (click)="menuOpen.set(false)"
       >
-        <span class="nav-icon">◫</span><span>Visão geral</span>
-      </a>
-      @for (section of navigationSections; track section.label) {
-        @if (section.items.length) {
-          <div class="nav-section">
-            <p class="nav-section-label">{{ section.label }}</p>
-            @for (item of section.items; track item.path) {
-              <a [routerLink]="item.path" routerLinkActive="active" (click)="menuOpen.set(false)">
-                <span class="nav-icon">{{ item.icon }}</span
-                ><span>{{ item.label }}</span>
-              </a>
-            }
-          </div>
-        }
-      }
-      @if (auth.user()?.role === 'admin') {
-        <div class="nav-section configuration-section">
-          <button
-            class="configuration-toggle"
-            type="button"
-            [class.active]="isConfigurationRoute()"
-            [attr.aria-expanded]="settingsOpen()"
-            (click)="settingsOpen.set(!settingsOpen())"
-          >
-            <span class="nav-icon">⚙</span><span>Configurações</span
-            ><span class="nav-chevron" aria-hidden="true">⌄</span>
-          </button>
-          @if (settingsOpen()) {
-            <div class="nav-children">
-              <a routerLink="/settings" routerLinkActive="active" (click)="menuOpen.set(false)"
-                >Geral</a
-              >
-              <a routerLink="/integrations" routerLinkActive="active" (click)="menuOpen.set(false)"
-                >Integrações</a
-              >
-              <a routerLink="/users" routerLinkActive="active" (click)="menuOpen.set(false)"
-                >Usuários</a
-              >
-            </div>
-          }
-        </div>
-      }
-    </nav>
+        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          <path d="M6 6l12 12M18 6 6 18" />
+        </svg>
+      </button>
+    </div>
+    <app-navigation-menu (closeRequested)="menuOpen.set(false)" />
     <div class="sidebar-foot">
       <button
         class="profile-trigger"
@@ -240,7 +203,11 @@
   >
     @if (showPullBand()) {
       <div class="pull-band" [class.is-ready]="pullReady()" [style.height.px]="pullBand()">
-        <span class="pull-spinner" [class.is-spinning]="live.refreshing()" aria-hidden="true"></span>
+        <span
+          class="pull-spinner"
+          [class.is-spinning]="live.refreshing()"
+          aria-hidden="true"
+        ></span>
         <small>{{
           live.refreshing()
             ? 'Atualizando…'

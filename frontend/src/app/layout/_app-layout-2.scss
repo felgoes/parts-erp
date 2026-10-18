@@ -53,11 +53,16 @@
   .sidebar {
     height: 100vh;
     height: 100dvh;
+    z-index: 50;
     transform: translateX(-105%);
     transition: transform 0.2s ease;
   }
+  .sidebar-close {
+    display: grid;
+  }
   .menu-open .sidebar {
     transform: none;
+    box-shadow: 18px 0 48px #07110b55;
   }
   .mobile-bar {
     position: relative;
@@ -69,6 +74,17 @@
     background: linear-gradient(135deg, #17271f, #244335);
     box-shadow: 0 5px 18px #17271f20;
     color: #fff;
+  }
+  .mobile-bar .icon-button {
+    width: 44px;
+    height: 44px;
+    flex: 0 0 44px;
+    font-size: 22px;
+  }
+  .sidebar-foot .icon-button {
+    width: 44px;
+    height: 44px;
+    flex: 0 0 44px;
   }
   .notification-area {
     top: 10px;
@@ -151,7 +167,7 @@
     padding-inline: 14px;
   }
   .sidebar {
-    width: min(290px, 86vw);
+    width: min(336px, 92vw);
     padding-top: max(22px, env(safe-area-inset-top));
   }
 }

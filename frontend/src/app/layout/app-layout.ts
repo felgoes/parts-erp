@@ -1,35 +1,24 @@
 import { DatePipe } from '@angular/common';
 import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { NavigationEnd, Router, RouterLink, RouterOutlet } from '@angular/router';
 import { filter } from 'rxjs';
 import { AppearanceService } from '../core/appearance.service';
 import { ErpBrandService } from '../core/erp-brand.service';
 import { AuthService } from '../core/auth.service';
 import { ApiService } from '../core/api.service';
-import { canAccessPage, ROLE_LABELS } from '../core/user-access';
+import { ROLE_LABELS } from '../core/user-access';
 import { PushNotification } from '../core/models';
 import { PushNotificationsService } from '../core/push-notifications.service';
 import { LiveUpdatesService } from '../core/live-updates.service';
-import {
-  PULL_TRIGGER_PX,
-  pullBandHeight,
-  pullOffset,
-  shouldRefresh,
-} from '../core/app-refresh';
+import { PULL_TRIGGER_PX, pullBandHeight, pullOffset, shouldRefresh } from '../core/app-refresh';
 import { BackupAlert, backupAlert as buildBackupAlert } from '../shared/backup-health';
 import { AssistantChat } from '../shared/assistant-chat/assistant-chat';
+import { NavigationMenu } from './navigation-menu/navigation-menu';
 
 @Component({
   selector: 'app-layout',
-  imports: [
-    DatePipe,
-    RouterOutlet,
-    RouterLink,
-    RouterLinkActive,
-    ReactiveFormsModule,
-    AssistantChat,
-  ],
+  imports: [DatePipe, RouterOutlet, RouterLink, ReactiveFormsModule, AssistantChat, NavigationMenu],
   templateUrl: './app-layout.html',
   styleUrl: './app-layout.scss',
 })
@@ -40,7 +29,6 @@ export class AppLayout implements OnInit, OnDestroy {
   readonly live = inject(LiveUpdatesService);
   private readonly router = inject(Router);
   readonly menuOpen = signal(false);
-  readonly settingsOpen = signal(false);
   readonly profileOpen = signal(false);
   readonly avatarUrl = signal<string | null>(null);
   readonly previewUrl = signal<string | null>(null);
@@ -76,12 +64,9 @@ export class AppLayout implements OnInit, OnDestroy {
     // O aviso de backup não depende de push: a faixa acompanha o estado do servidor.
     this.backupTimer = setInterval(() => this.loadBackupAlert(), 15 * 60 * 1000);
     void this.pushNotifications.enableForCurrentDevice();
-    this.settingsOpen.set(this.isConfigurationRoute());
     this.router.events
       .pipe(filter((event): event is NavigationEnd => event instanceof NavigationEnd))
-      .subscribe((event) => {
-        const route = event.urlAfterRedirects.split('?')[0].replace(/^\//, '');
-        this.settingsOpen.set(['settings', 'integrations', 'users'].includes(route));
+      .subscribe(() => {
         this.notificationsOpen.set(false);
       });
   }
@@ -164,34 +149,6 @@ export class AppLayout implements OnInit, OnDestroy {
     const latest = this.notificationHistory()[0]?.created_at;
     if (userId && latest) localStorage.setItem(`parts-erp.notifications.seen.${userId}`, latest);
     this.notificationCount.set(0);
-  }
-  get navigationSections() {
-    const role = this.auth.user()?.role;
-    const sections = [
-      {
-        label: 'Operação',
-        items: [
-          { path: '/marketplace', label: 'Pedidos do ML', icon: 'M' },
-          { path: '/invoices', label: 'Faturas de venda', icon: '▤' },
-          { path: '/products', label: 'Produtos e estoque', icon: '◇' },
-          { path: '/purchases', label: 'Compras', icon: '↙' },
-          { path: '/customers', label: 'Clientes', icon: '○' },
-        ],
-      },
-      {
-        label: 'Análise',
-        items: [
-          { path: '/monitoring', label: 'Monitoramento', icon: '◉' },
-          { path: '/finance', label: 'Financeiro', icon: '$' },
-          { path: '/payables', label: 'Contas a pagar', icon: '↧' },
-          { path: '/market-studies', label: 'Estudos de mercado', icon: '⌕' },
-        ],
-      },
-    ];
-    return sections.map((section) => ({
-      ...section,
-      items: section.items.filter((item) => canAccessPage(role, item.path)),
-    }));
   }
   openProfile(): void {
     const user = this.auth.user();
@@ -278,10 +235,6 @@ export class AppLayout implements OnInit, OnDestroy {
     const preview = this.previewUrl();
     if (preview) URL.revokeObjectURL(preview);
     this.previewUrl.set(null);
-  }
-  isConfigurationRoute(): boolean {
-    const route = this.router.url.split('?')[0].replace(/^\//, '');
-    return ['settings', 'integrations', 'users'].includes(route);
   }
   get initials(): string {
     return (this.auth.user()?.full_name ?? 'U')

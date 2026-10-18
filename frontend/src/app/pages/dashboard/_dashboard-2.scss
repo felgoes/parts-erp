@@ -64,7 +64,7 @@
   color: #ae5144 !important;
 }
 .primary-kpi .positive-text {
-  color: #b9dc52 !important;
+  color: var(--accent) !important;
 }
 .cost-pending {
   margin: -8px 0 20px;
@@ -135,7 +135,7 @@
   width: 100%;
   min-height: 3px;
   border-radius: 7px 7px 2px 2px;
-  background: linear-gradient(180deg, #b9dc52, #567b2e);
+  background: linear-gradient(180deg, var(--accent), #4f7a2c);
 }
 .chart-column small {
   color: var(--muted);

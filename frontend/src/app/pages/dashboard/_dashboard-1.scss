@@ -235,7 +235,7 @@
 .document-card:hover {
   border-color: #a8bf8c;
   transform: translateY(-1px);
-  box-shadow: 0 8px 20px #203c2e12;
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--brand-primary) 7%, transparent);
 }
 .document-card > span:not(.document-icon) {
   display: grid;

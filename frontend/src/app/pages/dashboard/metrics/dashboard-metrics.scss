@@ -39,7 +39,11 @@
   inset: auto -35% -48% 30%;
   height: 78%;
   border-radius: 50%;
-  background: radial-gradient(circle, #b9dc5217, transparent 66%);
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--accent) 9%, transparent),
+    transparent 66%
+  );
   pointer-events: none;
   content: '';
 }
@@ -152,7 +156,7 @@
   height: 6px;
   border-radius: 50%;
   background: var(--accent);
-  box-shadow: 0 0 0 4px #b9dc5214;
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 8%, transparent);
 }
 
 .revenue-detail {

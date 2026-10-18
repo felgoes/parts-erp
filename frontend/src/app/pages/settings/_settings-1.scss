@@ -70,17 +70,6 @@
   object-fit: contain;
   padding: 10px;
 }
-.logo-preview > span {
-  display: grid;
-  width: 58px;
-  height: 58px;
-  place-items: center;
-  border-radius: 18px;
-  color: #1a2a20;
-  background: #b9dc52;
-  font-size: 1.7rem;
-  font-weight: 850;
-}
 .identity-fields {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

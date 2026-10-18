@@ -32,7 +32,7 @@
           @if (draft.logo_data_url) {
             <img [src]="draft.logo_data_url" alt="Prévia do logotipo da empresa" />
           } @else {
-            <span>{{ draft.company_short_name.slice(0, 1).toUpperCase() || 'P' }}</span>
+            <img src="/brand/parts-mark-ink.svg" alt="" />
           }
         </div>
         <div class="identity-fields">

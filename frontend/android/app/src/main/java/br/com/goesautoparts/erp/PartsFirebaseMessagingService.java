@@ -69,7 +69,7 @@ public class PartsFirebaseMessagingService extends FirebaseMessagingService {
         String channel = message.getData().get("notification_channel");
         if (channel == null || channel.isEmpty()) channel = LEGACY_CHANNEL_ID;
         NotificationCompat.Builder builder = new NotificationCompat.Builder(this, channel)
-            .setSmallIcon(R.mipmap.ic_launcher)
+            .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(remote.getTitle())
             .setContentText(remote.getBody())
             .setAutoCancel(true)

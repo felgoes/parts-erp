@@ -24,8 +24,8 @@ const documentOpener = registerPlugin<DocumentOpenerPlugin>('DocumentOpener');
       :host {
         display: block;
         min-height: 100vh;
-        background: #f4f3ee;
-        color: #223129;
+        background: var(--brand-canvas);
+        color: var(--text);
       }
       .document-viewer {
         min-height: 100vh;
@@ -38,7 +38,7 @@ const documentOpener = registerPlugin<DocumentOpenerPlugin>('DocumentOpener');
         justify-content: space-between;
         gap: 18px;
         padding: 16px 24px;
-        background: #17271f;
+        background: var(--brand-primary);
         color: #fff;
       }
       header a {
@@ -48,16 +48,30 @@ const documentOpener = registerPlugin<DocumentOpenerPlugin>('DocumentOpener');
         color: #fff;
         text-decoration: none;
       }
-      header a span {
+      .brand-mark {
         display: grid;
         place-items: center;
-        width: 32px;
-        height: 32px;
-        border-radius: 10px 10px 10px 3px;
-        background: #b9dc52;
-        color: #17271f;
-        font-weight: 900;
-        transform: rotate(-3deg);
+        width: 44px;
+        height: 38px;
+        flex: 0 0 44px;
+        color: var(--brand-accent);
+      }
+      .brand-mark svg {
+        width: 42px;
+        height: 42px;
+      }
+      .brand-mark path {
+        fill: currentColor;
+      }
+      header strong {
+        font-size: 18px;
+        letter-spacing: -0.035em;
+      }
+      .brand-suffix {
+        color: #e2ede6;
+        font-size: 18px;
+        font-weight: 450;
+        letter-spacing: -0.03em;
       }
       header small {
         color: #b9c9c0;
@@ -75,8 +89,9 @@ const documentOpener = registerPlugin<DocumentOpenerPlugin>('DocumentOpener');
         padding: 20px;
         overflow: auto;
         white-space: pre-wrap;
-        background: #fff;
-        border: 1px solid #dedfd8;
+        border: 1px solid var(--line);
+        background: var(--surface);
+        color: var(--text);
         font:
           12px/1.55 ui-monospace,
           monospace;
@@ -84,10 +99,10 @@ const documentOpener = registerPlugin<DocumentOpenerPlugin>('DocumentOpener');
       .viewer-state {
         margin: auto;
         padding: 30px;
-        color: #748078;
+        color: var(--muted);
       }
       .viewer-state.error {
-        color: #a33b2c;
+        color: var(--danger);
       }
       .native-ready {
         display: grid;
@@ -95,19 +110,19 @@ const documentOpener = registerPlugin<DocumentOpenerPlugin>('DocumentOpener');
         text-align: center;
       }
       .native-ready strong {
-        color: #223129;
+        color: var(--text);
         font-size: 18px;
       }
       .native-ready button {
         border: 0;
         border-radius: 10px;
         padding: 12px 18px;
-        background: #193d2e;
+        background: var(--brand-primary);
         color: #fff;
         font-weight: 700;
       }
       .native-ready .error-text {
-        color: #a33b2c;
+        color: var(--danger);
       }
       @media (max-width: 600px) {
         header {

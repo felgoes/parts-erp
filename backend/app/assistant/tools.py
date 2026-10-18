@@ -14,17 +14,17 @@ PRODUCT_SCHEMA = {
     "type": "object",
     "properties": {
         "termo": {"type": "string", "description": "Nome, SKU ou código de barras."},
-        "limite": {"type": "integer", "minimum": 1, "maximum": 20},
+        "limite": {"type": "integer", "minimum": 1, "maximum": 100},
     },
-    "required": ["termo"],
 }
 
 TOOLS: list[dict[str, Any]] = [
     {
         "name": "buscar_produtos",
         "description": (
-            "Consulta produtos e saldos no ERP. Use sempre que precisar identificar um produto; "
-            "se houver mais de um resultado, pergunte qual antes de propor qualquer ação."
+            "Consulta produtos e saldos no ERP. Sem termo, lista os produtos ativos — use isso "
+            "para perguntas como 'quanto há de cada produto?'. Com termo, filtra por nome, SKU "
+            "ou código de barras; se houver mais de um resultado, pergunte qual antes de agir."
         ),
         "parameters": PRODUCT_SCHEMA,
     },
@@ -39,6 +39,23 @@ TOOLS: list[dict[str, Any]] = [
                 "identificador": {"type": "string", "description": "Número ou id da venda."}
             },
             "required": ["identificador"],
+        },
+    },
+    {
+        "name": "listar_vendas",
+        "description": (
+            "Lista vendas e pedidos recentes com status do pedido, envio, etiqueta e fiscal. "
+            "Use para perguntas abertas como 'tem alguma venda para enviar?' ou 'quais vendas "
+            "estão pendentes?'. Use pendentes_envio=true para pedidos prontos para envio."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "status_pedido": {"type": "string"},
+                "status_envio": {"type": "string"},
+                "pendentes_envio": {"type": "boolean"},
+                "limite": {"type": "integer", "minimum": 1, "maximum": 50},
+            },
         },
     },
     {
@@ -150,10 +167,17 @@ TOOLS: list[dict[str, Any]] = [
 
 READ_TOOLS = {
     "buscar_produtos": lambda db, args, user: tool_reads.buscar_produtos(
-        db, str(args.get("termo") or ""), int(args.get("limite") or 8)
+        db, str(args.get("termo") or ""), int(args.get("limite") or 50)
     ),
     "consultar_vendas": lambda db, args, user: tool_reads.consultar_vendas(
         db, str(args.get("identificador") or "")
+    ),
+    "listar_vendas": lambda db, args, user: tool_reads.listar_vendas(
+        db,
+        args.get("status_pedido") or None,
+        args.get("status_envio") or None,
+        bool(args.get("pendentes_envio")),
+        int(args.get("limite") or 10),
     ),
     "investigar_fiscal": lambda db, args, user: tool_reads.investigar_fiscal(
         db, str(args.get("identificador") or "")

@@ -3,7 +3,7 @@
 from datetime import UTC, datetime
 from decimal import Decimal
 
-from sqlalchemy import or_, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.assistant.redaction import redact
@@ -43,30 +43,53 @@ def product_view(product: Product) -> dict:
     }
 
 
-def buscar_produtos(db: Session, termo: str, limite: int = 8) -> dict:
+def buscar_produtos(db: Session, termo: str = "", limite: int = 50) -> dict:
     term = (termo or "").strip()
+    limit = max(1, min(int(limite or 50), 100))
     if not term:
-        return {"erro": "Informe o nome, SKU ou código de barras do produto."}
-    limit = max(1, min(int(limite or 8), 20))
+        rows = list(
+            db.scalars(
+                select(Product)
+                .where(Product.active.is_(True))
+                .order_by(Product.name)
+                .limit(limit)
+            )
+        )
+        total = db.scalar(
+            select(func.count()).select_from(Product).where(Product.active.is_(True))
+        ) or 0
+        return {
+            "ambiguo": False,
+            "total": total,
+            "truncado": total > len(rows),
+            "produtos": [product_view(product) for product in rows],
+            "observacao": (
+                f"Mostrando {len(rows)} de {total} produtos ativos; use termo para refinar."
+                if total > len(rows)
+                else None
+            ),
+        }
     exact = db.scalar(select(Product).where(Product.sku == term))
     if exact:
-        return {"ambiguo": False, "produtos": [product_view(exact)]}
+        return {"ambiguo": False, "total": 1, "truncado": False, "produtos": [product_view(exact)]}
+    filters = or_(
+        Product.name.ilike(f"%{term}%"),
+        Product.sku.ilike(f"%{term}%"),
+        Product.barcode.ilike(f"%{term}%"),
+    )
     rows = list(
         db.scalars(
             select(Product)
-            .where(
-                or_(
-                    Product.name.ilike(f"%{term}%"),
-                    Product.sku.ilike(f"%{term}%"),
-                    Product.barcode.ilike(f"%{term}%"),
-                )
-            )
+            .where(filters)
             .order_by(Product.name)
             .limit(limit)
         )
     )
+    total = db.scalar(select(func.count()).select_from(Product).where(filters)) or 0
     return {
         "ambiguo": len(rows) > 1,
+        "total": total,
+        "truncado": total > len(rows),
         "produtos": [product_view(product) for product in rows],
         "observacao": (
             "Há mais de um produto; peça ao administrador qual deles usar antes de agir."
@@ -149,6 +172,61 @@ def consultar_vendas(db: Session, identificador: str) -> dict:
         "ambiguo": len(matches) > 1,
         "resultados": matches,
         "observacao": "Peça ao administrador qual venda usar." if len(matches) > 1 else None,
+    }
+
+
+def listar_vendas(
+    db: Session,
+    status_pedido: str | None = None,
+    status_envio: str | None = None,
+    pendentes_envio: bool = False,
+    limite: int = 10,
+) -> dict:
+    """Lista vendas recentes sem exigir um identificador."""
+    limit = max(1, min(int(limite or 10), 50))
+    query = select(MarketplaceOrder).order_by(
+        MarketplaceOrder.updated_at.desc(), MarketplaceOrder.id
+    )
+    if status_pedido:
+        query = query.where(MarketplaceOrder.status == status_pedido)
+    if status_envio:
+        query = query.where(MarketplaceOrder.shipping_status == status_envio)
+    if pendentes_envio:
+        query = query.where(
+            MarketplaceOrder.shipping_status == "ready_to_ship",
+            MarketplaceOrder.status.not_in(("cancelled", "canceled")),
+        )
+    total = db.scalar(
+        select(func.count()).select_from(query.order_by(None).subquery())
+    ) or 0
+    orders = list(db.scalars(query.limit(limit)))
+    rows = []
+    for order in orders:
+        invoice = db.get(SalesInvoice, order.invoice_id) if order.invoice_id else None
+        rows.append(
+            {
+                "fatura": invoice.number if invoice else None,
+                "status_fatura": invoice.status.value if invoice else None,
+                "canal": order.provider,
+                "pedido": order.external_order_id,
+                "status_pedido": order.status,
+                "status_envio": order.shipping_status,
+                "substatus_envio": order.shipping_substatus,
+                "etiqueta": order.label_status,
+                "estado_fiscal": order.fiscal_status,
+                "total": _decimal(invoice.total) if invoice else None,
+                "atualizado_em": _iso(order.synchronized_at or order.updated_at),
+            }
+        )
+    return {
+        "total": total,
+        "truncado": total > len(rows),
+        "vendas": rows,
+        "observacao": (
+            f"Mostrando {len(rows)} de {total} vendas; refine o filtro se precisar."
+            if total > len(rows)
+            else None
+        ),
     }
 
 

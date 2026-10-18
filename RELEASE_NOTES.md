@@ -2,6 +2,8 @@
 
 ## 18 de outubro de 2026 — assistente de IA no ERP
 
+- [Visão geral mais compacta no desktop · f63eb8d](https://github.com/felgoes/parts-erp/commit/f63eb8d): em telas amplas, os cinco indicadores passam a ocupar uma única linha e perdem a altura excessiva que empurrava as vendas recentes para fora da primeira tela. A alteração vale apenas para o desktop largo; tablet e celular mantêm a composição confortável para toque.
+
 - [Receita líquida nas vendas do Mercado Livre · fe4677a](https://github.com/felgoes/parts-erp/commit/fe4677a): o faturamento do período deixou de somar apenas o valor bruto das vendas. Para pedidos do Mercado Livre, o ERP agora desconta a tarifa real informada em cada item e o frete efetivamente atribuído ao vendedor, usando os valores do pedido e do envio em vez de uma porcentagem fixa. O painel mostra receita bruta, comissões, frete e receita líquida, com aviso quando alguma venda ainda aguarda a sincronização do custo final. O Financeiro usa a mesma base líquida.
 
 - [Central de alertas redesenhada · e0073e8](https://github.com/felgoes/parts-erp/commit/e0073e8): o sino do topo virou um controle “Alertas” com o estado da fila e um painel conectado ao botão. O painel mantém cabeçalho e rodapé visíveis, diferencia vendas, pedidos, fiscal, backup e sistema, destaca o que é novo e trata corretamente os estados vazio, carregando e com vários itens. Também fecha ao clicar fora ou pressionar Esc e devolve o foco ao botão.

@@ -1,5 +1,9 @@
 # Notas de atualização — Parts ERP
 
+## 18 de outubro de 2026 — Visão geral mais direta
+
+- [Visão geral sem ações rápidas · 21ff4df](https://github.com/felgoes/parts-erp/commit/21ff4df): o bloco de atalhos laterais saiu da Visão geral, e a lista de vendas recentes agora ocupa toda a largura disponível. As mesmas ações continuam acessíveis pelo menu principal.
+
 ## 18 de outubro de 2026 — identidade visual Parts ERP
 
 - [Identidade no aplicativo Android e acabamento das telas internas · ec0803a](https://github.com/felgoes/parts-erp/commit/ec0803a): o aplicativo passou a usar o novo "P" de estrada no launcher quadrado, redondo e adaptativo, na abertura e nas notificações. A splash agora usa a cor primária e aparece também no sistema de splash do Android atual; a versão foi para 1.22 (versionCode 23), com a mesma assinatura dos APKs anteriores. No web, o visualizador de documentos, a prévia de identidade em Configurações e os últimos destaques internos foram alinhados à mesma paleta. O ícone e a splash do iOS também foram atualizados. O APK está disponível no [Drive](https://drive.google.com/file/d/1kqKzzWCilp6sJrGKAJen3ZkJslJ6J2bS/view); a instalação sobre a versão anterior ainda depende de um aparelho conectado.

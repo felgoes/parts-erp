@@ -21,9 +21,10 @@
     position: relative;
     display: flex;
     height: 64px;
-    padding: 0 18px;
+    padding: 0 72px 0 18px;
     align-items: center;
-    justify-content: space-between;
+    justify-content: flex-start;
+    gap: 12px;
     background: linear-gradient(135deg, #17271f, #244335);
     box-shadow: 0 5px 18px #17271f20;
     color: #fff;
@@ -40,11 +41,11 @@
     flex: 0 0 44px;
   }
   .mobile-bar > .brand {
-    position: absolute;
-    right: 62px;
-    max-width: calc(100% - 112px);
+    position: static;
+    max-width: none;
     min-width: 0;
     overflow: hidden;
+    margin-left: auto;
   }
   .mobile-bar > .brand strong {
     min-width: 0;
@@ -74,11 +75,10 @@
 @media (max-width: 420px) {
   .mobile-bar {
     height: 58px;
-    padding-inline: 14px;
+    padding-inline: 14px 72px;
   }
   .mobile-bar > .brand {
-    right: 58px;
-    max-width: calc(100% - 102px);
+    max-width: none;
   }
   .mobile-bar .brand strong {
     font-size: 16px;

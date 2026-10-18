@@ -316,7 +316,7 @@
 
   .alerts-trigger:hover,
   .alerts-trigger[aria-expanded='true'] {
-    border-color: #b9dc52;
+    border-color: var(--brand-accent);
     background: #ffffff1f;
   }
 
@@ -329,7 +329,7 @@
   }
 
   .notification-badge {
-    border-color: #17271f;
+    border-color: var(--brand-primary);
   }
 
   .trigger-copy {

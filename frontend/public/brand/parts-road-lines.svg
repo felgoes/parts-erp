@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900" fill="none">
+  <defs>
+    <linearGradient id="road-fade" x1="120" y1="760" x2="1120" y2="160">
+      <stop stop-color="#9BE25B" stop-opacity="0" />
+      <stop offset=".42" stop-color="#9BE25B" stop-opacity=".62" />
+      <stop offset="1" stop-color="#9BE25B" stop-opacity=".08" />
+    </linearGradient>
+    <linearGradient id="road-soft" x1="220" y1="820" x2="1040" y2="300">
+      <stop stop-color="#9BE25B" stop-opacity="0" />
+      <stop offset=".55" stop-color="#9BE25B" stop-opacity=".16" />
+      <stop offset="1" stop-color="#9BE25B" stop-opacity="0" />
+    </linearGradient>
+  </defs>
+  <path d="M-80 790C190 690 330 625 485 645c150 20 203 88 390 7 144-63 237-184 425-274" stroke="url(#road-soft)" stroke-width="18" />
+  <path d="M-80 770C195 668 338 606 491 627c149 20 207 85 390 5 143-62 231-178 421-268" stroke="url(#road-fade)" stroke-width="3" />
+  <path d="M-40 820C225 714 367 654 515 676c145 21 204 80 386 3 141-60 230-171 409-262" stroke="url(#road-fade)" stroke-width="1.4" />
+  <path d="M20 865C273 758 407 704 548 724c142 20 200 74 381-1 135-56 224-162 393-251" stroke="url(#road-soft)" stroke-width="5" />
+</svg>

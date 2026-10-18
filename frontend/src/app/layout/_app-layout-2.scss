@@ -25,8 +25,8 @@
     align-items: center;
     justify-content: flex-start;
     gap: 12px;
-    background: linear-gradient(135deg, #17271f, #244335);
-    box-shadow: 0 5px 18px #17271f20;
+    background: var(--brand-primary);
+    box-shadow: 0 5px 18px #0f2d2324;
     color: #fff;
   }
   .mobile-bar .icon-button {
@@ -52,6 +52,12 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    font-size: 19px;
+    letter-spacing: -0.035em;
+  }
+  .mobile-bar .brand-suffix {
+    color: #e2ede6;
+    font-weight: 450;
   }
   .mobile-bar .brand {
     padding: 0;
@@ -84,8 +90,9 @@
     font-size: 16px;
   }
   .mobile-bar .brand-mark {
-    width: 34px;
-    height: 34px;
+    width: 41px;
+    height: 36px;
+    flex-basis: 41px;
   }
   .mobile-bar .brand-logo {
     width: 34px;
@@ -93,8 +100,8 @@
     flex-basis: 34px;
   }
   .mobile-bar .brand-mark svg {
-    width: 23px;
-    height: 23px;
+    width: 39px;
+    height: 39px;
   }
   main {
     padding-inline: 14px;

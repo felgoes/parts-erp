@@ -19,7 +19,7 @@
   display: grid;
   place-items: center;
   border-radius: 9px;
-  background: #eef3ef;
+  background: color-mix(in srgb, var(--forest) 12%, var(--surface));
   color: var(--forest);
   font-weight: 900;
 }

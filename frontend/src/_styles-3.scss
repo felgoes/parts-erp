@@ -95,7 +95,7 @@
   padding: 6px 7px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: #fff;
+  background: var(--surface);
   color: var(--text);
   font: inherit;
   font-size: 10px;
@@ -109,7 +109,7 @@
 }
 .date-preset:hover {
   border-color: #9db8a4;
-  background: #f3f7f3;
+  background: var(--canvas);
 }
 .date-preset.active {
   border-color: var(--forest);

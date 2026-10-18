@@ -11,7 +11,7 @@
   min-height: 0;
   overflow: hidden;
   padding: max(18px, env(safe-area-inset-top)) 14px max(14px, env(safe-area-inset-bottom));
-  background: var(--ink);
+  background: var(--brand-primary);
   color: #fff;
   display: flex;
   flex-direction: column;
@@ -28,7 +28,7 @@
   flex: 0 0 auto;
   display: flex;
   align-items: center;
-  gap: 11px;
+  gap: 10px;
   min-width: 0;
   padding: 0;
   border-radius: 12px;
@@ -46,15 +46,10 @@
 .brand-mark {
   display: grid;
   place-items: center;
-  width: 40px;
+  width: 46px;
   height: 40px;
-  border-radius: 12px 12px 12px 4px;
-  background: linear-gradient(145deg, #c7eb5c, #91bd32);
-  color: #17221c;
-  box-shadow:
-    inset 0 1px #ffffff88,
-    0 5px 12px #0003;
-  transform: rotate(-3deg);
+  flex: 0 0 46px;
+  color: var(--brand-accent);
 }
 .brand-logo {
   width: 40px;
@@ -64,31 +59,29 @@
   border-radius: 9px;
 }
 .brand-mark svg {
-  width: 27px;
-  height: 27px;
+  width: 44px;
+  height: 44px;
   overflow: visible;
-  transform: rotate(3deg);
 }
 .brand-mark path {
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 4.5;
-  stroke-linecap: round;
-  stroke-linejoin: round;
+  fill: currentColor;
+  stroke: none;
 }
-.brand div {
+.brand-wordmark {
   display: flex;
   align-items: baseline;
   gap: 5px;
 }
 .brand strong {
-  font-size: 19px;
-  letter-spacing: -0.02em;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.035em;
 }
 .brand small {
-  color: #9aada3;
-  font-weight: 700;
-  letter-spacing: 0.12em;
+  color: #dbe7e0;
+  font-size: 18px;
+  font-weight: 450;
+  letter-spacing: -0.025em;
 }
 .sidebar-close {
   display: none;
@@ -123,7 +116,7 @@
 .sidebar-foot {
   flex: 0 0 auto;
   margin-top: 8px;
-  border-top: 1px solid #30443a;
+  border-top: 1px solid #2b4a3c;
   padding: 12px 4px 0;
   display: grid;
   grid-template-columns: 36px 1fr auto;

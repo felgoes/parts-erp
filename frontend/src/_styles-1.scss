@@ -1,15 +1,27 @@
+@font-face {
+  font-family: 'Inter';
+  src: url('/fonts/InterVariable.woff2') format('woff2-variations');
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+}
+
 :root {
-  --canvas: #f4f3ee;
+  --brand-primary: #0f2d23;
+  --brand-accent: #9be25b;
+  --brand-canvas: #f6f7f2;
+  --brand-support: #8a9a8f;
+  --canvas: var(--brand-canvas);
   --surface: #fff;
-  --ink: #17271f;
-  --forest: #203c2e;
-  --accent: #b9dc52;
-  --text: #223129;
-  --muted: #748078;
-  --line: #dedfd8;
+  --ink: var(--brand-primary);
+  --forest: var(--brand-primary);
+  --accent: var(--brand-accent);
+  --text: #16261e;
+  --muted: #64746a;
+  --line: #dde4dc;
   --danger: #b84837;
   --warning: #b56d20;
-  font-family: 'Segoe UI', Arial, sans-serif;
+  font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
   color: var(--text);
   background: var(--canvas);
   font-synthesis: none;
@@ -43,7 +55,7 @@ button:disabled {
 .eyebrow {
   text-transform: uppercase;
   letter-spacing: 0.14em;
-  color: #73902a;
+  color: #4f6a45;
   font-size: 10px;
   font-weight: 850;
   margin: 0 0 8px;
@@ -65,7 +77,7 @@ button:disabled {
   justify-content: center;
   gap: 7px;
   border: 0;
-  border-radius: 2px;
+  border-radius: 10px;
   padding: 11px 16px;
   font-weight: 750;
   font-size: 13px;
@@ -79,7 +91,7 @@ button:disabled {
   box-shadow: none;
 }
 .primary:hover {
-  background: #2a4a3a;
+  background: #183e2f;
 }
 .secondary {
   background: #fff;
@@ -98,9 +110,9 @@ button:disabled {
   margin-top: 20px;
 }
 .card {
-  background: #fff;
+  background: var(--surface);
   border: 1px solid var(--line);
-  border-radius: 2px;
+  border-radius: 14px;
   padding: 22px;
 }
 .card-head {
@@ -165,7 +177,7 @@ tbody tr:last-child td {
 }
 .badge {
   display: inline-block;
-  border-radius: 2px;
+  border-radius: 999px;
   background: #eee;
   padding: 5px 9px;
   font-size: 10px;
@@ -209,20 +221,20 @@ tbody tr:last-child td {
 code {
   background: #f0f2ef;
   padding: 4px 6px;
-  border-radius: 5px;
+  border-radius: 6px;
   color: #405147;
   font-size: 11px;
 }
 
 body[data-theme='dark'] {
-  --canvas: #101713;
-  --surface: #19231d;
-  --ink: #101713;
-  --forest: #9fc851;
-  --accent: #b9dc52;
-  --text: #e4ebe5;
-  --muted: #9eaaa1;
-  --line: #334139;
+  --canvas: #071a13;
+  --surface: #0f241b;
+  --ink: #071a13;
+  --forest: #b9ee91;
+  --accent: var(--brand-accent);
+  --text: #edf5ee;
+  --muted: #a2b3a7;
+  --line: #2d4638;
   --danger: #f08c7c;
   --warning: #e3b66d;
   color: var(--text);
@@ -297,8 +309,22 @@ body[data-theme='dark'] label {
   color: var(--text);
 }
 body[data-theme='dark'] .primary {
-  color: #17231a;
-  background: #b9dc52;
+  color: var(--brand-primary);
+  background: var(--brand-accent);
+}
+body[data-theme='dark'] .date-preset {
+  border-color: var(--line);
+  background: #182b21;
+  color: var(--text);
+}
+body[data-theme='dark'] .date-preset:hover {
+  border-color: #59705f;
+  background: #1d3427;
+}
+body[data-theme='dark'] .date-preset.active {
+  border-color: var(--brand-accent);
+  background: var(--brand-accent);
+  color: var(--brand-primary);
 }
 .empty {
   padding: 40px 20px;
@@ -315,8 +341,8 @@ select,
 textarea {
   width: 100%;
   padding: 11px 12px;
-  border: 1px solid #d5d8d1;
-  border-radius: 2px;
+  border: 1px solid #cfd9d0;
+  border-radius: 9px;
   background: #fff;
   color: var(--text);
   outline: none;
@@ -324,6 +350,6 @@ textarea {
 input:focus,
 select:focus,
 textarea:focus {
-  border-color: #729742;
-  box-shadow: 0 0 0 3px #9ac25418;
+  border-color: #779a6b;
+  box-shadow: 0 0 0 3px #9be25b2e;
 }

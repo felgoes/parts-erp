@@ -2,6 +2,8 @@
 
 ## 18 de outubro de 2026 — assistente de IA no ERP
 
+- [Indicadores da visão geral refinados · 392efdd](https://github.com/felgoes/parts-erp/commit/392efdd): o faturamento ganhou um cartão próprio, com mais presença e acesso direto à análise financeira, enquanto vendas, envios, produtos e estoque passaram a aparecer em cartões independentes. A composição agora tem hierarquia e respiro, mantém os atalhos para cada área e destaca pendências em tons discretos no desktop e no celular.
+
 - [Menu lateral reorganizado e mais confortável no celular · df023ec](https://github.com/felgoes/parts-erp/commit/df023ec): os atalhos agora seguem o fluxo de trabalho — vendas e clientes, estoque e compras, financeiro, análise e administração — com ícones consistentes e uma área ativa mais clara. No celular, o menu abre mais largo, cada item tem 48 px de altura para facilitar o toque, há um botão explícito para fechar e as configurações levam o submenu para a área visível. O sino e o assistente deixam de aparecer por cima do menu aberto.
 
 - [Vendas a enviar e indicadores renovados · 3194481](https://github.com/felgoes/parts-erp/commit/3194481): a visão geral agora mostra quantas vendas estão aguardando despacho, com atenção pela fila logística: entram os pedidos prontos para envio e ficam de fora cancelamentos e pedidos já coletados, despachados, em trânsito ou concluídos. O conjunto de indicadores ganhou um desenho mais compacto em uma única faixa, com ícones, estados de atenção e leitura confortável no desktop e no celular; cada cartão abre a área correspondente.

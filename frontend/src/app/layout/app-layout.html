@@ -1,7 +1,12 @@
 <div class="app-shell" [class.menu-open]="menuOpen()">
   <aside class="sidebar">
     <div class="sidebar-head">
-      <div class="brand">
+      <a
+        class="brand"
+        routerLink="/dashboard"
+        aria-label="Ir para a visão geral"
+        (click)="menuOpen.set(false)"
+      >
         @if (brand.logo()) {
           <img class="brand-logo" [src]="brand.logo()" alt="" />
         } @else {
@@ -15,7 +20,7 @@
           <strong>{{ brand.shortName() }}</strong
           ><small>{{ brand.suffix() }}</small>
         </div>
-      </div>
+      </a>
       <button
         class="sidebar-close"
         type="button"
@@ -108,7 +113,12 @@
     <button class="icon-button" aria-label="Abrir menu" (click)="menuOpen.set(!menuOpen())">
       ☰
     </button>
-    <div class="brand">
+    <a
+      class="brand"
+      routerLink="/dashboard"
+      aria-label="Ir para a visão geral"
+      (click)="menuOpen.set(false)"
+    >
       @if (brand.logo()) {
         <img class="brand-logo" [src]="brand.logo()" alt="" />
       } @else {
@@ -119,7 +129,7 @@
         ></span>
       }
       <strong>{{ brand.shortName() }} {{ brand.suffix() }}</strong>
-    </div>
+    </a>
   </div>
   <button class="scrim" aria-label="Fechar menu" (click)="menuOpen.set(false)"></button>
   @if (profileOpen()) {

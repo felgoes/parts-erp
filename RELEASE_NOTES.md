@@ -2,6 +2,8 @@
 
 ## 18 de outubro de 2026 — assistente de IA no ERP
 
+- [Logo retorna para a visão geral · 76174ad](https://github.com/felgoes/parts-erp/commit/76174ad): o logo Parts ERP, tanto na barra lateral quanto no topo do celular, agora funciona como atalho para a página inicial. O clique fecha o menu móvel e o link também funciona pelo teclado.
+
 - [Indicadores da visão geral refinados · 392efdd](https://github.com/felgoes/parts-erp/commit/392efdd): o faturamento ganhou um cartão próprio, com mais presença e acesso direto à análise financeira, enquanto vendas, envios, produtos e estoque passaram a aparecer em cartões independentes. A composição agora tem hierarquia e respiro, mantém os atalhos para cada área e destaca pendências em tons discretos no desktop e no celular.
 
 - [Menu lateral reorganizado e mais confortável no celular · df023ec](https://github.com/felgoes/parts-erp/commit/df023ec): os atalhos agora seguem o fluxo de trabalho — vendas e clientes, estoque e compras, financeiro, análise e administração — com ícones consistentes e uma área ativa mais clara. No celular, o menu abre mais largo, cada item tem 48 px de altura para facilitar o toque, há um botão explícito para fechar e as configurações levam o submenu para a área visível. O sino e o assistente deixam de aparecer por cima do menu aberto.

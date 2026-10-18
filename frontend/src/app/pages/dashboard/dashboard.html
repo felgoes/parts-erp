@@ -70,8 +70,8 @@
                     }
                   </td>
                   <td>
-                    @if (invoice.documents.length) {
-                      @for (doc of invoice.documents; track doc.id) {
+                    @if (documentsForDownload(invoice.documents).length) {
+                      @for (doc of documentsForDownload(invoice.documents); track doc.id) {
                         <a
                           class="doc"
                           href="#"

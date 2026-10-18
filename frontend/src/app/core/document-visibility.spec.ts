@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { documentsForListing } from './invoices';
+import { documentsWithoutXml } from './document-visibility';
 
-describe('sales listing documents', () => {
+describe('document visibility', () => {
   it('keeps PDFs and labels while omitting XML files', () => {
     const documents = [
       { id: '1', document_type: 'pdf', filename: 'nota.pdf', created_at: '' },
@@ -9,7 +9,7 @@ describe('sales listing documents', () => {
       { id: '3', document_type: 'label_pdf', filename: 'etiqueta.pdf', created_at: '' },
     ];
 
-    expect(documentsForListing(documents).map((doc) => doc.id)).toEqual(['1', '3']);
+    expect(documentsWithoutXml(documents).map((doc) => doc.id)).toEqual(['1', '3']);
   });
 
   it('recognizes the XML type regardless of case or surrounding spaces', () => {
@@ -18,6 +18,6 @@ describe('sales listing documents', () => {
       { id: '2', document_type: 'pdf', filename: 'nota.pdf', created_at: '' },
     ];
 
-    expect(documentsForListing(documents).map((doc) => doc.id)).toEqual(['2']);
+    expect(documentsWithoutXml(documents).map((doc) => doc.id)).toEqual(['2']);
   });
 });

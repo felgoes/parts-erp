@@ -11,6 +11,7 @@ import { canSell } from '../../core/user-access';
 import { statusLabel, trackingEventLabel } from '../../core/status-labels';
 import { saleStageForInvoice, saleStageLabel } from '../../core/sale-stage';
 import { documentLabel } from '../../core/document-labels';
+import { documentsWithoutXml } from '../../core/document-visibility';
 import { PageHeader } from '../../shared/page-header';
 import { PeriodFilter } from '../../shared/period-filter';
 import { AfterSaleWorkflow } from '../../shared/after-sale-workflow';
@@ -51,6 +52,7 @@ export class DashboardPage implements OnInit {
   readonly saleStageForInvoice = saleStageForInvoice;
   readonly saleStageLabel = saleStageLabel;
   readonly documentLabel = documentLabel;
+  readonly documentsForDownload = documentsWithoutXml;
   afterSaleLabel(invoice: Invoice) {
     if (!invoice.after_sale) return '';
     const kind =

@@ -2,6 +2,8 @@
 
 ## 18 de outubro de 2026 — assistente de IA no ERP
 
+- [Cabeçalho móvel sem sobreposição · ccd5365](https://github.com/felgoes/parts-erp/commit/ccd5365): em celulares mais estreitos, o nome Parts ERP encostava no botão de alertas porque a marca era posicionada por cima da barra. O cabeçalho agora reserva uma coluna fixa para o sino, mantém afastamento entre os elementos e trunca a marca com segurança quando necessário, inclusive em telas de 320 px.
+
 - [Visão geral mais compacta no desktop · f63eb8d](https://github.com/felgoes/parts-erp/commit/f63eb8d): em telas amplas, os cinco indicadores passam a ocupar uma única linha e perdem a altura excessiva que empurrava as vendas recentes para fora da primeira tela. A alteração vale apenas para o desktop largo; tablet e celular mantêm a composição confortável para toque.
 
 - [Receita líquida nas vendas do Mercado Livre · fe4677a](https://github.com/felgoes/parts-erp/commit/fe4677a): o faturamento do período deixou de somar apenas o valor bruto das vendas. Para pedidos do Mercado Livre, o ERP agora desconta a tarifa real informada em cada item e o frete efetivamente atribuído ao vendedor, usando os valores do pedido e do envio em vez de uma porcentagem fixa. O painel mostra receita bruta, comissões, frete e receita líquida, com aviso quando alguma venda ainda aguarda a sincronização do custo final. O Financeiro usa a mesma base líquida.

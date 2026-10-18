@@ -5,7 +5,7 @@ from typing import Any
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
-from app.assistant import actions, tool_reads
+from app.assistant import actions, tool_ops, tool_reads
 from app.assistant.actions import ActionError
 from app.models import User
 from app.models.assistant import AssistantConversation
@@ -15,6 +15,10 @@ PRODUCT_SCHEMA = {
     "properties": {
         "termo": {"type": "string", "description": "Nome, SKU ou código de barras."},
         "limite": {"type": "integer", "minimum": 1, "maximum": 100},
+        "abaixo_minimo": {
+            "type": "boolean",
+            "description": "Restringe aos produtos com saldo abaixo do estoque mínimo.",
+        },
     },
 }
 
@@ -81,6 +85,82 @@ TOOLS: list[dict[str, Any]] = [
                 "busca": {"type": "string"},
                 "status": {"type": "string"},
             },
+        },
+    },
+    {
+        "name": "resumo_operacional",
+        "description": (
+            "Resume o dia: vendas de hoje e do mês, pedidos prontos para envio, erros fiscais, "
+            "produtos abaixo do mínimo e contas vencidas. Use para 'como está a operação hoje?'."
+        ),
+        "parameters": {"type": "object", "properties": {}},
+    },
+    {
+        "name": "listar_contas_a_pagar",
+        "description": (
+            "Lista contas a pagar com saldo, vencimento e atraso. Use vencidas=true para "
+            "títulos já vencidos."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "vencidas": {"type": "boolean"},
+                "status": {"type": "string", "enum": ["open", "paid", "cancelled"]},
+                "limite": {"type": "integer", "minimum": 1, "maximum": 50},
+            },
+        },
+    },
+    {
+        "name": "buscar_clientes",
+        "description": (
+            "Busca clientes por nome, documento, e-mail ou telefone e mostra o total comprado. "
+            "Sem termo, lista os clientes cadastrados."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "termo": {"type": "string"},
+                "limite": {"type": "integer", "minimum": 1, "maximum": 30},
+            },
+        },
+    },
+    {
+        "name": "movimentacoes_estoque",
+        "description": (
+            "Mostra as movimentações de estoque recentes, com motivo, quantidade e saldo após. "
+            "Informe o SKU para filtrar um produto."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "sku": {"type": "string"},
+                "limite": {"type": "integer", "minimum": 1, "maximum": 50},
+            },
+        },
+    },
+    {
+        "name": "listar_erros_fiscais",
+        "description": (
+            "Lista pedidos com erro fiscal registrado, incluindo o motivo local. Não consulta o "
+            "marketplace."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "limite": {"type": "integer", "minimum": 1, "maximum": 30}
+            },
+        },
+    },
+    {
+        "name": "detalhar_venda",
+        "description": (
+            "Abre o detalhe de uma venda: cliente, itens, totais, documentos, envio, etiqueta, "
+            "estado fiscal e eventos locais. Use quando o administrador já informou a venda."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {"identificador": {"type": "string"}},
+            "required": ["identificador"],
         },
     },
     {
@@ -167,7 +247,10 @@ TOOLS: list[dict[str, Any]] = [
 
 READ_TOOLS = {
     "buscar_produtos": lambda db, args, user: tool_reads.buscar_produtos(
-        db, str(args.get("termo") or ""), int(args.get("limite") or 50)
+        db,
+        str(args.get("termo") or ""),
+        int(args.get("limite") or 50),
+        bool(args.get("abaixo_minimo")),
     ),
     "consultar_vendas": lambda db, args, user: tool_reads.consultar_vendas(
         db, str(args.get("identificador") or "")
@@ -184,6 +267,25 @@ READ_TOOLS = {
     ),
     "listar_compras": lambda db, args, user: tool_reads.listar_compras(
         db, args.get("busca") or None, args.get("status") or None
+    ),
+    "resumo_operacional": lambda db, args, user: tool_ops.resumo_operacional(db),
+    "listar_contas_a_pagar": lambda db, args, user: tool_ops.listar_contas_a_pagar(
+        db,
+        bool(args.get("vencidas")),
+        str(args.get("status") or "open"),
+        int(args.get("limite") or 10),
+    ),
+    "buscar_clientes": lambda db, args, user: tool_ops.buscar_clientes(
+        db, str(args.get("termo") or ""), int(args.get("limite") or 10)
+    ),
+    "movimentacoes_estoque": lambda db, args, user: tool_ops.movimentacoes_estoque(
+        db, args.get("sku") or None, int(args.get("limite") or 15)
+    ),
+    "listar_erros_fiscais": lambda db, args, user: tool_ops.listar_erros_fiscais(
+        db, int(args.get("limite") or 10)
+    ),
+    "detalhar_venda": lambda db, args, user: tool_ops.detalhar_venda(
+        db, str(args.get("identificador") or "")
     ),
 }
 

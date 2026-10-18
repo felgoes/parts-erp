@@ -55,13 +55,19 @@ def test_product_query_without_term_lists_active_stock(db):
             Product(sku="L-1", name="Filtro", current_stock=4, active=True),
             Product(sku="L-2", name="Rolamento", current_stock=2, active=True),
             Product(sku="L-3", name="Inativo", current_stock=9, active=False),
+            Product(
+                sku="L-4", name="Cabo", current_stock=0, minimum_stock=2, active=True
+            ),
         ]
     )
     db.commit()
     result = tool_reads.buscar_produtos(db, "", 50)
-    assert result["total"] == 2
+    assert result["total"] == 3
     assert result["truncado"] is False
-    assert {item["sku"] for item in result["produtos"]} == {"L-1", "L-2"}
+    assert {item["sku"] for item in result["produtos"]} == {"L-1", "L-2", "L-4"}
     limited = tool_reads.buscar_produtos(db, "", 1)
     assert limited["truncado"] is True
     assert len(limited["produtos"]) == 1
+    low = tool_reads.buscar_produtos(db, "", 50, True)
+    assert low["total"] == 1
+    assert low["produtos"][0]["sku"] == "L-4"

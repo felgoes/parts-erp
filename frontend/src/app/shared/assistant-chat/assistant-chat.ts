@@ -16,6 +16,7 @@ import {
   AssistantConversationSummary,
   AssistantPendingAction,
 } from '../../core/models/assistant';
+import { renderAssistantMarkdown } from './assistant-markdown';
 
 @Component({
   selector: 'app-assistant-chat',
@@ -229,6 +230,10 @@ export class AssistantChat {
       event.preventDefault();
       this.send();
     }
+  }
+
+  rendered(content: string): string {
+    return renderAssistantMarkdown(content);
   }
 
   private scrollToEnd(): void {

@@ -1,0 +1,83 @@
+/* Conteúdo Markdown do assistente é inserido via innerHTML e precisa de estilo global. */
+.assistant-rich p {
+  margin: 0 0 6px;
+  font-size: 13px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.assistant-rich p:last-child {
+  margin-bottom: 0;
+}
+
+.assistant-rich ul,
+.assistant-rich ol {
+  margin: 0 0 7px;
+  padding-left: 18px;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.assistant-rich li {
+  margin: 2px 0;
+}
+
+.assistant-rich strong {
+  font-weight: 650;
+}
+
+.assistant-rich code {
+  padding: 1px 4px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--forest) 8%, var(--surface));
+  font: 11px/1.4 ui-monospace, SFMono-Regular, Consolas, monospace;
+}
+
+.assistant-rich .md-heading {
+  font-weight: 650;
+}
+
+.assistant-rich .md-records {
+  display: grid;
+  gap: 7px;
+  margin: 4px 0 8px;
+}
+
+.assistant-rich .md-record {
+  padding: 8px 9px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+}
+
+.assistant-rich .md-record h4 {
+  margin: 0 0 5px;
+  font-size: 12px;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+.assistant-rich .md-record dl {
+  display: grid;
+  gap: 3px;
+  margin: 0;
+}
+
+.assistant-rich .md-record dl div {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.assistant-rich .md-record dt {
+  flex: 0 0 auto;
+  color: var(--muted);
+}
+
+.assistant-rich .md-record dd {
+  margin: 0;
+  text-align: right;
+  overflow-wrap: anywhere;
+}

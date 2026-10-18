@@ -99,6 +99,12 @@
             <strong>Como posso ajudar?</strong>
             <p>Consulto produtos, compras, vendas e a situação fiscal registrada no ERP.</p>
             <div class="assistant-suggestions">
+              <button type="button" (click)="draft.set('Como está a operação hoje?')">
+                Resumo do dia
+              </button>
+              <button type="button" (click)="draft.set('Tenho contas a pagar vencidas?')">
+                Contas a pagar
+              </button>
               <button type="button" (click)="draft.set('Quanto há do produto filtro de óleo?')">
                 Consultar estoque
               </button>
@@ -113,7 +119,7 @@
         }
         @for (message of conversation()?.messages; track message.id) {
           <article class="assistant-bubble" [class.user]="message.role === 'user'">
-            <p>{{ message.content }}</p>
+            <div class="assistant-rich" [innerHTML]="rendered(message.content)"></div>
             <small>{{ message.created_at | date: 'dd/MM HH:mm' : 'America/Sao_Paulo' }}</small>
           </article>
         }

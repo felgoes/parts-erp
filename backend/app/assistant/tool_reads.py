@@ -43,23 +43,32 @@ def product_view(product: Product) -> dict:
     }
 
 
-def buscar_produtos(db: Session, termo: str = "", limite: int = 50) -> dict:
+def buscar_produtos(
+    db: Session, termo: str = "", limite: int = 50, abaixo_minimo: bool = False
+) -> dict:
     term = (termo or "").strip()
     limit = max(1, min(int(limite or 50), 100))
+    filters = [Product.active.is_(True)]
+    if abaixo_minimo:
+        filters.extend(
+            [
+                Product.stock_type == "product",
+                Product.current_stock < Product.minimum_stock,
+            ]
+        )
     if not term:
         rows = list(
             db.scalars(
                 select(Product)
-                .where(Product.active.is_(True))
+                .where(*filters)
                 .order_by(Product.name)
                 .limit(limit)
             )
         )
-        total = db.scalar(
-            select(func.count()).select_from(Product).where(Product.active.is_(True))
-        ) or 0
+        total = db.scalar(select(func.count()).select_from(Product).where(*filters)) or 0
         return {
             "ambiguo": False,
+            "abaixo_minimo": abaixo_minimo,
             "total": total,
             "truncado": total > len(rows),
             "produtos": [product_view(product) for product in rows],
@@ -69,25 +78,33 @@ def buscar_produtos(db: Session, termo: str = "", limite: int = 50) -> dict:
                 else None
             ),
         }
-    exact = db.scalar(select(Product).where(Product.sku == term))
+    exact = db.scalar(select(Product).where(Product.sku == term, *filters))
     if exact:
-        return {"ambiguo": False, "total": 1, "truncado": False, "produtos": [product_view(exact)]}
-    filters = or_(
+        return {
+            "ambiguo": False,
+            "abaixo_minimo": abaixo_minimo,
+            "total": 1,
+            "truncado": False,
+            "produtos": [product_view(exact)],
+        }
+    term_filter = or_(
         Product.name.ilike(f"%{term}%"),
         Product.sku.ilike(f"%{term}%"),
         Product.barcode.ilike(f"%{term}%"),
     )
+    filters.append(term_filter)
     rows = list(
         db.scalars(
             select(Product)
-            .where(filters)
+            .where(*filters)
             .order_by(Product.name)
             .limit(limit)
         )
     )
-    total = db.scalar(select(func.count()).select_from(Product).where(filters)) or 0
+    total = db.scalar(select(func.count()).select_from(Product).where(*filters)) or 0
     return {
         "ambiguo": len(rows) > 1,
+        "abaixo_minimo": abaixo_minimo,
         "total": total,
         "truncado": total > len(rows),
         "produtos": [product_view(product) for product in rows],

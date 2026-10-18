@@ -2,6 +2,8 @@
 
 ## 18 de outubro de 2026 — listagem de vendas mais limpa
 
+- [XML fora das vendas recentes da Visão geral · 12c2cce](https://github.com/felgoes/parts-erp/commit/12c2cce): a coluna Documentos da listagem de vendas recentes deixou de exibir o link de XML. A nota em PDF continua disponível na listagem, e o XML segue acessível no detalhe da venda.
+
 - [XML fora da listagem de vendas · d756f6c](https://github.com/felgoes/parts-erp/commit/d756f6c): a coluna Documentos deixou de mostrar o link de XML. A nota em PDF e a etiqueta de envio continuam disponíveis na listagem, e o XML segue acessível no detalhe da venda.
 
 ## 18 de outubro de 2026 — Visão geral mais direta

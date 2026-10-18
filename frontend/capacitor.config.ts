@@ -6,8 +6,8 @@ const config: CapacitorConfig = {
   webDir: 'dist/frontend/browser',
   bundledWebRuntime: false,
   android: {
-    // Keep WebView content clear of Android 15+ status and navigation bars.
-    adjustMarginsForEdgeToEdge: 'force',
+    // MainActivity applies system bar and keyboard insets in one place.
+    adjustMarginsForEdgeToEdge: 'disable',
   },
   // Keep the installed APK pointed at the ERP so web releases arrive without reinstalling.
   server: {

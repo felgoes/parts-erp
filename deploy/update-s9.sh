@@ -40,7 +40,9 @@ APP="$(realpath -m "$HOME/$1")"; STAGE="$2"; VERSION="$3"; [[ "$APP" == "$HOME"/
 cd "$APP"
 V="$APP/backend/.venv-termux"
 [[ -x "$V/bin/python" ]] || { echo "Virtualenv Termux não encontrado; abortando antes da parada." >&2; exit 1; }
-(cd "$APP/backend" && PYTHONPATH="$S/backend" "$V/bin/python" -c "import app.main")
+# O pré-voo precisa importar o pacote novo, não o código que ainda está na pasta viva.
+# O diretório de trabalho continua em backend/ para carregar o .env local.
+(cd "$APP/backend" && "$V/bin/python" -c "import sys; sys.path.insert(0, '$S/backend'); import app.main")
 for OCR_BIN in tesseract pdfinfo pdftotext pdftoppm; do
   command -v "$OCR_BIN" >/dev/null || { echo "Dependência OCR ausente ($OCR_BIN); abortando antes da parada." >&2; exit 1; }
 done

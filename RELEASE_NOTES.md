@@ -2,6 +2,8 @@
 
 ## 18 de outubro de 2026 — assistente de IA no ERP
 
+- [Assistente abre sem acionar o teclado · c5f1a1d](https://github.com/felgoes/parts-erp/commit/c5f1a1d): clicar no botão do assistente agora apenas abre o chat. O campo de mensagem deixou de receber foco automático, evitando que o teclado do celular cubra a conversa antes de a pessoa escolher escrever.
+
 - [Cabeçalho móvel sem sobreposição · ccd5365](https://github.com/felgoes/parts-erp/commit/ccd5365): em celulares mais estreitos, o nome Parts ERP encostava no botão de alertas porque a marca era posicionada por cima da barra. O cabeçalho agora reserva uma coluna fixa para o sino, mantém afastamento entre os elementos e trunca a marca com segurança quando necessário, inclusive em telas de 320 px.
 
 - [Visão geral mais compacta no desktop · f63eb8d](https://github.com/felgoes/parts-erp/commit/f63eb8d): em telas amplas, os cinco indicadores passam a ocupar uma única linha e perdem a altura excessiva que empurrava as vendas recentes para fora da primeira tela. A alteração vale apenas para o desktop largo; tablet e celular mantêm a composição confortável para toque.

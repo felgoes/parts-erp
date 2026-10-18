@@ -17,6 +17,12 @@ import { PageHeader } from '../../shared/page-header';
 import { PeriodFilter, PeriodFilterStatusOption } from '../../shared/period-filter';
 import { AfterSaleWorkflow } from '../../shared/after-sale-workflow';
 
+export function documentsForListing(documents: Invoice['documents']) {
+  return documents.filter(
+    (doc) => String(doc.document_type || '').trim().toLowerCase() !== 'xml',
+  );
+}
+
 @Component({
   selector: 'app-invoices',
   imports: [CurrencyPipe, DatePipe, FormsModule, PageHeader, PeriodFilter, AfterSaleWorkflow],
@@ -53,6 +59,7 @@ export class InvoicesPage implements OnInit {
   readonly saleStageForInvoice = saleStageForInvoice;
   readonly saleStageLabel = saleStageLabel;
   readonly documentLabel = documentLabel;
+  readonly listingDocuments = documentsForListing;
   visibleInvoices() {
     const invoices = this.invoices();
     if (this.statusFilter === 'open') {

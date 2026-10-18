@@ -61,8 +61,8 @@
               }
             </td>
             <td>
-              @if (i.documents.length) {
-                @for (doc of i.documents; track doc.id) {
+              @if (listingDocuments(i.documents).length) {
+                @for (doc of listingDocuments(i.documents); track doc.id) {
                   <a
                     class="doc"
                     href="#"

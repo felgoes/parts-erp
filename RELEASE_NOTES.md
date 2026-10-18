@@ -1,5 +1,9 @@
 # Notas de atualização — Parts ERP
 
+## 18 de outubro de 2026 — identidade visual Parts ERP
+
+- [Nova identidade visual no login e no ERP · 4155471](https://github.com/felgoes/parts-erp/commit/4155471): o login, o menu, a barra do celular e os atalhos do sistema passaram a usar o símbolo "P" de estrada, a paleta verde do kit e a tipografia Inter carregada pelo próprio ERP. O favicon e os ícones de instalação também foram atualizados, e o tema escuro ganhou contraste consistente nos atalhos de período. Todos os textos e mensagens continuam iguais, a identidade personalizada por empresa segue prevalecendo e o catálogo público mantém a marca Goes Auto Parts. A mudança web já chega ao aplicativo sem novo APK.
+
 ## 18 de outubro de 2026 — assistente de IA no ERP
 
 - [Assistente abre sem acionar o teclado · c5f1a1d](https://github.com/felgoes/parts-erp/commit/c5f1a1d): clicar no botão do assistente agora apenas abre o chat. O campo de mensagem deixou de receber foco automático, evitando que o teclado do celular cubra a conversa antes de a pessoa escolher escrever.

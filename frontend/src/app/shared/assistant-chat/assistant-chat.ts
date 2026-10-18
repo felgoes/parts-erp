@@ -53,7 +53,6 @@ export class AssistantChat implements OnInit, OnDestroy {
     })}% do limite`;
   });
   private readonly messagesEnd = viewChild<ElementRef<HTMLElement>>('messagesEnd');
-  private readonly composer = viewChild<ElementRef<HTMLTextAreaElement>>('composer');
   private loaded = false;
   private viewportTimers: ReturnType<typeof setTimeout>[] = [];
   private readonly viewportChanged = () => this.updateViewport();
@@ -77,7 +76,6 @@ export class AssistantChat implements OnInit, OnDestroy {
       this.loadConversations(!this.loaded);
       this.loaded = true;
       this.updateViewport();
-      setTimeout(() => this.composer()?.nativeElement.focus());
     }
   }
 

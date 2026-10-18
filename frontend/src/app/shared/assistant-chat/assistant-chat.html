@@ -18,6 +18,12 @@
       class="assistant-panel"
       role="dialog"
       aria-label="Assistente de IA"
+      [style.top.px]="panelTop()"
+      [style.left.px]="panelLeft()"
+      [style.width.px]="panelWidth()"
+      [style.height.px]="panelHeight()"
+      [style.right]="panelTop() !== null ? 'auto' : null"
+      [style.bottom]="panelTop() !== null ? 'auto' : null"
       (keydown.escape)="close()"
     >
       <header class="assistant-head">
@@ -172,6 +178,7 @@
           aria-label="Mensagem para o assistente"
           [(ngModel)]="draft"
           (keydown)="onKeydown($event)"
+          (focus)="onComposerFocus()"
         ></textarea>
         <button
           type="button"

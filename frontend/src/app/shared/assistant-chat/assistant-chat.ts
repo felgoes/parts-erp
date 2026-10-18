@@ -2,6 +2,8 @@ import { DatePipe } from '@angular/common';
 import {
   Component,
   ElementRef,
+  OnDestroy,
+  OnInit,
   computed,
   inject,
   signal,
@@ -17,6 +19,7 @@ import {
   AssistantPendingAction,
 } from '../../core/models/assistant';
 import { renderAssistantMarkdown } from './assistant-markdown';
+import { panelBounds } from './assistant-viewport';
 
 @Component({
   selector: 'app-assistant-chat',
@@ -24,7 +27,7 @@ import { renderAssistantMarkdown } from './assistant-markdown';
   templateUrl: './assistant-chat.html',
   styleUrl: './assistant-chat.scss',
 })
-export class AssistantChat {
+export class AssistantChat implements OnInit, OnDestroy {
   private readonly api = inject(AssistantApi);
   readonly auth = inject(AuthService);
   readonly open = signal(false);
@@ -37,6 +40,10 @@ export class AssistantChat {
   readonly sending = signal(false);
   readonly loading = signal(false);
   readonly error = signal('');
+  readonly panelTop = signal<number | null>(null);
+  readonly panelLeft = signal<number | null>(null);
+  readonly panelWidth = signal<number | null>(null);
+  readonly panelHeight = signal<number | null>(null);
   readonly isAdmin = computed(() => this.auth.user()?.role === 'admin');
   readonly budgetLabel = computed(() => {
     const value = this.budget();
@@ -48,6 +55,19 @@ export class AssistantChat {
   private readonly messagesEnd = viewChild<ElementRef<HTMLElement>>('messagesEnd');
   private readonly composer = viewChild<ElementRef<HTMLTextAreaElement>>('composer');
   private loaded = false;
+  private viewportTimers: ReturnType<typeof setTimeout>[] = [];
+  private readonly viewportChanged = () => this.updateViewport();
+
+  ngOnInit(): void {
+    window.visualViewport?.addEventListener('resize', this.viewportChanged);
+    window.visualViewport?.addEventListener('scroll', this.viewportChanged);
+  }
+
+  ngOnDestroy(): void {
+    window.visualViewport?.removeEventListener('resize', this.viewportChanged);
+    window.visualViewport?.removeEventListener('scroll', this.viewportChanged);
+    for (const timer of this.viewportTimers) clearTimeout(timer);
+  }
 
   toggle(): void {
     const next = !this.open();
@@ -56,6 +76,7 @@ export class AssistantChat {
       this.loadConfiguration();
       this.loadConversations(!this.loaded);
       this.loaded = true;
+      this.updateViewport();
       setTimeout(() => this.composer()?.nativeElement.focus());
     }
   }
@@ -230,6 +251,40 @@ export class AssistantChat {
       event.preventDefault();
       this.send();
     }
+  }
+
+  onComposerFocus(): void {
+    this.updateViewport();
+    for (const timer of this.viewportTimers) clearTimeout(timer);
+    this.viewportTimers = [];
+    for (const delay of [100, 350, 700]) {
+      this.viewportTimers.push(
+        setTimeout(() => {
+          this.updateViewport();
+          this.scrollToEnd();
+        }, delay),
+      );
+    }
+  }
+
+  private updateViewport(): void {
+    const viewport = window.visualViewport;
+    const bounds = panelBounds(
+      viewport
+        ? {
+            width: viewport.width,
+            height: viewport.height,
+            offsetTop: viewport.offsetTop,
+            offsetLeft: viewport.offsetLeft,
+          }
+        : null,
+      window.innerHeight,
+      window.innerWidth <= 640,
+    );
+    this.panelTop.set(bounds?.top ?? null);
+    this.panelLeft.set(bounds?.left ?? null);
+    this.panelWidth.set(bounds?.width ?? null);
+    this.panelHeight.set(bounds?.height ?? null);
   }
 
   rendered(content: string): string {

@@ -26,6 +26,9 @@ chat bloqueia em vez de mostrar custo zero.
 ## O que o assistente faz
 
 - consulta produtos, saldos, compras e vendas pelo ERP;
+- resume a operação do dia: vendas, envios pendentes, erros fiscais, estoque baixo e contas vencidas;
+- lista contas a pagar, clientes, movimentações de estoque e pedidos com erro fiscal;
+- detalha uma venda com itens, documentos, envio, etiqueta e estado fiscal;
 - investiga a situação fiscal de uma venda usando somente estados, documentos e logs locais,
   distinguindo fatura interna de nota fiscal;
 - prepara a criação de produto, a criação de compra e o ajuste de estoque.
@@ -42,6 +45,9 @@ vinculada àquela prévia, revalida o estado do ERP e não duplica a operação 
 - Excluir uma conversa não desfaz operações já realizadas nem apaga a auditoria da ação.
 - O restante do ERP continua funcionando se o provedor estiver sem chave, indisponível ou acima do
   orçamento.
+
+Respostas com tabela são exibidas como cartões empilhados, com o rótulo e o valor de cada campo,
+para caber no painel do chat e no celular sem exigir rolagem horizontal.
 
 A validação com chaves reais dos quatro provedores é feita pelo operador no ambiente de produção;
 os testes automatizados e o HML usam provedor simulado.

@@ -337,7 +337,7 @@ def test_initial_sync_imports_products_and_orders(db, monkeypatch):
     result = sync_module.sync_all(db, account)
 
     product = db.scalar(select(Product).where(Product.sku == "FLT-1"))
-    assert result == {"products": 1, "orders": 1}
+    assert result == {"products": 1, "orders": 1, "costs": 0}
     assert product is not None
     assert product.current_stock == Decimal("8")
     assert calls == [("77", "/orders/123")]

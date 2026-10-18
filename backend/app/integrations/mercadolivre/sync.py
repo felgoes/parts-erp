@@ -17,6 +17,7 @@ from app.integrations.mercadolivre.ml_products import (  # noqa: F401
     sync_products,
 )
 from app.integrations.mercadolivre.ml_shipping import (  # noqa: F401
+    sync_seller_shipping_cost,
     sync_shipping_history,
     sync_shipping_label,
     sync_shipping_status,
@@ -82,4 +83,34 @@ def sync_all(db: Session, account: MarketplaceAccount) -> dict[str, int]:
             continue
         sync_order(db, account.seller_id, f"/orders/{order_id}")
         orders += 1
-    return {"products": products, "orders": orders}
+    costs = reconcile_shipping_costs(db, account)
+    return {"products": products, "orders": orders, "costs": costs}
+
+
+def reconcile_shipping_costs(
+    db: Session, account: MarketplaceAccount, limit: int = 25
+) -> int:
+    """Backfill seller shipping costs for recent imported sales."""
+    orders = list(
+        db.scalars(
+            select(MarketplaceOrder)
+            .where(
+                MarketplaceOrder.provider == "mercadolivre",
+                MarketplaceOrder.seller_id == account.seller_id,
+                MarketplaceOrder.invoice_id.is_not(None),
+            )
+            .order_by(MarketplaceOrder.created_at.desc())
+            .limit(max(limit * 4, limit))
+        )
+    )
+    updated = 0
+    for order in orders:
+        payload = order.payload if isinstance(order.payload, dict) else {}
+        if payload.get("_erp_shipping_cost_synced_at"):
+            continue
+        if sync_seller_shipping_cost(db, order, account) is not None:
+            updated += 1
+        db.commit()
+        if updated >= limit:
+            break
+    return updated

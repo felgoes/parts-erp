@@ -18,6 +18,7 @@ from app.schemas.common import (
 )
 from app.services.after_sale import after_sales_for_invoices
 from app.services.invoice_tracking import attach_invoice_tracking
+from app.services.marketplace_costs import revenue_by_invoice, revenue_totals
 
 router = APIRouter(prefix="/dashboard", tags=["Painel"])
 BRAZIL_TZ = timezone(timedelta(hours=-3))
@@ -67,8 +68,12 @@ def summary(
         invoice_date >= since,
         invoice_date < until,
     )
-    revenue = db.scalar(select(func.coalesce(func.sum(SalesInvoice.total), 0)).where(*month_filter))
-    sales = db.scalar(select(func.count(SalesInvoice.id)).where(*month_filter)) or 0
+    confirmed_invoices = list(db.scalars(select(SalesInvoice).where(*month_filter)))
+    revenue_summary = revenue_totals(
+        list(revenue_by_invoice(db, confirmed_invoices).values())
+    )
+    revenue = revenue_summary.net
+    sales = len(confirmed_invoices)
     cancelled_filter = (
         SalesInvoice.status == InvoiceStatus.cancelled,
         invoice_date >= since,
@@ -122,6 +127,10 @@ def summary(
     attach_invoice_tracking(db, recent_outputs)
     return DashboardSummary(
         revenue_month=Decimal(str(revenue or 0)),
+        gross_revenue_month=revenue_summary.gross,
+        marketplace_fee_amount=revenue_summary.marketplace_fees,
+        marketplace_shipping_amount=revenue_summary.seller_shipping,
+        marketplace_costs_pending=revenue_summary.costs_pending,
         confirmed_sales=sales,
         sales_to_ship=sales_to_ship,
         cancelled_sales=cancelled_sales,
@@ -166,8 +175,11 @@ def financial_metrics(
         if previous_start <= timestamp(invoice) < since
         and invoice.status == InvoiceStatus.confirmed
     ]
-    revenue = sum((invoice.total for invoice in current), Decimal("0"))
-    previous_revenue = sum((invoice.total for invoice in previous), Decimal("0"))
+    revenues = revenue_by_invoice(db, rows)
+    current_summary = revenue_totals([revenues[invoice.id] for invoice in current])
+    previous_summary = revenue_totals([revenues[invoice.id] for invoice in previous])
+    revenue = current_summary.net
+    previous_revenue = previous_summary.net
     change = (
         ((revenue - previous_revenue) / previous_revenue * Decimal("100"))
         if previous_revenue
@@ -178,7 +190,7 @@ def financial_metrics(
         source = invoice.source.value if hasattr(invoice.source, "value") else str(invoice.source)
         label = "Mercado Livre" if source == "mercadolivre" else "Venda manual"
         amount, count = source_totals.get(label, (Decimal("0"), 0))
-        source_totals[label] = (amount + invoice.total, count + 1)
+        source_totals[label] = (amount + revenues[invoice.id].net, count + 1)
     daily: list[DashboardDailyMetric] = []
     first_day = start
     for offset in range((end - first_day).days + 1):
@@ -190,7 +202,7 @@ def financial_metrics(
             DashboardDailyMetric(
                 date=day.isoformat(),
                 label=day.strftime("%d/%m"),
-                amount=sum((invoice.total for invoice in day_rows), Decimal("0")),
+                amount=sum((revenues[invoice.id].net for invoice in day_rows), Decimal("0")),
                 count=len(day_rows),
             )
         )
@@ -210,6 +222,10 @@ def financial_metrics(
     return DashboardFinancialMetrics(
         period_label=f"{start.strftime('%d/%m/%Y')} a {end.strftime('%d/%m/%Y')}",
         revenue=revenue,
+        gross_revenue=current_summary.gross,
+        marketplace_fee_amount=current_summary.marketplace_fees,
+        marketplace_shipping_amount=current_summary.seller_shipping,
+        marketplace_costs_pending=current_summary.costs_pending,
         sales_count=len(current),
         average_ticket=(revenue / len(current) if current else Decimal("0")),
         previous_revenue=previous_revenue,

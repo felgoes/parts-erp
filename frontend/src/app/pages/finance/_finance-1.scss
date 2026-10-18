@@ -144,6 +144,21 @@
   color: var(--ink, #183528);
   font-size: 1.25rem;
 }
+.revenue-method {
+  margin: 10px 0 0;
+  padding: 9px 12px;
+  border-left: 2px solid #cbd6c7;
+  border-radius: 0 8px 8px 0;
+  background: #f5f7f2;
+  color: #65736a;
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+.revenue-method.has-pending {
+  border-left-color: #d18a34;
+  background: #fff8eb;
+  color: #805423;
+}
 .margin-metric strong {
   color: #2c7545;
 }

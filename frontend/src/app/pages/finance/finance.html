@@ -83,13 +83,16 @@
       <div>
         <p class="eyebrow">Desempenho no período</p>
         <h2>Vendas e custo das peças</h2>
-        <p>Margem bruta estimada: vendas confirmadas menos custo das peças vendidas.</p>
+        <p>
+          Receita líquida após comissões e frete do vendedor; a margem estimada desconta também o
+          custo das peças vendidas.
+        </p>
       </div>
       <span class="period-chip">{{ metrics.period_label }}</span>
     </div>
     <div class="result-grid">
       <div class="result-metric">
-        <span>Vendas confirmadas</span
+        <span>Receita líquida</span
         ><strong>{{ metrics.revenue | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR' }}</strong>
       </div>
       <div class="result-metric">
@@ -99,7 +102,7 @@
         }}</strong>
       </div>
       <div class="result-metric margin-metric">
-        <span>Margem bruta estimada</span>
+        <span>Margem estimada após tarifas</span>
         @if (metrics.gross_margin !== null) {
           <strong>{{
             metrics.gross_margin | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR'
@@ -116,6 +119,15 @@
         ><small>{{ metrics.return_quantity | number: '1.0-3' : 'pt-BR' }} unidades</small>
       </div>
     </div>
+    <p class="revenue-method" [class.has-pending]="metrics.marketplace_costs_pending">
+      Bruto {{ metrics.gross_revenue | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR' }} ·
+      {{ marketplaceCosts() | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR' }} em comissões e frete
+      do vendedor.
+      @if (metrics.marketplace_costs_pending) {
+        {{ metrics.marketplace_costs_pending }} venda(s) ainda aguardam o custo final de frete do
+        Mercado Livre.
+      }
+    </p>
     <div class="finance-chart-head">
       <div>
         <strong>Movimentação financeira do estoque</strong

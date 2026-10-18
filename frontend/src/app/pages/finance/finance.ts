@@ -66,6 +66,12 @@ export class FinancePage implements OnInit {
   barHeight(value: number) {
     return value > 0 ? Math.max(5, (value / this.chartMax()) * 100) : 0;
   }
+  marketplaceCosts() {
+    const metrics = this.data();
+    return metrics
+      ? Number(metrics.marketplace_fee_amount) + Number(metrics.marketplace_shipping_amount)
+      : 0;
+  }
   chartTooltip(day: FinanceDailyMetric) {
     return `${day.label}: entradas ${this.currency(day.inbound_value)} · saídas ${this.currency(day.outbound_value)}`;
   }

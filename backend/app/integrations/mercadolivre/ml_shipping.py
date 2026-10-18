@@ -1,4 +1,5 @@
 from datetime import UTC, datetime
+from decimal import Decimal, InvalidOperation
 from typing import Any
 
 from sqlalchemy import select
@@ -20,6 +21,10 @@ from app.models import (
 )
 
 
+def _shipping_cost_metadata(record: MarketplaceOrder, **values: Any) -> None:
+    record.payload = {**(record.payload or {}), **values}
+
+
 def sync_shipping_status(
     db: Session, record: MarketplaceOrder, account: MarketplaceAccount
 ) -> dict[str, Any] | None:
@@ -36,6 +41,65 @@ def sync_shipping_status(
     record.shipping_substatus = str(shipment.get("substatus") or "") or None
     sync_shipping_history(db, record, account)
     return shipment
+
+
+def sync_seller_shipping_cost(
+    db: Session, record: MarketplaceOrder, account: MarketplaceAccount
+) -> Decimal | None:
+    """Persist the final shipping amount charged to this seller.
+
+    O Mercado Livre diferencia o custo do comprador (`receiver.cost`) do que
+    efetivamente fica com o vendedor (`senders[].cost`). O pedido, sozinho, não
+    serve para conciliação quando há frete grátis, subsídio ou reputação.
+    """
+    synced_at = datetime.now(UTC).isoformat()
+    if not record.shipment_id:
+        _shipping_cost_metadata(
+            record,
+            _erp_seller_shipping_cost="0",
+            _erp_shipping_cost_synced_at=synced_at,
+            _erp_shipping_cost_error=None,
+        )
+        return Decimal("0")
+
+    try:
+        result = MercadoLivreClient(db, account).get(
+            f"/shipments/{record.shipment_id}/costs",
+            extra_headers={"x-format-new": "true"},
+        )
+        senders = result.get("senders") if isinstance(result, dict) else None
+        candidates = [item for item in senders or [] if isinstance(item, dict)]
+        matching = [
+            item
+            for item in candidates
+            if str(
+                item.get("sender_id") or item.get("user_id") or item.get("id") or ""
+            )
+            == str(record.seller_id)
+        ]
+        if not matching and len(candidates) == 1:
+            matching = candidates
+        if not matching:
+            raise MercadoLivreError("O custo do vendedor não foi informado no envio")
+        values = [
+            Decimal(str(item.get("cost")))
+            for item in matching
+            if item.get("cost") is not None
+        ]
+        if len(values) != len(matching):
+            raise MercadoLivreError("O envio veio sem o valor final do vendedor")
+        cost = sum(values, Decimal("0"))
+    except (MercadoLivreError, InvalidOperation, ValueError) as exc:
+        _shipping_cost_metadata(record, _erp_shipping_cost_error=str(exc)[:500])
+        return None
+
+    _shipping_cost_metadata(
+        record,
+        _erp_seller_shipping_cost=str(cost),
+        _erp_shipping_cost_synced_at=synced_at,
+        _erp_shipping_cost_error=None,
+    )
+    return cost
 
 
 def sync_shipping_label(db: Session, record: MarketplaceOrder, account: MarketplaceAccount) -> None:

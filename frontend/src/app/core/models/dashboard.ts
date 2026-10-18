@@ -2,6 +2,10 @@ import type { Invoice } from './invoices';
 
 export interface DashboardSummary {
   revenue_month: number;
+  gross_revenue_month: number;
+  marketplace_fee_amount: number;
+  marketplace_shipping_amount: number;
+  marketplace_costs_pending: number;
   confirmed_sales: number;
   sales_to_ship: number;
   cancelled_sales: number;
@@ -24,6 +28,10 @@ export interface DashboardDailyMetric {
 export interface DashboardFinancialMetrics {
   period_label: string;
   revenue: number;
+  gross_revenue: number;
+  marketplace_fee_amount: number;
+  marketplace_shipping_amount: number;
+  marketplace_costs_pending: number;
   sales_count: number;
   average_ticket: number;
   previous_revenue: number;

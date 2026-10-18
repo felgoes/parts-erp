@@ -190,6 +190,10 @@ class FinanceOverview(BaseModel):
     return_value: Decimal
     net_cost_of_goods: Decimal
     revenue: Decimal
+    gross_revenue: Decimal
+    marketplace_fee_amount: Decimal
+    marketplace_shipping_amount: Decimal
+    marketplace_costs_pending: int
     gross_margin: Decimal | None
     gross_margin_percent: Decimal | None
     known_movements: int

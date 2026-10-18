@@ -11,6 +11,7 @@ from app.core.permissions import Permission
 from app.db.session import get_db
 from app.models import InvoiceStatus, MovementType, Product, SalesInvoice, StockMovement, User
 from app.schemas.common import FinanceDailyMetric, FinanceOverview, FinanceProductMetric
+from app.services.marketplace_costs import revenue_by_invoice, revenue_totals
 
 router = APIRouter(prefix="/finance", tags=["Financeiro e custos"])
 BRAZIL_TZ = timezone(timedelta(hours=-3))
@@ -101,12 +102,14 @@ def overview(
                 row["return_value"] += amount
                 day["return_value"] += amount
 
-    revenue = ZERO
+    revenues = revenue_by_invoice(db, invoices)
+    revenue_summary = revenue_totals(list(revenues.values()))
+    revenue = revenue_summary.net
     sale_item_keys: dict[str, tuple[str, Decimal]] = {}
     for invoice in invoices:
-        revenue += Decimal(invoice.total)
+        invoice_revenue = revenues[invoice.id].net
         issued = _as_utc(invoice.issued_at or invoice.created_at).astimezone(BRAZIL_TZ).date()
-        day_totals[issued]["revenue"] += Decimal(invoice.total)
+        day_totals[issued]["revenue"] += invoice_revenue
         for item in invoice.items:
             sale_item_keys[f"invoice:{invoice.id}:item:{item.id}:confirm"] = (
                 item.product_id,
@@ -209,6 +212,10 @@ def overview(
         return_value=totals["return_value"],
         net_cost_of_goods=totals["net_cost_of_goods"],
         revenue=revenue,
+        gross_revenue=revenue_summary.gross,
+        marketplace_fee_amount=revenue_summary.marketplace_fees,
+        marketplace_shipping_amount=revenue_summary.seller_shipping,
+        marketplace_costs_pending=revenue_summary.costs_pending,
         gross_margin=gross_margin,
         gross_margin_percent=gross_margin_percent,
         known_movements=known_movements,

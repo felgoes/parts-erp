@@ -11,6 +11,10 @@ from app.schemas.invoices import (
 
 class DashboardSummary(BaseModel):
     revenue_month: Decimal
+    gross_revenue_month: Decimal
+    marketplace_fee_amount: Decimal
+    marketplace_shipping_amount: Decimal
+    marketplace_costs_pending: int
     confirmed_sales: int
     sales_to_ship: int
     cancelled_sales: int
@@ -36,6 +40,10 @@ class DashboardDailyMetric(BaseModel):
 class DashboardFinancialMetrics(BaseModel):
     period_label: str
     revenue: Decimal
+    gross_revenue: Decimal
+    marketplace_fee_amount: Decimal
+    marketplace_shipping_amount: Decimal
+    marketplace_costs_pending: int
     sales_count: int
     average_ticket: Decimal
     previous_revenue: Decimal

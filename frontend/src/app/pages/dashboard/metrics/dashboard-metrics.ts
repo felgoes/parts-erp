@@ -1,5 +1,5 @@
 import { CurrencyPipe } from '@angular/common';
-import { Component, input, output } from '@angular/core';
+import { Component, computed, input, output } from '@angular/core';
 import { DashboardSummary } from '../../../core/models';
 import { DashboardMetricCard } from './dashboard-metric-card';
 
@@ -12,4 +12,9 @@ import { DashboardMetricCard } from './dashboard-metric-card';
 export class DashboardMetrics {
   readonly summary = input.required<DashboardSummary>();
   readonly financialRequested = output<void>();
+  readonly totalMarketplaceCosts = computed(
+    () =>
+      Number(this.summary().marketplace_fee_amount) +
+      Number(this.summary().marketplace_shipping_amount),
+  );
 }

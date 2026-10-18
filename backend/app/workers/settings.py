@@ -26,6 +26,7 @@ from app.services.after_sale import after_sale_notification, upsert_after_sale_c
 from app.services.google_drive_backup import run_backup
 from app.services.backup_health import current_window_day, scheduled_backup_due
 from app.services.push_notifications import deliver_pending_notifications, enqueue_sale_notification
+from app.workers.marketplace_costs import reconcile_marketplace_costs
 
 logger = logging.getLogger(__name__)
 
@@ -352,6 +353,7 @@ class WorkerSettings:
         sync_shopee_account,
         process_shopee_notification,
         retry_due_mercadolivre_orders,
+        reconcile_marketplace_costs,
         retry_pending_push_notifications,
         scheduled_google_drive_backup,
     ]
@@ -367,6 +369,12 @@ class WorkerSettings:
             name="retry-failed-mercadolivre-orders",
             minute=set(range(60)),
             second=15,
+        ),
+        cron(
+            reconcile_marketplace_costs,
+            name="reconcile-marketplace-costs",
+            minute=set(range(0, 60, 10)),
+            second=20,
         ),
         cron(
             retry_pending_push_notifications,

@@ -10,12 +10,23 @@
       </span>
     </span>
     <span class="revenue-main">
-      <span class="revenue-label">Faturamento no período</span>
+      <span class="revenue-label">Receita líquida no período</span>
       <span class="revenue-value">{{ summary().revenue_month | currency: 'BRL' }}</span>
     </span>
     <span class="revenue-foot">
-      <span class="revenue-signal" aria-hidden="true"></span>
-      Vendas confirmadas no período
+      <span class="revenue-status" [class.is-warning]="summary().marketplace_costs_pending">
+        <span class="revenue-signal" aria-hidden="true"></span>
+        @if (summary().marketplace_costs_pending) {
+          Parcial · {{ summary().marketplace_costs_pending }} venda(s) sem custo completo do ML
+        } @else {
+          Após comissões e frete do vendedor
+        }
+      </span>
+      <span class="revenue-detail"
+        >Bruto {{ summary().gross_revenue_month | currency: 'BRL' }} ·
+        {{ totalMarketplaceCosts() | currency: 'BRL' }}
+        em taxas e frete</span
+      >
     </span>
   </button>
 

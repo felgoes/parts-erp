@@ -5,6 +5,7 @@ import pytest
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
+from app.api.routes.finance import overview as finance_overview
 from app.api.routes.dashboard import financial_metrics, summary
 from app.api.routes.invoices import list_invoices
 from app.models import InvoiceSource, MarketplaceOrder, Product
@@ -132,6 +133,62 @@ def test_dashboard_counts_sales_waiting_for_dispatch(db: Session) -> None:
     dashboard = summary(None, None, db, None)
 
     assert dashboard.sales_to_ship == 2
+
+
+def test_marketplace_revenue_discounts_fees_and_seller_shipping(db: Session) -> None:
+    product = Product(
+        sku="ML-COSTS-001",
+        name="Peça marketplace",
+        sale_price=Decimal("100.00"),
+        cost_price=Decimal("40.00"),
+        current_stock=Decimal("10"),
+        minimum_stock=Decimal("1"),
+    )
+    db.add(product)
+    db.flush()
+    for suffix, shipping_synced in (("A", True), ("B", False)):
+        invoice = create_invoice(
+            db,
+            InvoiceCreate(items=[InvoiceItemCreate(product_id=product.id, quantity=1)]),
+            source=InvoiceSource.mercadolivre,
+            marketplace_order_id=f"COSTS-{suffix}",
+        )
+        confirm_invoice(db, invoice)
+        invoice.issued_at = datetime(2026, 8, 15, 15, tzinfo=UTC)
+        payload = {"order_items": [{"sale_fee": "10.00"}]}
+        if shipping_synced:
+            payload.update(
+                {
+                    "_erp_seller_shipping_cost": "5.00",
+                    "_erp_shipping_cost_synced_at": "2026-08-15T15:00:00+00:00",
+                }
+            )
+        db.add(
+            MarketplaceOrder(
+                provider="mercadolivre",
+                external_order_id=f"COSTS-{suffix}",
+                seller_id="77",
+                status="paid",
+                invoice_id=invoice.id,
+                payload=payload,
+            )
+        )
+    db.flush()
+
+    start, end = date(2026, 8, 1), date(2026, 8, 31)
+    dashboard = summary(start, end, db, None)
+    finance = financial_metrics(start, end, db, None)
+    page = finance_overview(start, end, db, None)
+
+    assert dashboard.gross_revenue_month == Decimal("200.00")
+    assert dashboard.marketplace_fee_amount == Decimal("20.00")
+    assert dashboard.marketplace_shipping_amount == Decimal("5.00")
+    assert dashboard.revenue_month == Decimal("175.00")
+    assert dashboard.marketplace_costs_pending == 1
+    assert finance.revenue == Decimal("175.00")
+    assert finance.average_ticket == Decimal("87.50")
+    assert page.revenue == Decimal("175.00")
+    assert page.marketplace_costs_pending == 1
 
 
 @pytest.mark.parametrize(

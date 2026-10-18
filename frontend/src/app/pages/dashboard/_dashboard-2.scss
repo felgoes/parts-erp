@@ -18,9 +18,12 @@
 }
 .financial-kpis {
   display: grid;
-  grid-template-columns: 1.3fr repeat(4, 1fr);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 10px;
   margin-bottom: 22px;
+}
+.financial-kpis .primary-kpi {
+  grid-column: span 2;
 }
 .financial-kpi {
   display: grid;
@@ -63,12 +66,25 @@
 .primary-kpi .positive-text {
   color: #b9dc52 !important;
 }
+.cost-pending {
+  margin: -8px 0 20px;
+  padding: 10px 12px;
+  border-left: 2px solid #d18a34;
+  border-radius: 0 8px 8px 0;
+  background: #fff8eb;
+  color: #8d591e;
+  font-size: 11px;
+  line-height: 1.45;
+}
 .financial-grid {
   display: grid;
+  min-width: 0;
   grid-template-columns: 1.4fr 1fr;
   gap: 14px;
 }
 .financial-panel {
+  min-width: 0;
+  overflow: hidden;
   padding: 16px;
   border: 1px solid #e1e9e1;
   border-radius: 11px;

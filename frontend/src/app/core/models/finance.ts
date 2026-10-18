@@ -33,6 +33,10 @@ export interface FinanceOverview {
   return_value: number;
   net_cost_of_goods: number;
   revenue: number;
+  gross_revenue: number;
+  marketplace_fee_amount: number;
+  marketplace_shipping_amount: number;
+  marketplace_costs_pending: number;
   gross_margin: number | null;
   gross_margin_percent: number | null;
   known_movements: number;

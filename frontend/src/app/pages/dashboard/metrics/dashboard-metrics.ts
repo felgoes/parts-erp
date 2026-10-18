@@ -1,11 +1,11 @@
 import { CurrencyPipe } from '@angular/common';
 import { Component, input, output } from '@angular/core';
-import { RouterLink } from '@angular/router';
 import { DashboardSummary } from '../../../core/models';
+import { DashboardMetricCard } from './dashboard-metric-card';
 
 @Component({
   selector: 'app-dashboard-metrics',
-  imports: [CurrencyPipe, RouterLink],
+  imports: [CurrencyPipe, DashboardMetricCard],
   templateUrl: './dashboard-metrics.html',
   styleUrl: './dashboard-metrics.scss',
 })

@@ -1,0 +1,27 @@
+<a
+  class="metric-card"
+  [routerLink]="route()"
+  [class.is-positive]="tone() === 'positive'"
+  [class.is-attention]="tone() === 'attention'"
+>
+  <span class="metric-top">
+    <span class="metric-label-wrap">
+      <span class="metric-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path [attr.d]="iconPath()" /></svg>
+      </span>
+      <span class="metric-label">{{ label() }}</span>
+    </span>
+    <span class="metric-open" aria-hidden="true">
+      <svg viewBox="0 0 24 24"><path d="M7 17 17 7M8 7h9v9" /></svg>
+    </span>
+  </span>
+  <strong class="metric-value">{{ value() }}</strong>
+  <span class="metric-foot">
+    @if (meta()) {
+      <span class="metric-meta" [class.has-signal]="tone() !== 'neutral'">{{ meta() }}</span>
+    }
+    @if (detail()) {
+      <span class="metric-detail">{{ detail() }}</span>
+    }
+  </span>
+</a>

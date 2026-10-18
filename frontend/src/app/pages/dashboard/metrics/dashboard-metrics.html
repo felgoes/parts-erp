@@ -1,99 +1,56 @@
-<section class="metric-board" aria-label="Indicadores da operação">
-  <button
-    class="metric metric-primary"
-    type="button"
-    (click)="financialRequested.emit()"
-  >
-    <span class="metric-head">
-      <span class="metric-icon" aria-hidden="true">
-        <svg viewBox="0 0 24 24">
-          <path d="M4 16.5 9 11l4 3.5 7-8" />
-          <path d="M15 6.5h5v5" />
+<section class="dashboard-metrics" aria-label="Indicadores da operação">
+  <button class="revenue-card" type="button" (click)="financialRequested.emit()">
+    <span class="revenue-top">
+      <span class="revenue-kicker">Resumo financeiro</span>
+      <span class="revenue-action"
+        >Abrir análise
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M7 17 17 7M8 7h9v9" />
         </svg>
       </span>
-      <span class="metric-label">Faturamento no período</span>
-      <span class="metric-go" aria-hidden="true">↗</span>
     </span>
-    <span class="metric-value">{{ summary().revenue_month | currency: 'BRL' }}</span>
-    <span class="metric-foot">Vendas confirmadas</span>
+    <span class="revenue-main">
+      <span class="revenue-label">Faturamento no período</span>
+      <span class="revenue-value">{{ summary().revenue_month | currency: 'BRL' }}</span>
+    </span>
+    <span class="revenue-foot">
+      <span class="revenue-signal" aria-hidden="true"></span>
+      Vendas confirmadas no período
+    </span>
   </button>
 
-  <a class="metric" routerLink="/invoices">
-    <span class="metric-head">
-      <span class="metric-icon" aria-hidden="true">
-        <svg viewBox="0 0 24 24">
-          <path d="M6 3.5h9l3 3v14H6z" />
-          <path d="M9 9h6M9 13h6M9 17h3" />
-        </svg>
-      </span>
-      <span class="metric-label">Vendas confirmadas</span>
-      <span class="metric-go" aria-hidden="true">↗</span>
-    </span>
-    <span class="metric-value">{{ summary().confirmed_sales }}</span>
-    <span class="metric-foot">
-      <span>{{ summary().cancelled_sales }} canceladas</span>
-      <span class="metric-detail"
-        >{{ summary().cancelled_amount | currency: 'BRL' }} fora da receita</span
-      >
-    </span>
-  </a>
+  <app-dashboard-metric-card
+    label="Vendas confirmadas"
+    [value]="summary().confirmed_sales.toString()"
+    [meta]="summary().cancelled_sales + ' canceladas'"
+    [detail]="(summary().cancelled_amount | currency: 'BRL') + ' fora da receita'"
+    iconPath="M6 3.5h9l3 3v14H6zM9 9h6M9 13h6M9 17h3"
+    route="/invoices"
+  />
 
-  <a
-    class="metric"
-    routerLink="/marketplace"
-    [class.metric-attention]="summary().sales_to_ship > 0"
-  >
-    <span class="metric-head">
-      <span class="metric-icon" aria-hidden="true">
-        <svg viewBox="0 0 24 24">
-          <path d="m4 7 8-4 8 4-8 4z" />
-          <path d="m4 7 8 4v10l-8-4zM20 7l-8 4v10l8-4z" />
-        </svg>
-      </span>
-      <span class="metric-label">Vendas a enviar</span>
-      <span class="metric-go" aria-hidden="true">↗</span>
-    </span>
-    <span class="metric-value">{{ summary().sales_to_ship }}</span>
-    <span class="metric-status">{{
-      summary().sales_to_ship ? 'Aguardando despacho' : 'Sem pendências'
-    }}</span>
-  </a>
+  <app-dashboard-metric-card
+    label="Vendas a enviar"
+    [value]="summary().sales_to_ship.toString()"
+    [meta]="summary().sales_to_ship ? 'Aguardando despacho' : 'Fila em dia'"
+    [tone]="summary().sales_to_ship > 0 ? 'attention' : 'positive'"
+    iconPath="m4 7 8-4 8 4-8 4zM4 7l8 4v10l-8-4zM20 7l-8 4v10l8-4z"
+    route="/marketplace"
+  />
 
-  <a class="metric" routerLink="/products">
-    <span class="metric-head">
-      <span class="metric-icon" aria-hidden="true">
-        <svg viewBox="0 0 24 24">
-          <rect x="4" y="4" width="6" height="6" rx="1" />
-          <rect x="14" y="4" width="6" height="6" rx="1" />
-          <rect x="4" y="14" width="6" height="6" rx="1" />
-          <rect x="14" y="14" width="6" height="6" rx="1" />
-        </svg>
-      </span>
-      <span class="metric-label">Produtos ativos</span>
-      <span class="metric-go" aria-hidden="true">↗</span>
-    </span>
-    <span class="metric-value">{{ summary().products_count }}</span>
-    <span class="metric-foot">Disponíveis no catálogo</span>
-  </a>
+  <app-dashboard-metric-card
+    label="Produtos ativos"
+    [value]="summary().products_count.toString()"
+    meta="Disponíveis no catálogo"
+    iconPath="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z"
+    route="/products"
+  />
 
-  <a
-    class="metric"
-    routerLink="/products"
-    [class.metric-attention]="summary().low_stock_count > 0"
-  >
-    <span class="metric-head">
-      <span class="metric-icon" aria-hidden="true">
-        <svg viewBox="0 0 24 24">
-          <path d="M12 4 21 20H3z" />
-          <path d="M12 9v5M12 17.5v.5" />
-        </svg>
-      </span>
-      <span class="metric-label">Estoque baixo</span>
-      <span class="metric-go" aria-hidden="true">↗</span>
-    </span>
-    <span class="metric-value">{{ summary().low_stock_count }}</span>
-    <span class="metric-status">{{
-      summary().low_stock_count ? 'Reposição necessária' : 'Nível saudável'
-    }}</span>
-  </a>
+  <app-dashboard-metric-card
+    label="Estoque baixo"
+    [value]="summary().low_stock_count.toString()"
+    [meta]="summary().low_stock_count ? 'Reposição necessária' : 'Estoque equilibrado'"
+    [tone]="summary().low_stock_count > 0 ? 'attention' : 'positive'"
+    iconPath="M12 4 21 20H3zM12 9v5M12 17.5v.5"
+    route="/products"
+  />
 </section>

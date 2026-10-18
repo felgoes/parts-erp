@@ -1,8 +1,8 @@
 """Orçamento mensal compartilhado e contabilização persistente das chamadas."""
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta, timezone
 from decimal import ROUND_HALF_UP, Decimal
-from zoneinfo import ZoneInfo
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -10,7 +10,10 @@ from sqlalchemy.orm import Session
 from app.assistant.catalog import price_for
 from app.models.assistant import AssistantConfiguration, AssistantUsage
 
-ERP_TZ = ZoneInfo("America/Sao_Paulo")
+try:
+    ERP_TZ = ZoneInfo("America/Sao_Paulo")
+except ZoneInfoNotFoundError:  # Termux pode não ter o pacote tzdata.
+    ERP_TZ = timezone(timedelta(hours=-3))
 CENT = Decimal("0.000001")
 ALERT_PERCENT = Decimal("80")
 

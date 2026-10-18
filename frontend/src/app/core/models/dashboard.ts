@@ -3,6 +3,7 @@ import type { Invoice } from './invoices';
 export interface DashboardSummary {
   revenue_month: number;
   confirmed_sales: number;
+  sales_to_ship: number;
   cancelled_sales: number;
   cancelled_amount: number;
   products_count: number;

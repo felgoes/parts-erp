@@ -156,9 +156,6 @@
   font-size: 11px;
 }
 @media (max-width: 1050px) {
-  .metric-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
   .dashboard-grid {
     grid-template-columns: 1fr;
   }
@@ -167,18 +164,8 @@
   }
 }
 @media (max-width: 560px) {
-  .metric-grid {
-    grid-template-columns: 1fr 1fr;
-  }
-  .metric {
-    min-height: 125px;
-    padding: 17px;
-  }
-  .metric.featured {
-    grid-column: 1/-1;
-  }
-  .metric strong {
-    font-size: 25px;
+  .dashboard-grid {
+    gap: 14px;
   }
 }
 @media (max-width: 600px) {

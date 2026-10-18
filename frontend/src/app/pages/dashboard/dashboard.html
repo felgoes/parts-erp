@@ -8,56 +8,7 @@
   }
 </app-page-header>
 @if (data(); as summary) {
-  <section class="metric-grid">
-    <article
-      class="metric featured metric-clickable"
-      tabindex="0"
-      role="button"
-      (click)="openFinancial()"
-      (keydown.enter)="openFinancial()"
-      (keydown.space)="$event.preventDefault(); openFinancial()"
-    >
-      <div>
-        <span>Faturamento no período</span
-        ><strong>{{ summary.revenue_month | currency: 'BRL' }}</strong>
-      </div>
-      <i>↗</i><small>Vendas confirmadas</small>
-    </article>
-    <article
-      class="metric metric-clickable"
-      tabindex="0"
-      role="button"
-      (click)="navigate('/invoices')"
-      (keydown.enter)="navigate('/invoices')"
-    >
-      <span>Vendas confirmadas</span><strong>{{ summary.confirmed_sales }}</strong
-      ><small
-        >{{ summary.cancelled_sales }} cancelada(s) ·
-        {{ summary.cancelled_amount | currency: 'BRL' }} fora da receita</small
-      >
-    </article>
-    <article
-      class="metric metric-clickable"
-      tabindex="0"
-      role="button"
-      (click)="navigate('/products')"
-      (keydown.enter)="navigate('/products')"
-    >
-      <span>Produtos ativos</span><strong>{{ summary.products_count }}</strong
-      ><small>no catálogo</small>
-    </article>
-    <article
-      class="metric metric-clickable"
-      [class.warning]="summary.low_stock_count"
-      tabindex="0"
-      role="button"
-      (click)="navigate('/products')"
-      (keydown.enter)="navigate('/products')"
-    >
-      <span>Estoque baixo</span><strong>{{ summary.low_stock_count }}</strong
-      ><small>itens pedem atenção</small>
-    </article>
-  </section>
+  <app-dashboard-metrics [summary]="summary" (financialRequested)="openFinancial()" />
   <app-period-filter
     heading="Período da visão geral"
     description="Faturamento, vendas e vendas recentes"

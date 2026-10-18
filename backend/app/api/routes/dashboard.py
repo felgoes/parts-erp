@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session, selectinload
 from app.api.deps import require_permission
 from app.core.permissions import Permission
 from app.db.session import get_db
-from app.models import InvoiceStatus, Product, SalesInvoice, User
+from app.models import InvoiceStatus, MarketplaceOrder, Product, SalesInvoice, User
 from app.schemas.common import (
     DashboardBreakdown,
     DashboardDailyMetric,
@@ -21,6 +21,21 @@ from app.services.invoice_tracking import attach_invoice_tracking
 
 router = APIRouter(prefix="/dashboard", tags=["Painel"])
 BRAZIL_TZ = timezone(timedelta(hours=-3))
+PENDING_SHIPMENT_STATUS = "ready_to_ship"
+INACTIVE_ORDER_STATUSES = ("cancelled", "canceled", "in_cancel")
+DISPATCHED_SHIPPING_SUBSTATUSES = (
+    "picked_up",
+    "shipped_to_carrier",
+    "dropped_off",
+    "in_transit",
+    "in_hub",
+    "on_route",
+    "out_for_delivery",
+    "at_the_branch",
+    "delivered",
+    "returned",
+    "not_delivered",
+)
 
 
 def _period(
@@ -63,6 +78,17 @@ def summary(
     cancelled_amount = db.scalar(
         select(func.coalesce(func.sum(SalesInvoice.total), 0)).where(*cancelled_filter)
     )
+    shipping_substatus = func.lower(func.coalesce(MarketplaceOrder.shipping_substatus, ""))
+    sales_to_ship = (
+        db.scalar(
+            select(func.count(MarketplaceOrder.id)).where(
+                MarketplaceOrder.shipping_status == PENDING_SHIPMENT_STATUS,
+                MarketplaceOrder.status.not_in(INACTIVE_ORDER_STATUSES),
+                shipping_substatus.not_in(DISPATCHED_SHIPPING_SUBSTATUSES),
+            )
+        )
+        or 0
+    )
     products = db.scalar(select(func.count(Product.id)).where(Product.active.is_(True))) or 0
     low_stock = (
         db.scalar(
@@ -97,6 +123,7 @@ def summary(
     return DashboardSummary(
         revenue_month=Decimal(str(revenue or 0)),
         confirmed_sales=sales,
+        sales_to_ship=sales_to_ship,
         cancelled_sales=cancelled_sales,
         cancelled_amount=Decimal(str(cancelled_amount or 0)),
         products_count=products,

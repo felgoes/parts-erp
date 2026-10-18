@@ -107,6 +107,33 @@ def test_cancelled_marketplace_sale_stays_visible_but_is_not_revenue(db: Session
     assert finance.cancelled_amount == Decimal("125.00")
 
 
+def test_dashboard_counts_sales_waiting_for_dispatch(db: Session) -> None:
+    orders = [
+        ("READY-1", "paid", "ready_to_ship", None),
+        ("READY-2", "paid", "ready_to_ship", "printed"),
+        ("PICKED-UP", "paid", "ready_to_ship", "picked_up"),
+        ("SHIPPED", "paid", "shipped", None),
+        ("CANCELLED", "cancelled", "ready_to_ship", None),
+    ]
+    for external_id, status, shipping_status, shipping_substatus in orders:
+        db.add(
+            MarketplaceOrder(
+                provider="mercadolivre",
+                external_order_id=external_id,
+                seller_id="77",
+                status=status,
+                shipping_status=shipping_status,
+                shipping_substatus=shipping_substatus,
+                payload={},
+            )
+        )
+    db.flush()
+
+    dashboard = summary(None, None, db, None)
+
+    assert dashboard.sales_to_ship == 2
+
+
 @pytest.mark.parametrize(
     ("start", "end"),
     [(date(2026, 8, 2), date(2026, 8, 1)), (date(2025, 1, 1), date(2026, 1, 1))],

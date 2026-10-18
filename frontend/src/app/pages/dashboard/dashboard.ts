@@ -14,6 +14,7 @@ import { documentLabel } from '../../core/document-labels';
 import { PageHeader } from '../../shared/page-header';
 import { PeriodFilter } from '../../shared/period-filter';
 import { AfterSaleWorkflow } from '../../shared/after-sale-workflow';
+import { DashboardMetrics } from './metrics/dashboard-metrics';
 
 @Component({
   selector: 'app-dashboard',
@@ -25,6 +26,7 @@ import { AfterSaleWorkflow } from '../../shared/after-sale-workflow';
     PageHeader,
     PeriodFilter,
     AfterSaleWorkflow,
+    DashboardMetrics,
   ],
   templateUrl: './dashboard.html',
   styleUrl: './dashboard.scss',
@@ -119,9 +121,6 @@ export class DashboardPage implements OnInit {
   openRecent(invoice: Invoice) {
     this.invoiceTab.set('items');
     this.api.invoice(invoice.id).subscribe((full) => this.detail.set(full));
-  }
-  navigate(path: string) {
-    void this.router.navigate([path]);
   }
   openFinancial() {
     this.api

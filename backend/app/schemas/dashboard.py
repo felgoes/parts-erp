@@ -12,6 +12,7 @@ from app.schemas.invoices import (
 class DashboardSummary(BaseModel):
     revenue_month: Decimal
     confirmed_sales: int
+    sales_to_ship: int
     cancelled_sales: int
     cancelled_amount: Decimal
     products_count: int

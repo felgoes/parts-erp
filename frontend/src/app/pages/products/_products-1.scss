@@ -9,6 +9,7 @@
   align-items: center;
   gap: 8px;
   flex: 1;
+  min-width: 0;
   max-width: 430px;
   background: #fff;
   border: 1px solid var(--line);
@@ -20,6 +21,7 @@
   padding: 11px 0;
   outline: 0;
   width: 100%;
+  min-width: 0;
   background: transparent;
 }
 .check {
@@ -30,6 +32,14 @@
   align-items: center;
   gap: 7px;
 }
+.check input {
+  flex: 0 0 16px;
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  padding: 0;
+  accent-color: var(--forest);
+}
 .count {
   margin-left: auto;
   color: var(--muted);
@@ -38,13 +48,16 @@
 .table-card {
   padding: 0;
   overflow: hidden;
+  min-width: 0;
 }
 .product {
   display: flex;
   align-items: center;
   gap: 12px;
+  min-width: 0;
 }
 .product > span {
+  flex: 0 0 36px;
   width: 36px;
   height: 36px;
   display: grid;
@@ -56,10 +69,14 @@
 }
 .product div {
   display: grid;
+  min-width: 0;
+}
+.product strong {
+  overflow-wrap: anywhere;
 }
 .product small {
   color: var(--muted);
-  max-width: 300px;
+  max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

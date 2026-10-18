@@ -84,6 +84,9 @@
     max-width: none;
     flex-basis: 100%;
   }
+  .toolbar .check {
+    width: 100%;
+  }
   .table-card table {
     min-width: 0;
   }
@@ -98,6 +101,7 @@
   .table-card table tr {
     padding: 13px 16px;
     border-bottom: 1px solid var(--line);
+    min-width: 0;
   }
   .table-card table td {
     display: flex;
@@ -106,12 +110,13 @@
     gap: 12px;
     padding: 5px 0;
     border: 0;
+    min-width: 0;
   }
   .table-card table td:first-child {
     padding-top: 2px;
   }
   .table-card table td:not(:first-child)::before {
-    flex: 0 0 96px;
+    flex: 0 0 72px;
     color: var(--muted);
     content: 'SKU';
     font-size: 10px;
@@ -129,14 +134,23 @@
   .table-card table td:nth-child(5)::before {
     content: 'Condição';
   }
-  .table-card table td:nth-child(6)::before {
-    content: '';
+  .table-card table td:nth-child(6) {
+    justify-content: flex-end;
+    gap: 8px;
+    padding-top: 13px;
   }
   .table-card table td:first-child::before {
     display: none;
   }
   .table-card table td:first-child .product {
     width: 100%;
+  }
+  .table-card table td:nth-child(6)::before {
+    display: none;
+  }
+  .table-card table td:nth-child(6) button {
+    flex: 1 1 0;
+    min-width: 0;
   }
   .product-hero {
     align-items: flex-start;

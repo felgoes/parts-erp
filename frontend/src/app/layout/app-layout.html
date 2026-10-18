@@ -54,61 +54,7 @@
       <button class="icon-button" title="Sair" aria-label="Sair" (click)="auth.logout()">↗</button>
     </div>
   </aside>
-  <div class="notification-area">
-    <button
-      class="notification-trigger"
-      type="button"
-      aria-label="Abrir notificações"
-      [attr.aria-expanded]="notificationsOpen()"
-      (click)="toggleNotifications()"
-    >
-      <svg class="bell-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-        <path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4" />
-      </svg>
-      @if (notificationCount() > 0) {
-        <span class="notification-badge">{{
-          notificationCount() > 9 ? '9+' : notificationCount()
-        }}</span>
-      }
-    </button>
-    @if (notificationsOpen()) {
-      <section class="notification-popover" aria-label="Notificações recentes">
-        <div class="notification-popover-head">
-          <div><strong>Notificações</strong><small>Atividade recente do ERP</small></div>
-          <button
-            type="button"
-            (click)="notificationsOpen.set(false)"
-            aria-label="Fechar notificações"
-          >
-            ×
-          </button>
-        </div>
-        @if (notificationLoading()) {
-          <p class="notification-empty">Carregando…</p>
-        }
-        @for (item of notificationPreview(); track item.id) {
-          <article class="notification-preview">
-            <span class="notification-dot" [class.failed]="item.status === 'failed'"></span>
-            <div>
-              <strong>{{ item.title }}</strong>
-              <p>{{ item.body }}</p>
-              <small>{{ item.created_at | date: 'dd/MM HH:mm' }}</small>
-            </div>
-          </article>
-        } @empty {
-          @if (!notificationLoading()) {
-            <p class="notification-empty">Nenhuma notificação recente.</p>
-          }
-        }
-        <a
-          class="notification-history-link"
-          routerLink="/notifications"
-          (click)="notificationsOpen.set(false)"
-          >Ver histórico completo <span aria-hidden="true">→</span></a
-        >
-      </section>
-    }
-  </div>
+  <app-notifications-menu />
   <div class="mobile-bar">
     <button class="icon-button" aria-label="Abrir menu" (click)="menuOpen.set(!menuOpen())">
       ☰

@@ -1,24 +1,31 @@
 import { DatePipe } from '@angular/common';
 import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { NavigationEnd, Router, RouterLink, RouterOutlet } from '@angular/router';
-import { filter } from 'rxjs';
+import { RouterLink, RouterOutlet } from '@angular/router';
 import { AppearanceService } from '../core/appearance.service';
 import { ErpBrandService } from '../core/erp-brand.service';
 import { AuthService } from '../core/auth.service';
 import { ApiService } from '../core/api.service';
 import { ROLE_LABELS } from '../core/user-access';
-import { PushNotification } from '../core/models';
 import { PushNotificationsService } from '../core/push-notifications.service';
 import { LiveUpdatesService } from '../core/live-updates.service';
 import { PULL_TRIGGER_PX, pullBandHeight, pullOffset, shouldRefresh } from '../core/app-refresh';
 import { BackupAlert, backupAlert as buildBackupAlert } from '../shared/backup-health';
 import { AssistantChat } from '../shared/assistant-chat/assistant-chat';
 import { NavigationMenu } from './navigation-menu/navigation-menu';
+import { NotificationsMenu } from './notifications-menu/notifications-menu';
 
 @Component({
   selector: 'app-layout',
-  imports: [DatePipe, RouterOutlet, RouterLink, ReactiveFormsModule, AssistantChat, NavigationMenu],
+  imports: [
+    DatePipe,
+    RouterOutlet,
+    RouterLink,
+    ReactiveFormsModule,
+    AssistantChat,
+    NavigationMenu,
+    NotificationsMenu,
+  ],
   templateUrl: './app-layout.html',
   styleUrl: './app-layout.scss',
 })
@@ -27,7 +34,6 @@ export class AppLayout implements OnInit, OnDestroy {
   readonly brand = inject(ErpBrandService);
   readonly appearance = inject(AppearanceService);
   readonly live = inject(LiveUpdatesService);
-  private readonly router = inject(Router);
   readonly menuOpen = signal(false);
   readonly profileOpen = signal(false);
   readonly avatarUrl = signal<string | null>(null);
@@ -36,10 +42,6 @@ export class AppLayout implements OnInit, OnDestroy {
   readonly profileMessage = signal('');
   readonly profileSaving = signal(false);
   readonly avatarSaving = signal(false);
-  readonly notificationsOpen = signal(false);
-  readonly notificationLoading = signal(false);
-  readonly notificationHistory = signal<PushNotification[]>([]);
-  readonly notificationCount = signal(0);
   readonly backupAlert = signal<BackupAlert | null>(null);
   /** Faixa do gesto: cresce com o dedo e fica de pé enquanto a tela recarrega. */
   readonly pullBand = computed(() => pullBandHeight(this.live.pullOffset()));
@@ -59,16 +61,10 @@ export class AppLayout implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.brand.load();
     this.loadAvatar();
-    this.loadNotifications();
     this.loadBackupAlert();
     // O aviso de backup não depende de push: a faixa acompanha o estado do servidor.
     this.backupTimer = setInterval(() => this.loadBackupAlert(), 15 * 60 * 1000);
     void this.pushNotifications.enableForCurrentDevice();
-    this.router.events
-      .pipe(filter((event): event is NavigationEnd => event instanceof NavigationEnd))
-      .subscribe(() => {
-        this.notificationsOpen.set(false);
-      });
   }
   ngOnDestroy(): void {
     if (this.backupTimer !== null) clearInterval(this.backupTimer);
@@ -114,41 +110,6 @@ export class AppLayout implements OnInit, OnDestroy {
       next: (settings) => this.backupAlert.set(buildBackupAlert(settings)),
       error: () => undefined,
     });
-  }
-  notificationPreview(): PushNotification[] {
-    return this.notificationHistory().slice(0, 4);
-  }
-  toggleNotifications(): void {
-    const open = !this.notificationsOpen();
-    this.notificationsOpen.set(open);
-    if (open) {
-      this.loadNotifications();
-      this.markNotificationsSeen();
-    }
-  }
-  private loadNotifications(): void {
-    this.notificationLoading.set(true);
-    this.api.pushHistory().subscribe({
-      next: (items) => {
-        this.notificationHistory.set(items);
-        const seenAt = this.notificationsSeenAt();
-        this.notificationCount.set(
-          items.filter((item) => !seenAt || item.created_at > seenAt).length,
-        );
-      },
-      error: () => this.notificationHistory.set([]),
-      complete: () => this.notificationLoading.set(false),
-    });
-  }
-  private notificationsSeenAt(): string | null {
-    const userId = this.auth.user()?.id;
-    return userId ? localStorage.getItem(`parts-erp.notifications.seen.${userId}`) : null;
-  }
-  private markNotificationsSeen(): void {
-    const userId = this.auth.user()?.id;
-    const latest = this.notificationHistory()[0]?.created_at;
-    if (userId && latest) localStorage.setItem(`parts-erp.notifications.seen.${userId}`, latest);
-    this.notificationCount.set(0);
   }
   openProfile(): void {
     const user = this.auth.user();

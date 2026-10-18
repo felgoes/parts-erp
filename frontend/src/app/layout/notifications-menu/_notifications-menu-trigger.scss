@@ -1,0 +1,93 @@
+:host {
+  position: fixed;
+  top: 18px;
+  right: 32px;
+  z-index: 30;
+}
+
+.alerts-trigger {
+  display: flex;
+  min-height: 46px;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 12px 6px 7px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
+  box-shadow: 0 6px 18px #15291c14;
+  transition:
+    border-color 160ms ease,
+    background-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.alerts-trigger:hover,
+.alerts-trigger[aria-expanded='true'] {
+  border-color: color-mix(in srgb, var(--accent) 65%, var(--line));
+  background: color-mix(in srgb, var(--accent) 7%, var(--surface));
+}
+
+.alerts-trigger:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.bell-shell {
+  position: relative;
+  display: grid;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
+  place-items: center;
+  border-radius: 10px;
+  background: #eef3ec;
+  color: var(--forest);
+}
+
+.bell-icon {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.notification-badge {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  display: grid;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  place-items: center;
+  border: 2px solid var(--surface);
+  border-radius: 10px;
+  background: #d8493d;
+  color: #fff;
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.trigger-copy {
+  display: grid;
+  gap: 1px;
+  text-align: left;
+}
+
+.trigger-copy strong {
+  color: var(--ink);
+  font-size: 12px;
+  line-height: 1.2;
+}
+
+.trigger-copy small {
+  color: var(--muted);
+  font-size: 9.5px;
+  line-height: 1.2;
+}

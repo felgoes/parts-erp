@@ -1,0 +1,94 @@
+<button
+  #trigger
+  class="alerts-trigger"
+  type="button"
+  aria-haspopup="dialog"
+  [attr.aria-label]="
+    notificationCount() ? 'Abrir alertas, ' + notificationCount() + ' não lidos' : 'Abrir alertas'
+  "
+  [attr.aria-expanded]="open()"
+  aria-controls="alerts-panel"
+  (click)="toggle()"
+>
+  <span class="bell-shell" aria-hidden="true">
+    <svg class="bell-icon" viewBox="0 0 24 24">
+      <path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4" />
+    </svg>
+    @if (notificationCount() > 0) {
+      <span class="notification-badge">{{
+        notificationCount() > 9 ? '9+' : notificationCount()
+      }}</span>
+    }
+  </span>
+  <span class="trigger-copy">
+    <strong>Alertas</strong>
+    <small>{{
+      notificationCount()
+        ? notificationCount() + (notificationCount() === 1 ? ' novo' : ' novos')
+        : 'Tudo em dia'
+    }}</small>
+  </span>
+</button>
+
+@if (open()) {
+  <section id="alerts-panel" class="alerts-panel" role="dialog" aria-label="Alertas recentes">
+    <header class="alerts-head">
+      <div>
+        <span>Central de alertas</span>
+        <strong>Atividade recente</strong>
+      </div>
+      <button class="alerts-close" type="button" aria-label="Fechar alertas" (click)="close()">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M6 6l12 12M18 6 6 18" />
+        </svg>
+      </button>
+    </header>
+
+    <div class="alerts-body">
+      @if (loading()) {
+        <div class="alerts-state">
+          <span class="loading-ring" aria-hidden="true"></span>
+          <strong>Carregando alertas</strong>
+          <p>Conferindo as últimas movimentações da operação.</p>
+        </div>
+      } @else if (!preview().length) {
+        <div class="alerts-state is-empty">
+          <span class="empty-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4" />
+            </svg>
+          </span>
+          <strong>Tudo em dia</strong>
+          <p>Nenhum alerta recente para sua operação.</p>
+        </div>
+      } @else {
+        <div class="alerts-feed">
+          @for (item of preview(); track item.id) {
+            <article
+              class="alert-item"
+              [class.is-new]="isNew(item)"
+              [class.is-failed]="item.status === 'failed'"
+            >
+              <span class="alert-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path [attr.d]="category(item).iconPath" /></svg>
+              </span>
+              <div class="alert-copy">
+                <span class="alert-meta">
+                  <span>{{ category(item).label }}</span>
+                  <time>{{ item.created_at | date: 'dd/MM · HH:mm' }}</time>
+                </span>
+                <strong>{{ item.title }}</strong>
+                <p>{{ item.body }}</p>
+              </div>
+            </article>
+          }
+        </div>
+      }
+    </div>
+
+    <a class="alerts-footer" routerLink="/notifications" (click)="close(false)">
+      Abrir central de alertas
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M14 7l5 5-5 5" /></svg>
+    </a>
+  </section>
+}

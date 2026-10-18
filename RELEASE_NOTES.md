@@ -2,6 +2,8 @@
 
 ## 18 de outubro de 2026 — assistente de IA no ERP
 
+- [Central de alertas redesenhada · e0073e8](https://github.com/felgoes/parts-erp/commit/e0073e8): o sino do topo virou um controle “Alertas” com o estado da fila e um painel conectado ao botão. O painel mantém cabeçalho e rodapé visíveis, diferencia vendas, pedidos, fiscal, backup e sistema, destaca o que é novo e trata corretamente os estados vazio, carregando e com vários itens. Também fecha ao clicar fora ou pressionar Esc e devolve o foco ao botão.
+
 - [Logo retorna para a visão geral · 76174ad](https://github.com/felgoes/parts-erp/commit/76174ad): o logo Parts ERP, tanto na barra lateral quanto no topo do celular, agora funciona como atalho para a página inicial. O clique fecha o menu móvel e o link também funciona pelo teclado.
 
 - [Indicadores da visão geral refinados · 392efdd](https://github.com/felgoes/parts-erp/commit/392efdd): o faturamento ganhou um cartão próprio, com mais presença e acesso direto à análise financeira, enquanto vendas, envios, produtos e estoque passaram a aparecer em cartões independentes. A composição agora tem hierarquia e respiro, mantém os atalhos para cada área e destaca pendências em tons discretos no desktop e no celular.

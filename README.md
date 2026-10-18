@@ -5,6 +5,7 @@ Para preparar um ambiente consistente em outro PC e consultar o procedimento de 
 ERP web para uma loja de autopeças, com estoque, clientes, faturas de venda e sincronização de pedidos do Mercado Livre.
 
 Veja as [notas de atualização](RELEASE_NOTES.md) e os commits correspondentes a cada versão publicada.
+O assistente de IA para administradores está descrito em [docs/assistente-ia.md](docs/assistente-ia.md).
 
 ## Stack
 

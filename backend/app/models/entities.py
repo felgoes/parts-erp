@@ -1,4 +1,5 @@
 from app.models import (
+    assistant,  # noqa: F401
     catalog,  # noqa: F401
     enums,  # noqa: F401
     integrations,  # noqa: F401

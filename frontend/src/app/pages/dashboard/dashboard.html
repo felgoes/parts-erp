@@ -99,29 +99,6 @@
         <div class="empty">Nenhuma venda registrada ainda.</div>
       }
     </article>
-    <aside class="card quick">
-      <h2>Ações rápidas</h2>
-      <p>Atalhos para o dia a dia</p>
-      @if (canManageCatalog()) {
-        <a routerLink="/products"
-          ><span>◇</span>
-          <div><strong>Cadastrar produto</strong><small>Adicione uma nova peça</small></div>
-          <b>→</b></a
-        >
-      }
-      @if (canAdjustStock()) {
-        <a routerLink="/products"
-          ><span>±</span>
-          <div><strong>Ajustar estoque</strong><small>Entrada, perda ou inventário</small></div>
-          <b>→</b></a
-        >
-      }
-      <a routerLink="/marketplace"
-        ><span>M</span>
-        <div><strong>Revisar pedidos</strong><small>Acompanhe a conciliação</small></div>
-        <b>→</b></a
-      >
-    </aside>
   </section>
   @if (financial(); as finance) {
     <div class="modal-backdrop" (click)="financial.set(null)">

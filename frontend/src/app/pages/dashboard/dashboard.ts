@@ -7,7 +7,7 @@ import { ApiService } from '../../core/api.service';
 import { LiveUpdatesService } from '../../core/live-updates.service';
 import { AuthService } from '../../core/auth.service';
 import { DashboardFinancialMetrics, DashboardSummary, Invoice } from '../../core/models';
-import { canAdjustStock, canManageCatalog, canSell } from '../../core/user-access';
+import { canSell } from '../../core/user-access';
 import { statusLabel, trackingEventLabel } from '../../core/status-labels';
 import { saleStageForInvoice, saleStageLabel } from '../../core/sale-stage';
 import { documentLabel } from '../../core/document-labels';
@@ -38,12 +38,6 @@ export class DashboardPage implements OnInit {
   private readonly auth = inject(AuthService);
   canSell() {
     return canSell(this.auth.user()?.role);
-  }
-  canManageCatalog() {
-    return canManageCatalog(this.auth.user()?.role);
-  }
-  canAdjustStock() {
-    return canAdjustStock(this.auth.user()?.role);
   }
   private readonly router = inject(Router);
   readonly data = signal<DashboardSummary | null>(null);

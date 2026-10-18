@@ -372,3 +372,56 @@ def test_chat_rejects_non_admin_before_touching_provider(db, monkeypatch):
         app.dependency_overrides.clear()
     assert response.status_code == 403
     assert calls == []
+
+
+def test_parts_purchase_preview_creates_purchase_without_cost(db):
+    user = admin(db)
+    chat = conversation(db, user)
+    preview = actions.create_pending(
+        db,
+        conversation=chat,
+        user=user,
+        tool_name="prever_compra",
+        args={
+            "tipo": "parts",
+            "fornecedor": "Peças Sul",
+            "itens": [
+                {"sku": "P-1", "descricao": "Filtro de óleo", "quantidade": 2}
+            ],
+        },
+    )
+    assert preview["status"] == "pending_confirmation"
+    action = actions.pending_action(db, user, preview["action_id"])
+    result = actions.execute(db, user, action)
+    assert result["status"] == "created"
+    purchase = db.scalar(select(PurchaseCase))
+    assert purchase.purchase_type == "parts"
+    assert purchase.items[0].quantity == Decimal("2")
+    assert purchase.items[0].unit_cost == 0
+
+
+def test_stock_adjustment_confirmation_updates_balance_once(db):
+    user = admin(db)
+    chat = conversation(db, user)
+    product = Product(sku="EST-2", name="Cabo", current_stock=5, sale_price=10)
+    db.add(product)
+    db.commit()
+    preview = actions.create_pending(
+        db,
+        conversation=chat,
+        user=user,
+        tool_name="prever_ajuste_estoque",
+        args={
+            "sku": "EST-2",
+            "operacao": "entrada",
+            "quantidade": 2,
+            "motivo": "Inventário",
+        },
+    )
+    action = actions.pending_action(db, user, preview["action_id"])
+    result = actions.execute(db, user, action)
+    assert result["balance"] == "7.000"
+    db.refresh(product)
+    assert product.current_stock == Decimal("7")
+    movement = db.scalar(select(StockMovement))
+    assert movement.idempotency_key.startswith("assistant:")

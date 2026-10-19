@@ -41,7 +41,7 @@ def catalog_products(
     query = (
         select(Product)
         .options(selectinload(Product.listings))
-        .where(Product.active.is_(True))
+        .where(Product.active.is_(True), Product.stock_type == "product")
         .order_by(Product.name)
     )
     products = list(db.scalars(query))

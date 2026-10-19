@@ -1,5 +1,9 @@
 # Notas de atualização — Parts ERP
 
+## 18 de outubro de 2026 — catálogo público apenas com produtos
+
+- [Filtro de peças no catálogo · d873612](https://github.com/felgoes/parts-erp/commit/d873612bb15cd8f18398336a90ebf559090e527e): o site passa a mostrar somente itens ativos classificados como produtos. Itens de almoxarifado continuam disponíveis no ERP, mas não aparecem no catálogo público.
+
 ## 18 de outubro de 2026 — listagem de vendas mais limpa
 
 - [XML fora das vendas recentes da Visão geral · 12c2cce](https://github.com/felgoes/parts-erp/commit/12c2cce): a coluna Documentos da listagem de vendas recentes deixou de exibir o link de XML. A nota em PDF continua disponível na listagem, e o XML segue acessível no detalhe da venda.

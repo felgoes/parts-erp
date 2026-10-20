@@ -11,10 +11,16 @@ import { DashboardMetricCard } from './dashboard-metric-card';
 })
 export class DashboardMetrics {
   readonly summary = input.required<DashboardSummary>();
+  readonly financialSummaryHidden = input(false);
   readonly financialRequested = output<void>();
+  readonly financialSummaryHiddenChange = output<boolean>();
   readonly totalMarketplaceCosts = computed(
     () =>
       Number(this.summary().marketplace_fee_amount) +
       Number(this.summary().marketplace_shipping_amount),
   );
+  toggleFinancialSummary(event: Event) {
+    event.stopPropagation();
+    this.financialSummaryHiddenChange.emit(!this.financialSummaryHidden());
+  }
 }

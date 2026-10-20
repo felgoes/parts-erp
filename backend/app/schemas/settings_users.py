@@ -75,6 +75,7 @@ class UserOut(ORMModel):
     full_name: str
     role: UserRole
     active: bool
+    financial_summary_hidden: bool
 
 
 class UserCreate(BaseModel):
@@ -90,6 +91,10 @@ class UserPasswordUpdate(BaseModel):
 
 class UserProfileUpdate(BaseModel):
     email: EmailStr
+
+
+class UserPreferencesUpdate(BaseModel):
+    financial_summary_hidden: bool
 
 
 class UserUpdate(BaseModel):

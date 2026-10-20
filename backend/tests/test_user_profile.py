@@ -7,10 +7,15 @@ import pytest
 from fastapi import HTTPException, UploadFile
 from PIL import Image
 
-from app.api.routes.users import read_my_avatar, update_my_profile, upload_my_avatar
+from app.api.routes.users import (
+    read_my_avatar,
+    update_my_preferences,
+    update_my_profile,
+    upload_my_avatar,
+)
 from app.core.security import hash_password
 from app.models import User, UserRole
-from app.schemas.common import UserProfileUpdate
+from app.schemas.common import UserPreferencesUpdate, UserProfileUpdate
 
 
 def user(db, email: str = "perfil@example.com") -> User:
@@ -48,6 +53,20 @@ def test_duplicate_profile_email_is_rejected(db) -> None:
         update_my_profile(UserProfileUpdate(email="existente@example.com"), db, current)
 
     assert error.value.status_code == 409
+
+
+def test_user_can_persist_financial_summary_visibility(db) -> None:
+    current = user(db)
+
+    updated = update_my_preferences(
+        UserPreferencesUpdate(financial_summary_hidden=True),
+        db,
+        current,
+    )
+
+    assert updated.financial_summary_hidden is True
+    db.refresh(current)
+    assert current.financial_summary_hidden is True
 
 
 def test_user_can_upload_and_read_avatar(db, monkeypatch, tmp_path) -> None:

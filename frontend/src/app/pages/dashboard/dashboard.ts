@@ -1,9 +1,10 @@
 import { CurrencyPipe, DatePipe, DecimalPipe } from '@angular/common';
-import { Component, DestroyRef, OnInit, inject, signal } from '@angular/core';
+import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { debounceTime } from 'rxjs';
 import { ApiService } from '../../core/api.service';
+import { UsersApi } from '../../core/api/users-api';
 import { LiveUpdatesService } from '../../core/live-updates.service';
 import { AuthService } from '../../core/auth.service';
 import { DashboardFinancialMetrics, DashboardSummary, Invoice } from '../../core/models';
@@ -34,6 +35,7 @@ import { DashboardMetrics } from './metrics/dashboard-metrics';
 })
 export class DashboardPage implements OnInit {
   private readonly api = inject(ApiService);
+  private readonly usersApi = inject(UsersApi);
   private readonly live = inject(LiveUpdatesService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly auth = inject(AuthService);
@@ -44,6 +46,7 @@ export class DashboardPage implements OnInit {
   readonly data = signal<DashboardSummary | null>(null);
   readonly financial = signal<DashboardFinancialMetrics | null>(null);
   readonly detail = signal<Invoice | null>(null);
+  readonly financialSummaryHidden = computed(() => !!this.auth.user()?.financial_summary_hidden);
   readonly invoiceTab = signal<'items' | 'tracking' | 'documents' | 'aftersale'>('items');
   startDate = this.monthStart();
   endDate = this.today();
@@ -122,6 +125,11 @@ export class DashboardPage implements OnInit {
     this.api
       .dashboardFinancial(this.startDate, this.endDate)
       .subscribe((metrics) => this.financial.set(metrics));
+  }
+  setFinancialSummaryHidden(hidden: boolean) {
+    this.usersApi.updateMyPreferences(hidden).subscribe({
+      next: (user) => this.auth.updateCurrentUser(user),
+    });
   }
   abs(value: number) {
     return Math.abs(value);

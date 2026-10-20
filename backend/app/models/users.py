@@ -30,6 +30,7 @@ class User(TimestampMixin, Base):
     password_hash: Mapped[str] = mapped_column(String(255))
     role: Mapped[UserRole] = mapped_column(Enum(UserRole), default=UserRole.operator)
     active: Mapped[bool] = mapped_column(Boolean, default=True)
+    financial_summary_hidden: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     avatar_filename: Mapped[str | None] = mapped_column(String(80))
 
 

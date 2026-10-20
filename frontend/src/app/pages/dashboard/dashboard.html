@@ -8,7 +8,12 @@
   }
 </app-page-header>
 @if (data(); as summary) {
-  <app-dashboard-metrics [summary]="summary" (financialRequested)="openFinancial()" />
+  <app-dashboard-metrics
+    [summary]="summary"
+    [financialSummaryHidden]="financialSummaryHidden()"
+    (financialRequested)="openFinancial()"
+    (financialSummaryHiddenChange)="setFinancialSummaryHidden($event)"
+  />
   <app-period-filter
     heading="Período da visão geral"
     description="Faturamento, vendas e vendas recentes"

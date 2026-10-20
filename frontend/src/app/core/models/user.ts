@@ -4,6 +4,7 @@ export interface User {
   full_name: string;
   role: 'admin' | 'manager' | 'operator' | 'stock' | 'finance' | 'viewer';
   active: boolean;
+  financial_summary_hidden: boolean;
 }
 export interface ErpSettings {
   company_name: string;

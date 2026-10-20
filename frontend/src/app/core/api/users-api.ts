@@ -70,6 +70,11 @@ export class UsersApi {
   updateMyProfile(email: string): Observable<User> {
     return this.http.patch<User>(`${this.base}/users/me/profile`, { email });
   }
+  updateMyPreferences(financialSummaryHidden: boolean): Observable<User> {
+    return this.http.patch<User>(`${this.base}/users/me/preferences`, {
+      financial_summary_hidden: financialSummaryHidden,
+    });
+  }
   uploadMyAvatar(file: File): Observable<User> {
     const body = new FormData();
     body.append('image', file);

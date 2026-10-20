@@ -1,34 +1,69 @@
 <section class="dashboard-metrics" aria-label="Indicadores da operação">
-  <button class="revenue-card" type="button" (click)="financialRequested.emit()">
-    <span class="revenue-top">
-      <span class="revenue-kicker">Resumo financeiro</span>
-      <span class="revenue-action"
-        >Abrir análise
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M7 17 17 7M8 7h9v9" />
-        </svg>
+  <div class="revenue-card">
+    <button class="revenue-card-main" type="button" (click)="financialRequested.emit()">
+      <span class="revenue-top">
+        <span class="revenue-kicker">Resumo financeiro</span>
+        <span class="revenue-action"
+          >Abrir análise
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M7 17 17 7M8 7h9v9" />
+          </svg>
+        </span>
       </span>
-    </span>
-    <span class="revenue-main">
-      <span class="revenue-label">Receita líquida no período</span>
-      <span class="revenue-value">{{ summary().revenue_month | currency: 'BRL' }}</span>
-    </span>
-    <span class="revenue-foot">
-      <span class="revenue-status" [class.is-warning]="summary().marketplace_costs_pending">
-        <span class="revenue-signal" aria-hidden="true"></span>
-        @if (summary().marketplace_costs_pending) {
-          Parcial · {{ summary().marketplace_costs_pending }} venda(s) sem custo completo do ML
+      <span class="revenue-main">
+        <span class="revenue-label">Receita líquida no período</span>
+        <span class="revenue-value">{{
+          financialSummaryHidden() ? '••••••' : (summary().revenue_month | currency: 'BRL')
+        }}</span>
+      </span>
+      <span class="revenue-foot">
+        <span class="revenue-status" [class.is-warning]="summary().marketplace_costs_pending">
+          <span class="revenue-signal" aria-hidden="true"></span>
+          @if (summary().marketplace_costs_pending) {
+            Parcial · {{ summary().marketplace_costs_pending }} venda(s) sem custo completo do ML
+          } @else {
+            Após comissões e frete do vendedor
+          }
+        </span>
+        @if (financialSummaryHidden()) {
+          <span class="revenue-detail">Valores ocultos</span>
         } @else {
-          Após comissões e frete do vendedor
+          <span class="revenue-detail"
+            >Bruto {{ summary().gross_revenue_month | currency: 'BRL' }} ·
+            {{ totalMarketplaceCosts() | currency: 'BRL' }}
+            em taxas e frete</span
+          >
         }
       </span>
-      <span class="revenue-detail"
-        >Bruto {{ summary().gross_revenue_month | currency: 'BRL' }} ·
-        {{ totalMarketplaceCosts() | currency: 'BRL' }}
-        em taxas e frete</span
-      >
-    </span>
-  </button>
+    </button>
+    <button
+      class="revenue-visibility"
+      type="button"
+      [attr.aria-label]="
+        financialSummaryHidden()
+          ? 'Mostrar valores do resumo financeiro'
+          : 'Ocultar valores do resumo financeiro'
+      "
+      [attr.aria-pressed]="financialSummaryHidden()"
+      [attr.title]="
+        financialSummaryHidden()
+          ? 'Mostrar valores do resumo financeiro'
+          : 'Ocultar valores do resumo financeiro'
+      "
+      (click)="toggleFinancialSummary($event)"
+    >
+      @if (financialSummaryHidden()) {
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M3 3 21 21M10.6 10.6a2 2 0 0 0 2.8 2.8M9.9 5.2A10.7 10.7 0 0 1 12 5c5.2 0 8.8 4.2 10 7-0.4 1-1.2 2.2-2.3 3.4M6.2 6.2C3.9 7.8 2.5 10.1 2 12c.4 1 1.3 2.4 2.6 3.7C6.4 17.5 9 19 12 19c.7 0 1.4-.1 2-.3" />
+        </svg>
+      } @else {
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M2 12s3.4-6 10-6 10 6 10 6-3.4 6-10 6-10-6-10-6Z" />
+          <circle cx="12" cy="12" r="2.5" />
+        </svg>
+      }
+    </button>
+  </div>
 
   <app-dashboard-metric-card
     label="Vendas confirmadas"

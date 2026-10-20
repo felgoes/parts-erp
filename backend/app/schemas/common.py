@@ -125,6 +125,7 @@ from app.schemas.settings_users import (  # noqa: F401
     UserCreate,
     UserOut,
     UserPasswordUpdate,
+    UserPreferencesUpdate,
     UserProfileUpdate,
     UserUpdate,
 )

@@ -15,6 +15,7 @@ from app.schemas.common import (
     UserCreate,
     UserOut,
     UserPasswordUpdate,
+    UserPreferencesUpdate,
     UserProfileUpdate,
     UserUpdate,
 )
@@ -39,6 +40,18 @@ def update_my_profile(
     except IntegrityError as exc:
         db.rollback()
         raise HTTPException(status_code=409, detail="Já existe um usuário com este e-mail") from exc
+    db.refresh(user)
+    return user
+
+
+@router.patch("/me/preferences", response_model=UserOut)
+def update_my_preferences(
+    payload: UserPreferencesUpdate,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+) -> User:
+    user.financial_summary_hidden = payload.financial_summary_hidden
+    db.commit()
     db.refresh(user)
     return user
 

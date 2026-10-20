@@ -17,9 +17,9 @@
   grid-row: span 2;
   flex-direction: column;
   justify-content: space-between;
-  gap: 28px;
+  gap: 0;
   overflow: hidden;
-  padding: 24px;
+  padding: 0;
   border: 1px solid #214535;
   border-radius: 18px;
   background-color: #17372a;
@@ -28,10 +28,67 @@
   color: #f8fbf9;
   font: inherit;
   text-align: left;
-  cursor: pointer;
   box-shadow:
     0 1px 2px #14251b12,
     0 16px 38px #14251b1b;
+}
+
+.revenue-card-main {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 28px;
+  padding: 24px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.revenue-card-main:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -4px;
+}
+
+.revenue-visibility {
+  position: absolute;
+  z-index: 2;
+  top: 24px;
+  right: 24px;
+  display: grid;
+  width: 29px;
+  height: 29px;
+  place-items: center;
+  border: 1px solid #ffffff17;
+  border-radius: 50%;
+  background: #ffffff08;
+  color: #dce8e0;
+  cursor: pointer;
+}
+
+.revenue-visibility:hover,
+.revenue-visibility:focus-visible {
+  border-color: #ffffff35;
+  background: #ffffff15;
+}
+
+.revenue-visibility:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.revenue-visibility svg {
+  width: 15px;
+  height: 15px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.65;
 }
 
 .revenue-card::after {
@@ -55,11 +112,6 @@
     0 20px 46px #14251b24;
 }
 
-.revenue-card:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 3px;
-}
-
 .revenue-top,
 .revenue-main,
 .revenue-foot {
@@ -70,8 +122,9 @@
 .revenue-top {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 16px;
+  padding-right: 38px;
 }
 
 .revenue-kicker {
@@ -182,6 +235,10 @@
     grid-column: 1 / -1;
     grid-row: auto;
   }
+
+  .revenue-card-main {
+    gap: 28px;
+  }
 }
 
 @media (max-width: 640px) {
@@ -191,7 +248,15 @@
 
   .revenue-card {
     min-height: 214px;
+  }
+
+  .revenue-card-main {
     padding: 21px;
+  }
+
+  .revenue-visibility {
+    top: 21px;
+    right: 21px;
   }
 }
 
@@ -216,6 +281,9 @@
   .revenue-card {
     min-height: 168px;
     grid-row: auto;
+  }
+
+  .revenue-card-main {
     gap: 16px;
     padding: 20px;
   }

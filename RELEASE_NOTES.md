@@ -1,5 +1,10 @@
 # Notas de atualização — Parts ERP
 
+## 20 de outubro de 2026 — aplicações veiculares dos anúncios
+
+- [Compatibilidades reais do Mercado Livre no catálogo · 12d2638](https://github.com/felgoes/parts-erp/commit/12d2638): a sincronização agora lê a lista de veículos compatíveis do anúncio e grava marca, modelo, ano, motor e versão no produto. A busca pública também encontra peças por essa aplicação, como “Tiggo 3X 1.0”.
+- A carga inicial preencheu 77 aplicações no bico injetor, 23 na bobina, 15 no kit de membrana e 89 no sensor de temperatura, mantendo as aplicações vinculadas aos anúncios de origem.
+
 ## 20 de outubro de 2026 — galerias completas dos anúncios
 
 - [Fotos dos anúncios dentro do produto · b566105](https://github.com/felgoes/parts-erp/commit/b566105): as sincronizações do Mercado Livre agora levam todas as fotos do anúncio para a galeria do produto no ERP, preservando as imagens enviadas diretamente ao cadastro. A atualização também encontrou 21 fotos nos quatro anúncios existentes e as vinculou aos produtos sem duplicar registros. Fotos enviadas pelo ERP deixam de ser reduzidas para 1600 px e mantêm as dimensões originais dentro do limite de segurança de 25 megapixels.

@@ -1,5 +1,9 @@
 # Notas de atualização — Parts ERP
 
+## 20 de outubro de 2026 — cartão financeiro sem linhas decorativas
+
+- [Fundo contínuo no resumo financeiro · 17eb46e](https://github.com/felgoes/parts-erp/commit/17eb46e): removemos as linhas horizontais quase invisíveis que apareciam como recortes no fundo verde do cartão. O visual agora fica uniforme sem alterar os valores, o olho ou o acesso à análise.
+
 ## 20 de outubro de 2026 — resumo financeiro com valores ocultáveis
 
 - [Ocultação persistente dos valores do resumo financeiro · 51615ea](https://github.com/felgoes/parts-erp/commit/51615ea): o cartão de Resumo financeiro ganhou um olho ao lado de “Abrir análise” para esconder ou mostrar os valores. A escolha fica salva por usuário e continua valendo depois de sair e entrar novamente no ERP.

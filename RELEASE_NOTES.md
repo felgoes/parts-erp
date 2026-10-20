@@ -1,5 +1,9 @@
 # Notas de atualização — Parts ERP
 
+## 20 de outubro de 2026 — resumo financeiro com valores ocultáveis
+
+- [Ocultação persistente dos valores do resumo financeiro · 51615ea](https://github.com/felgoes/parts-erp/commit/51615ea): o cartão de Resumo financeiro ganhou um olho ao lado de “Abrir análise” para esconder ou mostrar os valores. A escolha fica salva por usuário e continua valendo depois de sair e entrar novamente no ERP.
+
 ## 20 de outubro de 2026 — aplicações veiculares dos anúncios
 
 - [Compatibilidades reais do Mercado Livre no catálogo · 12d2638](https://github.com/felgoes/parts-erp/commit/12d2638): a sincronização agora lê a lista de veículos compatíveis do anúncio e grava marca, modelo, ano, motor e versão no produto. A busca pública também encontra peças por essa aplicação, como “Tiggo 3X 1.0”.

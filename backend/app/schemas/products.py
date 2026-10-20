@@ -5,6 +5,7 @@ from typing import Any, Literal
 from pydantic import (
     BaseModel,
     Field,
+    field_validator,
 )
 
 from app.schemas.base import ORMModel
@@ -88,6 +89,24 @@ class ProductOut(ORMModel):
     active: bool
     created_at: datetime
     updated_at: datetime
+
+    @field_validator("attributes", mode="before")
+    @classmethod
+    def normalize_legacy_attributes(cls, value: Any) -> dict[str, Any]:
+        """Keep older marketplace imports with list attributes readable."""
+        if isinstance(value, dict):
+            return value
+        if isinstance(value, list):
+            normalized: dict[str, Any] = {}
+            for item in value:
+                if not isinstance(item, dict):
+                    continue
+                name = item.get("name") or item.get("id")
+                attribute_value = item.get("value") or item.get("value_name")
+                if name and attribute_value is not None:
+                    normalized[str(name)] = attribute_value
+            return normalized
+        return {}
 
 
 class ProductListingOut(ORMModel):

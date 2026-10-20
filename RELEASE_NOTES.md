@@ -1,5 +1,9 @@
 # Notas de atualização — Parts ERP
 
+## 20 de outubro de 2026 — listagem de estoque restaurada
+
+- [Produtos voltam a aparecer em Produtos e estoque · a09407e](https://github.com/felgoes/parts-erp/commit/a09407e61eca8c7559441323047635299ded26d7): a API recusava a resposta quando peças importadas tinham os atributos técnicos gravados no formato antigo, e a tela ficava vazia sem mostrar o erro. O formato foi normalizado para todos os registros existentes e os novos cadastros passaram a usar somente o formato atual. Nenhum produto ou saldo foi removido; os cinco itens de produção foram conferidos após o deploy, com as chamadas de estoque respondendo HTTP 200.
+
 ## 18 de outubro de 2026 — catálogo público apenas com produtos
 
 - [Filtro de peças no catálogo · d873612](https://github.com/felgoes/parts-erp/commit/d873612bb15cd8f18398336a90ebf559090e527e): o site passa a mostrar somente itens ativos classificados como produtos. Itens de almoxarifado continuam disponíveis no ERP, mas não aparecem no catálogo público.

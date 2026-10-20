@@ -68,6 +68,32 @@ def test_public_catalog_excludes_warehouse_before_search_and_limit(db):
     assert [item.sku for item in catalog_products(search="PEC-1", limit=48, db=db)] == ["PEC-1"]
 
 
+def test_public_catalog_search_matches_vehicle_application(db):
+    db.add(
+        Product(
+            sku="SENSOR-1",
+            name="Sensor de temperatura",
+            stock_type="product",
+            active=True,
+            fitments=[
+                {
+                    "make": "Chery",
+                    "model": "Tiggo 7",
+                    "year_from": 2021,
+                    "year_to": 2025,
+                    "engine": "1.6",
+                    "version": "Pro",
+                }
+            ],
+        )
+    )
+    db.commit()
+
+    result = catalog_products(search="Tiggo 7 1.6", limit=48, db=db)
+
+    assert [item.sku for item in result] == ["SENSOR-1"]
+
+
 def test_public_catalog_api_reflects_stock_type_changes(db):
     product = Product(sku="PEC-2", name="Filtro", stock_type="product", active=True)
     db.add(product)

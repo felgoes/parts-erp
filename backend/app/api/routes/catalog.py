@@ -83,6 +83,16 @@ def _search_tokens(value: str | None) -> list[str]:
 
 def _matches(product: Product, tokens: list[str]) -> bool:
     parts = [product.name, product.sku, product.description]
+    for fitment in product.fitments or []:
+        if isinstance(fitment, dict):
+            parts.extend(
+                [
+                    fitment.get("make"),
+                    fitment.get("model"),
+                    fitment.get("engine"),
+                    fitment.get("version"),
+                ]
+            )
     for listing in product.listings:
         parts.extend([listing.title, listing.external_item_id, listing.permalink])
         payload = listing.payload if isinstance(listing.payload, dict) else {}

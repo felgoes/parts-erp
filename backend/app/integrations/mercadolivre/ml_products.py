@@ -1,4 +1,5 @@
 import hashlib
+import re
 from datetime import UTC, datetime
 from decimal import Decimal
 
@@ -12,6 +13,10 @@ from app.models import (
     Product,
     ProductMarketplaceListing,
 )
+
+YEAR_PATTERN = re.compile(r"\b(19\d{2}|20\d{2})\b")
+BODY_PATTERN = re.compile(r"\s+(?:\d+p|BR)\b.*$", re.IGNORECASE)
+ENGINE_PATTERN = re.compile(r"\b\d(?:[.,]\d)?\b")
 
 
 def _merge_listing_images(
@@ -66,6 +71,73 @@ def _merge_listing_images(
         {**row, "position": position}
         for position, row in enumerate([*retained, *imported])
     ]
+
+
+def _vehicle_fitments(response: object, item_id: str) -> list[dict]:
+    if not isinstance(response, dict):
+        return []
+    rows = response.get("products")
+    if not isinstance(rows, list):
+        return []
+    fitments: list[dict] = []
+    seen: set[str] = set()
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        catalog_product_id = str(row.get("catalog_product_id") or "")
+        vehicle_name = str(row.get("catalog_product_name") or "").strip()
+        year_match = YEAR_PATTERN.search(vehicle_name)
+        if not vehicle_name or not year_match:
+            continue
+        fitment_key = catalog_product_id or vehicle_name
+        if fitment_key in seen:
+            continue
+        seen.add(fitment_key)
+        prefix = vehicle_name[: year_match.start()].strip()
+        tokens = prefix.split()
+        if len(tokens) < 2:
+            continue
+        suffix = BODY_PATTERN.sub("", vehicle_name[year_match.end() :].strip()).strip()
+        suffix_tokens = suffix.split()
+        engine = next(
+            (token for token in suffix_tokens if ENGINE_PATTERN.fullmatch(token)),
+            None,
+        )
+        if engine and engine in suffix_tokens:
+            suffix_tokens.remove(engine)
+        fitments.append(
+            {
+                "id": f"ml-{hashlib.sha256(fitment_key.encode()).hexdigest()[:20]}",
+                "make": tokens[0],
+                "model": " ".join(tokens[1:]),
+                "year_from": int(year_match.group(1)),
+                "year_to": int(year_match.group(1)),
+                "engine": engine,
+                "version": " ".join(suffix_tokens) or None,
+                "catalog_product_id": catalog_product_id or None,
+                "source": "mercadolivre",
+                "external_item_id": item_id,
+            }
+        )
+    return fitments
+
+
+def _merge_vehicle_fitments(
+    product: Product,
+    provider: str,
+    external_item_id: str,
+    fitments: list[dict],
+) -> None:
+    retained = [
+        row
+        for row in product.fitments or []
+        if isinstance(row, dict)
+        and not (
+            row.get("source") == provider
+            and row.get("external_item_id") == external_item_id
+        )
+    ]
+    product.fitments = [*retained, *fitments]
 
 
 def sync_products(db: Session, account: MarketplaceAccount) -> int:
@@ -153,6 +225,19 @@ def sync_products(db: Session, account: MarketplaceAccount) -> int:
             listing.payload = detail
             listing.synchronized_at = datetime.now(UTC)
             _merge_listing_images(product, "mercadolivre", external_id, picture_payloads)
+            try:
+                compatibility = client.get(
+                    f"/items/{external_id}/compatibilities?extended=true"
+                )
+            except MercadoLivreError:
+                compatibility = None
+            if compatibility:
+                _merge_vehicle_fitments(
+                    product,
+                    "mercadolivre",
+                    external_id,
+                    _vehicle_fitments(compatibility, external_id),
+                )
             imported += 1
         db.commit()
         offset += len(ids)

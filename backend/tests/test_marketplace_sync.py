@@ -333,6 +333,21 @@ def test_initial_sync_imports_products_and_orders(db, monkeypatch):
                     },
                 ],
             }
+        if path == "/items/item-1/compatibilities?extended=true":
+            return {
+                "products": [
+                    {
+                        "catalog_product_id": "MLB-CAR-1",
+                        "catalog_product_name": "Chery Tiggo 5X 2020 1.5 Txs Flex Aut. 5p BR",
+                        "source": "SELLER",
+                    },
+                    {
+                        "catalog_product_id": "MLB-CAR-2",
+                        "catalog_product_name": "Chery Arrizo 5 2021 1.5 Rts Turbo Flex Aut. 4p BR",
+                        "source": "SELLER",
+                    },
+                ]
+            }
         if "orders/search" in path:
             return {"results": [{"id": "123"}]}
         if path.startswith("/visits/items?"):
@@ -357,6 +372,16 @@ def test_initial_sync_imports_products_and_orders(db, monkeypatch):
         "https://images.example/part-2.jpg",
     ]
     assert all(image["source"] == "mercadolivre" for image in product.images)
+    fitment_summary = [
+        (fitment["make"], fitment["model"], fitment["year_from"])
+        for fitment in product.fitments
+    ]
+    assert fitment_summary == [
+        ("Chery", "Tiggo 5X", 2020),
+        ("Chery", "Arrizo 5", 2021),
+    ]
+    assert product.fitments[0]["engine"] == "1.5"
+    assert product.fitments[0]["version"] == "Txs Flex Aut."
     assert calls == [("77", "/orders/123")]
 
 

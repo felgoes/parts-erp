@@ -1,5 +1,9 @@
 # Notas de atualização — Parts ERP
 
+## 20 de outubro de 2026 — galerias completas dos anúncios
+
+- [Fotos dos anúncios dentro do produto · b566105](https://github.com/felgoes/parts-erp/commit/b566105): as sincronizações do Mercado Livre agora levam todas as fotos do anúncio para a galeria do produto no ERP, preservando as imagens enviadas diretamente ao cadastro. A atualização também encontrou 21 fotos nos quatro anúncios existentes e as vinculou aos produtos sem duplicar registros. Fotos enviadas pelo ERP deixam de ser reduzidas para 1600 px e mantêm as dimensões originais dentro do limite de segurança de 25 megapixels.
+
 ## 20 de outubro de 2026 — listagem de estoque restaurada
 
 - [Produtos voltam a aparecer em Produtos e estoque · a09407e](https://github.com/felgoes/parts-erp/commit/a09407e61eca8c7559441323047635299ded26d7): a API recusava a resposta quando peças importadas tinham os atributos técnicos gravados no formato antigo, e a tela ficava vazia sem mostrar o erro. O formato foi normalizado para todos os registros existentes e os novos cadastros passaram a usar somente o formato atual. Nenhum produto ou saldo foi removido; os cinco itens de produção foram conferidos após o deploy, com as chamadas de estoque respondendo HTTP 200.

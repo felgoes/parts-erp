@@ -161,9 +161,9 @@ def channel_metadata(
 
 
 def _image_bytes(product: Product, max_count: int) -> list[tuple[str, bytes]]:
-    images = list(product.images or [])
+    images = [row for row in product.images or [] if row.get("filename")]
     if not images:
-        raise ValueError("Adicione pelo menos uma foto válida antes de publicar")
+        raise ValueError("Adicione pelo menos uma foto local válida antes de publicar")
     if len(images) > max_count:
         raise ValueError(f"A categoria aceita no máximo {max_count} foto(s)")
     result = []

@@ -74,8 +74,8 @@
           <article
             class="product-card"
             tabindex="0"
-            (click)="selected.set(product)"
-            (keydown.enter)="selected.set(product)"
+            (click)="selectProduct(product)"
+            (keydown.enter)="selectProduct(product)"
           >
             <div class="product-code">{{ product.sku }}</div>
             @if (product.images[0]?.url || product.listings[0]?.thumbnail) {
@@ -140,11 +140,53 @@
           }}
         </p>
         @if (product.images.length) {
-          <div class="master-photo-gallery" aria-label="Fotos da peça">
-            @for (image of product.images; track image.id) {
-              <img [src]="image.url" [alt]="product.name" loading="lazy" />
+          <section class="catalog-gallery" aria-label="Fotos da peça">
+            <div class="gallery-stage">
+              <div #galleryViewport class="gallery-viewport" (scroll)="onPhotoScroll(galleryViewport)">
+                @for (image of product.images; track image.id || image.url) {
+                  <figure class="gallery-slide">
+                    <img [src]="image.url" [alt]="product.name" loading="eager" />
+                  </figure>
+                }
+              </div>
+              @if (product.images.length > 1) {
+                <button
+                  type="button"
+                  class="gallery-arrow previous"
+                  aria-label="Foto anterior"
+                  (click)="movePhoto(galleryViewport, -1)"
+                >
+                  ‹
+                </button>
+                <button
+                  type="button"
+                  class="gallery-arrow next"
+                  aria-label="Próxima foto"
+                  (click)="movePhoto(galleryViewport, 1)"
+                >
+                  ›
+                </button>
+              }
+            </div>
+            @if (product.images.length > 1) {
+              <div class="gallery-meta">
+                <span>{{ photoIndex() + 1 }} / {{ product.images.length }}</span>
+                <small>Deslize para o lado ou use as setas</small>
+              </div>
+              <div class="gallery-thumbs" aria-label="Selecionar foto">
+                @for (image of product.images; track image.id || image.url; let index = $index) {
+                  <button
+                    type="button"
+                    [class.active]="photoIndex() === index"
+                    [attr.aria-label]="'Abrir foto ' + (index + 1)"
+                    (click)="goToPhoto(galleryViewport, index)"
+                  >
+                    <img [src]="image.url" [alt]="product.name" loading="lazy" />
+                  </button>
+                }
+              </div>
             }
-          </div>
+          </section>
         }
         @if (
           product.brand || product.manufacturer_part_number || product.barcode || product.category
@@ -203,8 +245,11 @@
         @for (listing of product.listings; track listing.external_item_id) {
           <article class="catalog-listing">
             <div class="listing-media">
-              @if (listing.thumbnail) {
-                <img [src]="listing.thumbnail" [alt]="listing.title || product.name" />
+              @if (listing.images[0] || listing.thumbnail) {
+                <img
+                  [src]="listing.images[0] || listing.thumbnail"
+                  [alt]="listing.title || product.name"
+                />
               } @else {
                 <span>{{ glyph(product.name) }}</span>
               }

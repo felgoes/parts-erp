@@ -61,7 +61,7 @@ def catalog_products(
             category=product.category,
             attributes=product.attributes or {},
             fitments=product.fitments or [],
-            images=product.images or [],
+            images=_catalog_images(product.images),
             sale_price=product.sale_price,
             in_stock=product.current_stock > 0,
             listings=[
@@ -128,6 +128,17 @@ def _secure_url(value: str | None) -> str | None:
     if not value:
         return None
     return value.replace("http://", "https://", 1) if value.startswith("http://") else value
+
+
+def _catalog_images(images: list[dict] | None) -> list[dict]:
+    normalized: list[dict] = []
+    for image in images or []:
+        if not isinstance(image, dict):
+            continue
+        url = _secure_url(str(image.get("url") or ""))
+        if url:
+            normalized.append({**image, "url": url})
+    return normalized
 
 
 def _listing_permalink(

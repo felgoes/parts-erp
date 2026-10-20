@@ -29,11 +29,10 @@ def store_product_image(contents: bytes) -> tuple[str, int, int]:
                 image = background
             else:
                 image = image.convert("RGB")
-            image.thumbnail((1600, 1600), Image.Resampling.LANCZOS)
             filename = f"{uuid4().hex}.jpg"
             directory = Path(get_settings().product_images_dir).resolve()
             directory.mkdir(parents=True, exist_ok=True)
-            image.save(directory / filename, format="JPEG", quality=88, optimize=True)
+            image.save(directory / filename, format="JPEG", quality=95, optimize=True)
             return filename, image.width, image.height
     except (UnidentifiedImageError, OSError) as exc:
         raise ValueError(

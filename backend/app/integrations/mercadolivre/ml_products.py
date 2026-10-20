@@ -1,3 +1,4 @@
+import hashlib
 from datetime import UTC, datetime
 from decimal import Decimal
 
@@ -11,6 +12,60 @@ from app.models import (
     Product,
     ProductMarketplaceListing,
 )
+
+
+def _merge_listing_images(
+    product: Product,
+    provider: str,
+    external_item_id: str,
+    pictures: list[dict],
+) -> None:
+    existing = list(product.images or [])
+    retained = [
+        row
+        for row in existing
+        if isinstance(row, dict)
+        and not (
+            row.get("source") == provider
+            and row.get("external_item_id") == external_item_id
+        )
+    ]
+    seen_urls = {str(row.get("url") or "") for row in retained}
+    imported: list[dict] = []
+    uploaded_at = datetime.now(UTC).isoformat()
+    for picture in pictures:
+        if isinstance(picture, str):
+            url = picture
+            width = height = 0
+        elif isinstance(picture, dict):
+            url = str(picture.get("secure_url") or picture.get("url") or "")
+            width = int(picture.get("width") or 0)
+            height = int(picture.get("height") or 0)
+        else:
+            continue
+        if not url:
+            continue
+        url = url.replace("http://", "https://", 1) if url.startswith("http://") else url
+        if url in seen_urls:
+            continue
+        seen_urls.add(url)
+        imported.append(
+            {
+                "id": f"{provider}-{hashlib.sha256(url.encode()).hexdigest()[:20]}",
+                "filename": "",
+                "url": url,
+                "position": len(retained) + len(imported),
+                "width": width,
+                "height": height,
+                "uploaded_at": uploaded_at,
+                "source": provider,
+                "external_item_id": external_item_id,
+            }
+        )
+    product.images = [
+        {**row, "position": position}
+        for position, row in enumerate([*retained, *imported])
+    ]
 
 
 def sync_products(db: Session, account: MarketplaceAccount) -> int:
@@ -54,10 +109,13 @@ def sync_products(db: Session, account: MarketplaceAccount) -> int:
             product.sale_price = Decimal(str(detail.get("price") or product.sale_price or 0))
             product.current_stock = Decimal(str(detail.get("available_quantity") or 0))
             product.active = str(detail.get("status", "active")) == "active"
+            picture_payloads = [
+                picture for picture in detail.get("pictures", []) if isinstance(picture, dict)
+            ]
             pictures = [
                 picture.get("secure_url") or picture.get("url")
-                for picture in detail.get("pictures", [])
-                if isinstance(picture, dict) and (picture.get("secure_url") or picture.get("url"))
+                for picture in picture_payloads
+                if picture.get("secure_url") or picture.get("url")
             ]
             listing = db.scalar(
                 select(ProductMarketplaceListing).where(
@@ -94,6 +152,7 @@ def sync_products(db: Session, account: MarketplaceAccount) -> int:
             listing.status = str(detail.get("status") or "unknown")
             listing.payload = detail
             listing.synchronized_at = datetime.now(UTC)
+            _merge_listing_images(product, "mercadolivre", external_id, picture_payloads)
             imported += 1
         db.commit()
         offset += len(ids)

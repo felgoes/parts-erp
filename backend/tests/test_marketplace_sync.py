@@ -320,6 +320,18 @@ def test_initial_sync_imports_products_and_orders(db, monkeypatch):
                 "price": 49.9,
                 "available_quantity": 8,
                 "status": "active",
+                "pictures": [
+                    {
+                        "secure_url": "https://images.example/part-1.jpg",
+                        "width": 1200,
+                        "height": 900,
+                    },
+                    {
+                        "secure_url": "https://images.example/part-2.jpg",
+                        "width": 1600,
+                        "height": 1200,
+                    },
+                ],
             }
         if "orders/search" in path:
             return {"results": [{"id": "123"}]}
@@ -340,6 +352,11 @@ def test_initial_sync_imports_products_and_orders(db, monkeypatch):
     assert result == {"products": 1, "orders": 1, "costs": 0}
     assert product is not None
     assert product.current_stock == Decimal("8")
+    assert [image["url"] for image in product.images] == [
+        "https://images.example/part-1.jpg",
+        "https://images.example/part-2.jpg",
+    ]
+    assert all(image["source"] == "mercadolivre" for image in product.images)
     assert calls == [("77", "/orders/123")]
 
 

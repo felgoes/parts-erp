@@ -17,6 +17,7 @@ export class CatalogPage implements OnInit {
   readonly loading = signal(true);
   readonly error = signal(false);
   readonly selected = signal<CatalogProduct | null>(null);
+  readonly photoIndex = signal(0);
   search = '';
   private searchTimer?: ReturnType<typeof setTimeout>;
 
@@ -62,6 +63,25 @@ export class CatalogPage implements OnInit {
 
   glyph(name: string) {
     return name.trim().slice(0, 2).toUpperCase();
+  }
+
+  selectProduct(product: CatalogProduct) {
+    this.photoIndex.set(0);
+    this.selected.set(product);
+  }
+
+  movePhoto(viewport: HTMLElement, direction: -1 | 1) {
+    viewport.scrollBy({ left: viewport.clientWidth * direction, behavior: 'smooth' });
+  }
+
+  goToPhoto(viewport: HTMLElement, index: number) {
+    viewport.scrollTo({ left: viewport.clientWidth * index, behavior: 'smooth' });
+  }
+
+  onPhotoScroll(viewport: HTMLElement) {
+    if (!viewport.clientWidth) return;
+    const index = Math.round(viewport.scrollLeft / viewport.clientWidth);
+    this.photoIndex.set(index);
   }
 
   whatsappUrl(product?: CatalogProduct) {

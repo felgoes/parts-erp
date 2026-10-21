@@ -1,5 +1,6 @@
 import { DatePipe, DecimalPipe, JsonPipe } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
+import { ActivatedRoute } from '@angular/router';
 import { Component, DestroyRef, OnInit, inject, signal } from '@angular/core';
 import { ApiService } from '../../core/api.service';
 import { LiveUpdatesService } from '../../core/live-updates.service';
@@ -23,6 +24,7 @@ export class MarketplacePage implements OnInit {
   private readonly live = inject(LiveUpdatesService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly auth = inject(AuthService);
+  private readonly route = inject(ActivatedRoute);
   readonly status = signal<MarketplaceStatus | null>(null);
   readonly orders = signal<MarketplaceOrder[]>([]);
   readonly syncing = signal(false);
@@ -55,6 +57,12 @@ export class MarketplacePage implements OnInit {
     return role === 'admin' || role === 'manager';
   }
   ngOnInit() {
+    this.route.queryParamMap
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((params) => {
+        const orderId = params.get('order_id');
+        if (orderId) this.openDetailsById(orderId);
+      });
     this.load();
     this.live.changes$
       .pipe(debounceTime(250), takeUntilDestroyed(this.destroyRef))
@@ -290,9 +298,12 @@ export class MarketplacePage implements OnInit {
     this.feedback.set(null);
   }
   openDetails(order: MarketplaceOrder) {
+    this.openDetailsById(order.id);
+  }
+  private openDetailsById(orderId: string) {
     this.history.set([]);
-    this.api.marketplaceOrder(order.id).subscribe((full) => this.detail.set(full));
-    this.api.marketplaceOrderHistory(order.id).subscribe((events) => this.history.set(events));
+    this.api.marketplaceOrder(orderId).subscribe((full) => this.detail.set(full));
+    this.api.marketplaceOrderHistory(orderId).subscribe((events) => this.history.set(events));
   }
   download(invoiceId: string, documentId: string, filename: string) {
     const documentTab = window.open('about:blank', '_blank');

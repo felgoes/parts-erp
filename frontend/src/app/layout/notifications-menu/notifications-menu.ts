@@ -15,7 +15,7 @@ import { NavigationEnd, Router, RouterLink } from '@angular/router';
 import { filter } from 'rxjs';
 import { ApiService } from '../../core/api.service';
 import { AuthService } from '../../core/auth.service';
-import { PushNotification } from '../../core/models';
+import { PushNotification, PushNotificationAction } from '../../core/models';
 
 interface AlertCategory {
   label: string;
@@ -93,6 +93,18 @@ export class NotificationsMenu implements OnInit {
 
   category(item: PushNotification): AlertCategory {
     return CATEGORY_META[item.category] ?? CATEGORY_META['system'];
+  }
+
+  actions(item: PushNotification): PushNotificationAction[] {
+    const value = item.data['actions'];
+    if (!Array.isArray(value)) return [];
+    return value.filter(
+      (action): action is PushNotificationAction =>
+        typeof action === 'object' &&
+        action !== null &&
+        typeof action['label'] === 'string' &&
+        typeof action['route'] === 'string',
+    );
   }
 
   isNew(item: PushNotification): boolean {

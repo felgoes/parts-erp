@@ -89,6 +89,15 @@
         <div>
           <strong>{{ item.title }}</strong>
           <p>{{ item.body }}</p>
+          @if (actions(item).length) {
+            <div class="history-actions">
+              @for (action of actions(item); track action.label) {
+                <a [routerLink]="action.route" [queryParams]="action.query || null">{{
+                  action.label
+                }}</a>
+              }
+            </div>
+          }
           <small
             >{{ item.created_at | date: 'dd/MM/yyyy HH:mm' }} · {{ status(item.status) }}</small
           >

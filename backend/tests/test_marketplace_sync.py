@@ -94,14 +94,13 @@ def test_order_webhook_creates_invoice_and_documents(db, monkeypatch, tmp_path):
     docs = list(db.scalars(select(InvoiceDocument)))
     assert {doc.document_type for doc in docs} == {"xml", "pdf"}
     assert len(downloads) == 2
-    alerts = list(db.scalars(select(PushNotification).where(PushNotification.category == "fiscal")))
-    assert len(alerts) == 1  # XML and DANFE are one NF-e notification.
-    assert alerts[0].data["type"] == "invoice_ready"
+    alerts = list(db.scalars(select(PushNotification).order_by(PushNotification.created_at)))
+    assert len(alerts) == 1
+    assert alerts[0].title == "Venda confirmada"
+    assert "Pastilha" in alerts[0].body
+    assert "Pedido #123" in alerts[0].body
     sync_module.sync_order(db, "77", "/orders/123")
-    assert (
-        len(list(db.scalars(select(PushNotification).where(PushNotification.category == "fiscal"))))
-        == 1
-    )
+    assert len(list(db.scalars(select(PushNotification)))) == 1
 
 
 def test_shipment_api_failure_marks_order_for_retry(db, monkeypatch):
@@ -258,12 +257,10 @@ def test_label_waits_until_mercado_livre_releases_printing_substatus(db, monkeyp
     assert downloads == ["/shipment_labels?shipment_ids=789&response_type=pdf"]
     db.commit()
     alerts = list(db.scalars(select(PushNotification)))
-    assert len(alerts) == 1
-    assert alerts[0].category == "fiscal"
-    assert alerts[0].data["type"] == "label_ready"
+    assert alerts == []
     sync_module.sync_shipping_label(db, order, account)
     assert len(downloads) == 1
-    assert len(list(db.scalars(select(PushNotification)))) == 1
+    assert list(db.scalars(select(PushNotification))) == []
     assert (
         db.scalar(select(InvoiceDocument).where(InvoiceDocument.document_type == "label_pdf"))
         is not None
@@ -373,8 +370,7 @@ def test_initial_sync_imports_products_and_orders(db, monkeypatch):
     ]
     assert all(image["source"] == "mercadolivre" for image in product.images)
     fitment_summary = [
-        (fitment["make"], fitment["model"], fitment["year_from"])
-        for fitment in product.fitments
+        (fitment["make"], fitment["model"], fitment["year_from"]) for fitment in product.fitments
     ]
     assert fitment_summary == [
         ("Chery", "Tiggo 5X", 2020),

@@ -22,6 +22,7 @@ from app.models import (
     MarketplaceAccount,
     MarketplaceOrder,
 )
+from app.services.push_notifications import deliver_pending_notifications
 
 
 def sync_invoice_documents(
@@ -65,6 +66,7 @@ def sync_invoice_documents(
                 )
             )
     db.commit()
+    deliver_pending_notifications(db)
     return saved
 
 
@@ -158,6 +160,7 @@ def automate_order_documents(
     record.automation_updated_at = datetime.now(UTC)
     db.commit()
     db.refresh(record)
+    deliver_pending_notifications(db)
     return record
 
 

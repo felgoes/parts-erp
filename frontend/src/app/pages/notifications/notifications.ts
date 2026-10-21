@@ -1,13 +1,19 @@
 import { DatePipe } from '@angular/common';
 import { Component, OnInit, inject, signal } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { ApiService } from '../../core/api.service';
-import { PushNotification, PushPreference, PushSound } from '../../core/models';
+import {
+  PushNotification,
+  PushNotificationAction,
+  PushPreference,
+  PushSound,
+} from '../../core/models';
 import { PushNotificationsService } from '../../core/push-notifications.service';
 import { PageHeader } from '../../shared/page-header';
 
 @Component({
   selector: 'app-notifications',
-  imports: [DatePipe, PageHeader],
+  imports: [DatePipe, PageHeader, RouterLink],
   templateUrl: './notifications.html',
   styles: [
     `
@@ -195,6 +201,24 @@ import { PageHeader } from '../../shared/page-header';
         color: var(--muted, #738078);
         font-size: 11px;
       }
+      .history-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 7px;
+        margin: 8px 0;
+      }
+      .history-actions a {
+        display: inline-flex;
+        min-height: 30px;
+        align-items: center;
+        padding: 5px 9px;
+        border: 1px solid var(--line, #dfe4de);
+        border-radius: 7px;
+        color: var(--ink, #18382b);
+        font-size: 11px;
+        font-weight: 750;
+        text-decoration: none;
+      }
       @media (max-width: 760px) {
         .notification-grid {
           grid-template-columns: 1fr;
@@ -246,6 +270,18 @@ export class NotificationsPage implements OnInit {
     { value: 'silent', label: 'Silencioso' },
   ];
   private previewAudio: HTMLAudioElement | null = null;
+
+  actions(item: PushNotification): PushNotificationAction[] {
+    const value = item.data['actions'];
+    if (!Array.isArray(value)) return [];
+    return value.filter(
+      (action): action is PushNotificationAction =>
+        typeof action === 'object' &&
+        action !== null &&
+        typeof action['label'] === 'string' &&
+        typeof action['route'] === 'string',
+    );
+  }
   ngOnInit() {
     void this.pushNotifications.enableForCurrentDevice();
     this.load();

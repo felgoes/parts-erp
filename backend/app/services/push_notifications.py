@@ -8,21 +8,17 @@ alerts when a marketplace retries the same webhook.
 from __future__ import annotations
 
 import hashlib
-import json
 import logging
-import time
 from datetime import UTC, datetime
-from pathlib import Path
 from typing import Any
 
-import httpx
-import jwt
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.core.config import get_settings
+from app.services.push_transport import _firebase_credentials, deliver as _deliver
 from app.models import (
+    InvoiceDocument,
     MarketplaceOrder,
     PushDevice,
     PushNotification,
@@ -34,88 +30,39 @@ from app.models import (
 
 logger = logging.getLogger(__name__)
 MAX_ATTEMPTS = 5
-SOUND_CATEGORIES = {"sales", "order_status", "fiscal", "backup", "system"}
-SOUND_OPTIONS = {"system", "bell", "chime", "soft", "kaching", "silent"}
-
-
-_access_token = ""
-_access_token_expires_at = 0.0
-
-
-def _firebase_credentials() -> dict[str, Any] | None:
-    """Loads the credential locally without ever exposing its contents."""
-    credential_file = get_settings().firebase_service_account_file.strip()
-    if not credential_file:
-        return None
-    path = Path(credential_file).expanduser()
-    if not path.is_file():
-        logger.warning("Firebase credential file is unavailable")
-        return None
-    try:
-        credentials = json.loads(path.read_text(encoding="utf-8"))
-        if not all(
-            credentials.get(field) for field in ("client_email", "private_key", "project_id")
-        ):
-            raise ValueError("service account incompleta")
-        return credentials
-    except Exception:  # noqa: BLE001 - notification transport must not halt sales sync
-        logger.exception("Could not load Firebase push credential")
-        return None
-
-
-def _firebase_access_token(credentials: dict[str, Any]) -> str:
-    global _access_token, _access_token_expires_at
-    if _access_token and _access_token_expires_at > time.time() + 60:
-        return _access_token
-    issued_at = int(time.time())
-    assertion = jwt.encode(
-        {
-            "iss": credentials["client_email"],
-            "scope": "https://www.googleapis.com/auth/firebase.messaging",
-            "aud": "https://oauth2.googleapis.com/token",
-            "iat": issued_at,
-            "exp": issued_at + 3600,
-        },
-        credentials["private_key"],
-        algorithm="RS256",
-    )
-    response = httpx.post(
-        "https://oauth2.googleapis.com/token",
-        data={"grant_type": "urn:ietf:params:oauth:grant-type:jwt-bearer", "assertion": assertion},
-        timeout=15,
-    )
-    response.raise_for_status()
-    payload = response.json()
-    _access_token = str(payload["access_token"])
-    _access_token_expires_at = time.time() + int(payload.get("expires_in", 3600))
-    return _access_token
 
 
 def _sale_copy(
     order: MarketplaceOrder, invoice: SalesInvoice | None
-) -> tuple[str, str, dict[str, str]]:
-    provider = "Mercado Livre" if order.provider == "mercadolivre" else "Shopee"
+) -> tuple[str, str, dict[str, Any]]:
     order_number = order.external_order_id
-    customer_name = invoice.customer.name if invoice and invoice.customer else "Cliente"
     total = (
         f"R${float(invoice.total):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
         if invoice
         else ""
     )
-    body = f"Pedido #{order_number}"
-    if customer_name:
-        body += f" · {customer_name}"
+    product_lines = []
+    if invoice:
+        for item in invoice.items:
+            product_lines.append(f"{item.description} · {item.quantity:g} un.")
+    body = " · ".join(product_lines[:3])
     if total:
-        body += f" · {total}"
+        body = f"{body} · " if body else ""
+        body += total
+    body = f"{body} · Pedido #{order_number}" if body else f"Pedido #{order_number}"
     return (
-        f"Nova venda no {provider}",
+        "Venda confirmada",
         body[:500],
         {
             "type": "sale",
             "provider": order.provider,
             "order_id": order.external_order_id,
             "invoice_id": order.invoice_id or "",
+            "marketplace_order_id": order.id,
             "route": "/marketplace",
+            "actions": [
+                {"label": "Abrir pedido", "route": "/marketplace", "query": {"order_id": order.id}}
+            ],
         },
     )
 
@@ -133,35 +80,47 @@ def enqueue_sale_notification(db: Session, order: MarketplaceOrder) -> PushNotif
     notification = PushNotification(
         dedupe_key=dedupe_key, category="sales", title=title, body=body, data=data
     )
-    db.add(notification)
+    try:
+        with db.begin_nested():
+            db.add(notification)
+            db.flush()
+    except IntegrityError:
+        return db.scalar(select(PushNotification).where(PushNotification.dedupe_key == dedupe_key))
     db.commit()
     db.refresh(notification)
     deliver_pending_notifications(db, only_id=notification.id)
     return notification
 
 
-def enqueue_document_notification(
-    db: Session, order: MarketplaceOrder, kind: str
+def enqueue_attention_notification(
+    db: Session,
+    order: MarketplaceOrder,
+    kind: str,
+    event_id: str,
+    title: str,
+    detail: str,
 ) -> PushNotification | None:
-    """Queue in the document transaction; the worker delivers after commit."""
-    if not order.invoice_id or kind not in {"invoice", "label"}:
-        return None
-    dedupe_key = f"document:{order.provider}:{order.seller_id}:{order.external_order_id}:{kind}"
+    """Persist one separate alert for a claim/return milestone that needs attention."""
+    dedupe_key = f"marketplace-attention:{order.provider}:{order.seller_id}:{order.external_order_id}:{kind}:{event_id}"[
+        :180
+    ]
     existing = db.scalar(select(PushNotification).where(PushNotification.dedupe_key == dedupe_key))
     if existing is not None:
         return existing
-    name = "NF-e" if kind == "invoice" else "Etiqueta"
     notification = PushNotification(
         dedupe_key=dedupe_key,
-        category="fiscal",
-        title=f"{name} liberada no Mercado Livre",
-        body=f"Pedido #{order.external_order_id}: {name} disponível para abrir no ERP.",
+        category="order_status",
+        title=title[:160],
+        body=f"Pedido #{order.external_order_id}: {detail}"[:500],
         data={
-            "type": f"{kind}_ready",
+            "type": "marketplace_attention",
             "provider": order.provider,
             "order_id": order.external_order_id,
-            "invoice_id": order.invoice_id,
+            "marketplace_order_id": order.id,
             "route": "/marketplace",
+            "actions": [
+                {"label": "Abrir pedido", "route": "/marketplace", "query": {"order_id": order.id}}
+            ],
         },
     )
     try:
@@ -169,13 +128,95 @@ def enqueue_document_notification(
             db.add(notification)
             db.flush()
     except IntegrityError:
-        # A simultaneous invoice/shipment webhook may already have queued it.
-        existing = db.scalar(
-            select(PushNotification).where(PushNotification.dedupe_key == dedupe_key)
+        return db.scalar(select(PushNotification).where(PushNotification.dedupe_key == dedupe_key))
+    db.commit()
+    db.refresh(notification)
+    deliver_pending_notifications(db, only_id=notification.id)
+    return notification
+
+
+def enqueue_after_sale_attention(
+    db: Session, order: MarketplaceOrder, topic: str, event: dict[str, Any], case_id: str
+) -> None:
+    kind = str(event.get("kind") or "claim")
+    status = str(event.get("status") or "updated")
+    enqueue_attention_notification(
+        db,
+        order,
+        kind,
+        f"{event.get('id') or case_id}:{status}",
+        "Reclamação atualizada" if topic == "claims" else "Devolução atualizada",
+        f"{kind}: {status}" + (f" · {event['reason']}" if event.get("reason") else ""),
+    )
+
+
+def enqueue_document_notification(
+    db: Session, order: MarketplaceOrder, kind: str
+) -> PushNotification | None:
+    """Compatibility wrapper: document alerts are consolidated at the ready milestone."""
+    if not order.invoice_id or kind not in {"invoice", "label"}:
+        return None
+    return enqueue_ready_to_ship_notification(db, order)
+
+
+def enqueue_ready_to_ship_notification(
+    db: Session, order: MarketplaceOrder
+) -> PushNotification | None:
+    """Queue the single dispatch milestone only after both files are persisted."""
+    if not order.invoice_id:
+        return None
+    documents = list(
+        db.scalars(
+            select(InvoiceDocument).where(
+                InvoiceDocument.invoice_id == order.invoice_id,
+                InvoiceDocument.document_type.in_(("xml", "pdf", "label_pdf")),
+            )
         )
-        if existing is None:
-            raise
+    )
+    invoice_doc = next((doc for doc in documents if doc.document_type == "pdf"), None)
+    invoice_doc = invoice_doc or next(
+        (doc for doc in documents if doc.document_type == "xml"), None
+    )
+    label_doc = next((doc for doc in documents if doc.document_type == "label_pdf"), None)
+    if invoice_doc is None or label_doc is None:
+        return None
+
+    # Keep the requested milestone order even when both documents arrive first.
+    enqueue_sale_notification(db, order)
+    dedupe_key = f"ready-to-ship:{order.provider}:{order.seller_id}:{order.external_order_id}"
+    existing = db.scalar(select(PushNotification).where(PushNotification.dedupe_key == dedupe_key))
+    if existing is not None:
         return existing
+    notification = PushNotification(
+        dedupe_key=dedupe_key,
+        category="sales",
+        title="Pronto para envio",
+        body=f"Pedido #{order.external_order_id}: NF-e e etiqueta disponíveis.",
+        data={
+            "type": "ready_to_ship",
+            "provider": order.provider,
+            "order_id": order.external_order_id,
+            "marketplace_order_id": order.id,
+            "invoice_id": order.invoice_id,
+            "invoice_document_id": invoice_doc.id,
+            "label_document_id": label_doc.id,
+            "route": "/marketplace",
+            "actions": [
+                {"label": "Abrir pedido", "route": "/marketplace", "query": {"order_id": order.id}},
+                {
+                    "label": "Etiqueta",
+                    "route": f"/document-viewer/{order.invoice_id}/{label_doc.id}",
+                },
+                {"label": "NF-e", "route": f"/document-viewer/{order.invoice_id}/{invoice_doc.id}"},
+            ],
+        },
+    )
+    try:
+        with db.begin_nested():
+            db.add(notification)
+            db.flush()
+    except IntegrityError:
+        return db.scalar(select(PushNotification).where(PushNotification.dedupe_key == dedupe_key))
     return notification
 
 
@@ -219,14 +260,23 @@ def enqueue_order_status_notification(
     previous_shipping_substatus: str | None,
 ) -> PushNotification | None:
     """Notify once when a known order changes payment or delivery state."""
-    if previous_status is None:
-        return None
-    order_changed = previous_status != order.status
+    order_changed = previous_status is not None and previous_status != order.status
     shipping_changed = (
         previous_shipping_status != order.shipping_status
         or previous_shipping_substatus != order.shipping_substatus
     )
-    if not order_changed and not shipping_changed:
+    if order.provider == "mercadolivre":
+        critical_statuses = {"cancelled", "canceled", "delayed", "not_delivered", "returned"}
+        is_critical = (
+            order.status.lower() in {"cancelled", "canceled"}
+            or (order.shipping_status or "").lower() in critical_statuses
+            or (order.shipping_substatus or "").lower() in critical_statuses
+        )
+        if not is_critical:
+            return None
+        if previous_status is not None and not order_changed and not shipping_changed:
+            return None
+    elif not order_changed and not shipping_changed:
         return None
     state = (order.status, order.shipping_status, order.shipping_substatus)
     fingerprint = hashlib.sha256(repr(state).encode()).hexdigest()[:20]
@@ -237,7 +287,19 @@ def enqueue_order_status_notification(
     if existing is not None:
         return existing
     provider = "Mercado Livre" if order.provider == "mercadolivre" else "Shopee"
-    if shipping_changed and order.shipping_status:
+    if order.status.lower() in {"cancelled", "canceled"}:
+        status = "Pedido cancelado"
+        title = f"Pedido cancelado no {provider}"
+    elif order.provider == "mercadolivre" and (
+        (order.shipping_status or "").lower() in {"delayed", "not_delivered", "returned"}
+        or (order.shipping_substatus or "").lower() in {"delayed", "not_delivered", "returned"}
+    ):
+        status = _ORDER_STATUS_LABELS.get(
+            (order.shipping_substatus or order.shipping_status or "").lower(),
+            "Problema no envio",
+        )
+        title = "Problema no envio no Mercado Livre"
+    elif shipping_changed and order.shipping_status:
         status = _ORDER_STATUS_LABELS.get(order.shipping_status.lower(), "Envio atualizado")
         if order.shipping_substatus:
             detail = _ORDER_STATUS_LABELS.get(order.shipping_substatus.lower())
@@ -326,52 +388,3 @@ def deliver_pending_notifications(db: Session, only_id: str | None = None) -> in
                 notification.status = "failed"
     db.commit()
     return len(notifications)
-
-
-def _deliver(
-    credentials: dict[str, Any],
-    devices: list[PushDevice],
-    notification: PushNotification,
-    sound_by_user: dict[str, str] | None = None,
-) -> None:
-    """Uses FCM HTTP v1 directly, avoiding heavyweight native dependencies on Termux."""
-    access_token = _firebase_access_token(credentials)
-    url = f"https://fcm.googleapis.com/v1/projects/{credentials['project_id']}/messages:send"
-    headers = {"Authorization": f"Bearer {access_token}"}
-    delivered = 0
-    failures: list[str] = []
-    for device in devices:
-        sound = (sound_by_user or {}).get(device.user_id, "system")
-        if sound not in SOUND_OPTIONS:
-            sound = "system"
-        if sound == "kaching" and device.sound_settings_version < 2:
-            sound = "system"
-        channel_id = "sales"  # Legacy fallback for APKs that do not create sound-specific channels.
-        if (
-            device.sound_settings_version >= 1
-            and notification.category in SOUND_CATEGORIES
-            and sound != "system"
-        ):
-            channel_id = f"parts_v1_{notification.category}_{sound}"
-        data = {str(key): str(value) for key, value in notification.data.items()}
-        if channel_id != "sales":
-            data["notification_channel"] = channel_id
-            data["notification_sound"] = sound
-        payload = {
-            "message": {
-                "token": device.token,
-                "notification": {"title": notification.title, "body": notification.body},
-                "data": data,
-                "android": {"priority": "HIGH", "notification": {"channel_id": channel_id}},
-            }
-        }
-        response = httpx.post(url, headers=headers, json=payload, timeout=15)
-        if response.is_success:
-            delivered += 1
-            continue
-        detail = response.text[:1000]
-        failures.append(detail)
-        if response.status_code == 404 or "UNREGISTERED" in detail or "INVALID_ARGUMENT" in detail:
-            device.active = False
-    if not delivered:
-        raise RuntimeError("; ".join(failures) or "Firebase recusou a entrega")

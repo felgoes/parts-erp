@@ -25,12 +25,14 @@ from app.models import ErpSettings, MarketplaceAccount, MarketplaceOrder, Market
 from app.services.after_sale import after_sale_notification, upsert_after_sale_case
 from app.services.google_drive_backup import run_backup
 from app.services.backup_health import current_window_day, scheduled_backup_due
-from app.services.push_notifications import deliver_pending_notifications, enqueue_sale_notification
+from app.services.push_notifications import (
+    deliver_pending_notifications,
+    enqueue_after_sale_attention,
+    enqueue_sale_notification,
+)
 from app.workers.marketplace_costs import reconcile_marketplace_costs
 
 logger = logging.getLogger(__name__)
-
-
 def _process_mercadolivre_notification(topic: str, resource: str, seller_id: str) -> None:
     started_at = clock.monotonic()
     logger.info(
@@ -161,6 +163,8 @@ def _process_mercadolivre_notification(topic: str, resource: str, seller_id: str
                     )
                 upsert_after_sale_case(db, order, event_data, data, case_id)
                 db.commit()
+                if not exists:
+                    enqueue_after_sale_attention(db, order, topic, event_data, case_id)
             if order.invoice_id and topic == "invoices":
                 sync_invoice_documents(db, account, order_id, order.invoice_id)
     logger.info(

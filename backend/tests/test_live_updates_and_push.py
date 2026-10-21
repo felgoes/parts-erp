@@ -1,7 +1,7 @@
 from sqlalchemy import select
 
 from app.db import session as session_module
-from app.models import MarketplaceOrder, Product, PushNotification
+from app.models import MarketplaceOrder, Product, PushNotification, SalesInvoice
 from app.services import push_notifications
 
 
@@ -27,8 +27,8 @@ def test_status_push_is_deduplicated_and_waits_for_a_device(db, monkeypatch):
         external_order_id="123",
         seller_id="77",
         status="paid",
-        shipping_status="shipped",
-        shipping_substatus="out_for_delivery",
+        shipping_status="delayed",
+        shipping_substatus="delayed",
         payload={},
     )
     db.add(order)
@@ -36,14 +36,14 @@ def test_status_push_is_deduplicated_and_waits_for_a_device(db, monkeypatch):
     monkeypatch.setattr(push_notifications, "_firebase_credentials", lambda: {"project_id": "qa"})
 
     first = push_notifications.enqueue_order_status_notification(
-        db, order, "paid", "ready_to_ship", "dropped_off"
+        db, order, "paid", "shipped", "in_hub"
     )
     second = push_notifications.enqueue_order_status_notification(
-        db, order, "paid", "ready_to_ship", "dropped_off"
+        db, order, "paid", "shipped", "in_hub"
     )
 
     assert first is second
-    assert "Saiu para entrega" in first.body
+    assert "Entrega atrasada" in first.body
     assert first.status == "pending"
     assert first.attempts == 0
     assert len(list(db.scalars(select(PushNotification)))) == 1
@@ -66,7 +66,8 @@ def test_push_batch_respects_each_category_without_losing_recipients(db, monkeyp
     allowed = PushNotification(
         dedupe_key="qa-allowed", title="System", body="QA", category="system"
     )
-    db.add_all([muted, allowed])
+    backup = PushNotification(dedupe_key="qa-backup", title="Backup", body="QA", category="backup")
+    db.add_all([muted, allowed, backup])
     db.commit()
     delivered = []
     monkeypatch.setattr(push_notifications, "_firebase_credentials", lambda: {"project_id": "qa"})
@@ -77,12 +78,101 @@ def test_push_batch_respects_each_category_without_losing_recipients(db, monkeyp
             (notification.dedupe_key, [device.id for device in devices])
         ),
     )
-    assert push_notifications.deliver_pending_notifications(db) == 2
-    assert delivered == [("qa-allowed", [device.id])]
+    assert push_notifications.deliver_pending_notifications(db) == 3
+    assert delivered == [("qa-allowed", [device.id]), ("qa-backup", [device.id])]
     assert muted.status == "pending"
     assert muted.attempts == 0
     assert allowed.status == "sent"
     assert allowed.sent_at is not None
+    assert backup.status == "sent"
+
+
+def test_normal_mercadolivre_tracking_updates_do_not_create_push(db):
+    order = MarketplaceOrder(
+        provider="mercadolivre",
+        external_order_id="tracking-1",
+        seller_id="77",
+        status="paid",
+        shipping_status="in_hub",
+        shipping_substatus="out_for_delivery",
+        payload={},
+    )
+    db.add(order)
+    db.commit()
+    assert (
+        push_notifications.enqueue_order_status_notification(
+            db, order, "paid", "ready_to_ship", "ready_to_print"
+        )
+        is None
+    )
+    assert list(db.scalars(select(PushNotification))) == []
+
+
+def test_initial_mercadolivre_cancellation_creates_one_attention_alert(db):
+    order = MarketplaceOrder(
+        provider="mercadolivre", external_order_id="cancelled-1", seller_id="77",
+        status="cancelled", payload={},
+    )
+    db.add(order)
+    db.flush()
+    alert = push_notifications.enqueue_order_status_notification(db, order, None, None, None)
+    repeated = push_notifications.enqueue_order_status_notification(db, order, None, None, None)
+
+    assert alert is not None
+    assert alert.title == "Pedido cancelado no Mercado Livre"
+    assert repeated.id == alert.id
+    assert len(list(db.scalars(select(PushNotification)))) == 1
+
+
+def test_sale_and_ready_alerts_are_ordered_and_deduplicated(db):
+    from app.models import InvoiceDocument
+
+    invoice = SalesInvoice(id="invoice-ready", number="VEN-READY-1", total=125)
+    order = MarketplaceOrder(
+        id="marketplace-ready",
+        provider="mercadolivre",
+        external_order_id="ready-1",
+        seller_id="77",
+        status="paid",
+        invoice_id=invoice.id,
+        payload={},
+    )
+    db.add_all(
+        [
+            invoice,
+            order,
+            InvoiceDocument(
+                invoice_id=invoice.id,
+                external_id="nf:xml",
+                document_type="xml",
+                filename="nf.xml",
+                storage_path="/qa/nf.xml",
+                sha256="a" * 64,
+            ),
+            InvoiceDocument(
+                invoice_id=invoice.id,
+                external_id="shipment:label",
+                document_type="label_pdf",
+                filename="label.pdf",
+                storage_path="/qa/label.pdf",
+                sha256="b" * 64,
+            ),
+        ]
+    )
+    db.commit()
+    first = push_notifications.enqueue_ready_to_ship_notification(db, order)
+    db.commit()
+    second = push_notifications.enqueue_ready_to_ship_notification(db, order)
+    db.commit()
+    alerts = list(db.scalars(select(PushNotification).order_by(PushNotification.created_at)))
+    assert first is not None and second is first
+    assert [item.title for item in alerts] == ["Venda confirmada", "Pronto para envio"]
+    assert [action["label"] for action in alerts[0].data["actions"]] == ["Abrir pedido"]
+    assert [action["label"] for action in alerts[1].data["actions"]] == [
+        "Abrir pedido",
+        "Etiqueta",
+        "NF-e",
+    ]
 
 
 def test_push_delivery_preserves_legacy_channel_and_uses_per_user_sound(db, monkeypatch):
@@ -109,11 +199,11 @@ def test_push_delivery_preserves_legacy_channel_and_uses_per_user_sound(db, monk
         status_code = 200
         text = ""
 
+    from app.services import push_transport
+
+    monkeypatch.setattr(push_transport, "_firebase_access_token", lambda credentials: "test-token")
     monkeypatch.setattr(
-        push_notifications, "_firebase_access_token", lambda credentials: "test-token"
-    )
-    monkeypatch.setattr(
-        push_notifications.httpx,
+        push_transport.httpx,
         "post",
         lambda *args, **kwargs: sent.append(kwargs["json"]) or Response(),
     )
@@ -125,7 +215,7 @@ def test_push_delivery_preserves_legacy_channel_and_uses_per_user_sound(db, monk
         data={"type": "sale"},
     )
 
-    push_notifications._deliver(
+    push_transport.deliver(
         {"project_id": "qa"},
         [legacy, modern, old_kaching, new_kaching],
         notification,

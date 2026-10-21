@@ -15,5 +15,11 @@ export interface PushNotification {
   status: string;
   created_at: string;
   sent_at: string | null;
-  data: Record<string, string>;
+  data: Record<string, unknown>;
+}
+
+export interface PushNotificationAction {
+  label: string;
+  route: string;
+  query?: Record<string, string>;
 }

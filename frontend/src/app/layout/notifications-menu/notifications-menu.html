@@ -79,6 +79,19 @@
                 </span>
                 <strong>{{ item.title }}</strong>
                 <p>{{ item.body }}</p>
+                @if (actions(item).length) {
+                  <div class="alert-actions">
+                    @for (action of actions(item); track action.label) {
+                      <a
+                        class="alert-action"
+                        [routerLink]="action.route"
+                        [queryParams]="action.query || null"
+                        (click)="close(false)"
+                        >{{ action.label }}</a
+                      >
+                    }
+                  </div>
+                }
               </div>
             </article>
           }

@@ -1,5 +1,9 @@
 # Notas de atualização — Parts ERP
 
+## 20 de outubro de 2026 — alertas de pedidos do Mercado Livre consolidados
+
+- [Dois marcos por venda e eventos importantes preservados · d5d87b6](https://github.com/felgoes/parts-erp/commit/d5d87b67ab7bad7433a9318a6070c50fb18b9dc8): cada pedido gera “Venda confirmada” uma vez e “Pronto para envio” somente quando NF-e e etiqueta estão disponíveis, com atalhos para abrir o pedido e os documentos. Repetições do webhook não duplicam os marcos; cancelamentos, reclamações, problemas no envio, backups e alertas de sistema continuam separados.
+
 ## 20 de outubro de 2026 — cartão financeiro sem linhas decorativas
 
 - [Fundo contínuo no resumo financeiro · 17eb46e](https://github.com/felgoes/parts-erp/commit/17eb46e): removemos as linhas horizontais quase invisíveis que apareciam como recortes no fundo verde do cartão. O visual agora fica uniforme sem alterar os valores, o olho ou o acesso à análise.

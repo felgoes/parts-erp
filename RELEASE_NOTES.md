@@ -1,5 +1,10 @@
 # Notas de atualização — Parts ERP
 
+## 20 de outubro de 2026 — rastreio sem alertas repetidos e exclusão individual
+
+- [Marcos de despacho e entrega com histórico mais limpo · 81e89f4](https://github.com/felgoes/parts-erp/commit/81e89f4): para pedidos do Mercado Livre, atualizações normais durante o transporte deixam de gerar alertas repetidos. O ERP avisa no início do despacho e na entrega/finalização; cancelamentos, atrasos, devoluções e não entregas continuam exigindo atenção. O mapeamento segue os [status oficiais de envios](https://developers.mercadolivre.com.br/pt_br/registre-o-seu-aplicativo/gerenciamento-de-envios) e [status de pedidos e rastreamento](https://developers.mercadolivre.com.br/pt_br/gerenciamento-de-vendas/status-de-pedidos-rastreamento).
+- A central e o menu de alertas permitem excluir uma notificação para o próprio usuário. A notificação original continua preservada para os demais usuários e integrações, incluindo backups.
+
 ## 20 de outubro de 2026 — alertas de pedidos do Mercado Livre consolidados
 
 - [Dois marcos por venda e eventos importantes preservados · d5d87b6](https://github.com/felgoes/parts-erp/commit/d5d87b67ab7bad7433a9318a6070c50fb18b9dc8): cada pedido gera “Venda confirmada” uma vez e “Pronto para envio” somente quando NF-e e etiqueta estão disponíveis, com atalhos para abrir o pedido e os documentos. Repetições do webhook não duplicam os marcos; cancelamentos, reclamações, problemas no envio, backups e alertas de sistema continuam separados.

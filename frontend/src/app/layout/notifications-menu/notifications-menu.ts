@@ -16,6 +16,7 @@ import { filter } from 'rxjs';
 import { ApiService } from '../../core/api.service';
 import { AuthService } from '../../core/auth.service';
 import { PushNotification, PushNotificationAction } from '../../core/models';
+import { SettingsApi } from '../../core/api/settings-api';
 
 interface AlertCategory {
   label: string;
@@ -54,6 +55,7 @@ const CATEGORY_META: Record<string, AlertCategory> = {
 })
 export class NotificationsMenu implements OnInit {
   private readonly api = inject(ApiService);
+  private readonly settingsApi = inject(SettingsApi);
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
@@ -62,6 +64,7 @@ export class NotificationsMenu implements OnInit {
   readonly open = signal(false);
   readonly loading = signal(false);
   readonly history = signal<PushNotification[]>([]);
+  readonly deleting = signal<string | null>(null);
   readonly notificationCount = signal(0);
   readonly preview = computed(() => this.history().slice(0, 4));
   private readonly newSince = signal<string | null>(null);
@@ -110,6 +113,15 @@ export class NotificationsMenu implements OnInit {
   isNew(item: PushNotification): boolean {
     const since = this.newSince();
     return !since || item.created_at > since;
+  }
+
+  dismiss(item: PushNotification): void {
+    this.deleting.set(item.id);
+    this.settingsApi.dismissPushNotification(item.id).subscribe({
+      next: () => this.history.update((items) => items.filter((value) => value.id !== item.id)),
+      error: () => this.deleting.set(null),
+      complete: () => this.deleting.set(null),
+    });
   }
 
   @HostListener('document:pointerdown', ['$event'])

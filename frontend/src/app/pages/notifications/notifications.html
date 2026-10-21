@@ -102,6 +102,15 @@
             >{{ item.created_at | date: 'dd/MM/yyyy HH:mm' }} · {{ status(item.status) }}</small
           >
         </div>
+        <button
+          class="history-delete"
+          type="button"
+          [disabled]="deleting() === item.id"
+          [attr.aria-label]="'Excluir notificação: ' + item.title"
+          (click)="dismiss(item)"
+        >
+          {{ deleting() === item.id ? 'Excluindo…' : 'Excluir' }}
+        </button>
       </div>
     } @empty {
       @if (!loading()) {

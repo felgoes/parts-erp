@@ -9,6 +9,7 @@ import {
   PushSound,
 } from '../../core/models';
 import { PushNotificationsService } from '../../core/push-notifications.service';
+import { SettingsApi } from '../../core/api/settings-api';
 import { PageHeader } from '../../shared/page-header';
 
 @Component({
@@ -179,6 +180,24 @@ import { PageHeader } from '../../shared/page-header';
         padding: 15px 0;
         border-top: 1px solid var(--line, #e5e8e4);
       }
+      .history-item > div {
+        min-width: 0;
+        flex: 1;
+      }
+      .history-delete {
+        align-self: flex-start;
+        border: 1px solid var(--line, #ccd6cf);
+        border-radius: 8px;
+        background: transparent;
+        padding: 6px 9px;
+        color: var(--muted, #738078);
+        font-size: 11px;
+        font-weight: 700;
+      }
+      .history-delete:hover {
+        border-color: #c44b3a;
+        color: #a83e30;
+      }
       .dot {
         width: 9px;
         height: 9px;
@@ -255,12 +274,14 @@ import { PageHeader } from '../../shared/page-header';
 })
 export class NotificationsPage implements OnInit {
   private readonly api = inject(ApiService);
+  private readonly settingsApi = inject(SettingsApi);
   private readonly pushNotifications = inject(PushNotificationsService);
   readonly pushState = this.pushNotifications.registrationState;
   readonly preferences = signal<PushPreference[]>([]);
   readonly history = signal<PushNotification[]>([]);
   readonly loading = signal(true);
   readonly saving = signal<string | null>(null);
+  readonly deleting = signal<string | null>(null);
   readonly sounds: { value: PushSound; label: string }[] = [
     { value: 'system', label: 'Padrão do Android' },
     { value: 'bell', label: 'Sino' },
@@ -294,6 +315,14 @@ export class NotificationsPage implements OnInit {
       complete: () => this.loading.set(false),
     });
     this.api.pushHistory().subscribe({ next: (value) => this.history.set(value) });
+  }
+  dismiss(item: PushNotification) {
+    this.deleting.set(item.id);
+    this.settingsApi.dismissPushNotification(item.id).subscribe({
+      next: () => this.history.update((items) => items.filter((value) => value.id !== item.id)),
+      error: () => this.deleting.set(null),
+      complete: () => this.deleting.set(null),
+    });
   }
   retryPush() {
     void this.pushNotifications.enableForCurrentDevice();

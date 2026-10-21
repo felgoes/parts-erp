@@ -93,6 +93,15 @@
                   </div>
                 }
               </div>
+              <button
+                class="alert-delete"
+                type="button"
+                [disabled]="deleting() === item.id"
+                [attr.aria-label]="'Excluir notificação: ' + item.title"
+                (click)="dismiss(item)"
+              >
+                {{ deleting() === item.id ? '…' : 'Excluir' }}
+              </button>
             </article>
           }
         </div>

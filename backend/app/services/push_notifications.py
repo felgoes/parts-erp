@@ -7,7 +7,6 @@ alerts when a marketplace retries the same webhook.
 
 from __future__ import annotations
 
-import hashlib
 import logging
 from datetime import UTC, datetime
 from typing import Any
@@ -229,29 +228,6 @@ def _audience_user_ids(db: Session, notification: PushNotification) -> set[str] 
     return {str(row[0]) for row in rows}
 
 
-_ORDER_STATUS_LABELS = {
-    "paid": "Pagamento aprovado",
-    "cancelled": "Pedido cancelado",
-    "canceled": "Pedido cancelado",
-    "ready_to_ship": "Pronto para envio",
-    "shipped": "Despachado",
-    "delivered": "Entregue · venda finalizada",
-    "returned": "Devolvido",
-    "not_delivered": "Não entregue",
-    "dropped_off": "Postado",
-    "in_hub": "No centro de distribuição",
-    "out_for_delivery": "Saiu para entrega",
-    "delayed": "Entrega atrasada",
-    "unpaid": "Pagamento pendente",
-    "to_ship": "Aguardando envio",
-    "to_receive": "Aguardando entrega",
-    "completed": "Concluído",
-    "in_cancel": "Cancelamento em andamento",
-    "to_return": "Devolução em andamento",
-    "reclined": "Em revisão",
-}
-
-
 def enqueue_order_status_notification(
     db: Session,
     order: MarketplaceOrder,
@@ -259,76 +235,14 @@ def enqueue_order_status_notification(
     previous_shipping_status: str | None,
     previous_shipping_substatus: str | None,
 ) -> PushNotification | None:
-    """Notify once when a known order changes payment or delivery state."""
-    order_changed = previous_status is not None and previous_status != order.status
-    shipping_changed = (
-        previous_shipping_status != order.shipping_status
-        or previous_shipping_substatus != order.shipping_substatus
+    """Compatibility entry point for marketplace shipment milestone alerts."""
+    from app.services.marketplace_order_notifications import (
+        enqueue_order_status_notification as enqueue,
     )
-    if order.provider == "mercadolivre":
-        critical_statuses = {"cancelled", "canceled", "delayed", "not_delivered", "returned"}
-        is_critical = (
-            order.status.lower() in {"cancelled", "canceled"}
-            or (order.shipping_status or "").lower() in critical_statuses
-            or (order.shipping_substatus or "").lower() in critical_statuses
-        )
-        if not is_critical:
-            return None
-        if previous_status is not None and not order_changed and not shipping_changed:
-            return None
-    elif not order_changed and not shipping_changed:
-        return None
-    state = (order.status, order.shipping_status, order.shipping_substatus)
-    fingerprint = hashlib.sha256(repr(state).encode()).hexdigest()[:20]
-    dedupe_key = (
-        f"order-status:{order.provider}:{order.seller_id}:{order.external_order_id}:{fingerprint}"
+
+    return enqueue(
+        db, order, previous_status, previous_shipping_status, previous_shipping_substatus
     )
-    existing = db.scalar(select(PushNotification).where(PushNotification.dedupe_key == dedupe_key))
-    if existing is not None:
-        return existing
-    provider = "Mercado Livre" if order.provider == "mercadolivre" else "Shopee"
-    if order.status.lower() in {"cancelled", "canceled"}:
-        status = "Pedido cancelado"
-        title = f"Pedido cancelado no {provider}"
-    elif order.provider == "mercadolivre" and (
-        (order.shipping_status or "").lower() in {"delayed", "not_delivered", "returned"}
-        or (order.shipping_substatus or "").lower() in {"delayed", "not_delivered", "returned"}
-    ):
-        status = _ORDER_STATUS_LABELS.get(
-            (order.shipping_substatus or order.shipping_status or "").lower(),
-            "Problema no envio",
-        )
-        title = "Problema no envio no Mercado Livre"
-    elif shipping_changed and order.shipping_status:
-        status = _ORDER_STATUS_LABELS.get(order.shipping_status.lower(), "Envio atualizado")
-        if order.shipping_substatus:
-            detail = _ORDER_STATUS_LABELS.get(order.shipping_substatus.lower())
-            if detail:
-                status = f"{status} · {detail}"
-        title = f"Rastreio atualizado no {provider}"
-    else:
-        status = _ORDER_STATUS_LABELS.get(order.status.lower(), "Status do pedido atualizado")
-        title = f"Pedido atualizado no {provider}"
-    notification = PushNotification(
-        dedupe_key=dedupe_key,
-        category="order_status",
-        title=title,
-        body=f"Pedido #{order.external_order_id}: {status}"[:500],
-        data={
-            "type": "order_status",
-            "provider": order.provider,
-            "order_id": order.external_order_id,
-            "status": order.status,
-            "shipping_status": order.shipping_status or "",
-            "shipping_substatus": order.shipping_substatus or "",
-            "route": "/marketplace",
-        },
-    )
-    db.add(notification)
-    db.commit()
-    db.refresh(notification)
-    deliver_pending_notifications(db, only_id=notification.id)
-    return notification
 
 
 def deliver_pending_notifications(db: Session, only_id: str | None = None) -> int:

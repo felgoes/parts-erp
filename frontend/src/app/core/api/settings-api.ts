@@ -78,6 +78,9 @@ export class SettingsApi {
   pushHistory(): Observable<PushNotification[]> {
     return this.http.get<PushNotification[]>(`${this.base}/push/history`);
   }
+  dismissPushNotification(id: string): Observable<void> {
+    return this.http.delete<void>(this.base + '/push/history/' + encodeURIComponent(id));
+  }
   connectGoogleDrive(): Observable<{ authorization_url: string; redirect_uri: string }> {
     return this.http.get<{ authorization_url: string; redirect_uri: string }>(
       `${this.base}/settings/backup/google-drive/connect`,

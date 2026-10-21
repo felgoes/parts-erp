@@ -86,6 +86,18 @@ class PushNotification(TimestampMixin, Base):
     sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
+class PushNotificationDismissal(Base):
+    __tablename__ = "push_notification_dismissals"
+
+    user_id: Mapped[str] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+    )
+    notification_id: Mapped[str] = mapped_column(
+        ForeignKey("push_notifications.id", ondelete="CASCADE"), primary_key=True
+    )
+    dismissed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc)
+
+
 class ErpSettings(TimestampMixin, Base):
     """Singleton configuration for shared company identity and backup policy."""
 

@@ -108,10 +108,49 @@ def test_normal_mercadolivre_tracking_updates_do_not_create_push(db):
     assert list(db.scalars(select(PushNotification))) == []
 
 
+def test_mercadolivre_dispatch_handoff_and_delivery_are_the_only_tracking_milestones(db):
+    order = MarketplaceOrder(
+        provider="mercadolivre",
+        external_order_id="milestones-1",
+        seller_id="77",
+        status="paid",
+        shipping_status="ready_to_ship",
+        shipping_substatus="picked_up",
+        payload={},
+    )
+    db.add(order)
+    db.flush()
+    started = push_notifications.enqueue_order_status_notification(
+        db, order, "paid", "ready_to_ship", "ready_to_print"
+    )
+
+    order.shipping_substatus = "in_hub"
+    intermediate = push_notifications.enqueue_order_status_notification(
+        db, order, "paid", "ready_to_ship", "picked_up"
+    )
+    order.shipping_status = "delivered"
+    order.shipping_substatus = None
+    delivered = push_notifications.enqueue_order_status_notification(
+        db, order, "paid", "ready_to_ship", "in_hub"
+    )
+    repeated = push_notifications.enqueue_order_status_notification(
+        db, order, "paid", "ready_to_ship", "in_hub"
+    )
+
+    assert started.title == "Despacho iniciado no Mercado Livre"
+    assert intermediate is None
+    assert delivered.title == "Pedido entregue no Mercado Livre"
+    assert repeated.id == delivered.id
+    assert len(list(db.scalars(select(PushNotification)))) == 2
+
+
 def test_initial_mercadolivre_cancellation_creates_one_attention_alert(db):
     order = MarketplaceOrder(
-        provider="mercadolivre", external_order_id="cancelled-1", seller_id="77",
-        status="cancelled", payload={},
+        provider="mercadolivre",
+        external_order_id="cancelled-1",
+        seller_id="77",
+        status="cancelled",
+        payload={},
     )
     db.add(order)
     db.flush()

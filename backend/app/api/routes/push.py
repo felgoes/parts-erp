@@ -1,12 +1,12 @@
 from datetime import UTC, datetime
 
-from fastapi import APIRouter, Depends
-from sqlalchemy import select
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import and_, select
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
 from app.db.session import get_db
-from app.models import PushDevice, PushNotification, PushPreference, User
+from app.models import PushDevice, PushNotification, PushNotificationDismissal, PushPreference, User
 from app.schemas.common import (
     PushDeviceRegistration,
     PushNotificationOut,
@@ -88,16 +88,38 @@ def update_preference(
 
 @router.get("/history", response_model=list[PushNotificationOut])
 def notification_history(
-    limit: int = 50, db: Session = Depends(get_db), _: User = Depends(get_current_user)
+    limit: int = 50, db: Session = Depends(get_db), user: User = Depends(get_current_user)
 ) -> list[PushNotificationOut]:
     rows = list(
         db.scalars(
             select(PushNotification)
+            .outerjoin(
+                PushNotificationDismissal,
+                and_(
+                    PushNotificationDismissal.notification_id == PushNotification.id,
+                    PushNotificationDismissal.user_id == user.id,
+                ),
+            )
+            .where(PushNotificationDismissal.notification_id.is_(None))
             .order_by(PushNotification.created_at.desc())
             .limit(max(1, min(limit, 100)))
         )
     )
     return [PushNotificationOut.model_validate(row, from_attributes=True) for row in rows]
+
+
+@router.delete("/history/{notification_id}", status_code=204)
+def dismiss_notification(
+    notification_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+) -> None:
+    if db.get(PushNotification, notification_id) is None:
+        raise HTTPException(status_code=404, detail="Notificação não encontrada")
+    dismissal_id = (user.id, notification_id)
+    if db.get(PushNotificationDismissal, dismissal_id) is None:
+        db.add(PushNotificationDismissal(user_id=user.id, notification_id=notification_id))
+        db.commit()
 
 
 @router.post("/devices", status_code=204)

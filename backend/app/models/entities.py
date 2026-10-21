@@ -54,6 +54,7 @@ from app.models.users import (  # noqa: F401
     ErpSettings,
     PushDevice,
     PushNotification,
+    PushNotificationDismissal,
     PushPreference,
     User,
 )

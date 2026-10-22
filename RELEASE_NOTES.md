@@ -3,6 +3,7 @@
 ## 21 de outubro de 2026 — substatus de despacho na fila de envios
 
 - [Pacotes em lista de despacho deixam a fila de vendas a enviar · 4743651](https://github.com/felgoes/parts-erp/commit/47436519cd2d420aa1f204b0254435b9d4cf1ff3): o ERP reconhece `in_pickup_list` e `authorized_by_carrier` como etapas posteriores à preparação, apresenta os substatus em português e não mantém esses pacotes na fila de despacho. Implantado em produção em 21/10/2026; os smoke checks públicos do site e do ERP responderam HTTP 200.
+- [Histórico do pacote evita retorno à fila de despacho · a5de7f6](https://github.com/felgoes/parts-erp/commit/a5de7f64bc172e4b1a9c6abd3c3f0d208be8a401): a Visão geral e as filas de venda agora consideram o avanço já registrado no histórico, mesmo se o substatus atual voltar a Pronto para envio. Implantado em produção em 21/10/2026; os smoke checks públicos do site e do ERP responderam HTTP 200.
 
 ## 20 de outubro de 2026 — rastreio sem alertas repetidos e exclusão individual
 

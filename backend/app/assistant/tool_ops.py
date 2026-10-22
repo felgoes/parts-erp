@@ -18,6 +18,7 @@ from app.models import (
     SalesInvoice,
     StockMovement,
 )
+from app.services.shipping_status import DISPATCHED_SHIPPING_SUBSTATUSES
 
 
 def _money(value: object) -> str:
@@ -65,6 +66,9 @@ def resumo_operacional(db: Session) -> dict:
         select(func.count()).select_from(MarketplaceOrder).where(
             MarketplaceOrder.shipping_status == "ready_to_ship",
             MarketplaceOrder.status.not_in(("cancelled", "canceled")),
+            func.lower(func.coalesce(MarketplaceOrder.shipping_substatus, "")).not_in(
+                DISPATCHED_SHIPPING_SUBSTATUSES
+            ),
         )
     ) or 0
     fiscal_errors = db.scalar(

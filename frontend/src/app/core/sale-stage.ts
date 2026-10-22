@@ -14,6 +14,14 @@ export type SaleStageCode =
   | 'invoice_error'
   | 'label_error';
 
+const dispatchedSubstatuses = new Set([
+  'in_pickup_list',
+  'authorized_by_carrier',
+  'picked_up',
+  'shipped_to_carrier',
+  'dropped_off',
+]);
+
 const labels: Record<SaleStageCode, string> = {
   received: 'Pedido recebido',
   payment_pending: 'Pagamento pendente',
@@ -44,7 +52,7 @@ export function saleStageForOrder(order: MarketplaceOrder): SaleStageCode {
     return 'payment_pending';
   if (['returned', 'returning_to_sender', 'returned_to_sender'].includes(shipping))
     return 'returned';
-  if (['picked_up', 'shipped_to_carrier', 'dropped_off'].includes(shippingSubstatus))
+  if (dispatchedSubstatuses.has(shippingSubstatus))
     return 'dispatched';
   if (
     ['in_transit', 'in_hub', 'on_route', 'out_for_delivery', 'at_the_branch'].includes(
@@ -73,7 +81,7 @@ export function saleStageForInvoice(invoice: Invoice): SaleStageCode {
   if (invoice.after_sale?.kind === 'return') return 'returned';
   const shipping = String(invoice.tracking?.shipping_status || '').toLowerCase();
   const shippingSubstatus = String(invoice.tracking?.shipping_substatus || '').toLowerCase();
-  if (['picked_up', 'shipped_to_carrier', 'dropped_off'].includes(shippingSubstatus))
+  if (dispatchedSubstatuses.has(shippingSubstatus))
     return 'dispatched';
   if (
     ['in_transit', 'in_hub', 'on_route', 'out_for_delivery', 'at_the_branch'].includes(

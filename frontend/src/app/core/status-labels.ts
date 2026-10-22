@@ -86,6 +86,8 @@ const labels: Record<string, string> = {
   ready_to_print: 'Pronto para imprimir',
   printed: 'Etiqueta impressa',
   picked_up: 'Coletado',
+  in_pickup_list: 'Em lista de despacho',
+  authorized_by_carrier: 'Despachado à transportadora',
   in_transit: 'Em trânsito',
   out_for_delivery: 'Saiu para entrega',
   receiver_absent: 'Destinatário ausente',
@@ -127,7 +129,13 @@ export function trackingEventLabel(status: string, detail?: string | null): stri
   const normalizedStatus = normalizeStatus(status);
   const normalizedDetail = normalizeStatus(detail || '');
   const detailLabel = trackingDetailLabel(detail);
-  const laterStage = ['picked_up', 'shipped_to_carrier', 'dropped_off'].includes(normalizedDetail)
+  const laterStage = [
+    'in_pickup_list',
+    'authorized_by_carrier',
+    'picked_up',
+    'shipped_to_carrier',
+    'dropped_off',
+  ].includes(normalizedDetail)
     ? 'Despachado'
     : ['in_transit', 'in_hub', 'on_route', 'out_for_delivery', 'at_the_branch'].includes(
           normalizedDetail,

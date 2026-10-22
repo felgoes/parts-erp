@@ -20,6 +20,8 @@ _ORDER_STATUS_LABELS = {
     "returned": "Devolvido",
     "not_delivered": "Não entregue",
     "dropped_off": "Postado",
+    "in_pickup_list": "Em lista de despacho",
+    "authorized_by_carrier": "Despachado à transportadora",
     "in_hub": "No centro de distribuição",
     "out_for_delivery": "Saiu para entrega",
     "delayed": "Entrega atrasada",

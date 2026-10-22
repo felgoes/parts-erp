@@ -19,24 +19,12 @@ from app.schemas.common import (
 from app.services.after_sale import after_sales_for_invoices
 from app.services.invoice_tracking import attach_invoice_tracking
 from app.services.marketplace_costs import revenue_by_invoice, revenue_totals
+from app.services.shipping_status import DISPATCHED_SHIPPING_SUBSTATUSES
 
 router = APIRouter(prefix="/dashboard", tags=["Painel"])
 BRAZIL_TZ = timezone(timedelta(hours=-3))
 PENDING_SHIPMENT_STATUS = "ready_to_ship"
 INACTIVE_ORDER_STATUSES = ("cancelled", "canceled", "in_cancel")
-DISPATCHED_SHIPPING_SUBSTATUSES = (
-    "picked_up",
-    "shipped_to_carrier",
-    "dropped_off",
-    "in_transit",
-    "in_hub",
-    "on_route",
-    "out_for_delivery",
-    "at_the_branch",
-    "delivered",
-    "returned",
-    "not_delivered",
-)
 
 
 def _period(

@@ -15,6 +15,7 @@ from app.models import (
     PurchaseCase,
     SalesInvoice,
 )
+from app.services.shipping_status import DISPATCHED_SHIPPING_SUBSTATUSES
 
 
 def _iso(value: datetime | None) -> str | None:
@@ -212,6 +213,9 @@ def listar_vendas(
         query = query.where(
             MarketplaceOrder.shipping_status == "ready_to_ship",
             MarketplaceOrder.status.not_in(("cancelled", "canceled")),
+            func.lower(func.coalesce(MarketplaceOrder.shipping_substatus, "")).not_in(
+                DISPATCHED_SHIPPING_SUBSTATUSES
+            ),
         )
     total = db.scalar(
         select(func.count()).select_from(query.order_by(None).subquery())

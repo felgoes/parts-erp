@@ -1,5 +1,9 @@
 # Notas de atualização — Parts ERP
 
+## 21 de outubro de 2026 — substatus de despacho na fila de envios
+
+- [Pacotes em lista de despacho deixam a fila de vendas a enviar · 4743651](https://github.com/felgoes/parts-erp/commit/47436519cd2d420aa1f204b0254435b9d4cf1ff3): o ERP reconhece `in_pickup_list` e `authorized_by_carrier` como etapas posteriores à preparação, apresenta os substatus em português e não mantém esses pacotes na fila de despacho. Implantado em produção em 21/10/2026; os smoke checks públicos do site e do ERP responderam HTTP 200.
+
 ## 20 de outubro de 2026 — rastreio sem alertas repetidos e exclusão individual
 
 - [Marcos de despacho e entrega com histórico mais limpo · 81e89f4](https://github.com/felgoes/parts-erp/commit/81e89f4): para pedidos do Mercado Livre, atualizações normais durante o transporte deixam de gerar alertas repetidos. O ERP avisa no início do despacho e na entrega/finalização; cancelamentos, atrasos, devoluções e não entregas continuam exigindo atenção. O mapeamento segue os [status oficiais de envios](https://developers.mercadolivre.com.br/pt_br/registre-o-seu-aplicativo/gerenciamento-de-envios) e [status de pedidos e rastreamento](https://developers.mercadolivre.com.br/pt_br/gerenciamento-de-vendas/status-de-pedidos-rastreamento).

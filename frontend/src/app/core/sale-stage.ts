@@ -15,7 +15,6 @@ export type SaleStageCode =
   | 'label_error';
 
 const dispatchedSubstatuses = new Set([
-  'in_pickup_list',
   'authorized_by_carrier',
   'picked_up',
   'shipped_to_carrier',
@@ -37,6 +36,52 @@ const labels: Record<SaleStageCode, string> = {
   label_error: 'Falha na etiqueta',
 };
 
+const inTransitSubstatuses = new Set([
+  'in_transit',
+  'in_hub',
+  'on_route',
+  'out_for_delivery',
+  'at_the_branch',
+]);
+
+function historicalShippingStage(
+  history: NonNullable<Invoice['tracking']>['history'],
+): SaleStageCode | null {
+  if (!Array.isArray(history)) return null;
+  let stage: SaleStageCode | null = null;
+  let rank = 0;
+  for (const event of history) {
+    const status = String(event.status || '').toLowerCase();
+    const detail = String(event.detail || '').toLowerCase();
+    const next =
+      ['returned', 'returning_to_sender', 'returned_to_sender'].includes(status) ||
+      detail === 'returned'
+        ? 'returned'
+        : status === 'delivered' || detail === 'delivered'
+          ? 'finalized'
+          : inTransitSubstatuses.has(detail) || inTransitSubstatuses.has(status)
+            ? 'in_transit'
+            : dispatchedSubstatuses.has(detail) || status === 'shipped'
+              ? 'dispatched'
+              : null;
+    const nextRank =
+      next === 'returned'
+        ? 4
+        : next === 'finalized'
+          ? 3
+          : next === 'in_transit'
+            ? 2
+            : next === 'dispatched'
+              ? 1
+              : 0;
+    if (next && nextRank > rank) {
+      stage = next;
+      rank = nextRank;
+    }
+  }
+  return stage;
+}
+
 export function saleStageLabel(value: SaleStageCode): string {
   return labels[value];
 }
@@ -52,8 +97,7 @@ export function saleStageForOrder(order: MarketplaceOrder): SaleStageCode {
     return 'payment_pending';
   if (['returned', 'returning_to_sender', 'returned_to_sender'].includes(shipping))
     return 'returned';
-  if (dispatchedSubstatuses.has(shippingSubstatus))
-    return 'dispatched';
+  if (dispatchedSubstatuses.has(shippingSubstatus)) return 'dispatched';
   if (
     ['in_transit', 'in_hub', 'on_route', 'out_for_delivery', 'at_the_branch'].includes(
       shippingSubstatus,
@@ -64,6 +108,10 @@ export function saleStageForOrder(order: MarketplaceOrder): SaleStageCode {
   if (['shipped', 'shipped_to_carrier', 'dropped_off'].includes(shipping)) return 'dispatched';
   if (['in_transit', 'in_hub', 'on_route', 'out_for_delivery'].includes(shipping))
     return 'in_transit';
+  if (shipping === 'ready_to_ship') {
+    const previousStage = historicalShippingStage(order.invoice?.tracking?.history || []);
+    if (previousStage) return previousStage;
+  }
   if (shipping === 'ready_to_ship' || ['downloaded', 'completed'].includes(label))
     return 'ready_to_ship';
   if (fiscal === 'error') return 'invoice_error';
@@ -81,8 +129,7 @@ export function saleStageForInvoice(invoice: Invoice): SaleStageCode {
   if (invoice.after_sale?.kind === 'return') return 'returned';
   const shipping = String(invoice.tracking?.shipping_status || '').toLowerCase();
   const shippingSubstatus = String(invoice.tracking?.shipping_substatus || '').toLowerCase();
-  if (dispatchedSubstatuses.has(shippingSubstatus))
-    return 'dispatched';
+  if (dispatchedSubstatuses.has(shippingSubstatus)) return 'dispatched';
   if (
     ['in_transit', 'in_hub', 'on_route', 'out_for_delivery', 'at_the_branch'].includes(
       shippingSubstatus,
@@ -93,7 +140,10 @@ export function saleStageForInvoice(invoice: Invoice): SaleStageCode {
   if (['shipped', 'shipped_to_carrier', 'dropped_off'].includes(shipping)) return 'dispatched';
   if (['in_transit', 'in_hub', 'on_route', 'out_for_delivery'].includes(shipping))
     return 'in_transit';
-  if (shipping === 'ready_to_ship') return 'ready_to_ship';
+  if (shipping === 'ready_to_ship') {
+    const previousStage = historicalShippingStage(invoice.tracking?.history || []);
+    return previousStage || 'ready_to_ship';
+  }
   if (invoice.source !== 'manual')
     return invoice.documents.length ? 'awaiting_label' : 'awaiting_invoice';
   if (invoice.status === 'draft') return 'received';

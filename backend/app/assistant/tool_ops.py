@@ -18,7 +18,10 @@ from app.models import (
     SalesInvoice,
     StockMovement,
 )
-from app.services.shipping_status import DISPATCHED_SHIPPING_SUBSTATUSES
+from app.services.shipping_status import (
+    DISPATCHED_SHIPPING_SUBSTATUSES,
+    shipping_progress_history_exists,
+)
 
 
 def _money(value: object) -> str:
@@ -69,6 +72,7 @@ def resumo_operacional(db: Session) -> dict:
             func.lower(func.coalesce(MarketplaceOrder.shipping_substatus, "")).not_in(
                 DISPATCHED_SHIPPING_SUBSTATUSES
             ),
+            ~shipping_progress_history_exists(MarketplaceOrder.id),
         )
     ) or 0
     fiscal_errors = db.scalar(

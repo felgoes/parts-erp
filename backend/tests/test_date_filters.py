@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from app.api.routes.finance import overview as finance_overview
 from app.api.routes.dashboard import financial_metrics, summary
 from app.api.routes.invoices import list_invoices
-from app.models import InvoiceSource, MarketplaceOrder, Product
+from app.models import InvoiceSource, MarketplaceOrder, MarketplaceOrderEvent, Product
 from app.schemas.common import InvoiceCreate, InvoiceItemCreate
 from app.services.sales import cancel_invoice, confirm_invoice, create_invoice
 
@@ -113,26 +113,40 @@ def test_dashboard_counts_sales_waiting_for_dispatch(db: Session) -> None:
         ("READY-1", "paid", "ready_to_ship", None),
         ("READY-2", "paid", "ready_to_ship", "printed"),
         ("PICKED-UP", "paid", "ready_to_ship", "picked_up"),
+        ("PICKUP-LIST", "paid", "ready_to_ship", "in_pickup_list"),
+        ("PACKING-LIST-SENT", "paid", "ready_to_ship", "in_packing_list"),
+        ("PACKING-LIST-ONLY", "paid", "ready_to_ship", "in_packing_list"),
         ("SHIPPED", "paid", "shipped", None),
         ("CANCELLED", "cancelled", "ready_to_ship", None),
     ]
+    records = {}
     for external_id, status, shipping_status, shipping_substatus in orders:
-        db.add(
-            MarketplaceOrder(
-                provider="mercadolivre",
-                external_order_id=external_id,
-                seller_id="77",
-                status=status,
-                shipping_status=shipping_status,
-                shipping_substatus=shipping_substatus,
-                payload={},
-            )
+        record = MarketplaceOrder(
+            provider="mercadolivre",
+            external_order_id=external_id,
+            seller_id="77",
+            status=status,
+            shipping_status=shipping_status,
+            shipping_substatus=shipping_substatus,
+            payload={},
         )
+        db.add(record)
+        records[external_id] = record
+    db.flush()
+    db.add(
+        MarketplaceOrderEvent(
+            order_id=records["PACKING-LIST-SENT"].id,
+            event_type="shipment_status",
+            status="ready_to_ship",
+            detail="dropped_off",
+            payload={"source_date": "2026-08-01T12:00:00Z"},
+        )
+    )
     db.flush()
 
     dashboard = summary(None, None, db, None)
 
-    assert dashboard.sales_to_ship == 2
+    assert dashboard.sales_to_ship == 4
 
 
 def test_marketplace_revenue_discounts_fees_and_seller_shipping(db: Session) -> None:

@@ -22,6 +22,7 @@ from app.models import (
     MarketplaceOrderEvent,
     User,
 )
+from app.services.invoice_tracking import attach_invoice_tracking
 from app.schemas.common import (
     MarketplaceConfigOut,
     MarketplaceConfigUpdate,
@@ -186,12 +187,20 @@ async def callback(code: str, state: str, db: Session = Depends(get_db)) -> Redi
     return RedirectResponse(f"{settings.frontend_url}/integrations?connected=true")
 
 
+def _orders_with_shipping_history(
+    db: Session, rows: list[MarketplaceOrder]
+) -> list[MarketplaceOrderOut]:
+    outputs = [MarketplaceOrderOut.model_validate(order) for order in rows]
+    attach_invoice_tracking(db, [output.invoice for output in outputs if output.invoice])
+    return outputs
+
+
 @router.get("/orders", response_model=list[MarketplaceOrderOut])
 def orders(
     db: Session = Depends(get_db),
     _: User = Depends(require_permission(Permission.MARKETPLACE_READ)),
-) -> list[MarketplaceOrder]:
-    return list(
+) -> list[MarketplaceOrderOut]:
+    rows = list(
         db.scalars(
             select(MarketplaceOrder)
             .options(selectinload(MarketplaceOrder.invoice))
@@ -199,6 +208,7 @@ def orders(
             .limit(200)
         )
     )
+    return _orders_with_shipping_history(db, rows)
 
 
 @router.get("/orders/{order_id}", response_model=MarketplaceOrderOut)
@@ -206,7 +216,7 @@ def order_detail(
     order_id: str,
     db: Session = Depends(get_db),
     _: User = Depends(require_permission(Permission.MARKETPLACE_READ)),
-) -> MarketplaceOrder:
+) -> MarketplaceOrderOut:
     order = db.scalar(
         select(MarketplaceOrder)
         .options(selectinload(MarketplaceOrder.invoice))
@@ -214,7 +224,7 @@ def order_detail(
     )
     if not order:
         raise HTTPException(status_code=404, detail="Pedido não encontrado")
-    return order
+    return _orders_with_shipping_history(db, [order])[0]
 
 
 @router.get("/orders/{order_id}/history", response_model=list[MarketplaceOrderEventOut])

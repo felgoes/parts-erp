@@ -42,6 +42,7 @@ export interface MarketplaceOrder {
   created_at: string;
   provider?: string;
   payload?: Record<string, any> | null;
+  destination_address: string | null;
   invoice?: Invoice | null;
 }
 export interface MarketplaceOrderEvent {

@@ -10,17 +10,26 @@ import { LiveUpdatesService } from '../../core/live-updates.service';
 import { AuthService } from '../../core/auth.service';
 import { Customer, Invoice, Product } from '../../core/models';
 import { canSell } from '../../core/user-access';
-import { statusLabel, trackingEventLabel } from '../../core/status-labels';
+import { statusLabel } from '../../core/status-labels';
 import { saleStageForInvoice, saleStageLabel } from '../../core/sale-stage';
 import { documentLabel } from '../../core/document-labels';
 import { documentsWithoutXml } from '../../core/document-visibility';
 import { PageHeader } from '../../shared/page-header';
 import { PeriodFilter, PeriodFilterStatusOption } from '../../shared/period-filter';
 import { AfterSaleWorkflow } from '../../shared/after-sale-workflow';
+import { TrackingPanel } from '../../shared/tracking-panel';
 
 @Component({
   selector: 'app-invoices',
-  imports: [CurrencyPipe, DatePipe, FormsModule, PageHeader, PeriodFilter, AfterSaleWorkflow],
+  imports: [
+    CurrencyPipe,
+    DatePipe,
+    FormsModule,
+    PageHeader,
+    PeriodFilter,
+    AfterSaleWorkflow,
+    TrackingPanel,
+  ],
   templateUrl: './invoices.html',
   styleUrl: './invoices.scss',
 })
@@ -50,7 +59,6 @@ export class InvoicesPage implements OnInit {
     },
   ]);
   readonly statusLabel = statusLabel;
-  readonly trackingEventLabel = trackingEventLabel;
   readonly saleStageForInvoice = saleStageForInvoice;
   readonly saleStageLabel = saleStageLabel;
   readonly documentLabel = documentLabel;

@@ -31,6 +31,8 @@ from app.schemas.common import (
     MarketplaceStatus,
 )
 from app.services.invoice_tracking import attach_invoice_tracking
+from app.services.shipping_destination_refresh import refresh_shipping_destination
+from app.services.tracking_destination import tracking_destination_address
 
 logger = logging.getLogger(__name__)
 
@@ -197,6 +199,8 @@ def _orders_with_shipping_history(
     db: Session, rows: list[MarketplaceOrder]
 ) -> list[MarketplaceOrderOut]:
     outputs = [MarketplaceOrderOut.model_validate(order) for order in rows]
+    for order, output in zip(rows, outputs, strict=True):
+        output.destination_address = tracking_destination_address(order)
     attach_invoice_tracking(db, [output.invoice for output in outputs if output.invoice])
     return outputs
 
@@ -230,6 +234,7 @@ def order_detail(
     )
     if not order:
         raise HTTPException(status_code=404, detail="Pedido não encontrado")
+    refresh_shipping_destination(db, order)
     return _orders_with_shipping_history(db, [order])[0]
 
 
@@ -255,15 +260,15 @@ def automate_order(
     order_id: str,
     db: Session = Depends(get_db),
     _: User = Depends(require_permission(Permission.MARKETPLACE_PROCESS)),
-) -> MarketplaceOrder:
+) -> MarketplaceOrderOut:
     from app.integrations.mercadolivre.sync import automate_order_documents
 
     order = db.get(MarketplaceOrder, order_id)
     if not order:
         raise HTTPException(status_code=404, detail="Pedido não encontrado")
     if not order.invoice_id:
-        return order
-    return automate_order_documents(db, order)
+        return _orders_with_shipping_history(db, [order])[0]
+    return _orders_with_shipping_history(db, [automate_order_documents(db, order)])[0]
 
 
 @router.post("/orders/{order_id}/fiscal", response_model=MarketplaceOrderOut)
@@ -271,7 +276,7 @@ def request_order_fiscal_document(
     order_id: str,
     db: Session = Depends(get_db),
     _: User = Depends(require_permission(Permission.MARKETPLACE_PROCESS)),
-) -> MarketplaceOrder:
+) -> MarketplaceOrderOut:
     """Request/reconcile the Mercado Livre invoice for an existing sale."""
     from app.integrations.mercadolivre.sync import issue_and_sync_invoice, sync_shipping_label
 
@@ -308,7 +313,7 @@ def request_order_fiscal_document(
     db.refresh(order)
     if order.fiscal_error:
         raise HTTPException(status_code=502, detail=order.fiscal_error)
-    return order
+    return _orders_with_shipping_history(db, [order])[0]
 
 
 @router.post("/orders/{order_id}/label", response_model=MarketplaceOrderOut)
@@ -316,7 +321,7 @@ def request_order_shipping_label(
     order_id: str,
     db: Session = Depends(get_db),
     _: User = Depends(require_permission(Permission.MARKETPLACE_PROCESS)),
-) -> MarketplaceOrder:
+) -> MarketplaceOrderOut:
     """Retry downloading the Mercado Envios label without requesting an invoice."""
     from app.integrations.mercadolivre.sync import sync_shipping_label
 
@@ -340,7 +345,7 @@ def request_order_shipping_label(
     db.refresh(order)
     if order.label_error:
         raise HTTPException(status_code=502, detail=order.label_error)
-    return order
+    return _orders_with_shipping_history(db, [order])[0]
 
 
 @router.post("/sync", status_code=202)

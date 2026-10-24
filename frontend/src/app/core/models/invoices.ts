@@ -96,6 +96,7 @@ export interface InvoiceTrackingEvent {
 }
 export interface InvoiceTracking {
   shipment_id: string | null;
+  destination_address: string | null;
   status: string | null;
   shipping_status: string | null;
   shipping_substatus: string | null;

@@ -1,0 +1,31 @@
+<div class="timeline">
+  @for (group of historyGroups(); track group.key) {
+    <details class="timeline-group" [open]="group.events.length === 1">
+      <summary>
+        <span class="timeline-title">
+          <strong>{{ group.label }}</strong>
+          <small>
+            {{
+              group.events.length > 1
+                ? group.events.length + ' atualizações nesta etapa'
+                : 'Atualização de status'
+            }}
+          </small>
+        </span>
+        <span class="timeline-date">{{ group.last_at | date: 'dd/MM/yyyy HH:mm' }}</span>
+      </summary>
+      @if (group.events.length > 1) {
+        <div class="timeline-events">
+          @for (event of group.events; track event.created_at + event.status + event.detail) {
+            <div>
+              <strong>{{ trackingEventLabel(event.status, event.detail) }}</strong
+              ><span>{{ event.created_at | date: 'dd/MM/yyyy HH:mm' }}</span>
+            </div>
+          }
+        </div>
+      }
+    </details>
+  } @empty {
+    <p class="muted">Nenhum evento histórico registrado.</p>
+  }
+</div>

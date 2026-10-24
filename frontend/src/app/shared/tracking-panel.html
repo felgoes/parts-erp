@@ -1,0 +1,39 @@
+<section class="detail-section">
+  <div class="tracking-cards">
+    <div>
+      <span>Status do pedido</span><strong>{{ statusLabel(tracking().status) }}</strong>
+    </div>
+    <div>
+      <span>Envio</span
+      ><strong>{{
+        trackingEventLabel(tracking().shipping_status || 'unknown', tracking().shipping_substatus)
+      }}</strong>
+    </div>
+    <div>
+      <span>Etiqueta</span><strong>{{ statusLabel(tracking().label_status) }}</strong>
+    </div>
+    <div>
+      <span>Código de rastreio</span><strong>{{ tracking().shipment_id || '—' }}</strong>
+    </div>
+    <div class="destination-card">
+      <span>Endereço de destino</span><strong>{{ tracking().destination_address || '—' }}</strong>
+      @if (!tracking().destination_address) {
+        <small>O Mercado Livre ainda não disponibilizou o endereço deste envio.</small>
+      }
+    </div>
+  </div>
+  <div class="section-heading">
+    <div>
+      <p class="eyebrow">Mercado Envios</p>
+      <h3>Linha do tempo do rastreio</h3>
+    </div>
+    <small>{{
+      tracking().last_update
+        ? (tracking().last_update_source === 'platform'
+            ? 'Atualizado na plataforma '
+            : 'Recebido pelo ERP ') + (tracking().last_update | date: 'dd/MM/yyyy HH:mm')
+        : ''
+    }}</small>
+  </div>
+  <app-tracking-timeline [events]="tracking().history" />
+</section>

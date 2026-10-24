@@ -83,12 +83,22 @@ def sync_order(db: Session, seller_id: str, resource: str) -> MarketplaceOrder:
             if isinstance(record.payload, dict)
             else []
         )
+        previous_destination_address = (
+            record.payload.get("_erp_destination_address")
+            if isinstance(record.payload, dict)
+            else None
+        )
         record.status = str(order.get("status", "unknown"))
         record.payload = {
             **order,
             **(
                 {"_erp_after_sale_events": previous_after_sale_events}
                 if previous_after_sale_events
+                else {}
+            ),
+            **(
+                {"_erp_destination_address": previous_destination_address}
+                if previous_destination_address
                 else {}
             ),
         }

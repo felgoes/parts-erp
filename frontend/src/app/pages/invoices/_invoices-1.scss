@@ -209,6 +209,12 @@
   align-items: center;
   margin-bottom: 16px;
 }
+.detail-hero > div:first-child {
+  min-width: 0;
+}
+.detail-hero .badge {
+  white-space: nowrap;
+}
 .detail-hero h2 {
   font-size: 30px;
   letter-spacing: -0.04em;
@@ -220,6 +226,7 @@
 }
 .hero-actions {
   display: flex;
+  flex: 0 0 auto;
   align-items: center;
   gap: 14px;
 }

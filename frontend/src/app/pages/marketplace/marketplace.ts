@@ -12,10 +12,11 @@ import { statusLabel, trackingEventLabel } from '../../core/status-labels';
 import { saleStageForOrder, saleStageLabel } from '../../core/sale-stage';
 import { documentLabel } from '../../core/document-labels';
 import { PageHeader } from '../../shared/page-header';
+import { TrackingTimeline } from '../../shared/tracking-timeline';
 
 @Component({
   selector: 'app-marketplace',
-  imports: [DatePipe, DecimalPipe, JsonPipe, PageHeader],
+  imports: [DatePipe, DecimalPipe, JsonPipe, PageHeader, TrackingTimeline],
   templateUrl: './marketplace.html',
   styleUrl: './marketplace.scss',
 })
@@ -52,17 +53,18 @@ export class MarketplacePage implements OnInit {
     if (order.provider === 'shopee' && /^\d+$/.test(String(value))) return Number(value) * 1000;
     return String(value);
   }
+  trackingUpdateValue(order: MarketplaceOrder): string | number | null {
+    return this.platformUpdatedAt(order) || order.synchronized_at;
+  }
   canProcess() {
     const role = this.auth.user()?.role;
     return role === 'admin' || role === 'manager';
   }
   ngOnInit() {
-    this.route.queryParamMap
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((params) => {
-        const orderId = params.get('order_id');
-        if (orderId) this.openDetailsById(orderId);
-      });
+    this.route.queryParamMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
+      const orderId = params.get('order_id');
+      if (orderId) this.openDetailsById(orderId);
+    });
     this.load();
     this.live.changes$
       .pipe(debounceTime(250), takeUntilDestroyed(this.destroyRef))

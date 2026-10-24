@@ -356,25 +356,19 @@
             <p class="eyebrow">Mercado Envios</p>
             <h3>Rastreamento e etapas</h3>
           </div>
-          <span class="muted">{{
-            platformUpdatedAt(order) || order.synchronized_at
-              ? 'Atualizado ' +
-                (platformUpdatedAt(order) || order.synchronized_at | date: 'dd/MM/yyyy HH:mm')
-              : 'Aguardando sincronização'
-          }}</span>
+          <span class="tracking-summary">
+            <small>{{
+              trackingUpdateValue(order)
+                ? 'Atualizado ' + (trackingUpdateValue(order) | date: 'dd/MM/yyyy HH:mm')
+                : 'Aguardando sincronização'
+            }}</small>
+            <strong>Destino: {{ order.destination_address || 'Ainda não disponível' }}</strong>
+          </span>
         </div>
         <div class="timeline">
           <div>
             <strong>Pedido recebido</strong
             ><span>{{ order.created_at | date: 'dd/MM/yyyy HH:mm' }}</span>
-          </div>
-          <div>
-            <strong>Status do pedido: {{ statusLabel(order.status) }}</strong
-            ><span>{{
-              platformUpdatedAt(order) || order.synchronized_at
-                ? (platformUpdatedAt(order) || order.synchronized_at | date: 'dd/MM/yyyy HH:mm')
-                : 'Ainda não sincronizado'
-            }}</span>
           </div>
           @if (order.shipment_id) {
             <div>
@@ -393,18 +387,7 @@
             <h3>Histórico de status</h3>
           </div>
         </div>
-        @if (history().length) {
-          <div class="timeline">
-            @for (event of history(); track event.id) {
-              <div>
-                <strong>{{ trackingEventLabel(event.status, event.detail) }}</strong
-                ><span>{{ event.created_at | date: 'dd/MM/yyyy HH:mm' }}</span>
-              </div>
-            }
-          </div>
-        } @else {
-          <p class="muted">Nenhum evento histórico registrado.</p>
-        }
+        <app-tracking-timeline [events]="history()" [groupByEventType]="true" />
       </section>
       <section class="order-section">
         <div class="section-heading">

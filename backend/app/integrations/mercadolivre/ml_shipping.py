@@ -19,6 +19,7 @@ from app.models import (
     MarketplaceOrder,
     MarketplaceOrderEvent,
 )
+from app.services.tracking_destination import persist_tracking_destination
 
 
 def _shipping_cost_metadata(record: MarketplaceOrder, **values: Any) -> None:
@@ -39,6 +40,7 @@ def sync_shipping_status(
         raise MercadoLivreError("Resposta de envio inválida")
     record.shipping_status = str(shipment.get("status") or record.shipping_status or "unknown")
     record.shipping_substatus = str(shipment.get("substatus") or "") or None
+    persist_tracking_destination(record, shipment)
     sync_shipping_history(db, record, account)
     return shipment
 

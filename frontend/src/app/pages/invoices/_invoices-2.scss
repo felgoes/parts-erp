@@ -53,9 +53,11 @@
   border: 0;
   background: transparent;
   color: var(--muted);
+  flex-shrink: 0;
   padding: 10px 13px;
   font-size: 12px;
   font-weight: 800;
+  white-space: nowrap;
   cursor: pointer;
   border-bottom: 2px solid transparent;
 }
@@ -95,6 +97,7 @@
     margin-right: -20px;
     padding-left: 20px;
     padding-right: 20px;
+    overflow-x: auto;
   }
   .detail-hero h2 {
     font-size: 24px;

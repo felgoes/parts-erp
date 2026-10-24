@@ -278,6 +278,20 @@
 .section-heading .eyebrow {
   margin: 0 0 5px;
 }
+.tracking-summary {
+  display: grid;
+  gap: 4px;
+  max-width: 360px;
+  text-align: right;
+}
+.tracking-summary small {
+  color: var(--muted);
+  font-size: 11px;
+}
+.tracking-summary strong {
+  font-size: 12px;
+  line-height: 1.45;
+}
 .invoice-detail-lines {
   display: grid;
   gap: 0;

@@ -311,49 +311,11 @@
           </section>
         }
         @if (invoiceTab() === 'tracking') {
-          <section class="detail-section">
-            @if (invoice.tracking; as tracking) {
-              <div class="tracking-cards">
-                <div>
-                  <span>Status do pedido</span><strong>{{ statusLabel(tracking.status) }}</strong>
-                </div>
-                <div>
-                  <span>Envio</span><strong>{{ statusLabel(tracking.shipping_status) }}</strong>
-                </div>
-                <div>
-                  <span>Etiqueta</span><strong>{{ statusLabel(tracking.label_status) }}</strong>
-                </div>
-                <div>
-                  <span>Código de rastreio</span><strong>{{ tracking.shipment_id || '—' }}</strong>
-                </div>
-              </div>
-              <div class="section-heading">
-                <div>
-                  <p class="eyebrow">Mercado Envios</p>
-                  <h3>Linha do tempo do rastreio</h3>
-                </div>
-                <small>{{
-                  tracking.last_update
-                    ? (tracking.last_update_source === 'platform'
-                        ? 'Atualizado na plataforma '
-                        : 'Recebido pelo ERP ') + (tracking.last_update | date: 'dd/MM/yyyy HH:mm')
-                    : ''
-                }}</small>
-              </div>
-              <div class="timeline">
-                @for (event of tracking.history; track event.created_at + event.status) {
-                  <div>
-                    <strong>{{ trackingEventLabel(event.status, event.detail) }}</strong
-                    ><span>{{ event.created_at | date: 'dd/MM/yyyy HH:mm' }}</span>
-                  </div>
-                } @empty {
-                  <p class="muted">Ainda não há eventos de rastreio registrados.</p>
-                }
-              </div>
-            } @else {
-              <div class="empty">Esta venda não está vinculada a um pedido de marketplace.</div>
-            }
-          </section>
+          @if (invoice.tracking; as tracking) {
+            <app-tracking-panel [tracking]="tracking" />
+          } @else {
+            <div class="empty">Esta venda não está vinculada a um pedido de marketplace.</div>
+          }
         }
         @if (invoiceTab() === 'documents') {
           <section class="detail-section">

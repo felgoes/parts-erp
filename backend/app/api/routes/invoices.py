@@ -30,6 +30,7 @@ from app.schemas.common import (
 )
 from app.services.after_sale import after_sales_for_invoices, invoice_after_sale
 from app.services.invoice_tracking import attach_invoice_tracking, tracking_last_update
+from app.services.tracking_destination import tracking_destination_address
 from app.services.sales import cancel_invoice, confirm_invoice, create_invoice
 
 
@@ -190,9 +191,16 @@ def get_invoice(
                 )
                 if account:
                     try:
-                        from app.integrations.mercadolivre.sync import sync_shipping_history
+                        from app.integrations.mercadolivre.sync import (
+                            sync_shipping_history,
+                            sync_shipping_status,
+                        )
 
-                        sync_shipping_history(db, order, account)
+                        if tracking_destination_address(order):
+                            sync_shipping_history(db, order, account)
+                        else:
+                            sync_shipping_status(db, order, account)
+                            db.commit()
                     except Exception:
                         # A detail screen must remain available if ML is temporarily offline.
                         db.rollback()
@@ -206,6 +214,7 @@ def get_invoice(
             last_update, last_update_source = tracking_last_update(order, event_list)
             result.tracking = InvoiceTrackingOut(
                 shipment_id=order.shipment_id,
+                destination_address=tracking_destination_address(order),
                 status=order.status,
                 shipping_status=order.shipping_status,
                 shipping_substatus=order.shipping_substatus,

@@ -9,13 +9,14 @@ import { LiveUpdatesService } from '../../core/live-updates.service';
 import { AuthService } from '../../core/auth.service';
 import { DashboardFinancialMetrics, DashboardSummary, Invoice } from '../../core/models';
 import { canSell } from '../../core/user-access';
-import { statusLabel, trackingEventLabel } from '../../core/status-labels';
+import { statusLabel } from '../../core/status-labels';
 import { saleStageForInvoice, saleStageLabel } from '../../core/sale-stage';
 import { documentLabel } from '../../core/document-labels';
 import { documentsWithoutXml } from '../../core/document-visibility';
 import { PageHeader } from '../../shared/page-header';
 import { PeriodFilter } from '../../shared/period-filter';
 import { AfterSaleWorkflow } from '../../shared/after-sale-workflow';
+import { TrackingPanel } from '../../shared/tracking-panel';
 import { DashboardMetrics } from './metrics/dashboard-metrics';
 
 @Component({
@@ -28,6 +29,7 @@ import { DashboardMetrics } from './metrics/dashboard-metrics';
     PageHeader,
     PeriodFilter,
     AfterSaleWorkflow,
+    TrackingPanel,
     DashboardMetrics,
   ],
   templateUrl: './dashboard.html',
@@ -51,7 +53,6 @@ export class DashboardPage implements OnInit {
   startDate = this.monthStart();
   endDate = this.today();
   readonly statusLabel = statusLabel;
-  readonly trackingEventLabel = trackingEventLabel;
   readonly saleStageForInvoice = saleStageForInvoice;
   readonly saleStageLabel = saleStageLabel;
   readonly documentLabel = documentLabel;

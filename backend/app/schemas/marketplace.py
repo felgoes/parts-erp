@@ -22,6 +22,7 @@ class MarketplaceOrderOut(ORMModel):
     created_at: datetime
     provider: str = "mercadolivre"
     shipment_id: str | None = None
+    destination_address: str | None = None
     shipping_status: str | None = None
     shipping_substatus: str | None = None
     fiscal_status: str = "pending"

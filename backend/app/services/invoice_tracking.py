@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.models import MarketplaceOrder, MarketplaceOrderEvent
 from app.schemas.common import InvoiceOut, InvoiceTrackingEventOut, InvoiceTrackingOut
+from app.services.tracking_destination import tracking_destination_address
 
 
 def _payload_datetime(value: object) -> datetime | None:
@@ -86,6 +87,7 @@ def attach_invoice_tracking(db: Session, invoices: list[InvoiceOut]) -> None:
         last_update, last_update_source = tracking_last_update(order, order_events)
         invoice.tracking = InvoiceTrackingOut(
             shipment_id=order.shipment_id,
+            destination_address=tracking_destination_address(order),
             status=order.status,
             shipping_status=order.shipping_status,
             shipping_substatus=order.shipping_substatus,

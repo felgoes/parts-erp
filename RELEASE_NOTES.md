@@ -1,3 +1,7 @@
+## 24 de outubro de 2026 — endereço de destino e rastreio mais legível
+
+- [Endereço de destino e histórico de rastreio agrupado · 490e932](https://github.com/felgoes/parts-erp/commit/490e932a051ebd4c6f4dcb9b139ecf29af839cac): os modais de rastreio das vendas e dos pedidos do Mercado Livre agora mostram o endereço de destino informado pelo Mercado Envios. Atualizações consecutivas do mesmo status aparecem em uma única etapa, com a contagem de alterações e os substatus disponíveis ao expandir. O modal continua acessível quando o Mercado Livre está temporariamente indisponível. Implantado em produção em 24/10/2026; os smoke checks públicos do site e do ERP responderam HTTP 200.
+
 ## 24 de outubro de 2026 — sensor BYD com aplicações e fotos no catálogo
 
 - [Compatibilidade do sensor BYD e imagens do catálogo · 88986c0](https://github.com/felgoes/parts-erp/commit/88986c0c0885874119023726dcd7c2efa9e2f12b): o Sensor de Estacionamento BYD preto agora apresenta 13 aplicações veiculares no ERP e na ficha pública, com faixas de ano para os modelos compatíveis e orientação para confirmar a versão pelo VIN ou código original. A listagem mantém o preço de R$ 119,90 e as três fotos, corrige o roteamento das imagens pelo proxy e versão as URLs locais para evitar cache antigo. Implantado em produção em 24/10/2026; os smoke checks públicos do site e do ERP responderam HTTP 200.

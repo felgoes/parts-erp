@@ -1,3 +1,7 @@
+## 24 de outubro de 2026 — sensor BYD com aplicações e fotos no catálogo
+
+- [Compatibilidade do sensor BYD e imagens do catálogo · 88986c0](https://github.com/felgoes/parts-erp/commit/88986c0c0885874119023726dcd7c2efa9e2f12b): o Sensor de Estacionamento BYD preto agora apresenta 13 aplicações veiculares no ERP e na ficha pública, com faixas de ano para os modelos compatíveis e orientação para confirmar a versão pelo VIN ou código original. A listagem mantém o preço de R$ 119,90 e as três fotos, corrige o roteamento das imagens pelo proxy e versão as URLs locais para evitar cache antigo. Implantado em produção em 24/10/2026; os smoke checks públicos do site e do ERP responderam HTTP 200.
+
 ## 23 de outubro de 2026 — estudos de mercado para autopeças
 
 - [Estudos de mercado para autopeças · 1c2e84e](https://github.com/felgoes/parts-erp/commit/1c2e84e4607e60e9c91752c1ecb1d8e8e5b9d56c): pesquisa anúncios comparáveis do Mercado Livre considerando OEM e aplicação veicular; mostra compatibilidade, faixa de preços, estoque, vendas, custo e margens com as premissas visíveis. Os estudos ficam no histórico e podem iniciar um rascunho de compra. Implantado em produção em 23/10/2026; os smoke checks públicos do site e do ERP responderam HTTP 200, incluindo os bundles JavaScript. A integração Mercado Livre precisa estar conectada para consultar anúncios.

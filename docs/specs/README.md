@@ -8,6 +8,8 @@ As specs descrevem comportamento e critérios de aceite de cada item. A lista of
 
 ## Histórico
 
+- [P27 — Estudos de mercado para autopeças](market-studies-autopecas.md) — entregue em produção em 23/10/2026 (`1c2e84e`).
+
 Specs de tarefas concluídas são removidas a pedido do PO e permanecem no histórico do Git; o que foi entregue em produção fica registrado no `RELEASE_NOTES.md`.
 
 - Removidas em 11/10/2026: P1, P2, P3, P4, P7, P8, P9 e P12.

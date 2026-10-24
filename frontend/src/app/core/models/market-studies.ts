@@ -16,6 +16,8 @@ export interface MarketStudyOffer {
   permalink: string | null;
   thumbnail: string | null;
   similarity: number;
+  compatibility?: 'oem_exact' | 'catalog' | 'fitment_confirmed' | 'attribute_match' | 'unconfirmed';
+  compatibility_label?: string;
 }
 export interface MarketStudy {
   id: string;
@@ -32,9 +34,26 @@ export interface MarketStudy {
   result: {
     observed_at: string;
     site_id: string;
+    product_context?: {
+      oem?: string | null;
+      application?: string | null;
+      fitments?: {
+        make: string;
+        model: string;
+        year_from?: number | null;
+        year_to?: number | null;
+        engine?: string | null;
+        version?: string | null;
+      }[];
+    };
     market_metrics: {
       offers_found: number;
+      consulted_limit?: number;
       comparable_offers: number;
+      sample_confidence?: 'low' | 'medium' | 'high';
+      conclusion?: string;
+      conclusion_reason?: string;
+      small_sample?: boolean;
       median_price: string | null;
       min_price: string | null;
       max_price: string | null;
@@ -42,11 +61,20 @@ export interface MarketStudy {
       trend_keyword_matches: number;
     };
     price_scenario: {
-      landed_cost: string;
+      landed_cost: string | null;
+      cost_post?: string | null;
       marketplace_fee_pct: string;
       target_margin_pct: string;
       break_even_price: string | null;
       target_price: string | null;
+      commission_pct?: string;
+      fixed_fee?: string | null;
+      outbound_shipping?: string | null;
+      cost_known?: boolean;
+      inbound_shipping_known?: boolean;
+      inbound_shipping?: string | null;
+      calculation_components?: string[];
+      unknown_components: string[];
       market_margin_at_median_pct: string | null;
       competitive_at_target_price: boolean;
     };

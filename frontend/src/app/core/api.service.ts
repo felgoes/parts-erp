@@ -208,18 +208,15 @@ export class ApiService {
   purchase(id: string): Observable<Purchase> {
     return this.purchasesApi.purchase(id);
   }
+  marketStudyDefaults(): Observable<{ marketplace_fee_pct: number }> {
+    return this.marketstudiesApi.marketStudyDefaults();
+  }
   marketStudies(): Observable<MarketStudy[]> {
     return this.marketstudiesApi.marketStudies();
   }
-  createMarketStudy(payload: {
-    search_term: string;
-    sku?: string;
-    category_id?: string;
-    landed_cost: number;
-    target_margin_pct: number;
-    marketplace_fee_pct: number;
-    shipping_cost: number;
-  }): Observable<MarketStudy> {
+  createMarketStudy(
+    payload: Parameters<MarketStudiesApi['createMarketStudy']>[0],
+  ): Observable<MarketStudy> {
     return this.marketstudiesApi.createMarketStudy(payload);
   }
   marketStudyConnector(): Observable<MarketStudyConnector> {

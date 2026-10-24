@@ -1,12 +1,13 @@
 import { CurrencyPipe, DatePipe, PercentPipe, registerLocaleData } from '@angular/common';
 import localePtBr from '@angular/common/locales/pt';
 import { Component, OnInit, inject, signal } from '@angular/core';
+import { MarketStudyResult } from './market-study-result';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
 import { ApiService } from '../../core/api.service';
 import { AuthService } from '../../core/auth.service';
-import { MarketStudy, MarketStudyConnector } from '../../core/models';
+import { MarketStudy, MarketStudyConnector, Product } from '../../core/models';
 import { PageHeader } from '../../shared/page-header';
 import { MoneyInputDirective } from '../../shared/money-input.directive';
 
@@ -18,9 +19,9 @@ registerLocaleData(localePtBr);
     CurrencyPipe,
     DatePipe,
     FormsModule,
+    MarketStudyResult,
     MoneyInputDirective,
     PageHeader,
-    PercentPipe,
     RouterLink,
   ],
   templateUrl: './market-studies.html',
@@ -33,10 +34,14 @@ export class MarketStudiesPage implements OnInit {
     search_term: '',
     sku: '',
     category_id: '',
-    landed_cost: 0,
+    application: '',
+    oem: '',
+    landed_cost: null as number | null,
+    fixed_fee: null as number | null,
+    outbound_shipping: null as number | null,
     target_margin_pct: 25,
     marketplace_fee_pct: 16,
-    shipping_cost: 0,
+    shipping_cost: null as number | null,
   };
   readonly connector = {
     provider: 'openai_responses' as MarketStudyConnector['provider'],
@@ -47,6 +52,15 @@ export class MarketStudiesPage implements OnInit {
     has_api_key: false,
   };
   readonly studies = signal<MarketStudy[]>([]);
+  readonly productResults = signal<Product[]>([]);
+  readonly selectedProduct = signal<Product | null>(null);
+  readonly confirmProduct = signal(false);
+  readonly productSearchLoading = signal(false);
+  readonly productSearchComplete = signal(false);
+  readonly costValueSource = signal('not_available');
+  readonly feeValueSource = signal<'loading' | 'company' | 'manual' | 'fallback'>('loading');
+  private productSearchTimer?: ReturnType<typeof setTimeout>;
+  private productSearchRequestId = 0;
   readonly selected = signal<MarketStudy | null>(null);
   readonly draftStudy = signal<MarketStudy | null>(null);
   readonly purchaseDraft = { sku: '', quantity: 1 };
@@ -62,6 +76,19 @@ export class MarketStudiesPage implements OnInit {
 
   ngOnInit() {
     this.loadStudies();
+    if (this.canManage) {
+      this.api.marketStudyDefaults().subscribe({
+        next: (values) => {
+          if (this.feeValueSource() !== 'manual') {
+            this.form.marketplace_fee_pct = values.marketplace_fee_pct;
+            this.feeValueSource.set('company');
+          }
+        },
+        error: () => {
+          if (this.feeValueSource() !== 'manual') this.feeValueSource.set('fallback');
+        },
+      });
+    }
     this.api.marketStudyConnector().subscribe({
       next: (config) => {
         this.connector.provider = config.provider;
@@ -84,6 +111,68 @@ export class MarketStudiesPage implements OnInit {
       },
     });
   }
+  searchProducts(term: string) {
+    const requestId = ++this.productSearchRequestId;
+    if (this.selectedProduct() && term !== this.selectedProduct()?.name) {
+      this.selectedProduct.set(null);
+      this.confirmProduct.set(false);
+      this.form.sku = '';
+      this.form.landed_cost = null;
+      this.costValueSource.set('not_available');
+    }
+    if (this.productSearchTimer) clearTimeout(this.productSearchTimer);
+    this.productResults.set([]);
+    this.productSearchComplete.set(false);
+    if (term.trim().length < 2) {
+      this.productSearchLoading.set(false);
+      return;
+    }
+    this.productSearchLoading.set(true);
+    this.productSearchTimer = setTimeout(
+      () =>
+        this.api
+          .products(term.trim())
+          .pipe(
+            finalize(() => {
+              if (requestId === this.productSearchRequestId) this.productSearchLoading.set(false);
+            }),
+          )
+          .subscribe({
+            next: (rows) => {
+              if (requestId !== this.productSearchRequestId) return;
+              this.productResults.set(rows.slice(0, 8));
+              this.productSearchComplete.set(true);
+            },
+            error: () => {
+              if (requestId === this.productSearchRequestId) this.productResults.set([]);
+            },
+          }),
+      250,
+    );
+  }
+  selectProduct(product: Product) {
+    this.productSearchRequestId += 1;
+    if (this.productSearchTimer) clearTimeout(this.productSearchTimer);
+    this.productSearchLoading.set(false);
+    this.selectedProduct.set(product);
+    this.confirmProduct.set(false);
+    this.productResults.set([]);
+    this.form.application = '';
+    this.form.search_term = product.name;
+    this.form.sku = product.sku;
+    this.form.landed_cost =
+      product.cost_price != null && product.cost_price > 0 ? product.cost_price : null;
+    this.costValueSource.set(this.form.landed_cost == null ? 'not_available' : 'erp');
+  }
+  fitmentSummary(product: Product) {
+    return product.fitments
+      .slice(0, 3)
+      .map(
+        (fitment) =>
+          `${fitment.make} ${fitment.model}${fitment.year_from ? ` ${fitment.year_from}` : ''}${fitment.year_to ? `-${fitment.year_to}` : ''}${fitment.engine ? ` ${fitment.engine}` : ''}${fitment.version ? ` ${fitment.version}` : ''}`,
+      )
+      .join('; ');
+  }
   runStudy() {
     this.loading.set(true);
     this.error.set('');
@@ -93,10 +182,18 @@ export class MarketStudiesPage implements OnInit {
         search_term: this.form.search_term.trim(),
         sku: this.form.sku.trim() || undefined,
         category_id: this.form.category_id.trim() || undefined,
-        landed_cost: Number(this.form.landed_cost),
+        landed_cost: this.form.landed_cost == null ? undefined : Number(this.form.landed_cost),
+        fixed_fee: this.form.fixed_fee == null ? undefined : Number(this.form.fixed_fee),
+        outbound_shipping:
+          this.form.outbound_shipping == null ? undefined : Number(this.form.outbound_shipping),
+        oem:
+          this.selectedProduct()?.manufacturer_part_number ?? (this.form.oem.trim() || undefined),
+        application: this.form.application.trim() || undefined,
+        fitments: this.selectedProduct()?.fitments ?? [],
         target_margin_pct: Number(this.form.target_margin_pct),
         marketplace_fee_pct: Number(this.form.marketplace_fee_pct),
-        shipping_cost: Number(this.form.shipping_cost),
+        shipping_cost:
+          this.form.shipping_cost == null ? undefined : Number(this.form.shipping_cost),
       })
       .pipe(finalize(() => this.loading.set(false)))
       .subscribe({
@@ -104,6 +201,13 @@ export class MarketStudiesPage implements OnInit {
           this.studies.update((current) => [study, ...current]);
           this.selected.set(study);
           this.form.search_term = '';
+          this.form.application = '';
+          this.form.oem = '';
+          this.selectedProduct.set(null);
+          this.confirmProduct.set(false);
+          this.form.sku = '';
+          this.form.landed_cost = null;
+          this.costValueSource.set('not_available');
           window.scrollTo({ top: 0, behavior: 'smooth' });
         },
         error: (e: { error?: { detail?: string } }) =>

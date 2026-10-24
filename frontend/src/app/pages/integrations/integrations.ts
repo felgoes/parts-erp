@@ -18,6 +18,7 @@ type MlForm = Rules & {
   client_secret: string;
   redirect_uri: string;
   site_id: string;
+  study_default_commission_pct: number;
 };
 type ShopeeForm = Rules & {
   partner_id: string;
@@ -76,6 +77,7 @@ export class IntegrationsPage implements OnInit {
     client_secret: '',
     redirect_uri: '',
     site_id: 'MLB',
+    study_default_commission_pct: 16,
     import_orders: true,
     automatic_stock: true,
     sync_documents: true,
@@ -171,8 +173,7 @@ export class IntegrationsPage implements OnInit {
         provider: this.assistantForm.provider,
         model: this.assistantForm.model,
         key_action: keyAction,
-        api_key:
-          keyAction === 'replace' ? this.assistantForm.api_key.trim() : undefined,
+        api_key: keyAction === 'replace' ? this.assistantForm.api_key.trim() : undefined,
         monthly_budget_usd: this.assistantForm.monthly_budget_usd,
       })
       .subscribe({
@@ -211,9 +212,7 @@ export class IntegrationsPage implements OnInit {
         },
         error: (err) => {
           this.assistantTesting.set(false);
-          this.assistantMessage.set(
-            err?.error?.detail || 'O provedor não respondeu ao teste.',
-          );
+          this.assistantMessage.set(err?.error?.detail || 'O provedor não respondeu ao teste.');
         },
       });
   }

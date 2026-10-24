@@ -106,64 +106,173 @@
       </div>
       <form #studyForm="ngForm" class="study-fields" (ngSubmit)="runStudy()">
         <label class="field-wide"
-          >Peça ou termo de busca<input
+          >Qual peça você quer analisar?<input
+            name="search_term"
             [(ngModel)]="form.search_term"
+            (ngModelChange)="searchProducts($event)"
             maxlength="200"
-            placeholder="Ex.: bomba d’água Tiggo 7 1.5T"
+            placeholder="SKU, código OEM, código de barras ou descrição"
+            autocomplete="off"
+            required
         /></label>
-        <label
-          >SKU interno (opcional)<input
-            [(ngModel)]="form.sku"
-            maxlength="80"
-            placeholder="Usa vendas e saldo existentes"
-        /></label>
-        <label
-          >Categoria ML (opcional)<input
-            [(ngModel)]="form.category_id"
-            maxlength="40"
-            placeholder="Ex.: MLB..."
-        /></label>
-        <label
-          >Custo unitário da peça (R$)<input
-            appMoneyInput
-            name="landed_cost"
-            [(ngModel)]="form.landed_cost"
-            min="0"
-        /></label>
-        <label
-          >Frete unitário rateado (R$)<input
-            appMoneyInput
-            name="shipping_cost"
-            [(ngModel)]="form.shipping_cost"
-            min="0"
-        /></label>
-        <label
-          >Taxas estimadas do canal (%)<input
-            type="number"
-            min="0"
-            max="79"
-            step="0.1"
-            [(ngModel)]="form.marketplace_fee_pct"
-        /></label>
-        <label
-          >Margem desejada (%)<input
-            type="number"
-            min="0"
-            max="79"
-            step="0.1"
-            [(ngModel)]="form.target_margin_pct"
-        /></label>
+        @if (productSearchLoading()) {
+          <p class="field-wide search-hint">Buscando no cadastro do ERP…</p>
+        }
+        @if (productResults().length) {
+          <div
+            class="product-results field-wide"
+            role="listbox"
+            aria-label="Peças encontradas no ERP"
+          >
+            @for (product of productResults(); track product.id) {
+              <button type="button" role="option" (click)="selectProduct(product)">
+                <strong>{{ product.name }}</strong
+                ><span
+                  >{{ product.sku }} · {{ product.brand || 'Marca não informada'
+                  }}{{
+                    product.manufacturer_part_number
+                      ? ' · OEM ' + product.manufacturer_part_number
+                      : ''
+                  }}</span
+                >
+              </button>
+            }
+          </div>
+        }
+        @if (!selectedProduct()) {
+          <label class="field-wide"
+            >Aplicação do veículo (opcional)<input
+              [(ngModel)]="form.application"
+              name="application"
+              placeholder="Marca, modelo, ano, motor e versão"
+          /></label>
+        }
+        @if (selectedProduct(); as product) {
+          <section class="selected-product field-wide">
+            <div>
+              <p class="eyebrow">Confirme a peça cadastrada</p>
+              <strong>{{ product.name }} · {{ product.brand || 'Marca não informada' }}</strong
+              ><span
+                >SKU {{ product.sku
+                }}{{
+                  product.manufacturer_part_number
+                    ? ' · OEM ' + product.manufacturer_part_number
+                    : ''
+                }}
+                · estoque {{ product.current_stock }}</span
+              >
+              @if (product.attributes['Posição'] || product.attributes['Lado']) {
+                <span
+                  >Posição: {{ product.attributes['Posição'] || product.attributes['Lado'] }}</span
+                >
+              }
+              @if (product.fitments.length) {
+                <span>Aplicação: {{ fitmentSummary(product) }}</span>
+              }
+            </div>
+            <button class="secondary" type="button" (click)="confirmProduct.set(!confirmProduct())">
+              {{ confirmProduct() ? '✓ Peça confirmada' : 'Confirmar peça' }}
+            </button>
+          </section>
+        }
+        @if (!selectedProduct() && productSearchComplete() && !productResults().length) {
+          <p class="field-wide search-hint">
+            Peça não localizada. Continue com descrição ou código OEM. Custo é opcional para
+            pesquisar preços.
+          </p>
+        }
+        <details class="advanced-options field-wide">
+          <summary>Mais opções <span>Custos, taxas e filtros da pesquisa</span></summary>
+          <div class="study-fields advanced-fields">
+            <label
+              >Custo unitário de referência (R$)<small>{{
+                costValueSource() === 'erp'
+                  ? 'ERP · custo médio registrado; pode incluir rateio de entrada · editável'
+                  : costValueSource() === 'manual'
+                    ? 'Editado manualmente'
+                    : 'Não disponível · opcional'
+              }}</small
+              ><input
+                appMoneyInput
+                name="landed_cost"
+                [(ngModel)]="form.landed_cost"
+                (ngModelChange)="costValueSource.set('manual')"
+                min="0"
+            /></label>
+            <label
+              >Frete de entrada rateado (R$)<small
+                >Entrada adicional; preencha só o que não estiver no custo ERP</small
+              ><input appMoneyInput name="shipping_cost" [(ngModel)]="form.shipping_cost" min="0"
+            /></label>
+            <label
+              >Comissão estimada do canal (%)<small>{{
+                feeValueSource() === 'company'
+                  ? 'Padrão da empresa · pode variar por categoria'
+                  : feeValueSource() === 'manual'
+                    ? 'Editada para este estudo'
+                    : feeValueSource() === 'loading'
+                      ? 'Carregando taxa padrão da empresa…'
+                      : 'Referência inicial de 16% · pode variar por categoria'
+              }}</small
+              ><input
+                type="number"
+                min="0"
+                max="79"
+                step="0.1"
+                [(ngModel)]="form.marketplace_fee_pct"
+                (ngModelChange)="feeValueSource.set('manual')"
+                name="marketplace_fee_pct"
+            /></label>
+            <label
+              >Margem desejada (%)<small>Opcional para preço-alvo</small
+              ><input
+                type="number"
+                min="0"
+                max="79"
+                step="0.1"
+                [(ngModel)]="form.target_margin_pct"
+                name="target_margin_pct"
+            /></label>
+            <label
+              >Tarifa fixa por venda (R$)<small>Opcional · deixe vazio se desconhecida</small
+              ><input appMoneyInput name="fixed_fee" [(ngModel)]="form.fixed_fee" min="0"
+            /></label>
+            <label
+              >Frete de saída pago pelo vendedor (R$)<small
+                >Opcional · deixe vazio se desconhecido</small
+              ><input
+                appMoneyInput
+                name="outbound_shipping"
+                [(ngModel)]="form.outbound_shipping"
+                min="0"
+            /></label>
+            <label class="field-wide"
+              >Categoria ou termo adicional<input
+                [(ngModel)]="form.category_id"
+                name="category_id"
+                maxlength="40"
+                placeholder="Categoria MLB ou informação para refinar a busca"
+            /></label>
+          </div>
+        </details>
       </form>
       <div class="study-submit">
         <small
-          >Pesquisa até 50 anúncios do ML, tendências e histórico ERP de 90 dias para o SKU.</small
+          >Pesquisa até 50 anúncios ativos do Mercado Livre e cruza vendas internas observadas nos
+          últimos 90 dias, quando houver SKU.</small
         ><button
           class="primary"
           type="button"
-          [disabled]="loading() || studyForm.invalid || !form.search_term.trim()"
+          [disabled]="
+            loading() ||
+            studyForm.invalid ||
+            !form.search_term.trim() ||
+            (!!selectedProduct() && !confirmProduct())
+          "
           (click)="runStudy()"
         >
-          {{ loading() ? 'Analisando mercado…' : 'Gerar estudo' }} <span aria-hidden="true">→</span>
+          {{ loading() ? 'Analisando mercado…' : 'Analisar mercado' }}
+          <span aria-hidden="true">→</span>
         </button>
       </div>
       @if (error()) {
@@ -214,227 +323,7 @@
 
 @if (selected(); as study) {
   <section class="study-result card" aria-live="polite">
-    <div class="result-heading">
-      <div>
-        <p class="eyebrow">Estudo salvo · {{ study.created_at | date: 'dd/MM/yyyy HH:mm' }}</p>
-        <h2>{{ study.search_term }}</h2>
-        <p>
-          {{ study.sku ? 'SKU ' + study.sku + ' · ' : '' }}Dados observados em
-          {{ study.result.observed_at | date: 'dd/MM/yyyy HH:mm' : '' : 'pt-BR' }}
-        </p>
-      </div>
-      <span class="result-badge" [class.is-limited]="study.status === 'insufficient_data'">{{
-        study.status === 'completed' ? 'Dados comparáveis' : 'Amostra limitada'
-      }}</span>
-    </div>
-    <div class="market-metrics">
-      <article>
-        <span>Preço mediano comparável</span
-        ><strong>{{
-          study.result.market_metrics.median_price
-            ? (+study.result.market_metrics.median_price
-              | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR')
-            : 'Sem amostra'
-        }}</strong
-        ><small>{{ study.result.market_metrics.comparable_offers }} anúncios semelhantes</small>
-      </article>
-      <article>
-        <span>Faixa observada</span
-        ><strong>{{
-          study.result.market_metrics.min_price
-            ? (+study.result.market_metrics.min_price
-                | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR') +
-              ' — ' +
-              (+study.result.market_metrics.max_price!
-                | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR')
-            : '—'
-        }}</strong
-        ><small>Preços anunciados; não incluem todas as condições</small>
-      </article>
-      <article>
-        <span>Preço para margem desejada</span
-        ><strong>{{
-          study.result.price_scenario.target_price
-            ? (+study.result.price_scenario.target_price
-              | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR')
-            : '—'
-        }}</strong
-        ><small>Após taxas estimadas de {{ study.marketplace_fee_pct }}%</small>
-      </article>
-      <article>
-        <span>Margem no preço mediano</span
-        ><strong
-          [class.negative]="+(study.result.price_scenario.market_margin_at_median_pct ?? 0) < 0"
-          >{{
-            study.result.price_scenario.market_margin_at_median_pct !== null
-              ? study.result.price_scenario.market_margin_at_median_pct + '%'
-              : '—'
-          }}</strong
-        ><small
-          >Custo posto informado:
-          {{
-            study.landed_cost + study.shipping_cost | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR'
-          }}</small
-        >
-      </article>
-    </div>
-    <div class="signal-grid">
-      <article>
-        <p class="eyebrow">Sinal de giro no ERP</p>
-        <strong
-          >{{ study.sku ? study.result.internal_sales.units_last_90_days : 'SKU não informado'
-          }}{{ study.sku ? ' un. em 90 dias' : '' }}</strong
-        ><small>{{
-          study.sku
-            ? study.result.internal_sales.units_per_month +
-              ' un./mês; média observada, não previsão.'
-            : 'Informe SKU para cruzar com vendas e saldo.'
-        }}</small>
-      </article>
-      <article>
-        <p class="eyebrow">Anúncios encontrados</p>
-        <strong>{{ study.result.market_metrics.offers_found }}</strong
-        ><small
-          >{{ study.result.market_metrics.sold_units_lifetime_in_comparables }} vendas acumuladas
-          somadas nos anúncios comparáveis — não representam período mensal.</small
-        >
-      </article>
-      <article>
-        <p class="eyebrow">Tendências do ML</p>
-        <strong>{{ study.result.market_metrics.trend_keyword_matches }} termos relacionados</strong
-        ><small>O recurso de tendências é semanal e não garante demanda futura.</small>
-      </article>
-    </div>
-
-    @if (study.result.ai_report; as ai) {
-      @if (ai.error) {
-        <p class="inline-message is-error">{{ ai.error }}</p>
-      } @else {
-        <section class="ai-report">
-          <div class="ai-title">
-            <span>✳</span>
-            <div>
-              <p class="eyebrow">
-                Leitura assistida por IA · confiança {{ confidenceLabel(ai.confidence) }}
-              </p>
-              <h3>O que os sinais sugerem</h3>
-            </div>
-          </div>
-          <p>{{ ai.summary }}</p>
-          <div class="ai-columns">
-            @if (ai.opportunities?.length) {
-              <div>
-                <strong>Oportunidades a investigar</strong>
-                <ul>
-                  @for (tip of ai.opportunities; track tip) {
-                    <li>{{ tip }}</li>
-                  }
-                </ul>
-              </div>
-            }
-            @if (ai.risks?.length) {
-              <div>
-                <strong>Pontos de atenção</strong>
-                <ul>
-                  @for (tip of ai.risks; track tip) {
-                    <li>{{ tip }}</li>
-                  }
-                </ul>
-              </div>
-            }
-            @if (ai.next_steps?.length) {
-              <div>
-                <strong>Próximos passos</strong>
-                <ul>
-                  @for (tip of ai.next_steps; track tip) {
-                    <li>{{ tip }}</li>
-                  }
-                </ul>
-              </div>
-            }
-          </div>
-        </section>
-      }
-    } @else {
-      <p class="ai-disabled">
-        Sem IA conectada: resultados acima são cálculos e dados diretos. Configure um provedor para
-        receber uma síntese qualitativa.
-      </p>
-    }
-
-    @if (study.result.trend_matches.length) {
-      <section class="evidence-section">
-        <div class="subheading">
-          <div>
-            <p class="eyebrow">Interesse de busca</p>
-            <h3>Termos em tendência</h3>
-          </div>
-        </div>
-        <div class="trend-chips">
-          @for (trend of study.result.trend_matches; track trend.keyword) {
-            <a [href]="trend.url" target="_blank" rel="noopener noreferrer"
-              >{{ trend.keyword }} ↗</a
-            >
-          }
-        </div>
-      </section>
-    }
-
-    <section class="evidence-section">
-      <div class="subheading">
-        <div>
-          <p class="eyebrow">Comparação de mercado</p>
-          <h3>Anúncios para conferir</h3>
-          <p>{{ study.result.possible_sources_note }}</p>
-        </div>
-        <span>{{ study.result.offers.length }} resultados</span>
-      </div>
-      @if (study.result.offers.length) {
-        <div class="offers-list">
-          @for (offer of study.result.offers; track offer.id) {
-            <article class="offer-row">
-              @if (offer.thumbnail) {
-                <img [src]="offer.thumbnail" alt="" loading="lazy" />
-              } @else {
-                <span class="offer-placeholder">◇</span>
-              }
-              <div class="offer-info">
-                <strong>{{ offer.title }}</strong
-                ><small
-                  >Anúncio {{ offer.id }} · relevância
-                  {{ offer.similarity | percent: '1.0-0' : 'pt-BR' }} ·
-                  {{ offer.sold_quantity_lifetime ?? '—' }} vendas acumuladas</small
-                >
-              </div>
-              <strong class="offer-price">{{
-                +offer.price | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR'
-              }}</strong>
-              @if (offer.permalink) {
-                <a
-                  class="offer-link"
-                  [href]="offer.permalink"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label="Abrir anúncio em nova guia"
-                  >↗</a
-                >
-              }
-            </article>
-          }
-        </div>
-      } @else {
-        <div class="empty-result">
-          <strong>Não encontrei anúncios comparáveis suficientes.</strong
-          ><span>Tente buscar pelo código OEM, nome comercial ou modelo do veículo.</span>
-        </div>
-      }
-    </section>
-    <div class="limitations-note">
-      <strong>Limites dos dados:</strong> disponibilidade pode vir aproximada; venda acumulada do
-      anúncio não é giro mensal; vendedor do anúncio é apenas uma pista para cotação, não fornecedor
-      validado; compatibilidade deve ser conferida.
-    </div>
-
+    <app-market-study-result [study]="study" />
     @if (canManage) {
       <div class="result-actions">
         @if (study.linked_purchase_id) {
@@ -499,7 +388,9 @@
             ><strong>{{ study.search_term }}</strong
             ><small
               >{{ study.sku ? study.sku + ' · ' : ''
-              }}{{ study.created_at | date: 'dd/MM/yyyy HH:mm' }}</small
+              }}{{
+                study.created_at | date: 'dd/MM/yyyy HH:mm' : 'America/Sao_Paulo' : 'pt-BR'
+              }}</small
             ></span
           ><span class="history-price"
             >{{
@@ -507,7 +398,10 @@
                 ? (+study.result.market_metrics.median_price
                   | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR')
                 : 'Sem amostra'
-            }}<small>{{ study.result.market_metrics.comparable_offers }} comparáveis</small></span
+            }}<small
+              >{{ study.result.market_metrics.comparable_offers }} comparáveis ·
+              {{ confidenceLabel(study.result.market_metrics.sample_confidence) }}</small
+            ></span
           ><span class="history-arrow">→</span>
         </button>
       }

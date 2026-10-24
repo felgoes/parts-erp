@@ -40,6 +40,9 @@ import { queryParams } from './http-helpers';
 export class MarketStudiesApi {
   private readonly http = inject(HttpClient);
   private readonly base = apiUrl('');
+  marketStudyDefaults(): Observable<{ marketplace_fee_pct: number }> {
+    return this.http.get<{ marketplace_fee_pct: number }>(`${this.base}/market-studies/defaults`);
+  }
   marketStudies(): Observable<MarketStudy[]> {
     return this.http.get<MarketStudy[]>(`${this.base}/market-studies`);
   }
@@ -47,10 +50,22 @@ export class MarketStudiesApi {
     search_term: string;
     sku?: string;
     category_id?: string;
-    landed_cost: number;
+    landed_cost?: number;
     target_margin_pct: number;
     marketplace_fee_pct: number;
-    shipping_cost: number;
+    shipping_cost?: number | null;
+    fixed_fee?: number | null;
+    outbound_shipping?: number | null;
+    oem?: string;
+    application?: string;
+    fitments?: {
+      make: string;
+      model: string;
+      year_from?: number | null;
+      year_to?: number | null;
+      engine?: string | null;
+      version?: string | null;
+    }[];
   }): Observable<MarketStudy> {
     return this.http.post<MarketStudy>(`${this.base}/market-studies`, payload);
   }

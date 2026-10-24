@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from app.api.deps import require_permission
 from app.core.permissions import Permission
 from app.db.session import get_db
-from app.models import MarketStudy, User
+from app.models import MarketplaceConfig, MarketStudy, User
 from app.schemas.common import (
     MarketStudyConnectorOut,
     MarketStudyConnectorUpdate,
@@ -25,6 +25,15 @@ from app.services.market_research import (
 )
 
 router = APIRouter(prefix="/market-studies", tags=["Estudos de mercado"])
+
+
+@router.get("/defaults")
+def get_study_defaults(
+    db: Session = Depends(get_db),
+    _: User = Depends(require_permission(Permission.STUDY_RUN)),
+) -> dict[str, Decimal]:
+    config = db.scalar(select(MarketplaceConfig).limit(1))
+    return {"marketplace_fee_pct": config.study_default_commission_pct if config else Decimal("16")}
 
 
 @router.get("/connector", response_model=MarketStudyConnectorOut)

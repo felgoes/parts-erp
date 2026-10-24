@@ -1,5 +1,6 @@
 import logging
 from datetime import UTC, datetime, timedelta
+from decimal import Decimal
 from urllib.parse import urlencode
 
 import jwt
@@ -22,7 +23,6 @@ from app.models import (
     MarketplaceOrderEvent,
     User,
 )
-from app.services.invoice_tracking import attach_invoice_tracking
 from app.schemas.common import (
     MarketplaceConfigOut,
     MarketplaceConfigUpdate,
@@ -30,6 +30,7 @@ from app.schemas.common import (
     MarketplaceOrderOut,
     MarketplaceStatus,
 )
+from app.services.invoice_tracking import attach_invoice_tracking
 
 logger = logging.getLogger(__name__)
 
@@ -73,6 +74,9 @@ def get_config(
         redirect_uri=(config.redirect_uri if config else None)
         or str(settings.mercadolivre_redirect_uri),
         site_id=config.site_id if config else settings.mercadolivre_site_id,
+        study_default_commission_pct=(
+            config.study_default_commission_pct if config else Decimal("16")
+        ),
         import_orders=config.import_orders if config else True,
         automatic_stock=config.automatic_stock if config else True,
         sync_documents=config.sync_documents if config else True,
@@ -96,6 +100,8 @@ def update_config(
         )
     config.redirect_uri = payload.redirect_uri.strip()
     config.site_id = payload.site_id.strip()
+    if payload.study_default_commission_pct is not None:
+        config.study_default_commission_pct = payload.study_default_commission_pct
     config.import_orders = payload.import_orders
     config.automatic_stock = payload.automatic_stock
     config.sync_documents = payload.sync_documents

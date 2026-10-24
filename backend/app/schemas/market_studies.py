@@ -16,14 +16,19 @@ class MarketStudyCreate(BaseModel):
     search_term: str = Field(min_length=2, max_length=200)
     sku: str | None = Field(default=None, max_length=80)
     category_id: str | None = Field(default=None, max_length=40)
-    landed_cost: Decimal = Field(ge=0, max_digits=14, decimal_places=2)
+    landed_cost: Decimal | None = Field(default=None, ge=0, max_digits=14, decimal_places=2)
     target_margin_pct: Decimal = Field(
         default=Decimal("25"), ge=0, lt=80, max_digits=5, decimal_places=2
     )
-    marketplace_fee_pct: Decimal = Field(
-        default=Decimal("16"), ge=0, lt=80, max_digits=5, decimal_places=2
+    marketplace_fee_pct: Decimal | None = Field(
+        default=None, ge=0, lt=80, max_digits=5, decimal_places=2
     )
-    shipping_cost: Decimal = Field(default=0, ge=0, max_digits=14, decimal_places=2)
+    shipping_cost: Decimal | None = Field(default=None, ge=0, max_digits=14, decimal_places=2)
+    fixed_fee: Decimal | None = Field(default=None, ge=0, max_digits=14, decimal_places=2)
+    outbound_shipping: Decimal | None = Field(default=None, ge=0, max_digits=14, decimal_places=2)
+    oem: str | None = Field(default=None, max_length=120)
+    application: str | None = Field(default=None, max_length=300)
+    fitments: list[dict[str, Any]] = Field(default_factory=list, max_length=20)
 
     @field_validator("search_term")
     @classmethod
@@ -35,7 +40,10 @@ class MarketStudyCreate(BaseModel):
 
     @model_validator(mode="after")
     def validate_price_scenario(self) -> "MarketStudyCreate":
-        if self.target_margin_pct + self.marketplace_fee_pct >= 100:
+        if (
+            self.marketplace_fee_pct is not None
+            and self.target_margin_pct + self.marketplace_fee_pct >= 100
+        ):
             raise ValueError("Taxa do canal e margem desejada precisam somar menos de 100%")
         return self
 

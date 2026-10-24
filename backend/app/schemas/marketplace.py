@@ -1,7 +1,9 @@
 from datetime import datetime
+from decimal import Decimal
 
 from pydantic import (
     BaseModel,
+    Field,
 )
 
 from app.schemas.base import ORMModel
@@ -57,6 +59,7 @@ class MarketplaceConfigOut(BaseModel):
     client_secret_configured: bool
     redirect_uri: str
     site_id: str
+    study_default_commission_pct: Decimal = Decimal("16")
     import_orders: bool
     automatic_stock: bool
     sync_documents: bool
@@ -69,6 +72,7 @@ class MarketplaceConfigUpdate(BaseModel):
     client_secret: str | None = None
     redirect_uri: str
     site_id: str = "MLB"
+    study_default_commission_pct: Decimal | None = Field(default=None, ge=0, lt=80)
     import_orders: bool = True
     automatic_stock: bool = True
     sync_documents: bool = True

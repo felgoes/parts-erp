@@ -81,6 +81,9 @@ class MarketplaceConfig(TimestampMixin, Base):
     encrypted_client_secret: Mapped[str | None] = mapped_column(Text)
     redirect_uri: Mapped[str | None] = mapped_column(String(500))
     site_id: Mapped[str] = mapped_column(String(20), default="MLB")
+    study_default_commission_pct: Mapped[Decimal] = mapped_column(
+        Numeric(5, 2), default=Decimal("16"), server_default="16"
+    )
     import_orders: Mapped[bool] = mapped_column(Boolean, default=True)
     automatic_stock: Mapped[bool] = mapped_column(Boolean, default=True)
     sync_documents: Mapped[bool] = mapped_column(Boolean, default=True)

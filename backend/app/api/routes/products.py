@@ -135,6 +135,8 @@ def list_products(
                 Product.name.ilike(f"%{search}%"),
                 Product.sku.ilike(f"%{search}%"),
                 Product.barcode.ilike(f"%{search}%"),
+                Product.manufacturer_part_number.ilike(f"%{search}%"),
+                Product.mpn.ilike(f"%{search}%"),
             )
         )
     if stock_type:

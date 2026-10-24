@@ -1,0 +1,268 @@
+<div class="result-heading">
+  <div>
+    <p class="eyebrow">
+      Estudo salvo ·
+      {{ study.created_at | date: 'dd/MM/yyyy HH:mm' : 'America/Sao_Paulo' : 'pt-BR' }}
+    </p>
+    <h2>{{ study.result.market_metrics.conclusion || 'Estudo de mercado' }}</h2>
+    <p class="conclusion-reason">{{ study.result.market_metrics.conclusion_reason }}</p>
+    <p>
+      <strong>{{ study.search_term }}</strong>
+    </p>
+    <p>
+      {{ study.sku ? 'SKU ' + study.sku + ' · ' : '' }}Dados observados em
+      {{ study.result.observed_at | date: 'dd/MM/yyyy HH:mm' : 'America/Sao_Paulo' : 'pt-BR' }}
+    </p>
+    @if (study.result.product_context?.oem) {
+      <p>OEM analisado: {{ study.result.product_context?.oem }}</p>
+    }
+    @if (study.result.product_context?.application) {
+      <p>Aplicação informada: {{ study.result.product_context?.application }}</p>
+    }
+    @for (fitment of study.result.product_context?.fitments ?? []; track $index) {
+      <p>
+        Aplicação do cadastro: {{ fitment.make }} {{ fitment.model
+        }}{{ fitment.year_from ? ' · ' + fitment.year_from : ''
+        }}{{ fitment.year_to ? '-' + fitment.year_to : ''
+        }}{{ fitment.engine ? ' · ' + fitment.engine : ''
+        }}{{ fitment.version ? ' · ' + fitment.version : '' }}
+      </p>
+    }
+  </div>
+  <span class="result-badge" [class.is-limited]="study.result.market_metrics.small_sample"
+    >{{ study.result.market_metrics.comparable_offers }} comparáveis · confiança
+    {{ confidenceLabel(study.result.market_metrics.sample_confidence) }}</span
+  >
+</div>
+<div class="market-metrics">
+  <article>
+    <span>Preço mediano comparável</span
+    ><strong>{{
+      study.result.market_metrics.median_price
+        ? (+study.result.market_metrics.median_price
+          | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR')
+        : 'Sem amostra'
+    }}</strong
+    ><small
+      >{{ study.result.market_metrics.comparable_offers }} comparáveis de
+      {{ study.result.market_metrics.offers_found }} anúncios consultados (limite
+      {{ study.result.market_metrics.consulted_limit || 50 }})</small
+    >
+  </article>
+  <article>
+    <span>Faixa observada</span
+    ><strong>{{
+      study.result.market_metrics.min_price
+        ? (+study.result.market_metrics.min_price
+            | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR') +
+          ' — ' +
+          (+study.result.market_metrics.max_price! | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR')
+        : '—'
+    }}</strong
+    ><small>Preços observados; menor preço não é recomendação isolada</small>
+  </article>
+  <article>
+    <span>Preço para margem desejada</span
+    ><strong>{{
+      study.result.price_scenario.target_price
+        ? (+study.result.price_scenario.target_price
+          | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR')
+        : '—'
+    }}</strong
+    ><small>Após taxas estimadas de {{ study.marketplace_fee_pct }}%</small>
+  </article>
+  <article>
+    <span>Margem no preço mediano</span
+    ><strong
+      [class.negative]="+(study.result.price_scenario.market_margin_at_median_pct ?? 0) < 0"
+      >{{
+        study.result.price_scenario.market_margin_at_median_pct !== null
+          ? study.result.price_scenario.market_margin_at_median_pct + '%'
+          : '—'
+      }}</strong
+    ><small
+      >Custo posto na loja:
+      {{
+        study.result.price_scenario.cost_post
+          ? (+study.result.price_scenario.cost_post
+            | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR')
+          : 'incompleto'
+      }}</small
+    >
+  </article>
+</div>
+<div class="calculation-note">
+  <strong>Premissas da margem estimada</strong
+  ><span
+    >Margem = (mediana − custos de entrada conhecidos − comissão percentual − tarifa fixa conhecida
+    − frete de saída conhecido) ÷ mediana.</span
+  ><span
+    >Comissão considerada: {{ study.marketplace_fee_pct }}%. Componentes conhecidos:
+    {{ study.result.price_scenario.calculation_components?.join(', ') }}.</span
+  >
+  @if (study.result.price_scenario.unknown_components.length) {
+    <span
+      >Não informados e excluídos da margem parcial:
+      {{ study.result.price_scenario.unknown_components.join(', ') }}. O preço-alvo só aparece
+      quando todos os componentes estão preenchidos.</span
+    >
+  }
+</div>
+<div class="signal-grid">
+  <article>
+    <p class="eyebrow">Sinal de giro no ERP</p>
+    <strong
+      >{{ study.sku ? study.result.internal_sales.units_last_90_days : 'SKU não informado'
+      }}{{ study.sku ? ' un. em 90 dias' : '' }}</strong
+    ><small>{{
+      study.sku && +study.result.internal_sales.units_last_90_days > 0
+        ? study.result.internal_sales.units_per_month +
+          ' un./mês; média observada, não prevista. Estoque: ' +
+          study.result.internal_sales.stock_units +
+          ' un.'
+        : study.sku
+          ? 'Sem histórico suficiente'
+          : 'Selecione uma peça cadastrada para consultar vendas e estoque.'
+    }}</small>
+  </article>
+  <article>
+    <p class="eyebrow">Anúncios encontrados</p>
+    <strong>{{ study.result.market_metrics.offers_found }}</strong
+    ><small
+      >{{ study.result.market_metrics.sold_units_lifetime_in_comparables }} vendas acumuladas
+      somadas nos anúncios comparáveis — não representam período mensal.</small
+    >
+  </article>
+  <article>
+    <p class="eyebrow">Tendências do ML</p>
+    <strong>{{ study.result.market_metrics.trend_keyword_matches }} termos relacionados</strong
+    ><small>O recurso de tendências é semanal e não garante demanda futura.</small>
+  </article>
+</div>
+
+@if (study.result.ai_report; as ai) {
+  @if (ai.error) {
+    <p class="inline-message is-error">{{ ai.error }}</p>
+  } @else {
+    <section class="ai-report">
+      <div class="ai-title">
+        <span>✳</span>
+        <div>
+          <p class="eyebrow">
+            Leitura assistida por IA · confiança {{ confidenceLabel(ai.confidence) }}
+          </p>
+          <h3>O que os sinais sugerem</h3>
+        </div>
+      </div>
+      <p>{{ ai.summary }}</p>
+      <div class="ai-columns">
+        @if (ai.opportunities?.length) {
+          <div>
+            <strong>Oportunidades a investigar</strong>
+            <ul>
+              @for (tip of ai.opportunities; track tip) {
+                <li>{{ tip }}</li>
+              }
+            </ul>
+          </div>
+        }
+        @if (ai.risks?.length) {
+          <div>
+            <strong>Pontos de atenção</strong>
+            <ul>
+              @for (tip of ai.risks; track tip) {
+                <li>{{ tip }}</li>
+              }
+            </ul>
+          </div>
+        }
+        @if (ai.next_steps?.length) {
+          <div>
+            <strong>Próximos passos</strong>
+            <ul>
+              @for (tip of ai.next_steps; track tip) {
+                <li>{{ tip }}</li>
+              }
+            </ul>
+          </div>
+        }
+      </div>
+    </section>
+  }
+} @else {
+  <p class="ai-disabled">
+    Sem IA conectada: resultados acima são cálculos e dados diretos. Configure um provedor para
+    receber uma síntese qualitativa.
+  </p>
+}
+
+@if (study.result.trend_matches.length) {
+  <section class="evidence-section">
+    <div class="subheading">
+      <div>
+        <p class="eyebrow">Interesse de busca</p>
+        <h3>Termos em tendência</h3>
+      </div>
+    </div>
+    <div class="trend-chips">
+      @for (trend of study.result.trend_matches; track trend.keyword) {
+        <a [href]="trend.url" target="_blank" rel="noopener noreferrer">{{ trend.keyword }} ↗</a>
+      }
+    </div>
+  </section>
+}
+
+<section class="evidence-section">
+  <div class="subheading">
+    <div>
+      <p class="eyebrow">Comparação de mercado</p>
+      <h3 id="comparable-offers">Anúncios para conferir</h3>
+      <p>{{ study.result.possible_sources_note }}</p>
+    </div>
+    <span>{{ study.result.offers.length }} resultados</span>
+  </div>
+  @if (study.result.offers.length) {
+    <div class="offers-list">
+      @for (offer of study.result.offers; track offer.id) {
+        <article class="offer-row">
+          @if (offer.thumbnail) {
+            <img [src]="offer.thumbnail" alt="" loading="lazy" />
+          } @else {
+            <span class="offer-placeholder">◇</span>
+          }
+          <div class="offer-info">
+            <strong>{{ offer.title }}</strong
+            ><small
+              >Anúncio {{ offer.id }} ·
+              {{ offer.compatibility_label || 'Compatibilidade não confirmada' }} ·
+              {{ offer.sold_quantity_lifetime ?? '—' }} vendas acumuladas</small
+            >
+          </div>
+          <strong class="offer-price">{{
+            +offer.price | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR'
+          }}</strong>
+          @if (offer.permalink) {
+            <a
+              class="offer-link"
+              [href]="offer.permalink"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Abrir anúncio em nova guia"
+              >↗</a
+            >
+          }
+        </article>
+      }
+    </div>
+  } @else {
+    <div class="empty-result">
+      <strong>Não encontrei anúncios comparáveis suficientes.</strong
+      ><span>Tente buscar pelo código OEM, nome comercial ou modelo do veículo.</span>
+    </div>
+  }
+</section>
+<div class="limitations-note">
+  <strong>Limites dos dados:</strong> disponibilidade pode vir aproximada; venda acumulada do
+  anúncio não é giro mensal; vendedor do anúncio é apenas uma pista para cotação, não fornecedor
+  validado; compatibilidade deve ser conferida.
+</div>

@@ -14,6 +14,7 @@ export interface MarketplaceConfig {
   client_secret_configured: boolean;
   redirect_uri: string;
   site_id: string;
+  study_default_commission_pct: number;
   import_orders: boolean;
   automatic_stock: boolean;
   sync_documents: boolean;

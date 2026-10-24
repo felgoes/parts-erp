@@ -83,7 +83,7 @@ def _mercadolivre_market_data(
     competitors.sort(
         key=lambda offer: (offer["similarity"], offer["sold_quantity_lifetime"] or 0), reverse=True
     )
-    competitors = competitors[:30]
+    # A API devolve até 50 itens; preserve todos para a amostra pedida pelo produto.
     try:
         trend_path = f"/trends/{site_id}/{category_id}" if category_id else f"/trends/{site_id}"
         trends_body = client.get(trend_path)

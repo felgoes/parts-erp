@@ -5,7 +5,7 @@ from typing import Any
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
-from app.assistant import actions, tool_ops, tool_reads
+from app.assistant import actions, tool_fiscal_reads, tool_ops, tool_reads
 from app.assistant.actions import ActionError
 from app.models import User
 from app.models.assistant import AssistantConversation
@@ -146,9 +146,7 @@ TOOLS: list[dict[str, Any]] = [
         ),
         "parameters": {
             "type": "object",
-            "properties": {
-                "limite": {"type": "integer", "minimum": 1, "maximum": 30}
-            },
+            "properties": {"limite": {"type": "integer", "minimum": 1, "maximum": 30}},
         },
     },
     {
@@ -262,7 +260,7 @@ READ_TOOLS = {
         bool(args.get("pendentes_envio")),
         int(args.get("limite") or 10),
     ),
-    "investigar_fiscal": lambda db, args, user: tool_reads.investigar_fiscal(
+    "investigar_fiscal": lambda db, args, user: tool_fiscal_reads.investigar_fiscal(
         db, str(args.get("identificador") or "")
     ),
     "listar_compras": lambda db, args, user: tool_reads.listar_compras(
@@ -318,9 +316,7 @@ def safe_run(
     args: dict,
 ) -> dict:
     try:
-        return run_tool(
-            db, conversation=conversation, user=user, name=name, args=args
-        )
+        return run_tool(db, conversation=conversation, user=user, name=name, args=args)
     except (ActionError, HTTPException) as error:
         detail = error.message if isinstance(error, ActionError) else str(error.detail)
         return {"erro": detail}

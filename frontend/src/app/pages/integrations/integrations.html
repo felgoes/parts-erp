@@ -113,24 +113,23 @@
         </p>
         @if (budget.blocked) {
           <p class="assistant-budget-alert">
-            Limite atingido: novas solicitações estão bloqueadas até o próximo mês ou até
-            aumentar o limite.
+            Limite atingido: novas solicitações estão bloqueadas até o próximo mês ou até aumentar o
+            limite.
           </p>
         } @else if (budget.alert) {
           <p class="assistant-budget-alert">Atenção: consumo acima de 80% do limite.</p>
         }
         <p class="assistant-budget-note">
-          Estimativa pelo uso informado pelo provedor; não é a fatura. Sem preço ou uso
-          confiável, o assistente bloqueia novas solicitações.
+          Estimativa pelo uso informado pelo provedor; não é a fatura. Sem preço ou uso confiável, o
+          assistente bloqueia novas solicitações.
         </p>
       }
       <p class="assistant-budget-note">
-        A chave fica protegida no servidor e não volta para a tela. Cada administrador vê
-        apenas as próprias conversas.
+        A chave fica protegida no servidor e não volta para a tela. Cada administrador vê apenas as
+        próprias conversas.
       </p>
     </aside>
   </section>
-
   <div class="group-label">CANAIS DE VENDA</div>
   <section class="settings-layout">
     <form class="settings-panel" (ngSubmit)="saveMercadoLivre()">
@@ -166,6 +165,18 @@
             <option value="MLB">MLB — Brasil</option>
           </select></label
         >
+        <label class="span-2"
+          >Comissão padrão para novos estudos (%)<small
+            >Referência inicial; pode variar por categoria e é editável em cada estudo.</small
+          ><input
+            type="number"
+            name="ml_study_default_commission_pct"
+            [(ngModel)]="mlForm.study_default_commission_pct"
+            min="0"
+            max="79.99"
+            step="0.01"
+            required
+        /></label>
       </div>
       <div class="section-title rules">
         <div>
@@ -240,7 +251,6 @@
       </p>
     </aside>
   </section>
-
   <section class="settings-layout">
     <form class="settings-panel" (ngSubmit)="saveShopee()">
       <div class="section-title">

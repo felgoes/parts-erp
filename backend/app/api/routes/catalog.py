@@ -1,5 +1,6 @@
 import re
 import unicodedata
+from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import FileResponse
@@ -147,6 +148,9 @@ def _catalog_images(images: list[dict] | None) -> list[dict]:
             continue
         url = _secure_url(str(image.get("url") or ""))
         if url:
+            version = str(image.get("id") or image.get("filename") or "").strip()
+            if url.startswith("/api/v1/catalog/images/") and "?" not in url and version:
+                url = f"{url}?v={quote(version, safe='')}"
             normalized.append({**image, "url": url})
     return normalized
 

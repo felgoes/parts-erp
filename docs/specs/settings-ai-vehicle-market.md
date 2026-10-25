@@ -1,7 +1,8 @@
 # P31 — Configurações organizadas, IA compartilhada e Carros no Brasil
 
 **Status:** entregue em produção em 24/10/2026. Commit:
-`f0d0d66`. Site e ERP verificados com HTTP 200 após o deploy.
+`f0d0d66`; a pesquisa completa de marcas foi complementada em `c8423a7`.
+Site e ERP verificados com HTTP 200 após cada deploy.
 
 ## Configurações
 
@@ -51,6 +52,11 @@ Fonte: FENABRAVE por meio da API pública gratuita FIPE API BRASIL.
 - Marca e nacionalidade são derivadas por mapa editorial.
 - Modelos desconhecidos aparecem como “Não mapeado/Não informada” e permanecem
   no total, sem descarte silencioso.
+- O seletor usa o catálogo completo de marcas, mesmo quando a marca está fora
+  do Top 20.
+- Ao selecionar uma marca fora do ranking, a tela lista suas famílias e versões
+  no catálogo FIPE e informa que não há volume publicado para ela naquela
+  competência.
 - YTD é a soma das competências já coletadas pelo ERP; a tela não preenche
   meses ausentes.
 
@@ -66,7 +72,8 @@ entrega era setembro/2026.
 
 ## Verificação
 
-- 272 testes de backend e 83 testes de frontend aprovados.
+- 274 testes de backend e 83 testes de frontend aprovados após a pesquisa
+  completa de marcas.
 - Build de produção e gate estrutural aprovados.
 - HML desktop e viewport de 390 × 844 validados.
 - Snapshot automotivo da massa QA removido e serviços locais encerrados.

@@ -11,6 +11,7 @@ from app.api.routes import (
     customers,
     dashboard,
     finance,
+    fleet,
     integrations,
     invoices,
     live_updates,
@@ -39,6 +40,7 @@ api_router.include_router(settings.router)
 api_router.include_router(company_settings.router)
 api_router.include_router(dashboard.router)
 api_router.include_router(finance.router)
+api_router.include_router(fleet.router)
 api_router.include_router(products.router)
 api_router.include_router(purchases.router)
 api_router.include_router(purchases_list.router)

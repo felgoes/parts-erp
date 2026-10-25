@@ -79,6 +79,11 @@ export const NAVIGATION_SECTIONS: NavigationSection[] = [
         iconPath: 'M5 17h14l-1.5-6.5A2 2 0 0 0 15.6 9H8.4a2 2 0 0 0-1.9 1.5L5 17ZM4 17v3h3v-2h10v2h3v-3M7 14h.01M17 14h.01',
       },
       {
+        path: '/fleet',
+        label: 'Frota do Brasil',
+        iconPath: 'M4 18h16M6 18V9l6-5 6 5v9M9 18v-5h6v5M8 9h.01M16 9h.01',
+      },
+      {
         path: '/market-studies',
         label: 'Estudos de mercado',
         iconPath: 'M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14ZM16 16l5 5',

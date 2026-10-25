@@ -24,16 +24,16 @@ def enqueue_vehicle_market_update(
         title="Frota do Brasil atualizada",
         body=(
             f"Os dados oficiais da frota de {period_label} já estão disponíveis "
-            "em Carros no Brasil."
+            "em Frota do Brasil."
         )[:500],
         data={
             "type": "vehicle_market_updated",
             "period": period,
-            "route": "/vehicle-market",
+            "route": "/fleet",
             "actions": [
                 {
                     "label": "Ver frota",
-                    "route": "/vehicle-market",
+                    "route": "/fleet",
                     "query": {"period": period},
                 }
             ],

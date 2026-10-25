@@ -18,6 +18,7 @@ describe('sidebar navigation', () => {
     ]);
     expect(sections[1].items.map((item) => item.path)).toEqual(['/products', '/purchases']);
     expect(sections[3].items.map((item) => item.path)).toContain('/vehicle-market');
+    expect(sections[3].items.map((item) => item.path)).toContain('/fleet');
   });
 
   it('keeps only pages available to the current role', () => {

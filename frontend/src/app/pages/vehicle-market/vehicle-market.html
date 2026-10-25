@@ -1,7 +1,7 @@
 <app-page-header
   eyebrow="Análise de mercado"
   title="Carros no Brasil"
-  subtitle="Acompanhe emplacamentos e frota registrada sem misturar fluxo de vendas com estoque de veículos."
+  subtitle="Acompanhe os emplacamentos de veículos novos publicados pela Fenabrave, com fonte e competência visíveis."
 />
 
 <section class="cars-panel vehicle-market-page">
@@ -55,50 +55,22 @@
   } @else if (overview(); as data) {
     <div class="source-strip">
       @for (source of data.sources; track source.metric) {
-        <a
-          [class.is-unavailable]="!source.available"
-          [attr.href]="source.source_url || null"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <strong>{{ sourceLabel(source.metric) }}</strong>
-          {{ source.available ? source.source + ' · ' + source.period : 'Publicação ainda não importada' }}
-          @if (source.retrieved_at) {
-            <small>coletado {{ source.retrieved_at | date: 'dd/MM/yyyy HH:mm' : 'America/Sao_Paulo' : 'pt-BR' }}</small>
-          }
-        </a>
-      }
-      @if (data.fleet_publication; as fleet) {
-        <a
-          [href]="fleet.resource_url || fleet.dataset_url"
-          target="_blank"
-          rel="noopener noreferrer"
-          [class.is-unavailable]="data.fleet.total === null"
-        >
-          <strong>Fonte oficial da frota</strong>
-          {{ fleet.status === 'available' ? fleet.source + ' · ' + (fleet.period || 'publicação disponível') : 'Portal SENATRAN indisponível' }}
-          <small>
-            {{
-              data.fleet.total === null
-                ? 'Publicação mensal configurada; totais só aparecem após importação do arquivo.'
-                : 'Dados importados e validados.'
-            }}
-          </small>
-        </a>
+        @if (source.metric === 'registrations') {
+          <a
+            [class.is-unavailable]="!source.available"
+            [attr.href]="source.source_url || null"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <strong>Emplacamentos</strong>
+            {{ source.available ? source.source + ' · ' + source.period : 'Publicação ainda não carregada' }}
+            @if (source.retrieved_at) {
+              <small>coletado {{ source.retrieved_at | date: 'dd/MM/yyyy HH:mm' : 'America/Sao_Paulo' : 'pt-BR' }}</small>
+            }
+          </a>
+        }
       }
     </div>
-    @if (data.fleet_import; as fleetImport) {
-      @if (fleetImport.status === 'running') {
-        <p class="inline-message" role="status">
-          Importando a frota oficial de {{ fleetImport.period }}. O último snapshot válido continua
-          disponível até a publicação terminar.
-        </p>
-      } @else if (fleetImport.status === 'failed') {
-        <p class="inline-message is-error" role="alert">
-          A atualização mais recente da frota falhou; o último snapshot válido foi preservado.
-        </p>
-      }
-    }
     @if (data.live_sync?.message) {
       <p class="inline-message is-error">{{ data.live_sync?.message }}</p>
     }
@@ -140,7 +112,7 @@
         </section>
       }
     }
-    @if (!data.sources[0]?.available && !data.sources[1]?.available) {
+    @if (!data.sources[0]?.available) {
       <div class="empty-state">
         <strong>Nenhuma publicação validada</strong>
         <p>A API será consultada novamente na próxima atualização.</p>
@@ -156,11 +128,6 @@
         <span>YTD no Top 20</span>
         <strong>{{ data.ytd.total === null ? 'Em formação' : (data.ytd.total | number: '1.0-0') }}</strong>
         <small>soma das competências já coletadas no ano</small>
-      </article>
-      <article>
-        <span>Frota registrada</span>
-        <strong>{{ data.fleet.total === null ? 'Não importada' : (data.fleet.total | number: '1.0-0') }}</strong>
-        <small>{{ data.fleet.period || 'RENAVAM/SENATRAN mensal' }}</small>
       </article>
       <article>
         <span>Última coleta</span>
@@ -183,9 +150,7 @@
         { title: 'Modelos no mês', rows: data.monthly.models },
         { title: 'Marcas no mês', rows: data.monthly.brands },
         { title: 'Nacionalidade no mês', rows: data.monthly.nationalities },
-        { title: 'Modelos no YTD', rows: data.ytd.models },
-        { title: 'Frota por marca', rows: data.fleet.brands },
-        { title: 'Frota por faixa etária', rows: data.fleet.age_bands || [] }
+        { title: 'Modelos no YTD', rows: data.ytd.models }
       ]; track ranking.title) {
         <article class="ranking-card">
           <h3>{{ ranking.title }}</h3>
@@ -198,9 +163,7 @@
           } @empty {
             <p class="muted">
               {{
-                ranking.title.startsWith('Frota')
-                  ? 'Fonte oficial ainda não importada.'
-                  : rankingEmpty(ranking.title)
+                rankingEmpty(ranking.title)
               }}
             </p>
           }
@@ -224,8 +187,7 @@
       }
     </article>
     <p class="definitions">
-      <strong>Definições:</strong> {{ data.definitions.registrations }}
-      {{ data.definitions.fleet }}
+      <strong>Definição:</strong> {{ data.definitions.registrations }}
       A API gratuita publica o Top 20 por segmento; ela não representa todos os veículos
       emplacados nem substitui a base completa da frota.
     </p>

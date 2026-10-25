@@ -65,10 +65,6 @@ export class VehicleMarketPage implements OnInit, OnDestroy {
     return Math.round((value / Math.max(...rows.map((row) => row.value), 1)) * 100);
   }
 
-  sourceLabel(metric: string | null): string {
-    return metric === 'fleet' ? 'Frota registrada' : 'Emplacamentos';
-  }
-
   brands(): string[] {
     const complete = this.overview()?.available_brands;
     return complete?.length

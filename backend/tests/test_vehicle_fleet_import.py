@@ -108,5 +108,5 @@ def test_fleet_update_notification_is_deduplicated(db) -> None:
     assert first is not None
     assert repeated is not None and repeated.id == first.id
     assert first.category == "vehicle_market"
-    assert first.data["route"] == "/vehicle-market"
+    assert first.data["route"] == "/fleet"
     assert len(db.scalars(select(PushNotification)).all()) == 1

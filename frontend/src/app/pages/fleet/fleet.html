@@ -1,0 +1,202 @@
+<app-page-header
+  eyebrow="Inteligência de frota"
+  title="Frota do Brasil"
+  subtitle="Explore a frota registrada oficialmente por marca, nacionalidade, modelo, ano e faixa etária."
+/>
+
+@if (error()) {
+  <p class="inline-message is-error" role="alert">{{ error() }}</p>
+}
+
+<section class="fleet-shell">
+  <form class="fleet-filters" (ngSubmit)="applyFilters(1)">
+    <label
+      >Competência<select [(ngModel)]="filters.period" name="period">
+        <option value="">Mais recente</option>
+        @for (period of overview()?.periods ?? []; track period) {
+          <option [value]="period">{{ period }}</option>
+        }
+      </select></label
+    >
+    <label
+      >Marca<select [(ngModel)]="filters.brand" name="brand">
+        <option value="">Todas</option>
+        @for (brand of overview()?.filters?.brands ?? []; track brand) {
+          <option [value]="brand">{{ brand }}</option>
+        }
+      </select></label
+    >
+    <label
+      >Nacionalidade<select [(ngModel)]="filters.nationality" name="nationality">
+        <option value="">Todas</option>
+        @for (country of overview()?.filters?.nationalities ?? []; track country) {
+          <option [value]="country">{{ country }}</option>
+        }
+      </select></label
+    >
+    <label
+      >Modelo<input [(ngModel)]="filters.model" name="model" placeholder="Ex.: 208, Onix, CG 160"
+    /></label>
+    <label
+      >Faixa etária<select [(ngModel)]="filters.age_band" name="age_band">
+        <option value="">Todas</option>
+        @for (band of overview()?.filters?.age_bands ?? []; track band) {
+          <option [value]="band">{{ band }}</option>
+        }
+      </select></label
+    >
+    <label>De<input type="number" [(ngModel)]="filters.year_from" name="year_from" min="1900" max="2100" /></label>
+    <label>Até<input type="number" [(ngModel)]="filters.year_to" name="year_to" min="1900" max="2100" /></label>
+    <label
+      >Ordem<select [(ngModel)]="filters.sort" name="sort">
+        <option value="fleet_desc">Maior frota</option>
+        <option value="fleet_asc">Menor frota</option>
+      </select></label
+    >
+    <button class="primary" type="submit">Aplicar filtros</button>
+    <button class="quiet-button" type="button" (click)="resetFilters()">Limpar</button>
+  </form>
+
+  @if (loading()) {
+    <p role="status">Carregando inteligência de frota…</p>
+  } @else if (overview(); as data) {
+    @if (!data.available) {
+      <div class="empty-state">
+        <strong>Frota oficial ainda não disponível</strong>
+        <p>{{ data.message }}</p>
+      </div>
+    } @else {
+      <div class="fleet-meta">
+        <span>{{ data.source }} · competência {{ data.period }}</span>
+        <span>coletado {{ data.collected_at | date: 'dd/MM/yyyy HH:mm' : 'America/Sao_Paulo' : 'pt-BR' }}</span>
+        <a [href]="data.source_url" target="_blank" rel="noopener noreferrer">Fonte oficial ↗</a>
+      </div>
+
+      <div class="fleet-kpis">
+        <article class="accent">
+          <span>Frota registrada</span>
+          <strong>{{ data.total | number: '1.0-0' }}</strong>
+          <small>
+            @if (data.change_pct !== null) {
+              {{ data.change_pct > 0 ? '+' : '' }}{{ data.change_pct }}% vs {{ data.previous_period }}
+            } @else {
+              primeiro snapshot comparável
+            }
+          </small>
+        </article>
+        <article><span>Marcas</span><strong>{{ data.brand_count | number: '1.0-0' }}</strong><small>marcas com veículos registrados</small></article>
+        <article><span>Modelos</span><strong>{{ data.model_count | number: '1.0-0' }}</strong><small>famílias no recorte</small></article>
+        <article><span>Importação</span><strong>{{ data.import_status.status }}</strong><small>{{ data.import_status.source_rows ? (data.import_status.source_rows | number: '1.0-0') + ' linhas de origem' : 'status do processamento' }}</small></article>
+      </div>
+
+      <div class="fleet-charts">
+        <article class="chart-card donut-card">
+          <div class="chart-heading"><div><p class="eyebrow">Participação</p><h2>Nacionalidade da marca</h2></div></div>
+          <div class="donut-layout">
+            <div class="fleet-donut" [style.background]="donutBackground()">
+              <span><strong>{{ data.total | number: '1.0-0' }}</strong><small>veículos</small></span>
+            </div>
+            <div class="chart-legend">
+              @for (row of data.nationalities.slice(0, 6); track row.label; let index = $index) {
+                <button type="button" [title]="row.value + ' veículos'" (click)="selectFilter('nationality', row.label)">
+                  <i [style.background]="ageColor(index)"></i>
+                  <span>{{ row.label }}</span>
+                  <strong>{{ row.share_pct }}%</strong>
+                </button>
+              }
+            </div>
+          </div>
+        </article>
+
+        <article class="chart-card">
+          <div class="chart-heading"><div><p class="eyebrow">Concentração</p><h2>Maiores marcas</h2></div><small>clique para filtrar</small></div>
+          <div class="bar-list">
+            @for (row of data.brands.slice(0, 10); track row.label; let index = $index) {
+              <button type="button" [className]="filters.brand === row.label ? 'is-active' : ''" (click)="selectFilter('brand', row.label)">
+                <span>{{ row.label }}</span>
+                <div><i [style.width.%]="barWidth(row.value, data.brands)" [style.background]="ageColor(index)"></i></div>
+                <strong>{{ row.share_pct }}%</strong>
+              </button>
+            }
+          </div>
+        </article>
+
+        <article class="chart-card">
+          <div class="chart-heading"><div><p class="eyebrow">Envelhecimento</p><h2>Frota por faixa etária</h2></div><small>clique para filtrar</small></div>
+          <div class="age-chart">
+            @for (row of data.age_bands; track row.label; let index = $index) {
+              <button type="button" [className]="filters.age_band === row.label ? 'is-active' : ''" (click)="selectFilter('age_band', row.label)">
+                <span><strong>{{ row.value | number: '1.0-0' }}</strong><small>{{ row.label }}</small></span>
+                <i [style.height.%]="barWidth(row.value, data.age_bands)" [style.background]="ageColor(index)"></i>
+              </button>
+            }
+          </div>
+        </article>
+
+        <article class="chart-card">
+          <div class="chart-heading"><div><p class="eyebrow">Coortes</p><h2>Modelos com maior frota</h2></div><small>clique para detalhar</small></div>
+          <div class="bar-list">
+            @for (row of data.models.slice(0, 10); track row.brand + row.model) {
+              <button type="button" (click)="selectModel(row.brand, row.model)">
+                <span>{{ row.brand }} {{ row.model }}</span>
+                <div><i [style.width.%]="modelBarWidth(row.value)"></i></div>
+                <strong>{{ row.value | number: '1.0-0' }}</strong>
+              </button>
+            }
+          </div>
+        </article>
+      </div>
+
+      <article class="chart-card year-chart-card">
+        <div class="chart-heading">
+          <div><p class="eyebrow">Idade por ano de fabricação</p><h2>Distribuição da frota</h2></div>
+          <small>clique em um ano para filtrar</small>
+        </div>
+        <div class="year-chart" role="group" aria-label="Frota por ano de fabricação">
+          @for (row of data.years; track row.label) {
+            <button
+              type="button"
+              [class.is-active]="filters.year_from === row.label"
+              [title]="row.label + ': ' + row.value + ' veículos'"
+              (click)="selectYear(row.label)"
+            >
+              <i [style.height.%]="barWidth(row.value, data.years)"></i>
+              <span>{{ row.label }}</span>
+            </button>
+          }
+        </div>
+      </article>
+
+      <section class="fleet-list">
+        <div class="list-heading">
+          <div><p class="eyebrow">Detalhamento</p><h2>Modelos e anos</h2><p>{{ records()?.total ?? 0 }} combinações no recorte</p></div>
+          <a class="secondary" routerLink="/market-studies/new" [queryParams]="studyQuery()">Usar contexto em um estudo →</a>
+        </div>
+        @if (recordsLoading()) {
+          <p role="status">Atualizando lista…</p>
+        } @else {
+          <div class="fleet-table" role="table" aria-label="Frota por marca, modelo e ano">
+            <div class="fleet-table-head" role="row"><span>Marca</span><span>Modelo</span><span>Ano</span><span>Faixa</span><span>Frota</span><span>Participação</span></div>
+            @for (row of records()?.items ?? []; track row.brand + row.model + row.year) {
+              <div class="fleet-table-row" role="row">
+                <strong>{{ row.brand }}</strong>
+                <span>{{ row.model }}</span>
+                <span>{{ row.year || 'Não informado' }}</span>
+                <span>{{ row.age_band }}</span>
+                <strong>{{ row.value | number: '1.0-0' }}</strong>
+                <span>{{ row.share_pct !== null ? row.share_pct + '%' : '—' }}</span>
+              </div>
+            } @empty {
+              <div class="empty-state"><strong>Nenhum veículo no recorte</strong><p>Altere os filtros para ampliar a consulta.</p></div>
+            }
+          </div>
+          <div class="pagination">
+            <button class="secondary" type="button" [disabled]="page() <= 1" (click)="nextPage(-1)">← Anterior</button>
+            <span>Página {{ page() }} de {{ pages() }}</span>
+            <button class="secondary" type="button" [disabled]="page() >= pages()" (click)="nextPage(1)">Próxima →</button>
+          </div>
+        }
+      </section>
+    }
+  }
+</section>

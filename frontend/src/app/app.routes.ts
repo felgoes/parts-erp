@@ -65,6 +65,10 @@ export const routes: Routes = [
           import('./pages/vehicle-market/vehicle-market').then((m) => m.VehicleMarketPage),
       },
       {
+        path: 'fleet',
+        loadComponent: () => import('./pages/fleet/fleet').then((m) => m.FleetPage),
+      },
+      {
         path: 'finance',
         loadComponent: () => import('./pages/finance/finance').then((m) => m.FinancePage),
       },

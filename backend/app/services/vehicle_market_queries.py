@@ -44,7 +44,9 @@ def records(
     ]
 
 
-def rank(rows: list[VehicleMarketRecord], field: str) -> list[dict[str, Any]]:
+def rank(
+    rows: list[VehicleMarketRecord], field: str, limit: int = 30
+) -> list[dict[str, Any]]:
     totals: dict[str, int] = defaultdict(int)
     for row in rows:
         label = str(getattr(row, field) or "Não informado")
@@ -56,7 +58,9 @@ def rank(rows: list[VehicleMarketRecord], field: str) -> list[dict[str, Any]]:
             "value": value,
             "share_pct": round(value / total * 100, 2) if total else None,
         }
-        for label, value in sorted(totals.items(), key=lambda item: (-item[1], item[0]))
+        for label, value in sorted(totals.items(), key=lambda item: (-item[1], item[0]))[
+            :limit
+        ]
     ]
 
 

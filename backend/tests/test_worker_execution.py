@@ -6,6 +6,18 @@ from app.models import ErpSettings
 from app.workers import settings as worker_settings
 
 
+def test_vehicle_fleet_refresh_is_scheduled_on_startup_and_daily():
+    fleet_job = next(
+        job
+        for job in worker_settings.WorkerSettings.cron_jobs
+        if job.name == "refresh-vehicle-market-fleet"
+    )
+
+    assert fleet_job.run_at_startup is True
+    assert fleet_job.hour == 6
+    assert fleet_job.minute == 20
+
+
 def test_scheduled_backup_catches_up_after_configured_local_time():
     settings = ErpSettings(
         backup_enabled=True,

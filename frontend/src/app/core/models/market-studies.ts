@@ -255,6 +255,16 @@ export interface VehicleMarketOverview {
     format: string | null;
     source: string;
   };
+  fleet_import?: {
+    status: 'running' | 'completed' | 'failed';
+    period: string;
+    source_rows: number | null;
+    aggregate_count: number | null;
+    total_vehicles: number | null;
+    error: string | null;
+    started_at: string;
+    completed_at: string | null;
+  } | null;
   definitions: { registrations: string; fleet: string };
 }
 

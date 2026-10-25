@@ -15,7 +15,7 @@ from app.core.config import get_settings
 from app.models import PushDevice, PushNotification
 
 logger = logging.getLogger(__name__)
-SOUND_CATEGORIES = {"sales", "order_status", "fiscal", "backup", "system"}
+SOUND_CATEGORIES = {"sales", "order_status", "fiscal", "backup", "vehicle_market", "system"}
 SOUND_OPTIONS = {"system", "bell", "chime", "soft", "kaching", "silent"}
 _access_token = ""
 _access_token_expires_at = 0.0

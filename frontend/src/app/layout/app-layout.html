@@ -192,6 +192,23 @@
         <button type="button" (click)="live.refreshNow()">Tentar agora</button>
       </div>
     }
+    @if (vehicleUpdate(); as update) {
+      <div class="vehicle-update-banner" role="status">
+        <span class="vehicle-update-banner-icon" aria-hidden="true">▥</span>
+        <div>
+          <strong>{{ update.title }}</strong>
+          <p>{{ update.body }}</p>
+        </div>
+        <a class="vehicle-update-banner-action" routerLink="/vehicle-market">Ver Carros no Brasil</a>
+        <button
+          type="button"
+          aria-label="Dispensar aviso de atualização da frota"
+          (click)="dismissVehicleUpdate()"
+        >
+          ×
+        </button>
+      </div>
+    }
     @if (backupAlert(); as alert) {
       <div class="backup-banner" role="alert">
         <span class="backup-banner-icon" aria-hidden="true">↻</span>

@@ -60,3 +60,20 @@ class VehicleCatalogCache(Base):
     cache_key: Mapped[str] = mapped_column(String(160), nullable=False)
     data: Mapped[list[Any]] = mapped_column(JSON, nullable=False)
     retrieved_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc)
+
+
+class VehicleFleetImportRun(Base):
+    """Durable status for the large monthly RENAVAM import."""
+
+    __tablename__ = "vehicle_fleet_import_runs"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    resource_url: Mapped[str] = mapped_column(String(1000), unique=True, nullable=False)
+    period: Mapped[str] = mapped_column(String(7), nullable=False)
+    status: Mapped[str] = mapped_column(String(20), default="running", nullable=False)
+    source_rows: Mapped[int | None] = mapped_column(Integer)
+    aggregate_count: Mapped[int | None] = mapped_column(Integer)
+    total_vehicles: Mapped[int | None] = mapped_column(Integer)
+    error: Mapped[str | None] = mapped_column(Text)
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

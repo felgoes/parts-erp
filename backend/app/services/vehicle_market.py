@@ -18,7 +18,14 @@ from app.services.vehicle_market_queries import latest_snapshot, rank, records
 def nationality_for_brand(brand: str | None) -> str | None:
     if not brand:
         return None
+    aliases = {
+        "gm - chevrolet": "Chevrolet",
+        "vw - volkswagen": "Volkswagen",
+        "kia motors": "Kia",
+        "great wall": "GWM",
+    }
     folded = brand.strip().casefold()
+    folded = aliases.get(folded, folded)
     for name, nationality in BRAND_NATIONALITIES.items():
         if name.casefold() == folded:
             return nationality

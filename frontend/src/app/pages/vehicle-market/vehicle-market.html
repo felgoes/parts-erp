@@ -87,6 +87,18 @@
         </a>
       }
     </div>
+    @if (data.fleet_import; as fleetImport) {
+      @if (fleetImport.status === 'running') {
+        <p class="inline-message" role="status">
+          Importando a frota oficial de {{ fleetImport.period }}. O último snapshot válido continua
+          disponível até a publicação terminar.
+        </p>
+      } @else if (fleetImport.status === 'failed') {
+        <p class="inline-message is-error" role="alert">
+          A atualização mais recente da frota falhou; o último snapshot válido foi preservado.
+        </p>
+      }
+    }
     @if (data.live_sync?.message) {
       <p class="inline-message is-error">{{ data.live_sync?.message }}</p>
     }

@@ -42,6 +42,7 @@ from app.models.entities import (
     User,
     UserRole,
     VehicleCatalogCache,
+    VehicleFleetImportRun,
     VehicleMarketRecord,
     VehicleMarketSnapshot,
 )
@@ -90,6 +91,7 @@ __all__ = [
     "User",
     "UserRole",
     "VehicleCatalogCache",
+    "VehicleFleetImportRun",
     "VehicleMarketRecord",
     "VehicleMarketSnapshot",
 ]

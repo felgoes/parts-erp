@@ -28,7 +28,7 @@ def fleet_source_status() -> dict[str, Any]:
             resource
             for resource in result.get("resources", [])
             if isinstance(resource, dict)
-            and str(resource.get("format") or "").upper() in {"ZIP", "RAR"}
+            and str(resource.get("format") or "").upper() == "ZIP"
         ]
         latest = max(resources, key=lambda resource: resource.get("created") or "")
         status = {

@@ -1,7 +1,7 @@
 import asyncio
 import logging
 import time as clock
-from datetime import UTC, datetime
+from datetime import datetime
 from typing import Any
 
 from arq import cron
@@ -21,16 +21,19 @@ from app.integrations.mercadolivre.sync import (
 )
 from app.integrations.shopee.sync import sync_all as sync_shopee_all
 from app.integrations.shopee.sync import sync_order as sync_shopee_order
-from app.models import ErpSettings, MarketplaceAccount, MarketplaceOrder, MarketplaceOrderEvent
+from app.models import MarketplaceAccount, MarketplaceOrder, MarketplaceOrderEvent
 from app.services.after_sale import after_sale_notification, upsert_after_sale_case
-from app.services.google_drive_backup import run_backup
-from app.services.backup_health import current_window_day, scheduled_backup_due
 from app.services.push_notifications import (
     deliver_pending_notifications,
     enqueue_after_sale_attention,
     enqueue_sale_notification,
 )
+from app.workers.backups import (  # noqa: F401
+    _scheduled_backup_is_due,
+    scheduled_google_drive_backup,
+)
 from app.workers.marketplace_costs import reconcile_marketplace_costs
+from app.workers.vehicle_market import refresh_vehicle_market_fleet
 
 logger = logging.getLogger(__name__)
 def _process_mercadolivre_notification(topic: str, resource: str, seller_id: str) -> None:
@@ -301,55 +304,6 @@ async def retry_pending_push_notifications(ctx: dict[str, Any]) -> int:
     return await asyncio.to_thread(_retry_pending_push_notifications)
 
 
-def _scheduled_backup_is_due(settings: ErpSettings, now_utc: datetime | None = None) -> bool:
-    """Return whether the worker should attempt the backup now.
-
-    A janela continua sendo o horário local de São Paulo (com tolerância de catch-up, porque
-    o worker roda a cada minuto), mas depois de uma falha a nova tentativa espera
-    ``RETRY_INTERVAL`` e existe um teto de tentativas por janela — antes o ERP insistia de
-    minuto em minuto contra o provedor. A decisão em si vive em ``app.services.backup_health``
-    para ser testada sem banco e sem rede.
-    """
-    return scheduled_backup_due(settings, now_utc)
-
-
-def _record_backup_attempt(settings: ErpSettings, now_utc: datetime | None = None) -> None:
-    """Conta a tentativa na janela do dia: é o que limita a insistência."""
-    window = current_window_day(settings, now_utc)
-    if window is None:
-        return
-    if settings.backup_attempts_date != window.isoformat():
-        settings.backup_attempts_date = window.isoformat()
-        settings.backup_attempts_today = 0
-    settings.backup_attempts_today = int(settings.backup_attempts_today or 0) + 1
-
-
-def _run_scheduled_backup() -> str | None:
-    with SessionLocal() as db:
-        settings = db.scalar(select(ErpSettings).where(ErpSettings.id == "global"))
-        if (
-            not settings
-            or not settings.backup_enabled
-            or not settings.encrypted_drive_refresh_token
-        ):
-            return None
-        if not _scheduled_backup_is_due(settings):
-            return None
-        _record_backup_attempt(settings)
-        # Grava a tentativa antes de tentar: se o processo morrer no meio, ela já conta.
-        db.commit()
-        try:
-            return run_backup(db)
-        except Exception:
-            logger.exception("scheduled Google Drive backup failed")
-            return None
-
-
-async def scheduled_google_drive_backup(ctx: dict[str, Any]) -> str | None:
-    del ctx
-    return await asyncio.to_thread(_run_scheduled_backup)
-
-
 class WorkerSettings:
     functions = [
         process_mercadolivre_notification,
@@ -360,6 +314,7 @@ class WorkerSettings:
         reconcile_marketplace_costs,
         retry_pending_push_notifications,
         scheduled_google_drive_backup,
+        refresh_vehicle_market_fleet,
     ]
     cron_jobs = [
         cron(
@@ -392,6 +347,15 @@ class WorkerSettings:
             minute=set(range(60)),
             hour=set(range(24)),
             second=45,
+        ),
+        cron(
+            refresh_vehicle_market_fleet,
+            name="refresh-vehicle-market-fleet",
+            hour=6,
+            minute=20,
+            timeout=1800,
+            max_tries=2,
+            run_at_startup=True,
         ),
     ]
     redis_settings = RedisSettings.from_dsn(get_settings().redis_url)

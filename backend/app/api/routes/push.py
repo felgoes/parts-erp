@@ -24,6 +24,10 @@ CATEGORIES = {
     ),
     "fiscal": ("Notas e etiquetas", "Emissão ou falha de nota fiscal e etiqueta de envio."),
     "backup": ("Backups", "Conclusão ou falha no backup do ERP."),
+    "vehicle_market": (
+        "Mercado automotivo",
+        "Atualizações dos dados oficiais de frota e emplacamentos.",
+    ),
     "system": ("Sistema", "Alertas técnicos e avisos importantes do ERP."),
 }
 

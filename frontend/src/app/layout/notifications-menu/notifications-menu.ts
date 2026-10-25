@@ -41,6 +41,10 @@ const CATEGORY_META: Record<string, AlertCategory> = {
     iconPath:
       'M5 7c0-2 3.1-3.5 7-3.5S19 5 19 7s-3.1 3.5-7 3.5S5 9 5 7Zm0 0v10c0 2 3.1 3.5 7 3.5s7-1.5 7-3.5V7M5 12c0 2 3.1 3.5 7 3.5s7-1.5 7-3.5',
   },
+  vehicle_market: {
+    label: 'Mercado',
+    iconPath: 'M5 17h14l-1.5-6.5A2 2 0 0 0 15.6 9H8.4a2 2 0 0 0-1.9 1.5L5 17ZM4 17v3h3v-2h10v2h3v-3M7 14h.01M17 14h.01',
+  },
   system: {
     label: 'Sistema',
     iconPath: 'M12 4 21 20H3zM12 9v5M12 17.5v.5',

@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from app.api.deps import require_permission
 from app.core.permissions import Permission
 from app.db.session import get_db
-from app.models import MarketplaceConfig, MarketStudy, User
+from app.models import MarketplaceConfig, MarketStudy, User, VehicleFleetImportRun
 from app.schemas.common import (
     MarketStudyConnectorOut,
     MarketStudyConnectorUpdate,
@@ -119,6 +119,12 @@ def _summary(study: MarketStudy) -> dict:
     }
 
 
+def _iso_utc(value) -> str | None:
+    if value is None:
+        return None
+    return (value if value.tzinfo else value.replace(tzinfo=UTC)).isoformat()
+
+
 @router.get("", response_model=MarketStudyListOut)
 def list_studies(
     search: str | None = Query(default=None, max_length=120),
@@ -169,6 +175,25 @@ def read_vehicle_market(
     )
     overview["live_sync"] = sync
     overview["fleet_publication"] = fleet_source_status()
+    fleet_run = db.scalar(
+        select(VehicleFleetImportRun)
+        .order_by(VehicleFleetImportRun.started_at.desc())
+        .limit(1)
+    )
+    overview["fleet_import"] = (
+        {
+            "status": fleet_run.status,
+            "period": fleet_run.period,
+            "source_rows": fleet_run.source_rows,
+            "aggregate_count": fleet_run.aggregate_count,
+            "total_vehicles": fleet_run.total_vehicles,
+            "error": fleet_run.error,
+            "started_at": _iso_utc(fleet_run.started_at),
+            "completed_at": _iso_utc(fleet_run.completed_at),
+        }
+        if fleet_run
+        else None
+    )
     brands = complete_brands(db)
     overview["available_brands"] = brands["data"]
     overview["catalog_status"] = brands["status"]

@@ -1,7 +1,9 @@
 import { DatePipe } from '@angular/common';
-import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink, RouterOutlet } from '@angular/router';
+import { debounceTime } from 'rxjs';
 import { AppearanceService } from '../core/appearance.service';
 import { ErpBrandService } from '../core/erp-brand.service';
 import { AuthService } from '../core/auth.service';
@@ -11,6 +13,8 @@ import { PushNotificationsService } from '../core/push-notifications.service';
 import { LiveUpdatesService } from '../core/live-updates.service';
 import { PULL_TRIGGER_PX, pullBandHeight, pullOffset, shouldRefresh } from '../core/app-refresh';
 import { BackupAlert, backupAlert as buildBackupAlert } from '../shared/backup-health';
+import { SettingsApi } from '../core/api/settings-api';
+import { PushNotification } from '../core/models';
 import { AssistantChat } from '../shared/assistant-chat/assistant-chat';
 import { NavigationMenu } from './navigation-menu/navigation-menu';
 import { NotificationsMenu } from './notifications-menu/notifications-menu';
@@ -43,6 +47,7 @@ export class AppLayout implements OnInit, OnDestroy {
   readonly profileSaving = signal(false);
   readonly avatarSaving = signal(false);
   readonly backupAlert = signal<BackupAlert | null>(null);
+  readonly vehicleUpdate = signal<PushNotification | null>(null);
   /** Faixa do gesto: cresce com o dedo e fica de pé enquanto a tela recarrega. */
   readonly pullBand = computed(() => pullBandHeight(this.live.pullOffset()));
   readonly pullReady = computed(() => shouldRefresh(this.live.pullOffset()));
@@ -53,7 +58,9 @@ export class AppLayout implements OnInit, OnDestroy {
   private pullStartY = 0;
   private pulling = false;
   private readonly api = inject(ApiService);
+  private readonly settingsApi = inject(SettingsApi);
   private readonly pushNotifications = inject(PushNotificationsService);
+  private readonly destroyRef = inject(DestroyRef);
   private readonly fb = inject(FormBuilder);
   readonly profileForm = this.fb.nonNullable.group({
     email: ['', [Validators.required, Validators.email]],
@@ -62,8 +69,15 @@ export class AppLayout implements OnInit, OnDestroy {
     this.brand.load();
     this.loadAvatar();
     this.loadBackupAlert();
+    this.loadVehicleUpdateBanner();
     // O aviso de backup não depende de push: a faixa acompanha o estado do servidor.
-    this.backupTimer = setInterval(() => this.loadBackupAlert(), 15 * 60 * 1000);
+    this.backupTimer = setInterval(() => {
+      this.loadBackupAlert();
+      this.loadVehicleUpdateBanner();
+    }, 15 * 60 * 1000);
+    this.live.changes$
+      .pipe(debounceTime(250), takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => this.loadVehicleUpdateBanner());
     void this.pushNotifications.enableForCurrentDevice();
   }
   ngOnDestroy(): void {
@@ -109,6 +123,24 @@ export class AppLayout implements OnInit, OnDestroy {
     this.api.erpSettings().subscribe({
       next: (settings) => this.backupAlert.set(buildBackupAlert(settings)),
       error: () => undefined,
+    });
+  }
+
+  private loadVehicleUpdateBanner(): void {
+    this.api.pushHistory().subscribe({
+      next: (items) =>
+        this.vehicleUpdate.set(
+          items.find((item) => item.category === 'vehicle_market') ?? null,
+        ),
+      error: () => undefined,
+    });
+  }
+
+  dismissVehicleUpdate(): void {
+    const notification = this.vehicleUpdate();
+    if (!notification) return;
+    this.settingsApi.dismissPushNotification(notification.id).subscribe({
+      next: () => this.vehicleUpdate.set(null),
     });
   }
   openProfile(): void {

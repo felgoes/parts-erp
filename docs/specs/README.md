@@ -8,6 +8,7 @@ As specs descrevem comportamento e critérios de aceite de cada item. A lista of
 
 ## Histórico
 
+- [P29/P30 — Cadastro da empresa e estudos orientados a mercado](company-profile-market-studies-v2.md) — entregue em produção em 24/10/2026 (`ac18ed9`).
 - [P28 — Endereço de destino e histórico de rastreio legível](p28-endereco-historico-rastreio.md) — entregue em produção em 24/10/2026 (`490e932`).
 - [P27 — Estudos de mercado para autopeças](market-studies-autopecas.md) — entregue em produção em 23/10/2026 (`1c2e84e`).
 

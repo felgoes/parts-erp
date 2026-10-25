@@ -29,8 +29,8 @@
     <label
       >Marca<select [(ngModel)]="filters.brand" name="brand">
         <option value="">Todas</option>
-        @for (brand of overview()?.brand_nationalities | keyvalue; track brand.key) {
-          <option [value]="brand.key">{{ brand.key }}</option>
+        @for (brand of brands(); track brand) {
+          <option [value]="brand">{{ brand }}</option>
         }
       </select></label
     >
@@ -90,6 +90,44 @@
     @if (data.live_sync?.message) {
       <p class="inline-message is-error">{{ data.live_sync?.message }}</p>
     }
+    @if (data.selected_brand; as selected) {
+      @if (!selected.found) {
+        <div class="profile-pending">
+          <strong>Marca não encontrada no catálogo FIPE</strong>
+          <p>Confira o nome selecionado. Nenhum volume foi inferido.</p>
+        </div>
+      } @else if (!selected.in_top_20) {
+        <section class="selected-brand-catalog">
+          <div>
+            <p class="eyebrow">Marca válida, fora do ranking publicado</p>
+            <h3>{{ selected.brand }} não está no Top 20 desta competência</h3>
+            <p>
+              A fonte gratuita publica somente os 20 modelos com mais emplacamentos. Isso não
+              significa que a marca não tenha veículos no Brasil; o catálogo confirma os modelos
+              existentes, sem inventar volume.
+            </p>
+          </div>
+          @if (selected.status === 'unavailable') {
+            <p class="inline-message is-error">
+              A marca é válida, mas o catálogo completo de modelos está temporariamente
+              indisponível. Nenhum volume será inferido.
+            </p>
+          } @else {
+            <div class="family-chips">
+              @for (family of selected.families; track family.name) {
+                <span
+                  ><strong>{{ family.name }}</strong
+                  ><small
+                    >{{ family.versions }}
+                    {{ family.versions === 1 ? 'versão' : 'versões' }}</small
+                  ></span
+                >
+              }
+            </div>
+          }
+        </section>
+      }
+    }
     @if (!data.sources[0]?.available && !data.sources[1]?.available) {
       <div class="empty-state">
         <strong>Nenhuma publicação validada</strong>
@@ -146,21 +184,31 @@
               <small>{{ row.share_pct !== null ? row.share_pct + '%' : '—' }}</small>
             </div>
           } @empty {
-            <p class="muted">{{ ranking.title.startsWith('Frota') ? 'Fonte oficial ainda não importada.' : 'Sem dados na competência.' }}</p>
+            <p class="muted">
+              {{
+                ranking.title.startsWith('Frota')
+                  ? 'Fonte oficial ainda não importada.'
+                  : rankingEmpty(ranking.title)
+              }}
+            </p>
           }
         </article>
       }
     </div>
     <article class="trend-card">
       <h3>Emplacamentos mês a mês</h3>
-      @for (point of data.trend; track point.period) {
-        <div class="trend-row">
-          <span>{{ point.period }}</span>
-          <i [style.width.%]="trendWidth(point.value)"></i>
-          <strong>{{ point.value | number: '1.0-0' }}</strong>
-        </div>
-      } @empty {
-        <p class="muted">A série será formada pelas próximas competências coletadas.</p>
+      @if (data.monthly.total === null) {
+        <p class="muted">Sem série de emplacamentos para a seleção nesta competência.</p>
+      } @else {
+        @for (point of data.trend; track point.period) {
+          <div class="trend-row">
+            <span>{{ point.period }}</span>
+            <i [style.width.%]="trendWidth(point.value)"></i>
+            <strong>{{ point.value | number: '1.0-0' }}</strong>
+          </div>
+        } @empty {
+          <p class="muted">A série será formada pelas próximas competências coletadas.</p>
+        }
       }
     </article>
     <p class="definitions">

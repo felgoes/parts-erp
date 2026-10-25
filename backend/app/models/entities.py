@@ -62,6 +62,7 @@ from app.models.users import (  # noqa: F401
     User,
 )
 from app.models.vehicle_market import (  # noqa: F401
+    VehicleCatalogCache,
     VehicleMarketRecord,
     VehicleMarketSnapshot,
 )

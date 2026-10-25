@@ -41,6 +41,7 @@ from app.models.entities import (
     TelemetryEvent,
     User,
     UserRole,
+    VehicleCatalogCache,
     VehicleMarketRecord,
     VehicleMarketSnapshot,
 )
@@ -88,6 +89,7 @@ __all__ = [
     "Supplier",
     "User",
     "UserRole",
+    "VehicleCatalogCache",
     "VehicleMarketRecord",
     "VehicleMarketSnapshot",
 ]

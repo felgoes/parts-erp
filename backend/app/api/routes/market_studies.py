@@ -33,6 +33,11 @@ from app.services.market_study_opportunity import (
     queue_opportunity_study,
 )
 from app.services.vehicle_market import import_snapshot, vehicle_market_overview
+from app.services.vehicle_market_catalog import (
+    brand_models,
+    complete_brands,
+    model_families,
+)
 from app.services.vehicle_market_fleet_source import fleet_source_status
 from app.services.vehicle_market_live import sync_live_vehicle_market
 
@@ -164,6 +169,24 @@ def read_vehicle_market(
     )
     overview["live_sync"] = sync
     overview["fleet_publication"] = fleet_source_status()
+    brands = complete_brands(db)
+    overview["available_brands"] = brands["data"]
+    overview["catalog_status"] = brands["status"]
+    if brand:
+        selected = brand_models(db, brand)
+        selected["families"] = model_families(selected["models"])
+        selected["in_top_20"] = any(
+            row["label"].casefold() == selected["brand"].casefold()
+            for row in overview["monthly"]["brands"]
+        )
+        selected["retrieved_at"] = (
+            selected["retrieved_at"].replace(tzinfo=UTC).isoformat()
+            if selected["retrieved_at"] and selected["retrieved_at"].tzinfo is None
+            else selected["retrieved_at"].isoformat()
+            if selected["retrieved_at"]
+            else None
+        )
+        overview["selected_brand"] = selected
     return overview
 
 

@@ -57,6 +57,7 @@ class Settings(BaseSettings):
     fipe_market_api_url: AnyHttpUrl = AnyHttpUrl(
         "https://fipeapibrasil.com.br/api/mercado/mais-vendidos/atual"
     )
+    fipe_market_catalog_url: AnyHttpUrl = AnyHttpUrl("https://fipeapibrasil.com.br")
     # Optional free key. Without it, the public endpoint is limited to 5 calls/day.
     fipe_market_api_key: SecretStr | None = None
     vehicle_market_cache_hours: int = Field(default=6, ge=1, le=24)

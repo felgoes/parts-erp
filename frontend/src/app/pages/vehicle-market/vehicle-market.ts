@@ -1,4 +1,4 @@
-import { DatePipe, DecimalPipe, KeyValuePipe } from '@angular/common';
+import { DatePipe, DecimalPipe } from '@angular/common';
 import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -9,7 +9,7 @@ import { PageHeader } from '../../shared/page-header';
 
 @Component({
   selector: 'app-vehicle-market',
-  imports: [DatePipe, DecimalPipe, FormsModule, KeyValuePipe, PageHeader, RouterLink],
+  imports: [DatePipe, DecimalPipe, FormsModule, PageHeader, RouterLink],
   templateUrl: './vehicle-market.html',
   styleUrl: './vehicle-market.scss',
 })
@@ -67,5 +67,30 @@ export class VehicleMarketPage implements OnInit, OnDestroy {
 
   sourceLabel(metric: string | null): string {
     return metric === 'fleet' ? 'Frota registrada' : 'Emplacamentos';
+  }
+
+  brands(): string[] {
+    const complete = this.overview()?.available_brands;
+    return complete?.length
+      ? complete
+      : Object.keys(this.overview()?.brand_nationalities ?? {});
+  }
+
+  rankingEmpty(title: string): string {
+    const selected = this.overview()?.selected_brand;
+    if (
+      selected?.found &&
+      !selected.in_top_20 &&
+      (title.includes('mês') || title.includes('YTD'))
+    ) {
+      if (title.startsWith('Nacionalidade')) {
+        return 'A nacionalidade da marca selecionada não tem volume no Top 20 desta competência.';
+      }
+      if (title.startsWith('Marcas')) {
+        return 'A marca selecionada não tem volume no Top 20 desta competência.';
+      }
+      return `${selected.brand} não aparece no Top 20 desta competência.`;
+    }
+    return 'Sem dados na competência.';
   }
 }

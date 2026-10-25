@@ -329,14 +329,14 @@ def vehicle_market_overview(
         },
         "monthly": {
             "period": registrations.period if registrations else None,
-            "total": sum(row.value for row in monthly_rows) if registrations else None,
+            "total": sum(row.value for row in monthly_rows) if monthly_rows else None,
             "nationalities": rank(monthly_rows, "nationality"),
             "brands": rank(monthly_rows, "brand"),
             "models": rank(monthly_rows, "model"),
         },
         "ytd": {
             "period": registrations.period if registrations else None,
-            "total": sum(row.value for row in ytd_rows) if registrations else None,
+            "total": sum(row.value for row in ytd_rows) if ytd_rows else None,
             "nationalities": rank(ytd_rows, "nationality"),
             "brands": rank(ytd_rows, "brand"),
             "models": rank(ytd_rows, "model"),
@@ -345,7 +345,7 @@ def vehicle_market_overview(
         "comparisons": monthly_comparisons,
         "fleet": {
             "period": fleet.period if fleet else None,
-            "total": sum(row.value for row in fleet_rows) if fleet else None,
+            "total": sum(row.value for row in fleet_rows) if fleet_rows else None,
             "nationalities": rank(fleet_rows, "nationality"),
             "brands": rank(fleet_rows, "brand"),
             "models": rank(fleet_rows, "model"),

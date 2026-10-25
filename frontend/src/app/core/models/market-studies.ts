@@ -229,6 +229,17 @@ export interface VehicleMarketOverview {
     status: string;
   }>;
   brand_nationalities: Record<string, string>;
+  available_brands?: string[];
+  catalog_status?: string;
+  selected_brand?: {
+    brand: string;
+    found: boolean;
+    in_top_20: boolean;
+    models: string[];
+    families: Array<{ name: string; versions: number }>;
+    status: string;
+    retrieved_at: string | null;
+  };
   live_sync?: {
     status: 'updated' | 'cached' | 'updating' | 'unavailable';
     period: string | null;

@@ -45,3 +45,18 @@ class VehicleMarketRecord(Base):
     value: Mapped[int] = mapped_column(Integer, nullable=False)
     region: Mapped[str | None] = mapped_column(String(80))
     source_row_label: Mapped[str | None] = mapped_column(Text)
+
+
+class VehicleCatalogCache(Base):
+    """Short-lived cache for the complete FIPE brand/model directory."""
+
+    __tablename__ = "vehicle_catalog_cache"
+    __table_args__ = (
+        UniqueConstraint("kind", "cache_key", name="uq_vehicle_catalog_cache_kind_key"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    kind: Mapped[str] = mapped_column(String(20), nullable=False)
+    cache_key: Mapped[str] = mapped_column(String(160), nullable=False)
+    data: Mapped[list[Any]] = mapped_column(JSON, nullable=False)
+    retrieved_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc)

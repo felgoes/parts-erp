@@ -1,7 +1,7 @@
 <app-page-header
   eyebrow="Inteligência de frota"
   title="Frota do Brasil"
-  subtitle="Explore a frota registrada oficialmente por marca, nacionalidade, modelo, ano e faixa etária."
+  subtitle="Compare carros e motos separadamente por marca, nacionalidade, modelo, ano e faixa etária."
 />
 
 @if (error()) {
@@ -9,6 +9,29 @@
 }
 
 <section class="fleet-shell">
+  <div class="fleet-tabs" role="tablist" aria-label="Categoria da frota">
+    <button
+      type="button"
+      role="tab"
+      [attr.aria-selected]="filters.category === 'cars'"
+      [class.is-active]="filters.category === 'cars'"
+      (click)="selectCategory('cars')"
+    >
+      <span>Carros</span>
+      <small>Demais veículos da publicação</small>
+    </button>
+    <button
+      type="button"
+      role="tab"
+      [attr.aria-selected]="filters.category === 'motorcycles'"
+      [class.is-active]="filters.category === 'motorcycles'"
+      (click)="selectCategory('motorcycles')"
+    >
+      <span>Motos</span>
+      <small>Motocicletas, motonetas e ciclomotores</small>
+    </button>
+  </div>
+
   <form class="fleet-filters" (ngSubmit)="applyFilters(1)">
     <label
       >Competência<select [(ngModel)]="filters.period" name="period">

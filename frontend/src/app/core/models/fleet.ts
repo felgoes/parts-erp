@@ -4,10 +4,13 @@ export interface FleetRankRow {
   share_pct: number | null;
 }
 
+export type FleetCategory = 'cars' | 'motorcycles';
+
 export interface FleetOverview {
   available: boolean;
   message?: string;
   period: string;
+  category: FleetCategory;
   collected_at: string;
   source: string;
   source_url: string;
@@ -47,6 +50,7 @@ export interface FleetRecordPage {
   page: number;
   page_size: number;
   period?: string;
+  category?: FleetCategory;
   items: Array<{
     brand: string;
     model: string;

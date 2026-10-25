@@ -11,6 +11,7 @@ from app.models import (
     VehicleMarketRecord,
     VehicleMarketSnapshot,
 )
+from app.services.vehicle_fleet_category import CARS
 
 AGE_ORDER = {
     "0 a 5 anos": 0,
@@ -25,6 +26,7 @@ AGE_ORDER = {
 def _conditions(
     snapshot_id: str,
     *,
+    category: str = CARS,
     brand: str | None = None,
     nationality: str | None = None,
     model: str | None = None,
@@ -32,7 +34,10 @@ def _conditions(
     year_from: int | None = None,
     year_to: int | None = None,
 ) -> list:
-    conditions: list = [VehicleMarketRecord.snapshot_id == snapshot_id]
+    conditions: list = [
+        VehicleMarketRecord.snapshot_id == snapshot_id,
+        VehicleMarketRecord.vehicle_category == category,
+    ]
     if brand:
         conditions.append(func.lower(VehicleMarketRecord.brand) == brand.strip().casefold())
     if nationality:
@@ -104,6 +109,7 @@ def fleet_overview(
     db: Session,
     *,
     period: str | None = None,
+    category: str = CARS,
     brand: str | None = None,
     nationality: str | None = None,
     model: str | None = None,
@@ -127,6 +133,7 @@ def fleet_overview(
         }
     conditions = _conditions(
         snapshot.id,
+        category=category,
         brand=brand,
         nationality=nationality,
         model=model,
@@ -163,6 +170,7 @@ def fleet_overview(
     if previous_snapshot:
         previous_conditions = _conditions(
             previous_snapshot.id,
+            category=category,
             brand=brand,
             nationality=nationality,
             model=model,
@@ -176,7 +184,10 @@ def fleet_overview(
         if previous_total
         else None
     )
-    all_conditions = [VehicleMarketRecord.snapshot_id == snapshot.id]
+    all_conditions = [
+        VehicleMarketRecord.snapshot_id == snapshot.id,
+        VehicleMarketRecord.vehicle_category == category,
+    ]
     age_rows = _rank(
         db, VehicleMarketRecord.age_band, conditions, total, limit=10
     )
@@ -189,6 +200,7 @@ def fleet_overview(
     return {
         "available": True,
         "period": snapshot.period,
+        "category": category,
         "collected_at": (
             snapshot.retrieved_at
             if snapshot.retrieved_at.tzinfo
@@ -274,6 +286,7 @@ def fleet_records(
     page: int,
     page_size: int,
     period: str | None = None,
+    category: str = CARS,
     brand: str | None = None,
     nationality: str | None = None,
     model: str | None = None,
@@ -287,6 +300,7 @@ def fleet_records(
         return {"total": 0, "page": page, "page_size": page_size, "items": []}
     conditions = _conditions(
         snapshot.id,
+        category=category,
         brand=brand,
         nationality=nationality,
         model=model,
@@ -327,6 +341,7 @@ def fleet_records(
         "page": page,
         "page_size": page_size,
         "period": snapshot.period,
+        "category": category,
         "items": [
             {
                 "brand": row.brand,

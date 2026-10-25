@@ -4,7 +4,12 @@ import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
 import { FleetApi } from '../../core/api/fleet-api';
-import { FleetOverview, FleetRankRow, FleetRecordPage } from '../../core/models/fleet';
+import {
+  FleetCategory,
+  FleetOverview,
+  FleetRankRow,
+  FleetRecordPage,
+} from '../../core/models/fleet';
 import { PageHeader } from '../../shared/page-header';
 
 @Component({
@@ -22,6 +27,7 @@ export class FleetPage implements OnInit {
   readonly recordsLoading = signal(true);
   readonly error = signal('');
   readonly filters = {
+    category: 'cars' as FleetCategory,
     period: '',
     brand: '',
     nationality: '',
@@ -39,7 +45,14 @@ export class FleetPage implements OnInit {
     const params = new URLSearchParams(window.location.search);
     for (const key of Object.keys(this.filters) as Array<keyof typeof this.filters>) {
       const value = params.get(key);
-      if (value) this.filters[key] = value;
+      if (!value) continue;
+      if (key === 'category') {
+        if (value === 'cars' || value === 'motorcycles') {
+          this.filters.category = value;
+        }
+      } else {
+        this.filters[key] = value;
+      }
     }
     this.page.set(Math.max(1, Number(params.get('page') || 1)));
     this.load();
@@ -52,7 +65,9 @@ export class FleetPage implements OnInit {
   }
 
   resetFilters(): void {
+    const category = this.filters.category;
     Object.assign(this.filters, {
+      category,
       period: '',
       brand: '',
       nationality: '',
@@ -61,6 +76,18 @@ export class FleetPage implements OnInit {
       year_from: '',
       year_to: '',
       sort: 'fleet_desc',
+    });
+    this.applyFilters(1);
+  }
+
+  selectCategory(category: FleetCategory): void {
+    if (this.filters.category === category) return;
+    Object.assign(this.filters, {
+      category,
+      brand: '',
+      nationality: '',
+      model: '',
+      age_band: '',
     });
     this.applyFilters(1);
   }
@@ -153,7 +180,9 @@ export class FleetPage implements OnInit {
 
   private query(): Record<string, string> {
     return Object.fromEntries(
-      Object.entries(this.filters).filter(([, value]) => Boolean(value)),
+      Object.entries(this.filters).filter(
+        ([key, value]) => key === 'category' || Boolean(value),
+      ),
     );
   }
 

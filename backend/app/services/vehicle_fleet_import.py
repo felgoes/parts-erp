@@ -18,6 +18,7 @@ from app.models import (
     VehicleMarketRecord,
     VehicleMarketSnapshot,
 )
+from app.services.vehicle_fleet_category import CATEGORY_VERSION
 from app.services.vehicle_fleet_parser import (
     ParsedFleet,
     parse_fleet_zip,
@@ -32,9 +33,17 @@ _import_lock = threading.Lock()
 
 
 def _record_key(
-    snapshot_id: str, period: str, brand: str, model: str, year: int | None
+    snapshot_id: str,
+    period: str,
+    brand: str,
+    model: str,
+    category: str,
+    year: int | None,
 ) -> str:
-    value = f"{snapshot_id}|{SOURCE}|fleet|{period}|{brand}|{model}|{year or ''}"
+    value = (
+        f"{snapshot_id}|{SOURCE}|fleet|{period}|{brand}|{model}|"
+        f"{category}|{year or ''}"
+    )
     return hashlib.sha256(value.casefold().encode()).hexdigest()
 
 
@@ -75,12 +84,17 @@ def _insert_aggregates(
                     "id": str(uuid4()),
                     "snapshot_id": snapshot_id,
                     "record_key": _record_key(
-                        snapshot_id, period, item.brand, item.model, item.year
+                        snapshot_id,
+                        period,
+                        item.brand,
+                        item.model,
+                        item.category,
+                        item.year,
                     ),
                     "nationality": item.nationality,
                     "brand": item.brand,
                     "model": item.model,
-                    "vehicle_category": "veiculos",
+                    "vehicle_category": item.category,
                     "year_model": item.year,
                     "age_band": item.age_band,
                     "value": item.value,
@@ -142,6 +156,7 @@ def _run_import(
                 "source_rows": parsed.source_rows,
                 "aggregate_count": len(parsed.aggregates),
                 "total_vehicles": parsed.total_vehicles,
+                "classification_version": CATEGORY_VERSION,
             },
         )
     )
@@ -174,7 +189,23 @@ def import_latest_fleet(
             VehicleFleetImportRun.resource_url == resource_url
         )
     )
-    if existing and existing.status == "completed" and not force:
+    latest_snapshot = db.scalar(
+        select(VehicleMarketSnapshot)
+        .where(VehicleMarketSnapshot.source == SOURCE, VehicleMarketSnapshot.metric == "fleet")
+        .order_by(VehicleMarketSnapshot.period.desc())
+        .limit(1)
+    )
+    needs_category_refresh = (
+        latest_snapshot is None
+        or (latest_snapshot.validation or {}).get("classification_version")
+        != CATEGORY_VERSION
+    )
+    if (
+        existing
+        and existing.status == "completed"
+        and not force
+        and not needs_category_refresh
+    ):
         return {
             "status": "completed",
             "period": existing.period,

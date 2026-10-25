@@ -13,6 +13,7 @@ router = APIRouter(prefix="/fleet", tags=["Frota do Brasil"])
 @router.get("/overview")
 def overview(
     period: str | None = Query(default=None, pattern=r"^\d{4}-(0[1-9]|1[0-2])$"),
+    category: str = Query(default="cars", pattern="^(cars|motorcycles)$"),
     brand: str | None = None,
     nationality: str | None = None,
     model: str | None = None,
@@ -25,6 +26,7 @@ def overview(
     return fleet_overview(
         db,
         period=period,
+        category=category,
         brand=brand,
         nationality=nationality,
         model=model,
@@ -39,6 +41,7 @@ def records(
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=25, ge=1, le=100),
     period: str | None = Query(default=None, pattern=r"^\d{4}-(0[1-9]|1[0-2])$"),
+    category: str = Query(default="cars", pattern="^(cars|motorcycles)$"),
     brand: str | None = None,
     nationality: str | None = None,
     model: str | None = None,
@@ -54,6 +57,7 @@ def records(
         page=page,
         page_size=page_size,
         period=period,
+        category=category,
         brand=brand,
         nationality=nationality,
         model=model,

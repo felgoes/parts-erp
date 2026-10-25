@@ -1,7 +1,4 @@
-.fleet-shell {
-  display: grid;
-  gap: 1rem;
-}
+@use './fleet-1';
 
 .fleet-filters {
   display: grid;
@@ -343,6 +340,10 @@
 }
 
 @media (max-width: 800px) {
+  .fleet-tabs {
+    grid-template-columns: 1fr;
+  }
+
   .fleet-filters,
   .fleet-kpis,
   .fleet-charts {

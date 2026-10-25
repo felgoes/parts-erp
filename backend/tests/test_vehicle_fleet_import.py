@@ -22,6 +22,7 @@ def _fleet_zip() -> bytes:
         "SÃO PAULO;CAMPINAS;PEUGEOT/208 ACTIVE;2024; 2.0\r\n"
         "SÃO PAULO;SANTOS;PEUGEOT/208 Active;2024; 1.0\r\n"
         "RIO DE JANEIRO;RIO DE JANEIRO;PEUGEOT/2008 ALLURE;2021; 4.0\r\n"
+        "SÃO PAULO;SÃO PAULO;YAMAHA/FZ25 FAZER;2024; 7.0\r\n"
     ).encode()
     with ZipFile(output, "w", ZIP_DEFLATED) as archive:
         archive.writestr("frota.txt", content)
@@ -37,12 +38,14 @@ def test_period_and_fleet_parser_aggregate_across_municipalities(tmp_path) -> No
         "2026-09",
         "Setembro de 2026",
     )
-    assert parsed.source_rows == 4
-    assert parsed.total_vehicles == 10
+    assert parsed.source_rows == 5
+    assert parsed.total_vehicles == 17
     assert {(row.model, row.value) for row in parsed.aggregates} == {
         ("208 ACTIVE", 6),
         ("2008 ALLURE", 4),
+        ("FZ25 FAZER", 7),
     }
+    assert {row.category for row in parsed.aggregates} == {"cars", "motorcycles"}
 
 
 def test_fleet_import_is_atomic_idempotent_and_enqueues_notification(
@@ -88,14 +91,37 @@ def test_fleet_import_is_atomic_idempotent_and_enqueues_notification(
         )
     )
     assert snapshot is not None
-    assert snapshot.validation["total_vehicles"] == 10
+    assert snapshot.validation["total_vehicles"] == 17
+    assert snapshot.validation["classification_version"] == 2
     records = db.scalars(
         select(VehicleMarketRecord).where(
             VehicleMarketRecord.snapshot_id == snapshot.id
         )
     ).all()
-    assert sum(row.value for row in records) == 10
+    assert sum(row.value for row in records) == 17
+    assert {row.vehicle_category for row in records} == {"cars", "motorcycles"}
     assert db.scalar(select(VehicleFleetImportRun)).status == "completed"
+
+    old_snapshot_id = snapshot.id
+    snapshot.validation = {
+        **snapshot.validation,
+        "classification_version": 1,
+    }
+    db.commit()
+    notifications.clear()
+    refreshed = vehicle_fleet_import.import_latest_fleet(
+        db, full_validation=False
+    )
+    refreshed_snapshot = db.scalar(
+        select(VehicleMarketSnapshot).where(
+            VehicleMarketSnapshot.source == "SENATRAN/RENAVAM",
+            VehicleMarketSnapshot.metric == "fleet",
+            VehicleMarketSnapshot.period == "2026-09",
+        )
+    )
+    assert refreshed["status"] == "completed"
+    assert refreshed_snapshot is not None and refreshed_snapshot.id != old_snapshot_id
+    assert notifications == [{"period": "2026-09", "period_label": "Setembro de 2026"}]
 
 
 def test_fleet_update_notification_is_deduplicated(db) -> None:

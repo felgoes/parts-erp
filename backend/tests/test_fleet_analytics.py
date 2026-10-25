@@ -18,7 +18,15 @@ def _snapshot(db, snapshot_id: str, period: str) -> VehicleMarketSnapshot:
     return snapshot
 
 
-def _record(snapshot_id: str, brand: str, model: str, year: int, value: int) -> None:
+def _record(
+    snapshot_id: str,
+    brand: str,
+    model: str,
+    year: int,
+    value: int,
+    *,
+    category: str = "cars",
+) -> None:
     return VehicleMarketRecord(
         id=f"{snapshot_id}-{brand}-{model}-{year}",
         snapshot_id=snapshot_id,
@@ -26,7 +34,7 @@ def _record(snapshot_id: str, brand: str, model: str, year: int, value: int) -> 
         nationality="França" if brand == "PEUGEOT" else "Brasil",
         brand=brand,
         model=model,
-        vehicle_category="veiculos",
+        vehicle_category=category,
         year_model=year,
         age_band="0 a 5 anos" if year >= 2021 else "6 a 10 anos",
         value=value,
@@ -42,6 +50,16 @@ def test_fleet_overview_comparison_and_interactive_filter_dimensions(db) -> None
     db.add(_record("fleet-new", "PEUGEOT", "208", 2022, 120))
     db.add(_record("fleet-new", "PEUGEOT", "2008", 2020, 30))
     db.add(_record("fleet-new", "FIAT", "ARGO", 2020, 250))
+    db.add(
+        _record(
+            "fleet-new",
+            "YAMAHA",
+            "FAZER",
+            2022,
+            80,
+            category="motorcycles",
+        )
+    )
     db.commit()
 
     result = fleet_overview(db)
@@ -54,11 +72,19 @@ def test_fleet_overview_comparison_and_interactive_filter_dimensions(db) -> None
         "share_pct": 62.5,
     }
     assert result["filters"]["brands"] == ["FIAT", "PEUGEOT"]
+    assert "YAMAHA" not in result["filters"]["brands"]
 
     peugeot = fleet_overview(db, brand="peugeot")
     assert peugeot["total"] == 150
     assert peugeot["brand_count"] == 1
     assert peugeot["model_count"] == 2
+
+    motorcycles = fleet_overview(db, category="motorcycles")
+    assert motorcycles["category"] == "motorcycles"
+    assert motorcycles["total"] == 80
+    assert motorcycles["brands"] == [
+        {"label": "YAMAHA", "value": 80, "share_pct": 100.0}
+    ]
 
 
 def test_fleet_records_are_grouped_filtered_and_paginated(db) -> None:
@@ -66,6 +92,16 @@ def test_fleet_records_are_grouped_filtered_and_paginated(db) -> None:
     db.add(_record("fleet-directory", "PEUGEOT", "208", 2022, 120))
     db.add(_record("fleet-directory", "PEUGEOT", "208", 2023, 40))
     db.add(_record("fleet-directory", "FIAT", "ARGO", 2020, 250))
+    db.add(
+        _record(
+            "fleet-directory",
+            "HONDA",
+            "CG 160 FAN",
+            2022,
+            90,
+            category="motorcycles",
+        )
+    )
     db.commit()
 
     result = fleet_records(

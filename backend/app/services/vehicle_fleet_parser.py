@@ -100,8 +100,13 @@ def _quantity(value: str) -> int:
     return int(parsed)
 
 
+def _identity_key(value: str) -> str:
+    return " ".join(value.split()).casefold()
+
+
 def parse_fleet_zip(path: Path, period: str, *, full_validation: bool = True) -> ParsedFleet:
     totals: dict[tuple[str, str, int | None], int] = defaultdict(int)
+    display_names: dict[tuple[str, str, int | None], tuple[str, str]] = {}
     source_rows = 0
     try:
         archive = ZipFile(path)
@@ -130,21 +135,27 @@ def parse_fleet_zip(path: Path, period: str, *, full_validation: bool = True) ->
                 brand = CANONICAL_BRANDS.get(brand.upper(), brand)
                 year_text = (row.get("Ano Fabricação Veículo CRV") or "").strip()
                 year = int(year_text) if year_text.isdigit() and int(year_text) > 0 else None
-                totals[(brand, model, year)] += _quantity(row.get("Qtd. Veículos") or "")
+                key = (_identity_key(brand), _identity_key(model), year)
+                display_names.setdefault(key, (brand, model))
+                totals[key] += _quantity(row.get("Qtd. Veículos") or "")
                 source_rows += 1
     period_year = int(period[:4])
-    aggregates = [
-        FleetAggregate(
-            brand=brand,
-            model=model,
-            year=year,
-            age_band=_age_band(year, period_year),
-            nationality=nationality_for_brand(brand) or "Não informada",
-            value=value,
+    aggregates = []
+    for key, value in totals.items():
+        if value <= 0:
+            continue
+        brand, model = display_names[key]
+        year = key[2]
+        aggregates.append(
+            FleetAggregate(
+                brand=brand,
+                model=model,
+                year=year,
+                age_band=_age_band(year, period_year),
+                nationality=nationality_for_brand(brand) or "Não informada",
+                value=value,
+            )
         )
-        for (brand, model, year), value in totals.items()
-        if value > 0
-    ]
     total = sum(item.value for item in aggregates)
     if full_validation and (source_rows < 100_000 or len(aggregates) < 10_000):
         raise ValueError("O arquivo RENAVAM não atingiu o volume mínimo esperado.")

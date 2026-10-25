@@ -20,6 +20,7 @@ def _fleet_zip() -> bytes:
         "UF;Município;Marca Modelo;Ano Fabricação Veículo CRV;Qtd. Veículos\r\n"
         "SÃO PAULO;SÃO PAULO;PEUGEOT/208 ACTIVE;2024; 3.0\r\n"
         "SÃO PAULO;CAMPINAS;PEUGEOT/208 ACTIVE;2024; 2.0\r\n"
+        "SÃO PAULO;SANTOS;PEUGEOT/208 Active;2024; 1.0\r\n"
         "RIO DE JANEIRO;RIO DE JANEIRO;PEUGEOT/2008 ALLURE;2021; 4.0\r\n"
     ).encode()
     with ZipFile(output, "w", ZIP_DEFLATED) as archive:
@@ -36,10 +37,10 @@ def test_period_and_fleet_parser_aggregate_across_municipalities(tmp_path) -> No
         "2026-09",
         "Setembro de 2026",
     )
-    assert parsed.source_rows == 3
-    assert parsed.total_vehicles == 9
+    assert parsed.source_rows == 4
+    assert parsed.total_vehicles == 10
     assert {(row.model, row.value) for row in parsed.aggregates} == {
-        ("208 ACTIVE", 5),
+        ("208 ACTIVE", 6),
         ("2008 ALLURE", 4),
     }
 
@@ -87,13 +88,13 @@ def test_fleet_import_is_atomic_idempotent_and_enqueues_notification(
         )
     )
     assert snapshot is not None
-    assert snapshot.validation["total_vehicles"] == 9
+    assert snapshot.validation["total_vehicles"] == 10
     records = db.scalars(
         select(VehicleMarketRecord).where(
             VehicleMarketRecord.snapshot_id == snapshot.id
         )
     ).all()
-    assert sum(row.value for row in records) == 9
+    assert sum(row.value for row in records) == 10
     assert db.scalar(select(VehicleFleetImportRun)).status == "completed"
 
 

@@ -1,10 +1,20 @@
-<app-page-header
-  eyebrow="Sistema"
-  title="Configurações"
-  subtitle="Dê ao ERP a identidade da sua empresa e ajuste como prefere trabalhar."
-></app-page-header>
-
-@if (loading()) {
+@if (section === 'home') {
+  <section class="settings-home-grid">
+    @if (canManageCompany) {
+      <a routerLink="/settings/empresa"><strong>Empresa</strong><span>Identificação, atividades, contato e endereço.</span></a>
+      <a routerLink="/settings/fiscal"><strong>Fiscal</strong><span>Regime tributário, ICMS e vigência.</span></a>
+      <a routerLink="/settings/estudo"><strong>Estudo de mercado</strong><span>Margem, comissão, devoluções e frete.</span></a>
+      <a routerLink="/settings/importacao"><strong>Importação</strong><span>Incoterm, modal, câmbio e desembaraço.</span></a>
+      <a routerLink="/settings/ia"><strong>Inteligência artificial</strong><span>Conector usado pelos estudos de mercado.</span></a>
+    }
+    <a routerLink="/settings/identidade"><strong>Identidade</strong><span>Nome e logotipo compartilhados no ERP.</span></a>
+    <a routerLink="/settings/aparencia"><strong>Aparência</strong><span>Tema deste dispositivo.</span></a>
+    @if (canManageCompany) {
+      <a routerLink="/settings/backups"><strong>Backups</strong><span>Google Drive, frequência e retenção.</span></a>
+      <a routerLink="/settings/documentos"><strong>Documentos</strong><span>Perfis de importação de compras.</span></a>
+    }
+  </section>
+} @else if (loading()) {
   <div class="settings-loading" role="status">Carregando suas configurações…</div>
 } @else {
   @if (error()) {
@@ -14,11 +24,8 @@
     <p class="settings-message" role="status">{{ message() }}</p>
   }
 
-  @if (canManageCompany) {
-    <app-company-settings />
-  }
-
   <form class="settings-form" (ngSubmit)="save()">
+    @if (section === 'identity') {
     <section class="settings-card">
       <div class="settings-heading">
         <span class="section-icon">✳</span>
@@ -73,7 +80,9 @@
         </div>
       </div>
     </section>
+    }
 
+    @if (section === 'appearance') {
     <section class="settings-card">
       <div class="settings-heading">
         <span class="section-icon">◐</span>
@@ -108,7 +117,9 @@
         </button>
       </div>
     </section>
+    }
 
+    @if (section === 'backups') {
     <section class="settings-card backup-card">
       <div class="settings-heading">
         <span class="section-icon">↻</span>
@@ -284,7 +295,9 @@
         </button>
       </div>
     </section>
+    }
 
+    @if (section === 'documents') {
     <section class="settings-card import-profile-card">
       <div class="settings-heading">
         <span class="section-icon">▤</span>
@@ -349,12 +362,15 @@
         por país e formato; se a identificação for ambígua, escolha o perfil na revisão.</small
       >
     </section>
+    }
 
+    @if (section !== 'documents') {
     <div class="settings-actions">
       <p>As alterações de identidade são compartilhadas com todos os usuários do ERP.</p>
       <button class="primary" type="submit" [disabled]="saving()">
         {{ saving() ? 'Salvando…' : 'Salvar configurações' }}
       </button>
     </div>
+    }
   </form>
 }

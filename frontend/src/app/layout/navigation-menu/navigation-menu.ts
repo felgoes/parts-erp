@@ -55,7 +55,10 @@ export class NavigationMenu implements OnInit {
 
   private syncConfiguration(url: string): void {
     const route = url.split('?')[0].replace(/^\//, '');
-    const active = ['settings', 'integrations', 'users'].includes(route);
+    const active =
+      route === 'settings' ||
+      route.startsWith('settings/') ||
+      ['integrations', 'users'].includes(route);
     this.configurationActive.set(active);
     this.settingsOpen.set(active);
     if (active) this.revealAdminSection();

@@ -1,15 +1,20 @@
+import json
 from datetime import UTC, datetime
 from decimal import Decimal
+from types import SimpleNamespace
 
 import pytest
 
 from app.api.routes.market_studies import _summary
+from app.core.security import encrypt_secret
 from app.models import Product, User, UserRole
+from app.models.assistant import AssistantConfiguration
 from app.schemas.company import CompanyProfileData
 from app.schemas.market_studies import MarketStudyCreate
 from app.schemas.vehicle_market import VehicleMarketImportIn
 from app.services import (
     china_suppliers,
+    market_opportunity_ai,
     market_opportunity_candidates,
     market_study_opportunity,
     vehicle_market,
@@ -73,7 +78,7 @@ def test_study_without_company_profile_is_saved_as_pending(db) -> None:
         MarketStudyCreate(mode="brand", brand="Fiat"),
     )
     assert study.status == "pending_company_profile"
-    assert study.result["company_profile_pending"]["completion_url"] == "/settings"
+    assert study.result["company_profile_pending"]["completion_url"] == "/settings/empresa"
     assert study.result["candidates"] == []
     assert study.result["company_snapshot"] == {}
 
@@ -151,6 +156,78 @@ def test_china_adapters_never_manufacture_a_supplier() -> None:
     assert fixture.status == "unavailable"
     assert not unavailable.leads and not fixture.leads
     assert "Nenhuma empresa" in fixture.message
+
+
+def test_new_study_reuses_saved_ai_connector_without_overriding_deterministic_decision(
+    db, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    user = _user(db)
+    _company(db, user)
+    _product(db)
+    db.add(
+        AssistantConfiguration(
+            id="shared",
+            provider="openai_responses",
+            model="test-model",
+            encrypted_api_key=encrypt_secret("encrypted-test-key"),
+        )
+    )
+    db.flush()
+    offers = [
+        {
+            "id": f"AI-MLB-{index}",
+            "title": "Bomba de água Fiat Argo FIAT-OEM-1",
+            "price": "120",
+            "similarity": 1,
+            "permalink": f"https://produto.mercadolivre.com.br/AI-MLB-{index}",
+        }
+        for index in range(5)
+    ]
+    monkeypatch.setattr(
+        market_opportunity_candidates,
+        "_mercadolivre_market_data",
+        lambda *_: (offers, [], "MLB"),
+    )
+    monkeypatch.setattr(
+        market_opportunity_ai,
+        "complete",
+        lambda *args, **kwargs: SimpleNamespace(
+            content=json.dumps(
+                {
+                    "schema_version": "market_opportunity_result.v1",
+                    "executive_summary": "Confirme a aplicação antes de cotar.",
+                    "ranking": [
+                        {
+                            "candidate_id": "cand_01",
+                            "why": "Há oferta compatível observada.",
+                            "facts": ["Cinco anúncios compatíveis."],
+                            "hypotheses": [],
+                            "missing_data": ["Frete de entrada."],
+                            "risks": ["Aplicação ainda não confirmada."],
+                            "score": 100,
+                            "decision": "recomendada_para_teste",
+                        }
+                    ],
+                    "next_best_action": "Pedir cotação real.",
+                    "limitations": ["Preço publicado não é cotação firme."],
+                }
+            ),
+            input_tokens=10,
+            output_tokens=20,
+        ),
+    )
+
+    study = market_study_opportunity.run_opportunity_study(
+        db,
+        user,
+        MarketStudyCreate(mode="brand", brand="Fiat"),
+    )
+
+    assert study.provider_used == "openai_responses"
+    assert study.result["ai_report"]["provider"] == "openai_responses"
+    assert study.result["candidates"][0]["ai_explanation"]["why"]
+    assert study.result["candidates"][0]["decision"] != "recomendada_para_teste"
+    assert study.result["executive_summary"] == "Confirme a aplicação antes de cotar."
 
 
 def test_vehicle_market_import_is_idempotent_and_keeps_flow_and_stock_separate(db) -> None:

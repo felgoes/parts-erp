@@ -54,6 +54,16 @@ class Settings(BaseSettings):
     # The real Alibaba adapter remains disabled until app credentials and commercial
     # API access are confirmed. Fixture mode is accepted only outside production.
     china_supplier_mode: Literal["disabled", "fixture"] = "disabled"
+    fipe_market_api_url: AnyHttpUrl = AnyHttpUrl(
+        "https://fipeapibrasil.com.br/api/mercado/mais-vendidos/atual"
+    )
+    # Optional free key. Without it, the public endpoint is limited to 5 calls/day.
+    fipe_market_api_key: SecretStr | None = None
+    vehicle_market_cache_hours: int = Field(default=6, ge=1, le=24)
+    senatran_fleet_package_url: AnyHttpUrl = AnyHttpUrl(
+        "https://dados.transportes.gov.br/api/3/action/package_show"
+        "?id=registro-nacional-de-veiculos-automotores-renavam"
+    )
 
     @field_validator("token_encryption_key")
     @classmethod

@@ -1,0 +1,15 @@
+@use '../market-studies/market-studies-5';
+
+.vehicle-market-page {
+  margin-top: 1rem;
+}
+
+.source-strip a {
+  color: inherit;
+  text-decoration: none;
+
+  small {
+    display: block;
+    margin-top: 0.2rem;
+  }
+}

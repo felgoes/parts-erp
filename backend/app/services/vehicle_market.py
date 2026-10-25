@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from datetime import UTC, datetime
 from typing import Any
 from uuid import uuid4
 
@@ -22,6 +23,13 @@ def nationality_for_brand(brand: str | None) -> str | None:
         if name.casefold() == folded:
             return nationality
     return None
+
+
+def _iso_utc(value: datetime | None) -> str | None:
+    if value is None:
+        return None
+    normalized = value if value.tzinfo else value.replace(tzinfo=UTC)
+    return normalized.isoformat()
 
 
 def _fingerprint(payload: VehicleMarketImportIn) -> str:
@@ -77,7 +85,9 @@ def _record_key(
     return hashlib.sha256(value.casefold().encode()).hexdigest()
 
 
-def import_snapshot(db: Session, payload: VehicleMarketImportIn) -> VehicleMarketSnapshot:
+def import_snapshot(
+    db: Session, payload: VehicleMarketImportIn, *, allow_partial: bool = False
+) -> VehicleMarketSnapshot:
     fingerprint = _fingerprint(payload)
     current = db.scalar(
         select(VehicleMarketSnapshot).where(
@@ -138,7 +148,7 @@ def import_snapshot(db: Session, payload: VehicleMarketImportIn) -> VehicleMarke
         .limit(1)
     )
     total = sum(row.value for row in rows)
-    if previous and previous.record_count:
+    if previous and previous.record_count and not allow_partial:
         previous_records = db.scalars(
             select(VehicleMarketRecord).where(
                 VehicleMarketRecord.snapshot_id == previous.id
@@ -303,10 +313,8 @@ def vehicle_market_overview(
                 "metric": metric,
                 "period": snapshot.period if snapshot else None,
                 "source_url": snapshot.source_url if snapshot else None,
-                "retrieved_at": snapshot.retrieved_at.isoformat() if snapshot else None,
-                "published_at": snapshot.published_at.isoformat()
-                if snapshot and snapshot.published_at
-                else None,
+                "retrieved_at": _iso_utc(snapshot.retrieved_at) if snapshot else None,
+                "published_at": _iso_utc(snapshot.published_at) if snapshot else None,
                 "status": "published" if snapshot else "unavailable",
             }
         )

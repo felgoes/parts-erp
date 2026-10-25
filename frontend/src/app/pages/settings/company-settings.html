@@ -32,27 +32,29 @@
       }
     </div>
 
-    <div
-      class="card-import"
-      (dragover)="$event.preventDefault()"
-      (drop)="dropCard($event)"
-      role="region"
-      aria-label="Importar Cartão CNPJ"
-    >
-      <div>
-        <strong>Importar Cartão CNPJ</strong>
-        <span>PDF de até 5 páginas, JPG ou PNG de até 10 MB e 30 megapixels.</span>
+    @if (tab() === 'empresa') {
+      <div
+        class="card-import"
+        (dragover)="$event.preventDefault()"
+        (drop)="dropCard($event)"
+        role="region"
+        aria-label="Importar Cartão CNPJ"
+      >
+        <div>
+          <strong>Importar Cartão CNPJ</strong>
+          <span>PDF de até 5 páginas, JPG ou PNG de até 10 MB e 30 megapixels.</span>
+        </div>
+        <label class="secondary upload-button">
+          {{ parsing() ? 'Lendo localmente…' : 'Selecionar ou arrastar arquivo' }}
+          <input
+            type="file"
+            accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
+            [disabled]="parsing()"
+            (change)="parseCard($event)"
+          />
+        </label>
       </div>
-      <label class="secondary upload-button">
-        {{ parsing() ? 'Lendo localmente…' : 'Selecionar ou arrastar arquivo' }}
-        <input
-          type="file"
-          accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
-          [disabled]="parsing()"
-          (change)="parseCard($event)"
-        />
-      </label>
-    </div>
+    }
 
     @if (cardPreview(); as preview) {
       <section class="card-review" aria-live="polite">
@@ -125,13 +127,6 @@
         </div>
       </section>
     }
-
-    <nav class="company-tabs" aria-label="Seções do cadastro da empresa">
-      <button type="button" [class.is-active]="tab() === 'empresa'" (click)="tab.set('empresa')">Empresa</button>
-      <button type="button" [class.is-active]="tab() === 'fiscal'" (click)="tab.set('fiscal')">Fiscal</button>
-      <button type="button" [class.is-active]="tab() === 'estudo'" (click)="tab.set('estudo')">Estudo de mercado</button>
-      <button type="button" [class.is-active]="tab() === 'importacao'" (click)="tab.set('importacao')">Importação</button>
-    </nav>
 
     @if (tab() === 'empresa') {
       <div class="company-form-grid">

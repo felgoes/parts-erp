@@ -39,6 +39,7 @@ BRAND_NATIONALITIES = {
     "Jaguar": "Reino Unido",
     "Mini": "Reino Unido",
     "Bentley": "Reino Unido",
+    "Ram": "Estados Unidos",
     "BYD": "China",
     "GWM": "China",
     "Chery": "China",

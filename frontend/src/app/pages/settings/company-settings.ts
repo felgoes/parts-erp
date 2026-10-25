@@ -1,6 +1,7 @@
 import { DatePipe, DecimalPipe, KeyValuePipe } from '@angular/common';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute } from '@angular/router';
 import { finalize } from 'rxjs';
 import { CompanyApi } from '../../core/api/company-api';
 import {
@@ -99,6 +100,7 @@ export const EMPTY_COMPANY_PROFILE: CompanyProfileData = {
 })
 export class CompanySettings implements OnInit {
   private readonly companyApi = inject(CompanyApi);
+  private readonly route = inject(ActivatedRoute);
   readonly profile = signal<CompanyProfile | null>(null);
   readonly draft = signal<CompanyProfileData>(structuredClone(EMPTY_COMPANY_PROFILE));
   readonly tab = signal<'empresa' | 'fiscal' | 'estudo' | 'importacao'>('empresa');
@@ -120,6 +122,10 @@ export class CompanySettings implements OnInit {
   readonly error = signal('');
 
   ngOnInit(): void {
+    const configuredTab = this.route.snapshot.data['tab'];
+    if (['empresa', 'fiscal', 'estudo', 'importacao'].includes(configuredTab)) {
+      this.tab.set(configuredTab);
+    }
     this.load();
   }
 

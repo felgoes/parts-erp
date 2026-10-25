@@ -21,10 +21,6 @@ from app.schemas.common import (
     VehicleMarketImportOut,
 )
 from app.services.company_profile import study_company_parameters
-from app.services.market_study_opportunity import (
-    process_queued_opportunity,
-    queue_opportunity_study,
-)
 from app.services.market_research import (
     connector_config,
     connector_output,
@@ -32,7 +28,13 @@ from app.services.market_research import (
     run_study,
     save_connector,
 )
+from app.services.market_study_opportunity import (
+    process_queued_opportunity,
+    queue_opportunity_study,
+)
 from app.services.vehicle_market import import_snapshot, vehicle_market_overview
+from app.services.vehicle_market_fleet_source import fleet_source_status
+from app.services.vehicle_market_live import sync_live_vehicle_market
 
 router = APIRouter(prefix="/market-studies", tags=["Estudos de mercado"])
 
@@ -149,7 +151,8 @@ def read_vehicle_market(
     db: Session = Depends(get_db),
     _: User = Depends(require_permission(Permission.STUDY_READ)),
 ) -> dict:
-    return vehicle_market_overview(
+    sync = sync_live_vehicle_market(db)
+    overview = vehicle_market_overview(
         db,
         period=period,
         nationality=nationality,
@@ -159,6 +162,9 @@ def read_vehicle_market(
         region=region,
         age_band=age_band,
     )
+    overview["live_sync"] = sync
+    overview["fleet_publication"] = fleet_source_status()
+    return overview
 
 
 @router.post("/vehicle-market/import", response_model=VehicleMarketImportOut)

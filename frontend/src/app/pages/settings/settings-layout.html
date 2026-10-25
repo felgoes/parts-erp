@@ -1,0 +1,19 @@
+<app-page-header
+  eyebrow="Sistema"
+  title="Configurações"
+  subtitle="Ajuste a empresa, os parâmetros operacionais e suas preferências em páginas específicas."
+/>
+
+<nav class="settings-navigation" aria-label="Seções de Configurações">
+  @for (item of navigation(); track item.path) {
+    <a
+      [routerLink]="item.path"
+      routerLinkActive="is-active"
+      [routerLinkActiveOptions]="{ exact: item.path === '/settings' }"
+    >
+      {{ item.label }}
+    </a>
+  }
+</nav>
+
+<router-outlet />

@@ -316,7 +316,12 @@ def run_study(db: Session, user: User, payload: Any) -> MarketStudy:
             provider = _PROVIDERS[config.provider]
             prompt = _analysis_prompt(query, result)
             raw_report = (
-                provider.analyze(config.model, api_key, prompt, config.base_url or "")
+                provider.analyze(
+                    config.model,
+                    api_key,
+                    prompt,
+                    base_url=config.base_url or "",
+                )
                 if config.provider == "openai_compatible"
                 else provider.analyze(config.model, api_key, prompt)
             )

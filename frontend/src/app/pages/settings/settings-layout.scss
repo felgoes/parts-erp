@@ -1,0 +1,24 @@
+.settings-navigation {
+  display: flex;
+  gap: 0.35rem;
+  overflow-x: auto;
+  margin: 1rem 0;
+  padding: 0.35rem;
+  border: 1px solid var(--border);
+  border-radius: 0.85rem;
+  background: var(--surface);
+
+  a {
+    flex: 0 0 auto;
+    padding: 0.6rem 0.8rem;
+    border-radius: 0.55rem;
+    color: var(--muted);
+    font-weight: 700;
+    text-decoration: none;
+  }
+
+  a.is-active {
+    background: var(--accent);
+    color: var(--accent-contrast, #fff);
+  }
+}

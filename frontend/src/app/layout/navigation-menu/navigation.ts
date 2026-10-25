@@ -74,6 +74,11 @@ export const NAVIGATION_SECTIONS: NavigationSection[] = [
         iconPath: 'M3 12h4l2-6 4 12 2-6h6',
       },
       {
+        path: '/vehicle-market',
+        label: 'Carros no Brasil',
+        iconPath: 'M5 17h14l-1.5-6.5A2 2 0 0 0 15.6 9H8.4a2 2 0 0 0-1.9 1.5L5 17ZM4 17v3h3v-2h10v2h3v-3M7 14h.01M17 14h.01',
+      },
+      {
         path: '/market-studies',
         label: 'Estudos de mercado',
         iconPath: 'M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14ZM16 16l5 5',

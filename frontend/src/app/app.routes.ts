@@ -60,6 +60,11 @@ export const routes: Routes = [
           ),
       },
       {
+        path: 'vehicle-market',
+        loadComponent: () =>
+          import('./pages/vehicle-market/vehicle-market').then((m) => m.VehicleMarketPage),
+      },
+      {
         path: 'finance',
         loadComponent: () => import('./pages/finance/finance').then((m) => m.FinancePage),
       },
@@ -91,7 +96,70 @@ export const routes: Routes = [
       },
       {
         path: 'settings',
-        loadComponent: () => import('./pages/settings/settings').then((m) => m.SettingsPage),
+        loadComponent: () =>
+          import('./pages/settings/settings-layout').then((m) => m.SettingsLayout),
+        children: [
+          {
+            path: '',
+            pathMatch: 'full',
+            data: { section: 'home' },
+            loadComponent: () =>
+              import('./pages/settings/settings').then((m) => m.SettingsPage),
+          },
+          {
+            path: 'identidade',
+            data: { section: 'identity' },
+            loadComponent: () =>
+              import('./pages/settings/settings').then((m) => m.SettingsPage),
+          },
+          {
+            path: 'aparencia',
+            data: { section: 'appearance' },
+            loadComponent: () =>
+              import('./pages/settings/settings').then((m) => m.SettingsPage),
+          },
+          {
+            path: 'backups',
+            data: { section: 'backups' },
+            loadComponent: () =>
+              import('./pages/settings/settings').then((m) => m.SettingsPage),
+          },
+          {
+            path: 'documentos',
+            data: { section: 'documents' },
+            loadComponent: () =>
+              import('./pages/settings/settings').then((m) => m.SettingsPage),
+          },
+          {
+            path: 'empresa',
+            data: { tab: 'empresa' },
+            loadComponent: () =>
+              import('./pages/settings/company-settings').then((m) => m.CompanySettings),
+          },
+          {
+            path: 'fiscal',
+            data: { tab: 'fiscal' },
+            loadComponent: () =>
+              import('./pages/settings/company-settings').then((m) => m.CompanySettings),
+          },
+          {
+            path: 'estudo',
+            data: { tab: 'estudo' },
+            loadComponent: () =>
+              import('./pages/settings/company-settings').then((m) => m.CompanySettings),
+          },
+          {
+            path: 'importacao',
+            data: { tab: 'importacao' },
+            loadComponent: () =>
+              import('./pages/settings/company-settings').then((m) => m.CompanySettings),
+          },
+          {
+            path: 'ia',
+            loadComponent: () =>
+              import('./pages/settings/settings-ai').then((m) => m.SettingsAi),
+          },
+        ],
       },
     ],
   },

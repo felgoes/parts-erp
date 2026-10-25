@@ -10,6 +10,7 @@ from app.models import MarketStudy, User
 from app.schemas.market_studies import MarketStudyCreate
 from app.services.china_suppliers import china_supplier_provider
 from app.services.company_profile import study_company_parameters
+from app.services.market_opportunity_ai import explain_opportunities
 from app.services.market_opportunity_candidates import (
     analyze_candidate,
     matching_products,
@@ -19,10 +20,24 @@ from app.services.vehicle_market import vehicle_market_overview
 
 
 def _company_pending(profile_missing: list[str]) -> dict[str, Any]:
+    market_fields = {"margem-alvo", "comissão do canal", "percentual de devolução"}
+    import_fields = {"spread cambial", "Incoterm", "modal de importação", "UF de desembaraço"}
+    if market_fields & set(profile_missing):
+        completion_url = "/settings/estudo"
+    elif import_fields & set(profile_missing):
+        completion_url = "/settings/importacao"
+    elif {"regime tributário", "CNPJ"} & set(profile_missing):
+        completion_url = (
+            "/settings/fiscal"
+            if "regime tributário" in profile_missing
+            else "/settings/empresa"
+        )
+    else:
+        completion_url = "/settings/empresa"
     return {
         "needs_company_profile": True,
         "missing_company_fields": profile_missing,
-        "completion_url": "/settings",
+        "completion_url": completion_url,
         "message": "Complete o cadastro da empresa para calcular margem e importação.",
     }
 
@@ -37,6 +52,7 @@ def run_opportunity_study(
     company, missing = study_company_parameters(db)
     label = payload.study_label()
     observed_at = datetime.now(UTC)
+    provider_used = None
     if missing:
         supplier_result = None
         if payload.include_suppliers_china:
@@ -131,6 +147,14 @@ def run_opportunity_study(
                 ],
             },
         }
+    if not missing and result.get("candidates"):
+        result, provider_used = explain_opportunities(
+            db,
+            scope=scope,
+            company=company,
+            result=result,
+            user_id=user.id,
+        )
     status = (
         "pending_company_profile"
         if missing
@@ -147,7 +171,7 @@ def run_opportunity_study(
     study.marketplace_fee_pct = Decimal(str(company.get("channel_commission_pct") or "0"))
     study.shipping_cost = Decimal("0")
     study.status = status
-    study.provider_used = None
+    study.provider_used = provider_used
     study.result = result
     db.add(study)
     db.commit()

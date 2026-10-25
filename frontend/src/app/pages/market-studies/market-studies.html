@@ -5,16 +5,15 @@
 />
 
 <section class="library-toolbar">
-  <nav aria-label="Seções de estudo de mercado">
-    <button type="button" [class.is-active]="tab() === 'studies'" (click)="setTab('studies')">
-      Estudos
-    </button>
-    <button type="button" [class.is-active]="tab() === 'cars'" (click)="setTab('cars')">
-      Carros no Brasil
-    </button>
-  </nav>
+  <div>
+    <strong>Biblioteca de estudos</strong>
+    <p>O contexto de veículos fica em Análise → Carros no Brasil.</p>
+  </div>
   @if (canRun) {
-    <a class="primary" routerLink="/market-studies/new">Novo estudo →</a>
+    <div class="library-actions">
+      <a class="quiet-button" routerLink="/settings/ia">Configurar IA</a>
+      <a class="primary" routerLink="/market-studies/new">Novo estudo →</a>
+    </div>
   }
 </section>
 
@@ -22,249 +21,90 @@
   <p class="inline-message is-error" role="alert">{{ error() }}</p>
 }
 
-@if (tab() === 'studies') {
-  <section class="library-card">
-    <div class="library-heading">
-      <div>
-        <p class="eyebrow">Biblioteca</p>
-        <h2>Estudos salvos</h2>
-        <p>Cada linha abre uma página inteira. O retorno preserva busca, filtros e aba.</p>
-      </div>
-      <span>{{ total() }} resultado(s)</span>
+<section class="library-card">
+  <div class="library-heading">
+    <div>
+      <p class="eyebrow">Biblioteca</p>
+      <h2>Estudos salvos</h2>
+      <p>Cada linha abre uma página inteira. O retorno preserva busca e filtros.</p>
     </div>
-    <form class="study-filters" (ngSubmit)="applyFilters()">
-      <label
-        >Buscar<input
-          [(ngModel)]="filters.search"
-          name="search"
-          placeholder="Marca, nacionalidade ou peça"
-      /></label>
-      <label
-        >Status<select [(ngModel)]="filters.status" name="status">
-          <option value="">Todos</option>
-          <option value="completed">Concluído</option>
-          <option value="insufficient_data">Dados insuficientes</option>
-          <option value="pending_company_profile">Cadastro pendente</option>
-        </select></label
-      >
-      <label
-        >Decisão<select [(ngModel)]="filters.decision" name="decision">
-          <option value="">Todas</option>
-          <option value="negociar_fornecedor">Negociar fornecedor</option>
-          <option value="validar_demanda">Validar demanda</option>
-          <option value="observar">Observar</option>
-          <option value="rejeitada">Rejeitada</option>
-          <option value="dados_insuficientes">Dados insuficientes</option>
-        </select></label
-      >
-      <button class="secondary" type="submit">Filtrar</button>
-      <button class="quiet-button" type="button" (click)="clearFilters()">Limpar</button>
-    </form>
+    <span>{{ total() }} resultado(s)</span>
+  </div>
+  <form class="study-filters" (ngSubmit)="applyFilters()">
+    <label
+      >Buscar<input
+        [(ngModel)]="filters.search"
+        name="search"
+        placeholder="Marca, nacionalidade ou peça"
+    /></label>
+    <label
+      >Status<select [(ngModel)]="filters.status" name="status">
+        <option value="">Todos</option>
+        <option value="completed">Concluído</option>
+        <option value="insufficient_data">Dados insuficientes</option>
+        <option value="pending_company_profile">Cadastro pendente</option>
+      </select></label
+    >
+    <label
+      >Decisão<select [(ngModel)]="filters.decision" name="decision">
+        <option value="">Todas</option>
+        <option value="negociar_fornecedor">Negociar fornecedor</option>
+        <option value="validar_demanda">Validar demanda</option>
+        <option value="observar">Observar</option>
+        <option value="rejeitada">Rejeitada</option>
+        <option value="dados_insuficientes">Dados insuficientes</option>
+      </select></label
+    >
+    <button class="secondary" type="submit">Filtrar</button>
+    <button class="quiet-button" type="button" (click)="clearFilters()">Limpar</button>
+  </form>
 
-    @if (loading()) {
-      <p role="status">Carregando estudos…</p>
-    } @else if (studies().length) {
-      <div class="study-table" role="list">
-        <div class="study-table-head" aria-hidden="true">
-          <span>Seleção</span><span>Conclusão</span><span>Melhor candidato</span
-          ><span>Nota / confiança</span><span>Margem parcial</span><span>Atualização</span>
-        </div>
-        @for (study of studies(); track study.id) {
-          <a
-            class="study-row"
-            role="listitem"
-            [routerLink]="['/market-studies', study.id]"
-            [queryParams]="selectionQuery(study)"
-          >
-            <span>
-              <strong>{{ study.selection }}</strong>
-              <small>{{ study.brand ? study.nationality : study.mode }}</small>
-            </span>
-            <span>
-              <strong>{{ study.conclusion }}</strong>
-              <small>{{ decisionLabel(study.decision) }}</small>
-            </span>
-            <span>
-              <strong>{{ study.best_candidate || 'Não informado' }}</strong>
-              <small>{{ study.status }}</small>
-            </span>
-            <span>
-              <strong>{{ study.score ?? '—' }}/100</strong>
-              <small>confiança {{ study.confidence || 'não informada' }}</small>
-            </span>
-            <span>
-              <strong>{{ study.estimated_margin_pct ? study.estimated_margin_pct + '%' : 'Não informada' }}</strong>
-              <small>parcial quando faltar custo</small>
-            </span>
-            <span>
-              <strong>{{ study.created_at | date: 'dd/MM/yyyy' : 'America/Sao_Paulo' : 'pt-BR' }}</strong>
-              <small>{{ study.created_at | date: 'HH:mm' : 'America/Sao_Paulo' : 'pt-BR' }} →</small>
-            </span>
-          </a>
-        }
+  @if (loading()) {
+    <p role="status">Carregando estudos…</p>
+  } @else if (studies().length) {
+    <div class="study-table" role="list">
+      <div class="study-table-head" aria-hidden="true">
+        <span>Seleção</span><span>Conclusão</span><span>Melhor candidato</span
+        ><span>Nota / confiança</span><span>Margem parcial</span><span>Atualização</span>
       </div>
-    } @else {
-      <div class="empty-state">
-        <strong>Nenhum estudo encontrado</strong>
-        <p>Crie o primeiro estudo a partir de uma marca ou nacionalidade.</p>
-      </div>
-    }
-  </section>
-
-  @if (canConfigure) {
-    <details class="connector-panel" (toggle)="connectorOpen.set($any($event.target).open)">
-      <summary>Configuração do conector de IA</summary>
-      <p>
-        Opcional. Sem IA configurada, ranking e bloqueios continuam sendo calculados pelo backend.
-      </p>
-      <div class="connector-grid">
-        <label
-          >Provedor<select [(ngModel)]="connector.provider">
-            <option value="openai_responses">OpenAI (Responses API)</option>
-            <option value="openai_compatible">Compatível com OpenAI</option>
-          </select></label
+      @for (study of studies(); track study.id) {
+        <a
+          class="study-row"
+          role="listitem"
+          [routerLink]="['/market-studies', study.id]"
+          [queryParams]="selectionQuery(study)"
         >
-        <label>Modelo<input [(ngModel)]="connector.model" /></label>
-        @if (connector.provider === 'openai_compatible') {
-          <label>URL base HTTPS<input [(ngModel)]="connector.base_url" /></label>
-        }
-        <label
-          >Chave de API<input
-            type="password"
-            [(ngModel)]="connector.api_key"
-            [placeholder]="connector.has_api_key ? 'Chave salva; deixe vazio para manter' : 'Chave do provedor'"
-        /></label>
-        <label
-          ><input type="checkbox" [(ngModel)]="connector.enabled" /> Usar IA nos novos estudos</label
-        >
-        <button class="secondary" type="button" [disabled]="savingConnector()" (click)="saveConnector()">
-          {{ savingConnector() ? 'Salvando…' : 'Salvar conector' }}
-        </button>
-      </div>
-      @if (connectorMessage()) {
-        <p class="inline-message" [class.is-error]="connectorError()">{{ connectorMessage() }}</p>
-      }
-    </details>
-  }
-} @else {
-  <section class="cars-panel">
-    <div class="library-heading">
-      <div>
-        <p class="eyebrow">Contexto do mercado brasileiro</p>
-        <h2>Carros no Brasil</h2>
-        <p>
-          Emplacamentos representam fluxo de veículos novos; frota registrada é estoque e não prova
-          uso diário.
-        </p>
-      </div>
-      <a class="secondary" routerLink="/market-studies/new">Usar seleção em um estudo →</a>
-    </div>
-    <form class="car-filters" (ngSubmit)="applyCarFilters()">
-      <label
-        >Nacionalidade<select [(ngModel)]="carFilters.nationality" name="cars_nationality">
-          <option value="">Todas</option>
-          @for (country of uniqueNationalities(); track country) {
-            <option [value]="country">{{ country }}</option>
-          }
-        </select></label
-      >
-      <label
-        >Marca<select [(ngModel)]="carFilters.brand" name="cars_brand">
-          <option value="">Todas</option>
-          @for (brand of cars()?.brand_nationalities | keyvalue; track brand.key) {
-            <option [value]="brand.key">{{ brand.key }}</option>
-          }
-        </select></label
-      >
-      <label
-        >Categoria<select [(ngModel)]="carFilters.category" name="cars_category">
-          <option value="">Todas</option>
-          <option value="automovel">Automóveis</option>
-          <option value="comercial_leve">Comerciais leves</option>
-        </select></label
-      >
-      <label
-        >Competência<input
-          type="month"
-          [(ngModel)]="carFilters.period"
-          name="cars_period"
-      /></label>
-      <button class="secondary" type="submit">Aplicar</button>
-    </form>
-
-    @if (carsLoading()) {
-      <p role="status">Carregando publicações de veículos…</p>
-    } @else if (cars(); as overview) {
-      <div class="source-strip">
-        @for (source of overview.sources; track source.metric) {
-          <span [class.is-unavailable]="!source.available">
-            <strong>{{ source.metric === 'fleet' ? 'Frota' : 'Emplacamentos' }}</strong>
-            {{ source.available ? source.source + ' · ' + source.period : 'Fonte não publicada' }}
+          <span>
+            <strong>{{ study.selection }}</strong>
+            <small>{{ study.brand ? study.nationality : study.mode }}</small>
           </span>
-        }
-      </div>
-      @if (!overview.sources[0]?.available && !overview.sources[1]?.available) {
-        <div class="empty-state">
-          <strong>Nenhuma publicação automotiva validada</strong>
-          <p>
-            Importe um arquivo oficial de emplacamentos ou frota para exibir rankings. O ERP não
-            preenche números ausentes com estimativas.
-          </p>
-        </div>
+          <span>
+            <strong>{{ study.conclusion }}</strong>
+            <small>{{ decisionLabel(study.decision) }}</small>
+          </span>
+          <span>
+            <strong>{{ study.best_candidate || 'Não informado' }}</strong>
+            <small>{{ study.status }}</small>
+          </span>
+          <span>
+            <strong>{{ study.score ?? '—' }}/100</strong>
+            <small>confiança {{ study.confidence || 'não informada' }}</small>
+          </span>
+          <span>
+            <strong>{{ study.estimated_margin_pct ? study.estimated_margin_pct + '%' : 'Não informada' }}</strong>
+            <small>parcial quando faltar custo</small>
+          </span>
+          <span>
+            <strong>{{ study.created_at | date: 'dd/MM/yyyy' : 'America/Sao_Paulo' : 'pt-BR' }}</strong>
+            <small>{{ study.created_at | date: 'HH:mm' : 'America/Sao_Paulo' : 'pt-BR' }} →</small>
+          </span>
+        </a>
       }
-      <div class="car-totals">
-        <article><span>Frota registrada</span><strong>{{ overview.fleet.total === null ? 'Não publicado' : (overview.fleet.total | number: '1.0-0') }}</strong><small>{{ overview.fleet.period || 'Sem competência' }}</small></article>
-        <article><span>Emplacamentos no mês</span><strong>{{ overview.monthly.total === null ? 'Não publicado' : (overview.monthly.total | number: '1.0-0') }}</strong><small>{{ overview.monthly.period || 'Sem competência' }}</small></article>
-        <article><span>YTD</span><strong>{{ overview.ytd.total === null ? 'Não publicado' : (overview.ytd.total | number: '1.0-0') }}</strong><small>Acumulado publicado no ano</small></article>
-        <article><span>Últimos 13 meses</span><strong>{{ overview.trend.length }}</strong><small>competências observadas</small></article>
-      </div>
-      <p class="definitions">
-        Comparativo mensal:
-        {{ overview.comparisons.previous_period
-          ? overview.comparisons.previous_period.period + ' · ' + overview.comparisons.previous_period.total
-          : 'mês anterior não publicado' }}
-        · mesmo mês do ano anterior:
-        {{ overview.comparisons.year_ago
-          ? overview.comparisons.year_ago.period + ' · ' + overview.comparisons.year_ago.total
-          : 'não publicado' }}.
-      </p>
-      <div class="ranking-grid">
-        @for (ranking of [
-          { title: 'Marcas no mês', rows: overview.monthly.brands },
-          { title: 'Marcas no YTD', rows: overview.ytd.brands },
-          { title: 'Frota por marca', rows: overview.fleet.brands },
-          { title: 'Frota por faixa etária', rows: overview.fleet.age_bands || [] }
-        ]; track ranking.title) {
-          <article class="ranking-card">
-            <h3>{{ ranking.title }}</h3>
-            @for (row of ranking.rows.slice(0, 8); track row.label; let index = $index) {
-              <div>
-                <span>{{ index + 1 }}. {{ row.label }}</span>
-                <strong>{{ row.value | number: '1.0-0' }}</strong>
-                <small>{{ row.share_pct !== null ? row.share_pct + '%' : '—' }}</small>
-              </div>
-            } @empty {
-              <p class="muted">Não informado.</p>
-            }
-          </article>
-        }
-      </div>
-      <article class="trend-card">
-        <h3>Tendência de emplacamentos</h3>
-        @for (point of overview.trend; track point.period) {
-          <div class="trend-row">
-            <span>{{ point.period }}</span>
-            <i [style.width.%]="trendWidth(point.value, overview.trend)"></i>
-            <strong>{{ point.value | number: '1.0-0' }}</strong>
-          </div>
-        } @empty {
-          <p class="muted">Série mensal ainda não importada.</p>
-        }
-      </article>
-      <p class="definitions">
-        <strong>Definições:</strong> {{ overview.definitions.registrations }}
-        {{ overview.definitions.fleet }}
-      </p>
-    }
-  </section>
-}
+    </div>
+  } @else {
+    <div class="empty-state">
+      <strong>Nenhum estudo encontrado</strong>
+      <p>Crie o primeiro estudo a partir de uma marca ou nacionalidade.</p>
+    </div>
+  }
+</section>

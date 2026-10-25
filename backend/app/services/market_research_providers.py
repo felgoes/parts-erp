@@ -15,7 +15,15 @@ from app.models import (
 class ResearchProvider(Protocol):
     name: str
 
-    def analyze(self, model: str, api_key: str, prompt: str) -> dict[str, Any]: ...
+    def analyze(
+        self,
+        model: str,
+        api_key: str,
+        prompt: str,
+        *,
+        instructions: str | None = None,
+        base_url: str = "",
+    ) -> dict[str, Any]: ...
 
 
 def _safe_ai_json(value: str) -> dict[str, Any]:
@@ -34,14 +42,24 @@ def _safe_ai_json(value: str) -> dict[str, Any]:
 class OpenAIResponsesProvider:
     name = "openai_responses"
 
-    def analyze(self, model: str, api_key: str, prompt: str) -> dict[str, Any]:
+    def analyze(
+        self,
+        model: str,
+        api_key: str,
+        prompt: str,
+        *,
+        instructions: str | None = None,
+        base_url: str = "",
+    ) -> dict[str, Any]:
+        del base_url
         response = httpx.post(
             "https://api.openai.com/v1/responses",
             headers={"Authorization": f"Bearer {api_key}"},
             json={
                 "model": model,
                 "store": False,
-                "instructions": (
+                "instructions": instructions
+                or (
                     "Você é analista de mercado de autopeças no Brasil. "
                     "Use exclusivamente os dados "
                     "fornecidos; diferencie evidência de hipótese; nunca invente giro mensal, "
@@ -72,7 +90,15 @@ class OpenAIResponsesProvider:
 class OpenAICompatibleProvider:
     name = "openai_compatible"
 
-    def analyze(self, model: str, api_key: str, prompt: str, base_url: str) -> dict[str, Any]:
+    def analyze(
+        self,
+        model: str,
+        api_key: str,
+        prompt: str,
+        *,
+        instructions: str | None = None,
+        base_url: str = "",
+    ) -> dict[str, Any]:
         response = httpx.post(
             f"{base_url.rstrip('/')}/chat/completions",
             headers={"Authorization": f"Bearer {api_key}"},
@@ -83,7 +109,8 @@ class OpenAICompatibleProvider:
                 "messages": [
                     {
                         "role": "system",
-                        "content": (
+                        "content": instructions
+                        or (
                             "Você é analista de mercado de autopeças no Brasil. "
                             "Use apenas evidências recebidas e não invente fornecedores, giro ou "
                             "compatibilidade. Responda "

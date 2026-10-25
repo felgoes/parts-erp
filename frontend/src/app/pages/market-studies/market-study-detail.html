@@ -146,6 +146,15 @@
                     <ul>@for (risk of candidate.risks; track risk) { <li>{{ risk }}</li> }</ul>
                   </div>
                 </div>
+                @if (candidate.ai_explanation; as ai) {
+                  <section class="profile-pending">
+                    <strong>Leitura assistida</strong>
+                    <p>{{ ai.why }}</p>
+                    @if (ai.missing_data.length) {
+                      <p>Lacunas adicionais: {{ ai.missing_data.join('; ') }}.</p>
+                    }
+                  </section>
+                }
                 <p><strong>Próxima validação:</strong> {{ candidate.next_validation.action }}</p>
                 <p>
                   Sucesso: {{ candidate.next_validation.success_criteria }}. Parada:
@@ -191,7 +200,7 @@
               <p>Emplacamentos: {{ market.monthly.total === null ? 'não publicados' : (market.monthly.total | number: '1.0-0') }} em {{ market.monthly.period || 'competência não publicada' }}.</p>
               <p>Frota: {{ market.fleet.total === null ? 'não publicada' : (market.fleet.total | number: '1.0-0') }} em {{ market.fleet.period || 'competência não publicada' }}.</p>
               <p class="muted">{{ market.definitions.registrations }} {{ market.definitions.fleet }}</p>
-              <a routerLink="/market-studies" [queryParams]="{ tab: 'cars', brand: current.result.scope?.brand, nationality: current.result.scope?.nationality }">Abrir Carros no Brasil →</a>
+              <a routerLink="/vehicle-market" [queryParams]="{ brand: current.result.scope?.brand, nationality: current.result.scope?.nationality }">Abrir Carros no Brasil →</a>
             }
           </article>
 

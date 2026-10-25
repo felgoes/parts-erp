@@ -1,0 +1,173 @@
+<app-page-header
+  eyebrow="Análise de mercado"
+  title="Carros no Brasil"
+  subtitle="Acompanhe emplacamentos e frota registrada sem misturar fluxo de vendas com estoque de veículos."
+/>
+
+<section class="cars-panel vehicle-market-page">
+  <div class="library-heading">
+    <div>
+      <p class="eyebrow">Rankings automotivos</p>
+      <h2>Mercado em acompanhamento</h2>
+      <p>
+        Ranking de modelos da Fenabrave via FIPE API BRASIL. Marca e nacionalidade são
+        derivadas por um mapa editorial explícito; modelos desconhecidos não são descartados.
+      </p>
+    </div>
+    <a class="secondary" routerLink="/market-studies/new">Usar seleção em um estudo →</a>
+  </div>
+
+  <form class="car-filters" (ngSubmit)="load()">
+    <label
+      >Nacionalidade<select [(ngModel)]="filters.nationality" name="nationality">
+        <option value="">Todas</option>
+        @for (country of nationals(); track country) {
+          <option [value]="country">{{ country }}</option>
+        }
+      </select></label
+    >
+    <label
+      >Marca<select [(ngModel)]="filters.brand" name="brand">
+        <option value="">Todas</option>
+        @for (brand of overview()?.brand_nationalities | keyvalue; track brand.key) {
+          <option [value]="brand.key">{{ brand.key }}</option>
+        }
+      </select></label
+    >
+    <label
+      >Categoria<select [(ngModel)]="filters.category" name="category">
+        <option value="">Automóveis e comerciais leves</option>
+        <option value="automovel">Automóveis</option>
+        <option value="comercial_leve">Comerciais leves</option>
+      </select></label
+    >
+    <label
+      >Competência<input type="month" [(ngModel)]="filters.period" name="period"
+    /></label>
+    <button class="secondary" type="submit">Aplicar</button>
+  </form>
+
+  @if (error()) {
+    <p class="inline-message is-error" role="alert">{{ error() }}</p>
+  }
+  @if (loading()) {
+    <p role="status">Atualizando rankings automotivos…</p>
+  } @else if (overview(); as data) {
+    <div class="source-strip">
+      @for (source of data.sources; track source.metric) {
+        <a
+          [class.is-unavailable]="!source.available"
+          [attr.href]="source.source_url || null"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <strong>{{ sourceLabel(source.metric) }}</strong>
+          {{ source.available ? source.source + ' · ' + source.period : 'Publicação ainda não importada' }}
+          @if (source.retrieved_at) {
+            <small>coletado {{ source.retrieved_at | date: 'dd/MM/yyyy HH:mm' : 'America/Sao_Paulo' : 'pt-BR' }}</small>
+          }
+        </a>
+      }
+      @if (data.fleet_publication; as fleet) {
+        <a
+          [href]="fleet.resource_url || fleet.dataset_url"
+          target="_blank"
+          rel="noopener noreferrer"
+          [class.is-unavailable]="data.fleet.total === null"
+        >
+          <strong>Fonte oficial da frota</strong>
+          {{ fleet.status === 'available' ? fleet.source + ' · ' + (fleet.period || 'publicação disponível') : 'Portal SENATRAN indisponível' }}
+          <small>
+            {{
+              data.fleet.total === null
+                ? 'Publicação mensal configurada; totais só aparecem após importação do arquivo.'
+                : 'Dados importados e validados.'
+            }}
+          </small>
+        </a>
+      }
+    </div>
+    @if (data.live_sync?.message) {
+      <p class="inline-message is-error">{{ data.live_sync?.message }}</p>
+    }
+    @if (!data.sources[0]?.available && !data.sources[1]?.available) {
+      <div class="empty-state">
+        <strong>Nenhuma publicação validada</strong>
+        <p>A API será consultada novamente na próxima atualização.</p>
+      </div>
+    }
+    <div class="car-totals">
+      <article>
+        <span>Emplacamentos no Top 20</span>
+        <strong>{{ data.monthly.total === null ? 'Não publicado' : (data.monthly.total | number: '1.0-0') }}</strong>
+        <small>{{ data.monthly.period || 'Sem competência' }} · {{ data.live_sync?.status || 'cache local' }}</small>
+      </article>
+      <article>
+        <span>YTD no Top 20</span>
+        <strong>{{ data.ytd.total === null ? 'Em formação' : (data.ytd.total | number: '1.0-0') }}</strong>
+        <small>soma das competências já coletadas no ano</small>
+      </article>
+      <article>
+        <span>Frota registrada</span>
+        <strong>{{ data.fleet.total === null ? 'Não importada' : (data.fleet.total | number: '1.0-0') }}</strong>
+        <small>{{ data.fleet.period || 'RENAVAM/SENATRAN mensal' }}</small>
+      </article>
+      <article>
+        <span>Última coleta</span>
+        <strong>{{ data.live_sync?.retrieved_at ? (data.live_sync?.retrieved_at | date: 'HH:mm' : 'America/Sao_Paulo' : 'pt-BR') : '—' }}</strong>
+        <small>cache de 6 horas para preservar a cota gratuita</small>
+      </article>
+    </div>
+    <p class="definitions">
+      Comparativo mensal:
+      {{ data.comparisons.previous_period
+        ? data.comparisons.previous_period.period + ' · ' + data.comparisons.previous_period.total
+        : 'mês anterior não coletado' }}
+      · mesmo mês do ano anterior:
+      {{ data.comparisons.year_ago
+        ? data.comparisons.year_ago.period + ' · ' + data.comparisons.year_ago.total
+        : 'não coletado' }}.
+    </p>
+    <div class="ranking-grid">
+      @for (ranking of [
+        { title: 'Modelos no mês', rows: data.monthly.models },
+        { title: 'Marcas no mês', rows: data.monthly.brands },
+        { title: 'Nacionalidade no mês', rows: data.monthly.nationalities },
+        { title: 'Modelos no YTD', rows: data.ytd.models },
+        { title: 'Frota por marca', rows: data.fleet.brands },
+        { title: 'Frota por faixa etária', rows: data.fleet.age_bands || [] }
+      ]; track ranking.title) {
+        <article class="ranking-card">
+          <h3>{{ ranking.title }}</h3>
+          @for (row of ranking.rows.slice(0, 10); track row.label; let index = $index) {
+            <div>
+              <span>{{ index + 1 }}. {{ row.label }}</span>
+              <strong>{{ row.value | number: '1.0-0' }}</strong>
+              <small>{{ row.share_pct !== null ? row.share_pct + '%' : '—' }}</small>
+            </div>
+          } @empty {
+            <p class="muted">{{ ranking.title.startsWith('Frota') ? 'Fonte oficial ainda não importada.' : 'Sem dados na competência.' }}</p>
+          }
+        </article>
+      }
+    </div>
+    <article class="trend-card">
+      <h3>Emplacamentos mês a mês</h3>
+      @for (point of data.trend; track point.period) {
+        <div class="trend-row">
+          <span>{{ point.period }}</span>
+          <i [style.width.%]="trendWidth(point.value)"></i>
+          <strong>{{ point.value | number: '1.0-0' }}</strong>
+        </div>
+      } @empty {
+        <p class="muted">A série será formada pelas próximas competências coletadas.</p>
+      }
+    </article>
+    <p class="definitions">
+      <strong>Definições:</strong> {{ data.definitions.registrations }}
+      {{ data.definitions.fleet }}
+      A API gratuita publica o Top 20 por segmento; ela não representa todos os veículos
+      emplacados nem substitui a base completa da frota.
+    </p>
+  }
+</section>

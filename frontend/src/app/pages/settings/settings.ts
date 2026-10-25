@@ -1,6 +1,7 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
 import { ApiService } from '../../core/api.service';
 import { AuthService } from '../../core/auth.service';
@@ -13,17 +14,16 @@ import {
   backupStateLabel,
   backupStateTone,
 } from '../../shared/backup-health';
-import { PageHeader } from '../../shared/page-header';
-import { CompanySettings } from './company-settings';
 
 @Component({
   selector: 'app-settings',
-  imports: [CompanySettings, FormsModule, PageHeader, DatePipe],
+  imports: [FormsModule, DatePipe, RouterLink],
   templateUrl: './settings.html',
   styleUrl: './settings.scss',
 })
 export class SettingsPage implements OnInit {
   private readonly api = inject(ApiService);
+  private readonly route = inject(ActivatedRoute);
   readonly auth = inject(AuthService);
   readonly appearance = inject(AppearanceService);
   private readonly brand = inject(ErpBrandService);
@@ -64,6 +64,7 @@ export class SettingsPage implements OnInit {
     backup_last_error_code: null,
     backup_local_dir: null,
   });
+  readonly section = String(this.route.snapshot.data['section'] ?? 'home');
   readonly draft = {
     company_name: 'Parts ERP',
     company_short_name: 'Parts',

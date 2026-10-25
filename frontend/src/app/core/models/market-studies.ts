@@ -189,6 +189,13 @@ export interface MarketStudyCandidate {
     success_criteria: string;
     stop_criteria: string;
   };
+  ai_explanation?: {
+    why: string;
+    facts: string[];
+    hypotheses: string[];
+    missing_data: string[];
+    risks: string[];
+  };
 }
 
 export interface MarketStudyCompetitorLink {
@@ -222,6 +229,21 @@ export interface VehicleMarketOverview {
     status: string;
   }>;
   brand_nationalities: Record<string, string>;
+  live_sync?: {
+    status: 'updated' | 'cached' | 'updating' | 'unavailable';
+    period: string | null;
+    retrieved_at: string | null;
+    message?: string;
+  };
+  fleet_publication?: {
+    status: 'available' | 'unavailable';
+    dataset_url: string;
+    resource_url: string | null;
+    period: string | null;
+    published_at: string | null;
+    format: string | null;
+    source: string;
+  };
   definitions: { registrations: string; fleet: string };
 }
 

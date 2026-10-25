@@ -1,0 +1,97 @@
+<section class="company-settings">
+  <div class="company-heading">
+    <div>
+      <p class="eyebrow">Configuração única</p>
+      <h2>Inteligência artificial</h2>
+      <p>
+        Este é o mesmo conector usado pelo assistente do ERP e pelos estudos de mercado.
+        A IA explica e prioriza evidências, sem alterar números, notas ou decisões calculadas.
+      </p>
+    </div>
+  </div>
+  @if (loading()) {
+    <p role="status">Carregando configuração de IA…</p>
+  } @else {
+    <div class="company-form-grid">
+      <label
+        >Provedor<select
+          name="assistant_provider"
+          [(ngModel)]="form.provider"
+          (ngModelChange)="changeProvider()"
+          required
+        >
+          @for (provider of configuration()?.providers ?? []; track provider.id) {
+            <option [value]="provider.id">{{ provider.label }}</option>
+          }
+        </select></label
+      >
+      <label
+        >Modelo<select name="assistant_model" [(ngModel)]="form.model" required>
+          @for (model of models(); track model.id) {
+            <option [value]="model.id">{{ model.id }}</option>
+          }
+        </select></label
+      >
+      <label class="wide"
+        >Chave de API<input
+          type="password"
+          name="assistant_api_key"
+          autocomplete="new-password"
+          [(ngModel)]="form.api_key"
+          [placeholder]="
+            configuration()?.has_api_key
+              ? 'Chave salva; deixe vazio para manter'
+              : 'Informe a chave do provedor'
+          "
+      /></label>
+      <label
+        >Limite mensal (US$)<input
+          type="number"
+          min="0"
+          step="0.01"
+          name="assistant_budget"
+          [(ngModel)]="form.monthly_budget_usd"
+          placeholder="Sem limite"
+      /></label>
+      <div class="wide">
+        <p class="muted">
+          Preços de referência: {{ selectedProvider()?.pricing_updated_at }} ·
+          <a [href]="selectedProvider()?.pricing_source" target="_blank" rel="noopener noreferrer">
+            consultar fonte dos preços
+          </a>
+        </p>
+        <p class="muted">
+          Uso no mês: US$ {{ configuration()?.budget?.used_usd || '0.00' }}
+          @if (configuration()?.budget?.monthly_limit_usd) {
+            de US$ {{ configuration()?.budget?.monthly_limit_usd }}
+          }
+        </p>
+      </div>
+    </div>
+    <div class="company-actions">
+      <div>
+        <strong>{{ configuration()?.has_api_key ? 'Conector configurado' : 'Chave pendente' }}</strong>
+        <p>Sem chave, estudos e assistente continuam nos modos locais disponíveis.</p>
+      </div>
+      <div>
+        <button
+          class="secondary"
+          type="button"
+          [disabled]="testing() || !form.model"
+          (click)="test()"
+        >
+          {{ testing() ? 'Testando…' : 'Testar conexão' }}
+        </button>
+        <button class="primary" type="button" [disabled]="saving() || !form.model" (click)="save()">
+          {{ saving() ? 'Salvando…' : 'Salvar IA' }}
+        </button>
+      </div>
+    </div>
+    @if (error()) {
+      <p class="settings-message is-error" role="alert">{{ error() }}</p>
+    }
+    @if (message()) {
+      <p class="settings-message" role="status">{{ message() }}</p>
+    }
+  }
+</section>

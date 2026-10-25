@@ -48,6 +48,10 @@ MIN_COMPARABLE_SAMPLE_SIZE = 5
 
 
 def run_study(db: Session, user: User, payload: Any) -> MarketStudy:
+    if payload.mode != "legacy":
+        from app.services.market_study_opportunity import run_opportunity_study
+
+        return run_opportunity_study(db, user, payload)
     query = payload.search_term.strip()
     product = (
         db.scalar(select(Product).where(func.lower(Product.sku) == (payload.sku or "").lower()))

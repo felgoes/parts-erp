@@ -3,6 +3,8 @@ from app.models.entities import (
     AfterSaleCaseEvent,
     AfterSaleCaseItem,
     AuthSession,
+    CompanyProfile,
+    CompanyProfileVersion,
     Customer,
     ErpSettings,
     HealthSnapshot,
@@ -39,6 +41,8 @@ from app.models.entities import (
     TelemetryEvent,
     User,
     UserRole,
+    VehicleMarketRecord,
+    VehicleMarketSnapshot,
 )
 
 __all__ = [
@@ -49,6 +53,8 @@ __all__ = [
     "HealthSnapshot",
     "TelemetryEvent",
     "Customer",
+    "CompanyProfile",
+    "CompanyProfileVersion",
     "ErpSettings",
     "InvoiceDocument",
     "InvoiceItem",
@@ -82,4 +88,6 @@ __all__ = [
     "Supplier",
     "User",
     "UserRole",
+    "VehicleMarketRecord",
+    "VehicleMarketSnapshot",
 ]

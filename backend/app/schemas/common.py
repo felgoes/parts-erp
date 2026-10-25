@@ -1,4 +1,5 @@
 from app.schemas import (
+    company,  # noqa: F401
     customers,  # noqa: F401
     dashboard,  # noqa: F401
     invoices,  # noqa: F401
@@ -8,6 +9,14 @@ from app.schemas import (
     purchases,  # noqa: F401
     settings_users,  # noqa: F401
     telemetry,  # noqa: F401
+    vehicle_market,  # noqa: F401
+)
+from app.schemas.company import (  # noqa: F401
+    CnpjCardParseOut,
+    CnpjLookupIn,
+    CompanyProfileOut,
+    CompanyProfileUpdate,
+    CompanyProfileVersionOut,
 )
 from app.schemas.customers import (  # noqa: F401
     CustomerCreate,
@@ -44,8 +53,10 @@ from app.schemas.market_studies import (  # noqa: F401
     MarketStudyConnectorOut,
     MarketStudyConnectorUpdate,
     MarketStudyCreate,
+    MarketStudyListOut,
     MarketStudyOut,
     MarketStudyPurchaseIn,
+    MarketStudySummaryOut,
 )
 from app.schemas.marketplace import (  # noqa: F401
     MarketplaceConfigOut,
@@ -136,4 +147,9 @@ from app.schemas.telemetry import (  # noqa: F401
     TelemetryEventCreate,
     TelemetryHealthOut,
     TelemetrySummary,
+)
+from app.schemas.vehicle_market import (  # noqa: F401
+    VehicleMarketImportIn,
+    VehicleMarketImportOut,
+    VehicleMarketRecordIn,
 )

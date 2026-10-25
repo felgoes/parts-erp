@@ -1,0 +1,236 @@
+@if (loading()) {
+  <p role="status">Carregando estudo…</p>
+} @else if (error() && !study()) {
+  <div class="empty-state">
+    <strong>{{ error() }}</strong>
+    <a routerLink="/market-studies">Voltar para a biblioteca</a>
+  </div>
+} @else if (study(); as current) {
+  <section class="study-detail-page">
+    <header class="detail-header">
+      <div>
+        <button class="quiet-button" type="button" (click)="backToLibrary()">← Voltar para a lista</button>
+        <p class="eyebrow">Estudo salvo · snapshot imutável</p>
+        <h1>
+          {{ current.result.scope?.brand || current.result.scope?.nationality || current.search_term }}
+        </h1>
+        <p>
+          {{ current.created_at | date: 'dd/MM/yyyy HH:mm' : 'America/Sao_Paulo' : 'pt-BR' }}
+          · {{ current.status }} · {{ current.provider_used || 'cálculo determinístico' }}
+        </p>
+      </div>
+      <div class="study-actions">
+        @if (canCreatePurchase) {
+          <button class="primary" type="button" (click)="purchaseOpen.set(!purchaseOpen())">
+            Gerar compra
+          </button>
+        }
+        <button class="secondary" type="button" (click)="duplicate()">Duplicar premissas</button>
+        <button class="quiet-button" type="button" (click)="exportStudy()">Exportar JSON</button>
+      </div>
+    </header>
+
+    @if (message()) {
+      <p class="inline-message" role="status">{{ message() }}</p>
+    }
+    @if (error()) {
+      <p class="inline-message is-error" role="alert">{{ error() }}</p>
+    }
+
+    @if (purchaseOpen()) {
+      <section class="profile-pending">
+        <strong>Iniciar negociação de compra</strong>
+        <p>Isto cria um rascunho para cotações. Nenhum pedido é enviado.</p>
+        <div class="study-form-grid">
+          <label>SKU<input [(ngModel)]="purchase.sku" name="purchase_sku" /></label>
+          <label>Quantidade<input type="number" min="0.001" step="0.001" [(ngModel)]="purchase.quantity" name="purchase_quantity" /></label>
+        </div>
+        <div class="study-actions">
+          <button class="primary" type="button" [disabled]="purchaseBusy()" (click)="createPurchase()">
+            {{ purchaseBusy() ? 'Criando…' : 'Criar negociação' }}
+          </button>
+          <button class="quiet-button" type="button" (click)="purchaseOpen.set(false)">Cancelar</button>
+        </div>
+      </section>
+    }
+
+    @if (current.status === 'generating') {
+      <section class="profile-pending" role="status">
+        <strong>Gerando estudo</strong>
+        <p>
+          Mercado → compatibilidade → economia → análise assistida. A página será atualizada
+          quando a execução terminar; nenhuma nova chamada é cobrada automaticamente.
+        </p>
+      </section>
+    } @else if (current.status === 'failed') {
+      <section class="profile-pending">
+        <strong>A execução não foi concluída</strong>
+        <p>{{ current.result.error || 'Abra um novo estudo para tentar outra vez.' }}</p>
+      </section>
+    } @else {
+    @if (isOpportunity) {
+      @if (current.result.company_profile_pending; as pending) {
+        <section class="profile-pending">
+          <strong>Completar cadastro da empresa</strong>
+          <p>{{ pending.message }} Falta: {{ pending.missing_company_fields.join(', ') }}.</p>
+          <a class="secondary" [routerLink]="pending.completion_url">Abrir Configurações →</a>
+        </section>
+      }
+
+      <section class="decision-panel">
+        <article>
+          <p class="eyebrow">Vale investigar?</p>
+          <h2>{{ current.result.executive_summary }}</h2>
+          @if (current.result.best_candidate; as best) {
+            <p>
+              <strong>{{ best.product_name }}</strong><br />
+              {{ decisionLabel(best.decision) }} · nota {{ best.score }}/100 · confiança
+              {{ best.confidence }}
+            </p>
+            <p><strong>O que impede uma decisão mais forte:</strong> {{ best.blocking_gate }}.</p>
+          } @else {
+            <p>Nenhum candidato passou pelos portões mínimos desta seleção.</p>
+          }
+        </article>
+        <aside>
+          <span>Próxima ação</span>
+          <strong>{{ current.result.best_candidate?.next_validation?.action || 'Validar dados básicos da seleção.' }}</strong>
+          <small>Nota alta não substitui cotação, aplicação, tributos ou teste real.</small>
+        </aside>
+      </section>
+
+      @if (current.result.best_candidate; as best) {
+        <div class="car-totals">
+          <article><span>Contribuição parcial</span><strong>{{ best.unit_economics.partial_contribution_margin_pct ? best.unit_economics.partial_contribution_margin_pct + '%' : 'Não calculada' }}</strong><small>margem de contribuição</small></article>
+          <article><span>Preço mediano</span><strong>{{ best.market_price.median ? (best.market_price.median | number: '1.2-2') : 'Não informado' }}</strong><small>BRL observado</small></article>
+          <article><span>Frota endereçável</span><strong>{{ best.addressable_fleet ?? 'Não informada' }}</strong><small>não substituída por emplacamentos</small></article>
+          <article><span>Comparáveis</span><strong>{{ best.offers_comparable }}</strong><small>ofertas compatíveis</small></article>
+        </div>
+      }
+
+      <div class="detail-grid">
+        <section>
+          <div class="library-heading">
+            <div><p class="eyebrow">Esteira determinística</p><h2>Candidatos priorizados</h2></div>
+            <span>{{ current.result.candidates?.length ?? 0 }} famílias</span>
+          </div>
+          <div class="candidate-list">
+            @for (candidate of current.result.candidates ?? []; track candidate.candidate_id; let index = $index) {
+              <details class="candidate-card" [open]="expanded()[candidate.candidate_id]">
+                <summary (click)="$event.preventDefault(); toggleCandidate(candidate)">
+                  <div class="candidate-head">
+                    <strong>{{ index + 1 }}. {{ candidate.part_family }}</strong>
+                    <span>{{ decisionLabel(candidate.decision) }}</span>
+                  </div>
+                  <div class="candidate-metrics">
+                    <span>{{ candidate.offers_comparable }} comparáveis</span>
+                    <span>{{ candidate.unit_economics.partial_contribution_margin_pct ? candidate.unit_economics.partial_contribution_margin_pct + '% parcial' : 'Margem incompleta' }}</span>
+                    <span>Nota {{ candidate.score }}</span>
+                  </div>
+                </summary>
+                <div class="study-form-grid">
+                  <div>
+                    <strong>Fatos</strong>
+                    <ul>@for (fact of candidate.facts; track fact) { <li>{{ fact }}</li> }</ul>
+                  </div>
+                  <div>
+                    <strong>Hipóteses</strong>
+                    <ul>@for (hypothesis of candidate.hypotheses; track hypothesis) { <li>{{ hypothesis }}</li> }</ul>
+                  </div>
+                  <div>
+                    <strong>Lacunas</strong>
+                    <ul>@for (item of candidate.unit_economics.components_unknown; track item) { <li>{{ item }}</li> }</ul>
+                  </div>
+                  <div>
+                    <strong>Riscos</strong>
+                    <ul>@for (risk of candidate.risks; track risk) { <li>{{ risk }}</li> }</ul>
+                  </div>
+                </div>
+                <p><strong>Próxima validação:</strong> {{ candidate.next_validation.action }}</p>
+                <p>
+                  Sucesso: {{ candidate.next_validation.success_criteria }}. Parada:
+                  {{ candidate.next_validation.stop_criteria }}.
+                </p>
+              </details>
+            } @empty {
+              <div class="empty-state">
+                <strong>Nenhuma aplicação no catálogo</strong>
+                <p>Cadastre fitments confiáveis antes de gerar famílias de peças.</p>
+              </div>
+            }
+          </div>
+
+          <section>
+            <div class="library-heading">
+              <div><p class="eyebrow">Concorrência</p><h2>Anúncios observados</h2></div>
+              <span>{{ current.result.competitor_links?.length ?? 0 }} links</span>
+            </div>
+            <div class="candidate-list">
+              @for (offer of current.result.competitor_links ?? []; track offer.offer_id) {
+                <a class="candidate-card" [href]="offer.url" target="_blank" rel="noopener noreferrer">
+                  <span class="candidate-head">
+                    <strong>{{ offer.title }}</strong>
+                    <strong>R$ {{ offer.observed_price }}</strong>
+                  </span>
+                  <small>
+                    Preço observado em {{ offer.observed_at | date: 'dd/MM/yyyy HH:mm' : 'America/Sao_Paulo' : 'pt-BR' }}
+                    · {{ offer.compatibility }} ↗
+                  </small>
+                </a>
+              } @empty {
+                <p class="muted">Nenhum link público foi retornado pela fonte.</p>
+              }
+            </div>
+          </section>
+        </section>
+
+        <aside class="candidate-list">
+          <article class="candidate-card">
+            <h3>Contexto do veículo</h3>
+            @if (current.result.market_context; as market) {
+              <p>Emplacamentos: {{ market.monthly.total === null ? 'não publicados' : (market.monthly.total | number: '1.0-0') }} em {{ market.monthly.period || 'competência não publicada' }}.</p>
+              <p>Frota: {{ market.fleet.total === null ? 'não publicada' : (market.fleet.total | number: '1.0-0') }} em {{ market.fleet.period || 'competência não publicada' }}.</p>
+              <p class="muted">{{ market.definitions.registrations }} {{ market.definitions.fleet }}</p>
+              <a routerLink="/market-studies" [queryParams]="{ tab: 'cars', brand: current.result.scope?.brand, nationality: current.result.scope?.nationality }">Abrir Carros no Brasil →</a>
+            }
+          </article>
+
+          @if (current.result.supplier_research; as suppliers) {
+            <article class="candidate-card" [class.supplier-unavailable]="suppliers.status !== 'fixture'">
+              <h3>Fornecedores na China</h3>
+              <strong>{{ suppliers.status }}</strong>
+              <p>{{ suppliers.message }}</p>
+              @if (suppliers.leads.length) {
+                <p>{{ suppliers.leads.length }} pista(s) de fixture; nenhuma é cotação real.</p>
+              } @else {
+                <p>Nenhuma empresa ou preço real foi pesquisado.</p>
+              }
+            </article>
+          }
+
+          <article class="candidate-card">
+            <h3>Memória de cálculo</h3>
+            <p>Custos conhecidos são somados; componentes ausentes permanecem explícitos e não viram zero.</p>
+            <p>
+              UF fiscal: {{ $any(current.result.company_snapshot)?.fiscal_state || 'Não informada' }};
+              regime: {{ $any(current.result.company_snapshot)?.tax_regime || 'Não informado' }};
+              spread: {{ $any(current.result.company_snapshot)?.exchange_spread_pct || 'Não informado' }}%.
+            </p>
+            <p><strong>Tributos:</strong> {{ current.result.tax_rules?.message }}</p>
+          </article>
+          @if (current.result.source_errors?.length) {
+            <article class="candidate-card">
+              <h3>Resultado parcial</h3>
+              @for (sourceError of current.result.source_errors; track sourceError) {
+                <p>{{ sourceError }}</p>
+              }
+            </article>
+          }
+        </aside>
+      </div>
+    } @else {
+      <app-market-study-result [study]="current" />
+    }
+    }
+  </section>
+}

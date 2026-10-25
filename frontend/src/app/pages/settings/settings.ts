@@ -3,6 +3,7 @@ import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { finalize } from 'rxjs';
 import { ApiService } from '../../core/api.service';
+import { AuthService } from '../../core/auth.service';
 import { AppearanceService, AppearanceTheme } from '../../core/appearance.service';
 import { ErpBrandService } from '../../core/erp-brand.service';
 import { ErpSettings } from '../../core/models';
@@ -13,15 +14,17 @@ import {
   backupStateTone,
 } from '../../shared/backup-health';
 import { PageHeader } from '../../shared/page-header';
+import { CompanySettings } from './company-settings';
 
 @Component({
   selector: 'app-settings',
-  imports: [FormsModule, PageHeader, DatePipe],
+  imports: [CompanySettings, FormsModule, PageHeader, DatePipe],
   templateUrl: './settings.html',
   styleUrl: './settings.scss',
 })
 export class SettingsPage implements OnInit {
   private readonly api = inject(ApiService);
+  readonly auth = inject(AuthService);
   readonly appearance = inject(AppearanceService);
   private readonly brand = inject(ErpBrandService);
   readonly loading = signal(true);
@@ -74,6 +77,9 @@ export class SettingsPage implements OnInit {
     drive_client_secret: '',
     drive_folder_id: '',
   };
+  get canManageCompany(): boolean {
+    return this.auth.user()?.role === 'admin';
+  }
 
   ngOnInit(): void {
     const params = new URLSearchParams(window.location.search);

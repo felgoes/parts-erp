@@ -51,6 +51,9 @@ class Settings(BaseSettings):
     shopee_redirect_uri: AnyHttpUrl = AnyHttpUrl(
         "http://localhost:8000/api/v1/integrations/shopee/callback"
     )
+    # The real Alibaba adapter remains disabled until app credentials and commercial
+    # API access are confirmed. Fixture mode is accepted only outside production.
+    china_supplier_mode: Literal["disabled", "fixture"] = "disabled"
 
     @field_validator("token_encryption_key")
     @classmethod

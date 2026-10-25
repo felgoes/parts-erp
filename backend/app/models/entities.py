@@ -1,16 +1,19 @@
 from app.models import (
     assistant,  # noqa: F401
     catalog,  # noqa: F401
+    company,  # noqa: F401
     enums,  # noqa: F401
     integrations,  # noqa: F401
     purchases,  # noqa: F401
     sales,  # noqa: F401
     users,  # noqa: F401
+    vehicle_market,  # noqa: F401
 )
 from app.models.catalog import (  # noqa: F401
     Product,
     ProductMarketplaceListing,
 )
+from app.models.company import CompanyProfile, CompanyProfileVersion  # noqa: F401
 from app.models.enums import (  # noqa: F401
     InvoiceSource,
     InvoiceStatus,
@@ -57,4 +60,8 @@ from app.models.users import (  # noqa: F401
     PushNotificationDismissal,
     PushPreference,
     User,
+)
+from app.models.vehicle_market import (  # noqa: F401
+    VehicleMarketRecord,
+    VehicleMarketSnapshot,
 )

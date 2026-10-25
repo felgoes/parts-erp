@@ -1,0 +1,105 @@
+<app-page-header
+  eyebrow="Novo estudo"
+  title="Onde vale investigar?"
+  subtitle="Escolha somente a marca ou a nacionalidade. O ERP deriva a outra dimensão e cruza catálogo, preço e lacunas."
+/>
+
+<section class="study-form-page">
+  <div class="detail-header">
+    <a class="quiet-button" routerLink="/market-studies">← Voltar para a biblioteca</a>
+    <span>Perfil empresarial v{{ profileVersion() ?? '—' }}</span>
+  </div>
+
+  @if (missingCompanyFields().length) {
+    <div class="profile-pending">
+      <strong>O estudo pode ser registrado, mas o cálculo econômico ficará pendente.</strong>
+      <p>
+        Complete: {{ missingCompanyFields().join(', ') }}.
+        <a routerLink="/settings">Abrir cadastro da empresa →</a>
+      </p>
+    </div>
+  }
+
+  <form class="study-form-grid" (ngSubmit)="submit()">
+    <div class="mode-switch" role="group" aria-label="Modo de seleção">
+      <button
+        type="button"
+        [class.is-active]="form.mode === 'brand'"
+        [attr.aria-pressed]="form.mode === 'brand'"
+        (click)="setMode('brand')"
+      >
+        Marca
+      </button>
+      <button
+        type="button"
+        [class.is-active]="form.mode === 'nationality'"
+        [attr.aria-pressed]="form.mode === 'nationality'"
+        (click)="setMode('nationality')"
+      >
+        Nacionalidade
+      </button>
+    </div>
+
+    <label>
+      {{ form.mode === 'brand' ? 'Marca do veículo' : 'Nacionalidade da marca' }}
+      <select [(ngModel)]="form.selection" name="selection" required>
+        <option value="">Selecione</option>
+        @if (form.mode === 'brand') {
+          @for (brand of brandOptions; track brand) {
+            <option [value]="brand">{{ brand }}</option>
+          }
+        } @else {
+          @for (nationality of nationalityOptions; track nationality) {
+            <option [value]="nationality">{{ nationality }}</option>
+          }
+        }
+      </select>
+    </label>
+    <p class="muted">
+      {{ form.mode === 'brand' ? 'Nacionalidade derivada' : 'Marca' }}:
+      <strong>{{ form.mode === 'brand' ? (derivedNationality || 'Ainda não mapeada') : 'Todas as marcas do país' }}</strong>
+    </p>
+
+    <details class="wide">
+      <summary>Ajustar premissas <span>Região, categoria e fornecedores</span></summary>
+      <div class="study-form-grid">
+        <label>Região<input [(ngModel)]="form.region" name="region" placeholder="Brasil" /></label>
+        <label
+          >Categoria<select [(ngModel)]="form.category" name="category">
+            <option value="">Automóveis e comerciais leves</option>
+            <option value="automovel">Automóveis</option>
+            <option value="comercial_leve">Comerciais leves</option>
+          </select></label
+        >
+        <label class="wide">
+          <input type="checkbox" [(ngModel)]="form.includeSuppliersChina" name="china" />
+          Buscar fornecedores na China
+          <small>
+            Aumenta o tempo da pesquisa e consulta somente fonte aprovada. Sem API licenciada, o
+            resultado dirá que a busca está indisponível; anúncio publicado não é cotação firme.
+          </small>
+        </label>
+      </div>
+    </details>
+
+    <div class="study-actions wide">
+      <small>
+        Não usamos modal. O resultado será salvo e aberto em uma página com decisão, bloqueios,
+        concorrência, custos, fontes e limitações.
+      </small>
+      <button class="primary" type="submit" [disabled]="loading() || !form.selection">
+        {{ loading() ? 'Gerando estudo…' : 'Gerar estudo →' }}
+      </button>
+    </div>
+  </form>
+
+  @if (loading()) {
+    <div class="profile-pending" role="status">
+      <strong>Gerando estudo</strong>
+      <p>Mercado → compatibilidade → economia → análise assistida. Nenhum resultado vazio será salvo.</p>
+    </div>
+  }
+  @if (error()) {
+    <p class="inline-message is-error" role="alert">{{ error() }}</p>
+  }
+</section>

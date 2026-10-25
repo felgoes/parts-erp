@@ -3,6 +3,7 @@ export * from './models/product';
 export * from './models/finance';
 export * from './models/purchases';
 export * from './models/market-studies';
+export * from './models/company-profile';
 export * from './models/customers';
 export * from './models/invoices';
 export * from './models/dashboard';

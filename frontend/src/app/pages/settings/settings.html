@@ -14,6 +14,10 @@
     <p class="settings-message" role="status">{{ message() }}</p>
   }
 
+  @if (canManageCompany) {
+    <app-company-settings />
+  }
+
   <form class="settings-form" (ngSubmit)="save()">
     <section class="settings-card">
       <div class="settings-heading">

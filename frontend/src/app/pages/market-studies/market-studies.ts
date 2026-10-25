@@ -1,48 +1,37 @@
-import { CurrencyPipe, DatePipe, PercentPipe, registerLocaleData } from '@angular/common';
-import localePtBr from '@angular/common/locales/pt';
+import { DatePipe, DecimalPipe, KeyValuePipe } from '@angular/common';
 import { Component, OnInit, inject, signal } from '@angular/core';
-import { MarketStudyResult } from './market-study-result';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
-import { ApiService } from '../../core/api.service';
+import { MarketStudiesApi } from '../../core/api/market-studies-api';
 import { AuthService } from '../../core/auth.service';
-import { MarketStudy, MarketStudyConnector, Product } from '../../core/models';
+import {
+  MarketStudyConnector,
+  MarketStudySummary,
+  VehicleMarketOverview,
+} from '../../core/models';
 import { PageHeader } from '../../shared/page-header';
-import { MoneyInputDirective } from '../../shared/money-input.directive';
-
-registerLocaleData(localePtBr);
+import { decisionLabel, trendWidth } from './market-study-view';
 
 @Component({
   selector: 'app-market-studies',
-  imports: [
-    CurrencyPipe,
-    DatePipe,
-    FormsModule,
-    MarketStudyResult,
-    MoneyInputDirective,
-    PageHeader,
-    RouterLink,
-  ],
+  imports: [DatePipe, DecimalPipe, FormsModule, KeyValuePipe, PageHeader, RouterLink],
   templateUrl: './market-studies.html',
   styleUrl: './market-studies.scss',
 })
 export class MarketStudiesPage implements OnInit {
-  private readonly api = inject(ApiService);
+  private readonly api = inject(MarketStudiesApi);
+  private readonly router = inject(Router);
   readonly auth = inject(AuthService);
-  readonly form = {
-    search_term: '',
-    sku: '',
-    category_id: '',
-    application: '',
-    oem: '',
-    landed_cost: null as number | null,
-    fixed_fee: null as number | null,
-    outbound_shipping: null as number | null,
-    target_margin_pct: 25,
-    marketplace_fee_pct: 16,
-    shipping_cost: null as number | null,
-  };
+  readonly tab = signal<'studies' | 'cars'>('studies');
+  readonly studies = signal<MarketStudySummary[]>([]);
+  readonly total = signal(0);
+  readonly loading = signal(true);
+  readonly carsLoading = signal(false);
+  readonly error = signal('');
+  readonly cars = signal<VehicleMarketOverview | null>(null);
+  readonly filters = { search: '', status: '', decision: '' };
+  readonly carFilters = { nationality: '', brand: '', category: '', period: '' };
   readonly connector = {
     provider: 'openai_responses' as MarketStudyConnector['provider'],
     model: 'gpt-6-luna',
@@ -51,173 +40,116 @@ export class MarketStudiesPage implements OnInit {
     enabled: false,
     has_api_key: false,
   };
-  readonly studies = signal<MarketStudy[]>([]);
-  readonly productResults = signal<Product[]>([]);
-  readonly selectedProduct = signal<Product | null>(null);
-  readonly confirmProduct = signal(false);
-  readonly productSearchLoading = signal(false);
-  readonly productSearchComplete = signal(false);
-  readonly costValueSource = signal('not_available');
-  readonly feeValueSource = signal<'loading' | 'company' | 'manual' | 'fallback'>('loading');
-  private productSearchTimer?: ReturnType<typeof setTimeout>;
-  private productSearchRequestId = 0;
-  readonly selected = signal<MarketStudy | null>(null);
-  readonly draftStudy = signal<MarketStudy | null>(null);
-  readonly purchaseDraft = { sku: '', quantity: 1 };
   readonly connectorOpen = signal(false);
-  readonly loading = signal(false);
   readonly savingConnector = signal(false);
-  readonly creatingPurchase = signal(false);
-  readonly aiConfigured = signal(false);
-  readonly error = signal('');
   readonly connectorMessage = signal('');
   readonly connectorError = signal(false);
-  readonly notice = signal('');
 
-  ngOnInit() {
+  ngOnInit(): void {
+    const params = new URLSearchParams(window.location.search);
+    this.tab.set(params.get('tab') === 'cars' ? 'cars' : 'studies');
+    this.filters.search = params.get('search') ?? '';
+    this.filters.status = params.get('status') ?? '';
+    this.filters.decision = params.get('decision') ?? '';
+    this.carFilters.nationality = params.get('nationality') ?? '';
+    this.carFilters.brand = params.get('brand') ?? '';
+    if (this.tab() === 'cars') this.loadCars();
     this.loadStudies();
-    if (this.canManage) {
-      this.api.marketStudyDefaults().subscribe({
-        next: (values) => {
-          if (this.feeValueSource() !== 'manual') {
-            this.form.marketplace_fee_pct = values.marketplace_fee_pct;
-            this.feeValueSource.set('company');
-          }
-        },
-        error: () => {
-          if (this.feeValueSource() !== 'manual') this.feeValueSource.set('fallback');
+    if (this.canConfigure) {
+      this.api.marketStudyConnector().subscribe({
+        next: (config) => {
+          this.connector.provider = config.provider;
+          this.connector.model = config.model;
+          this.connector.base_url = config.base_url ?? '';
+          this.connector.enabled = config.enabled;
+          this.connector.has_api_key = config.has_api_key;
         },
       });
     }
-    this.api.marketStudyConnector().subscribe({
-      next: (config) => {
-        this.connector.provider = config.provider;
-        this.connector.model = config.model;
-        this.connector.base_url = config.base_url ?? '';
-        this.connector.enabled = config.enabled;
-        this.connector.has_api_key = config.has_api_key;
-        this.aiConfigured.set(config.configured && config.enabled);
-      },
-    });
   }
-  get canManage() {
+
+  get canRun(): boolean {
     return ['admin', 'manager'].includes(this.auth.user()?.role ?? '');
   }
-  loadStudies() {
-    this.api.marketStudies().subscribe({
-      next: (rows) => {
-        this.studies.set(rows);
-        if (!this.selected() && rows.length) this.selected.set(rows[0]);
-      },
-    });
+
+  get canConfigure(): boolean {
+    return this.canRun;
   }
-  searchProducts(term: string) {
-    const requestId = ++this.productSearchRequestId;
-    if (this.selectedProduct() && term !== this.selectedProduct()?.name) {
-      this.selectedProduct.set(null);
-      this.confirmProduct.set(false);
-      this.form.sku = '';
-      this.form.landed_cost = null;
-      this.costValueSource.set('not_available');
-    }
-    if (this.productSearchTimer) clearTimeout(this.productSearchTimer);
-    this.productResults.set([]);
-    this.productSearchComplete.set(false);
-    if (term.trim().length < 2) {
-      this.productSearchLoading.set(false);
-      return;
-    }
-    this.productSearchLoading.set(true);
-    this.productSearchTimer = setTimeout(
-      () =>
-        this.api
-          .products(term.trim())
-          .pipe(
-            finalize(() => {
-              if (requestId === this.productSearchRequestId) this.productSearchLoading.set(false);
-            }),
-          )
-          .subscribe({
-            next: (rows) => {
-              if (requestId !== this.productSearchRequestId) return;
-              this.productResults.set(rows.slice(0, 8));
-              this.productSearchComplete.set(true);
-            },
-            error: () => {
-              if (requestId === this.productSearchRequestId) this.productResults.set([]);
-            },
-          }),
-      250,
-    );
+
+  setTab(tab: 'studies' | 'cars'): void {
+    this.tab.set(tab);
+    this.syncUrl();
+    this.saveListState();
+    if (tab === 'cars' && !this.cars()) this.loadCars();
   }
-  selectProduct(product: Product) {
-    this.productSearchRequestId += 1;
-    if (this.productSearchTimer) clearTimeout(this.productSearchTimer);
-    this.productSearchLoading.set(false);
-    this.selectedProduct.set(product);
-    this.confirmProduct.set(false);
-    this.productResults.set([]);
-    this.form.application = '';
-    this.form.search_term = product.name;
-    this.form.sku = product.sku;
-    this.form.landed_cost =
-      product.cost_price != null && product.cost_price > 0 ? product.cost_price : null;
-    this.costValueSource.set(this.form.landed_cost == null ? 'not_available' : 'erp');
-  }
-  fitmentSummary(product: Product) {
-    return product.fitments
-      .slice(0, 3)
-      .map(
-        (fitment) =>
-          `${fitment.make} ${fitment.model}${fitment.year_from ? ` ${fitment.year_from}` : ''}${fitment.year_to ? `-${fitment.year_to}` : ''}${fitment.engine ? ` ${fitment.engine}` : ''}${fitment.version ? ` ${fitment.version}` : ''}`,
-      )
-      .join('; ');
-  }
-  runStudy() {
+
+  loadStudies(): void {
     this.loading.set(true);
     this.error.set('');
-    this.selected.set(null);
     this.api
-      .createMarketStudy({
-        search_term: this.form.search_term.trim(),
-        sku: this.form.sku.trim() || undefined,
-        category_id: this.form.category_id.trim() || undefined,
-        landed_cost: this.form.landed_cost == null ? undefined : Number(this.form.landed_cost),
-        fixed_fee: this.form.fixed_fee == null ? undefined : Number(this.form.fixed_fee),
-        outbound_shipping:
-          this.form.outbound_shipping == null ? undefined : Number(this.form.outbound_shipping),
-        oem:
-          this.selectedProduct()?.manufacturer_part_number ?? (this.form.oem.trim() || undefined),
-        application: this.form.application.trim() || undefined,
-        fitments: this.selectedProduct()?.fitments ?? [],
-        target_margin_pct: Number(this.form.target_margin_pct),
-        marketplace_fee_pct: Number(this.form.marketplace_fee_pct),
-        shipping_cost:
-          this.form.shipping_cost == null ? undefined : Number(this.form.shipping_cost),
+      .marketStudies({
+        search: this.filters.search.trim() || undefined,
+        status: this.filters.status || undefined,
+        decision: this.filters.decision || undefined,
+        limit: 50,
       })
       .pipe(finalize(() => this.loading.set(false)))
       .subscribe({
-        next: (study) => {
-          this.studies.update((current) => [study, ...current]);
-          this.selected.set(study);
-          this.form.search_term = '';
-          this.form.application = '';
-          this.form.oem = '';
-          this.selectedProduct.set(null);
-          this.confirmProduct.set(false);
-          this.form.sku = '';
-          this.form.landed_cost = null;
-          this.costValueSource.set('not_available');
-          window.scrollTo({ top: 0, behavior: 'smooth' });
+        next: (result) => {
+          this.studies.set(result.items);
+          this.total.set(result.total);
         },
-        error: (e: { error?: { detail?: string } }) =>
-          this.error.set(
-            e.error?.detail ??
-              'Não foi possível gerar o estudo. Confira a integração do Mercado Livre e tente novamente.',
-          ),
+        error: () => this.error.set('Não foi possível carregar a biblioteca de estudos.'),
       });
   }
-  saveConnector() {
+
+  applyFilters(): void {
+    this.syncUrl();
+    this.saveListState();
+    this.loadStudies();
+  }
+
+  clearFilters(): void {
+    this.filters.search = '';
+    this.filters.status = '';
+    this.filters.decision = '';
+    this.applyFilters();
+  }
+
+  loadCars(): void {
+    this.carsLoading.set(true);
+    const params = Object.entries(this.carFilters).reduce<Record<string, string>>(
+      (result, [key, value]) => {
+        if (value) result[key] = value;
+        return result;
+      },
+      {},
+    );
+    this.api
+      .vehicleMarket(params)
+      .pipe(finalize(() => this.carsLoading.set(false)))
+      .subscribe({
+        next: (overview) => this.cars.set(overview),
+        error: () => this.error.set('Não foi possível carregar os dados de veículos.'),
+      });
+  }
+
+  applyCarFilters(): void {
+    this.syncUrl();
+    this.saveListState();
+    this.cars.set(null);
+    this.loadCars();
+  }
+
+  selectionQuery(study: MarketStudySummary): Record<string, string> {
+    return study.brand
+      ? { mode: 'brand', brand: study.brand }
+      : study.nationality
+        ? { mode: 'nationality', nationality: study.nationality }
+        : {};
+  }
+
+  saveConnector(): void {
     this.savingConnector.set(true);
     this.connectorMessage.set('');
     this.api
@@ -233,48 +165,51 @@ export class MarketStudiesPage implements OnInit {
         next: (saved) => {
           this.connector.api_key = '';
           this.connector.has_api_key = saved.has_api_key;
-          this.aiConfigured.set(saved.configured && saved.enabled);
           this.connectorMessage.set('Conector salvo. A chave não será exibida novamente.');
           this.connectorError.set(false);
         },
-        error: (e: { error?: { detail?: string } }) => {
-          this.connectorMessage.set(e.error?.detail ?? 'Não foi possível salvar o conector.');
+        error: (err: { error?: { detail?: string } }) => {
+          this.connectorMessage.set(err.error?.detail || 'Não foi possível salvar o conector.');
           this.connectorError.set(true);
         },
       });
   }
-  confidenceLabel(value?: string) {
-    return (
-      ({ low: 'baixa', medium: 'média', high: 'alta' } as Record<string, string>)[value ?? 'low'] ??
-      'baixa'
-    );
+
+  decisionLabel(value: string | null): string {
+    return decisionLabel(value);
   }
-  createPurchase(study: MarketStudy) {
-    this.creatingPurchase.set(true);
-    this.api
-      .createPurchaseFromMarketStudy(
-        study.id,
-        this.purchaseDraft.sku.trim(),
-        Number(this.purchaseDraft.quantity),
-      )
-      .pipe(finalize(() => this.creatingPurchase.set(false)))
-      .subscribe({
-        next: (purchase) => {
-          this.studies.update((rows) =>
-            rows.map((row) =>
-              row.id === study.id ? { ...row, linked_purchase_id: purchase.id } : row,
-            ),
-          );
-          this.selected.update((row) =>
-            row?.id === study.id ? { ...row, linked_purchase_id: purchase.id } : row,
-          );
-          this.draftStudy.set(null);
-          this.notice.set(
-            'Negociação de compra criada. Você pode adicionar fornecedores e cotações em Compras.',
-          );
-        },
-        error: (e: { error?: { detail?: string } }) =>
-          this.notice.set(e.error?.detail ?? 'Não foi possível criar a negociação de compra.'),
-      });
+
+  uniqueNationalities(): string[] {
+    return [...new Set(Object.values(this.cars()?.brand_nationalities ?? {}))].sort();
+  }
+
+  trendWidth(value: number, rows: Array<{ value: number }>): number {
+    return trendWidth(value, rows);
+  }
+
+  private syncUrl(): void {
+    const query: Record<string, string> = {};
+    if (this.tab() === 'cars') {
+      query['tab'] = 'cars';
+      for (const [key, value] of Object.entries(this.carFilters)) {
+        if (value) query[key] = value;
+      }
+    } else {
+      for (const [key, value] of Object.entries(this.filters)) {
+        if (value) query[key] = value;
+      }
+    }
+    void this.router.navigate(['/market-studies'], { queryParams: query });
+  }
+
+  private saveListState(): void {
+    sessionStorage.setItem(
+      'market-studies-list-state',
+      JSON.stringify({
+        tab: this.tab(),
+        filters: this.filters,
+        carFilters: this.carFilters,
+      }),
+    );
   }
 }

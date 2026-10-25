@@ -11,7 +11,9 @@ import {
   MarketplaceOrder,
   MarketplaceOrderEvent,
   MarketStudy,
+  MarketStudyList,
   MarketStudyConnector,
+  VehicleMarketOverview,
   MarketplaceStatus,
   AfterSaleCase,
   MarketplaceConfig,
@@ -40,19 +42,49 @@ import { queryParams } from './http-helpers';
 export class MarketStudiesApi {
   private readonly http = inject(HttpClient);
   private readonly base = apiUrl('');
-  marketStudyDefaults(): Observable<{ marketplace_fee_pct: number }> {
-    return this.http.get<{ marketplace_fee_pct: number }>(`${this.base}/market-studies/defaults`);
+  marketStudyDefaults(): Observable<{
+    marketplace_fee_pct: string | null;
+    target_margin_pct: string | null;
+    profile_version: number | null;
+    missing_company_fields: string[];
+    legacy_marketplace_fee_pct: number;
+  }> {
+    return this.http.get<{
+      marketplace_fee_pct: string | null;
+      target_margin_pct: string | null;
+      profile_version: number | null;
+      missing_company_fields: string[];
+      legacy_marketplace_fee_pct: number;
+    }>(`${this.base}/market-studies/defaults`);
   }
-  marketStudies(): Observable<MarketStudy[]> {
-    return this.http.get<MarketStudy[]>(`${this.base}/market-studies`);
+  marketStudies(params?: {
+    search?: string;
+    status?: string;
+    decision?: string;
+    limit?: number;
+    offset?: number;
+  }): Observable<MarketStudyList> {
+    return this.http.get<MarketStudyList>(`${this.base}/market-studies`, {
+      params: queryParams(params ?? {}),
+    });
+  }
+  marketStudy(id: string): Observable<MarketStudy> {
+    return this.http.get<MarketStudy>(`${this.base}/market-studies/${id}`);
   }
   createMarketStudy(payload: {
-    search_term: string;
+    mode?: 'legacy' | 'brand' | 'nationality';
+    brand?: string;
+    nationality?: string;
+    region?: string;
+    vehicle_categories?: string[];
+    include_suppliers_china?: boolean;
+    include_competitor_links?: boolean;
+    search_term?: string;
     sku?: string;
     category_id?: string;
     landed_cost?: number;
-    target_margin_pct: number;
-    marketplace_fee_pct: number;
+    target_margin_pct?: number;
+    marketplace_fee_pct?: number;
     shipping_cost?: number | null;
     fixed_fee?: number | null;
     outbound_shipping?: number | null;
@@ -68,6 +100,12 @@ export class MarketStudiesApi {
     }[];
   }): Observable<MarketStudy> {
     return this.http.post<MarketStudy>(`${this.base}/market-studies`, payload);
+  }
+  vehicleMarket(params: Record<string, string> = {}): Observable<VehicleMarketOverview> {
+    return this.http.get<VehicleMarketOverview>(
+      `${this.base}/market-studies/vehicle-market`,
+      { params: queryParams(params) },
+    );
   }
   marketStudyConnector(): Observable<MarketStudyConnector> {
     return this.http.get<MarketStudyConnector>(`${this.base}/market-studies/connector`);

@@ -43,8 +43,21 @@ export const routes: Routes = [
       },
       {
         path: 'market-studies',
+        pathMatch: 'full',
         loadComponent: () =>
           import('./pages/market-studies/market-studies').then((m) => m.MarketStudiesPage),
+      },
+      {
+        path: 'market-studies/new',
+        loadComponent: () =>
+          import('./pages/market-studies/market-study-new').then((m) => m.MarketStudyNewPage),
+      },
+      {
+        path: 'market-studies/:id',
+        loadComponent: () =>
+          import('./pages/market-studies/market-study-detail').then(
+            (m) => m.MarketStudyDetailPage,
+          ),
       },
       {
         path: 'finance',

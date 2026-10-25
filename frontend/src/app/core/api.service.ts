@@ -10,8 +10,6 @@ import {
   Invoice,
   MarketplaceOrder,
   MarketplaceOrderEvent,
-  MarketStudy,
-  MarketStudyConnector,
   MarketplaceStatus,
   AfterSaleCase,
   MarketplaceConfig,
@@ -39,7 +37,6 @@ import { SettingsApi } from './api/settings-api';
 import { PurchasesApi } from './api/purchases-api';
 import { DashboardApi } from './api/dashboard-api';
 import { ProductsApi } from './api/products-api';
-import { MarketStudiesApi } from './api/market-studies-api';
 import { PayablesApi } from './api/payables-api';
 import { CustomersApi } from './api/customers-api';
 import { UsersApi } from './api/users-api';
@@ -53,7 +50,6 @@ export class ApiService {
   private readonly purchasesApi = inject(PurchasesApi);
   private readonly dashboardApi = inject(DashboardApi);
   private readonly productsApi = inject(ProductsApi);
-  private readonly marketstudiesApi = inject(MarketStudiesApi);
   private readonly payablesApi = inject(PayablesApi);
   private readonly customersApi = inject(CustomersApi);
   private readonly usersApi = inject(UsersApi);
@@ -207,36 +203,6 @@ export class ApiService {
   }
   purchase(id: string): Observable<Purchase> {
     return this.purchasesApi.purchase(id);
-  }
-  marketStudyDefaults(): Observable<{ marketplace_fee_pct: number }> {
-    return this.marketstudiesApi.marketStudyDefaults();
-  }
-  marketStudies(): Observable<MarketStudy[]> {
-    return this.marketstudiesApi.marketStudies();
-  }
-  createMarketStudy(
-    payload: Parameters<MarketStudiesApi['createMarketStudy']>[0],
-  ): Observable<MarketStudy> {
-    return this.marketstudiesApi.createMarketStudy(payload);
-  }
-  marketStudyConnector(): Observable<MarketStudyConnector> {
-    return this.marketstudiesApi.marketStudyConnector();
-  }
-  saveMarketStudyConnector(payload: {
-    provider: MarketStudyConnector['provider'];
-    model: string;
-    base_url?: string;
-    api_key?: string;
-    enabled: boolean;
-  }): Observable<MarketStudyConnector> {
-    return this.marketstudiesApi.saveMarketStudyConnector(payload);
-  }
-  createPurchaseFromMarketStudy(
-    studyId: string,
-    sku: string,
-    quantity: number,
-  ): Observable<Purchase> {
-    return this.marketstudiesApi.createPurchaseFromMarketStudy(studyId, sku, quantity);
   }
   createPurchase(payload: unknown): Observable<Purchase> {
     return this.purchasesApi.createPurchase(payload);

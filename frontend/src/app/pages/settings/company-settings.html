@@ -1,0 +1,275 @@
+<section class="company-settings" aria-labelledby="company-title">
+  <div class="company-heading">
+    <div>
+      <p class="eyebrow">Cadastro operacional</p>
+      <h2 id="company-title">Dados da empresa</h2>
+      <p>
+        Fonte única para faturamento, estudos de mercado e custo de importação. O Cartão CNPJ é
+        lido localmente e nunca é enviado à IA.
+      </p>
+    </div>
+    <div class="company-revision">
+      <span>Versão {{ profile()?.revision ?? 0 }}</span>
+      <small>{{ profile()?.updated_at ? (profile()!.updated_at | date: 'dd/MM/yyyy HH:mm') : 'Ainda não salvo' }}</small>
+    </div>
+  </div>
+
+  @if (loading()) {
+    <p role="status">Carregando cadastro da empresa…</p>
+  } @else {
+    <div class="completeness-grid">
+      @for (row of profile()?.completeness ?? []; track row.purpose) {
+        <article>
+          <span>{{ row.label }}</span>
+          <strong>{{ row.percent }}%</strong>
+          <div class="progress" aria-hidden="true"><i [style.width.%]="row.percent"></i></div>
+          @if (row.missing.length) {
+            <small>Falta: {{ row.missing.join(', ') }}</small>
+          } @else {
+            <small>Dados mínimos completos</small>
+          }
+        </article>
+      }
+    </div>
+
+    <div
+      class="card-import"
+      (dragover)="$event.preventDefault()"
+      (drop)="dropCard($event)"
+      role="region"
+      aria-label="Importar Cartão CNPJ"
+    >
+      <div>
+        <strong>Importar Cartão CNPJ</strong>
+        <span>PDF de até 5 páginas, JPG ou PNG de até 10 MB e 30 megapixels.</span>
+      </div>
+      <label class="secondary upload-button">
+        {{ parsing() ? 'Lendo localmente…' : 'Selecionar ou arrastar arquivo' }}
+        <input
+          type="file"
+          accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
+          [disabled]="parsing()"
+          (change)="parseCard($event)"
+        />
+      </label>
+    </div>
+
+    @if (cardPreview(); as preview) {
+      <section class="card-review" aria-live="polite">
+        <div class="review-heading">
+          <div>
+            <p class="eyebrow">Revisão do documento</p>
+            <h3>Confira antes de aplicar</h3>
+            <p>
+              {{ preview.document.reading === 'ocr' ? 'Leitura por OCR local' : 'Camada de texto do PDF' }}
+              @if (preview.document.ocr_quality !== null) {
+                · qualidade {{ preview.document.ocr_quality | number: '1.0-1' }}
+              }
+              · arquivo não retido
+            </p>
+          </div>
+          <span class="source-badge">Cartão CNPJ</span>
+        </div>
+        @if (preview.status_warning) {
+          <p class="inline-warning" role="alert">{{ preview.status_warning }}</p>
+        }
+        @if (preview.protected_manual_fields.length) {
+          <p class="inline-warning">
+            Estes campos foram editados manualmente. Marque-os de novo apenas se quiser
+            substituí-los: {{ preview.protected_manual_fields.map(fieldLabel).join(', ') }}.
+          </p>
+        }
+        <div class="diff-table" role="table" aria-label="Diferenças encontradas no cartão">
+          @for (path of preview.fields | keyvalue; track path.key) {
+            <label class="diff-row" role="row">
+              <input
+                type="checkbox"
+                [ngModel]="selectedFields()[path.key]"
+                (ngModelChange)="toggleCardField(path.key, $event)"
+                [name]="'card-' + path.key"
+              />
+              <span>
+                <strong>{{ fieldLabel(path.key) }}</strong>
+                <small>{{ path.value.confidence === 'high' ? 'alta confiança' : path.value.confidence === 'medium' ? 'confiança média' : 'baixa confiança' }}</small>
+              </span>
+              <span>
+                <small>Cadastro atual</small>
+                <strong>
+                  @for (difference of preview.differences; track difference.field) {
+                    @if (difference.field === path.key) {
+                      {{ difference.current ?? 'Não informado' }}
+                    }
+                  } @empty {
+                    —
+                  }
+                </strong>
+              </span>
+              <span>
+                <small>Extraído</small>
+                <strong>{{ $any(path.value.value) }}</strong>
+              </span>
+            </label>
+          }
+        </div>
+        @if (preview.missing.length) {
+          <p class="muted">
+            Não encontrados: {{ preview.missing.map(fieldLabel).join(', ') }}. Nada será
+            preenchido silenciosamente.
+          </p>
+        }
+        <div class="review-actions">
+          <button class="primary" type="button" (click)="applyParsed()">
+            Aplicar selecionados e revisar
+          </button>
+          <button class="quiet-button" type="button" (click)="cardPreview.set(null)">Cancelar</button>
+        </div>
+      </section>
+    }
+
+    <nav class="company-tabs" aria-label="Seções do cadastro da empresa">
+      <button type="button" [class.is-active]="tab() === 'empresa'" (click)="tab.set('empresa')">Empresa</button>
+      <button type="button" [class.is-active]="tab() === 'fiscal'" (click)="tab.set('fiscal')">Fiscal</button>
+      <button type="button" [class.is-active]="tab() === 'estudo'" (click)="tab.set('estudo')">Estudo de mercado</button>
+      <button type="button" [class.is-active]="tab() === 'importacao'" (click)="tab.set('importacao')">Importação</button>
+    </nav>
+
+    @if (tab() === 'empresa') {
+      <div class="company-form-grid">
+        <label>Razão social<input [(ngModel)]="draft().identification.legal_name" name="legal_name" (ngModelChange)="markManual('identification.legal_name')" /></label>
+        <label>Nome fantasia<input [(ngModel)]="draft().identification.trade_name" name="trade_name" (ngModelChange)="markManual('identification.trade_name')" /></label>
+        <label>CNPJ<input [(ngModel)]="draft().identification.cnpj" name="cnpj" inputmode="numeric" placeholder="Somente números ou CNPJ formatado" (ngModelChange)="markManual('identification.cnpj')" /></label>
+        <label>Matriz ou filial<select [(ngModel)]="draft().identification.branch" name="branch" (ngModelChange)="markManual('identification.branch')"><option value="nao_informado">Não informado</option><option value="matriz">Matriz</option><option value="filial">Filial</option></select></label>
+        <label>Situação cadastral<input [(ngModel)]="draft().identification.registration_status" name="registration_status" placeholder="Ex.: ATIVA" (ngModelChange)="markManual('identification.registration_status')" /></label>
+        <label>Motivo da situação<input [(ngModel)]="draft().identification.status_reason" name="status_reason" /></label>
+        @if (draft().identification.registration_status && draft().identification.registration_status?.toLowerCase() !== 'ativa') {
+          <label class="wide warning-check">
+            <input type="checkbox" [(ngModel)]="draft().identification.inactive_status_acknowledged" name="inactive_ack" />
+            Confirmo que a empresa não está ativa e que este cadastro não deve ser tratado como operação regular.
+          </label>
+        }
+        <label>Data da situação<input type="date" [(ngModel)]="draft().identification.status_date" name="status_date" (ngModelChange)="markManual('identification.status_date')" /></label>
+        <label>Data de abertura<input type="date" [(ngModel)]="draft().identification.opened_on" name="opened_on" (ngModelChange)="markManual('identification.opened_on')" /></label>
+        <label>Código da natureza jurídica<input [(ngModel)]="draft().identification.legal_nature_code" name="legal_nature_code" /></label>
+        <label>Natureza jurídica<input [(ngModel)]="draft().identification.legal_nature_description" name="legal_nature" (ngModelChange)="markManual('identification.legal_nature_description')" /></label>
+        <label>Porte<input [(ngModel)]="draft().identification.company_size" name="company_size" (ngModelChange)="markManual('identification.company_size')" /></label>
+        <label>Simples Nacional<select [(ngModel)]="draft().identification.simples_opt_in" name="simples"><option [ngValue]="null">Não informado</option><option [ngValue]="true">Sim</option><option [ngValue]="false">Não</option></select></label>
+        <label>MEI<select [(ngModel)]="draft().identification.mei_opt_in" name="mei"><option [ngValue]="null">Não informado</option><option [ngValue]="true">Sim</option><option [ngValue]="false">Não</option></select></label>
+        <label>Inscrição estadual<input [(ngModel)]="draft().identification.state_registration" name="state_registration" (ngModelChange)="markManual('identification.state_registration')" /></label>
+        <label>Inscrição municipal<input [(ngModel)]="draft().identification.municipal_registration" name="municipal_registration" /></label>
+        <label>Telefone<input [(ngModel)]="draft().contact.phone" name="phone" /></label>
+        <label>E-mail empresarial<input type="email" [(ngModel)]="draft().contact.business_email" name="business_email" (ngModelChange)="markManual('contact.business_email')" /></label>
+        <label>Atividade exercida no ERP<input [(ngModel)]="draft().activities.erp_activity" name="erp_activity" /></label>
+        <label>CNAE principal<input [(ngModel)]="draft().activities.primary_cnae_code" name="cnae" (ngModelChange)="markManual('activities.primary_cnae_code')" /></label>
+        <label class="wide">Descrição do CNAE principal<input [(ngModel)]="draft().activities.primary_cnae_description" name="cnae_description" /></label>
+        <label class="wide">CNAEs secundários<input [ngModel]="draft().activities.secondary_cnaes.join('; ')" name="secondary_cnaes" placeholder="Separe códigos por ponto e vírgula" (ngModelChange)="setSecondaryCnaes($event)" /></label>
+        <label>Comércio varejista relevante<select [(ngModel)]="draft().activities.retail_relevant" name="retail"><option [ngValue]="null">Não informado</option><option [ngValue]="true">Sim</option><option [ngValue]="false">Não</option></select></label>
+        <label>Comércio atacadista relevante<select [(ngModel)]="draft().activities.wholesale_relevant" name="wholesale"><option [ngValue]="null">Não informado</option><option [ngValue]="true">Sim</option><option [ngValue]="false">Não</option></select></label>
+      </div>
+
+      <section class="address-block">
+        <div class="section-title">
+          <h3>Endereço fiscal</h3>
+          <span>O estudo usa esta UF para tributos, salvo destino explícito no estudo.</span>
+        </div>
+        <div class="company-form-grid">
+          <label>CEP<input [(ngModel)]="draft().addresses.fiscal.postal_code" name="postal_code" (ngModelChange)="markManual('addresses.fiscal.postal_code')" /></label>
+          <label>Logradouro<input [(ngModel)]="draft().addresses.fiscal.street" name="street" /></label>
+          <label>Número<input [(ngModel)]="draft().addresses.fiscal.number" name="number" /></label>
+          <label>Complemento<input [(ngModel)]="draft().addresses.fiscal.complement" name="complement" /></label>
+          <label>Bairro<input [(ngModel)]="draft().addresses.fiscal.district" name="district" /></label>
+          <label>Município<input [(ngModel)]="draft().addresses.fiscal.city" name="city" /></label>
+          <label>UF<input maxlength="2" [(ngModel)]="draft().addresses.fiscal.state" name="state" (ngModelChange)="markManual('addresses.fiscal.state')" /></label>
+          <label>País<input [(ngModel)]="draft().addresses.fiscal.country" name="country" /></label>
+        </div>
+        <label class="same-address">
+          <input type="checkbox" [ngModel]="draft().addresses.commercial_same_as_fiscal" name="same_commercial" (ngModelChange)="setCommercialSame($event)" />
+          Usar o endereço fiscal como endereço comercial
+        </label>
+        @if (!draft().addresses.commercial_same_as_fiscal) {
+          <div class="company-form-grid">
+            <label>CEP comercial<input [(ngModel)]="draft().addresses.commercial!.postal_code" name="commercial_postal" /></label>
+            <label>Logradouro comercial<input [(ngModel)]="draft().addresses.commercial!.street" name="commercial_street" /></label>
+            <label>Número comercial<input [(ngModel)]="draft().addresses.commercial!.number" name="commercial_number" /></label>
+            <label>Complemento comercial<input [(ngModel)]="draft().addresses.commercial!.complement" name="commercial_complement" /></label>
+            <label>Bairro comercial<input [(ngModel)]="draft().addresses.commercial!.district" name="commercial_district" /></label>
+            <label>Município comercial<input [(ngModel)]="draft().addresses.commercial!.city" name="commercial_city" /></label>
+            <label>UF comercial<input maxlength="2" [(ngModel)]="draft().addresses.commercial!.state" name="commercial_state" /></label>
+            <label>País comercial<input [(ngModel)]="draft().addresses.commercial!.country" name="commercial_country" /></label>
+          </div>
+        }
+      </section>
+    }
+
+    @if (tab() === 'fiscal') {
+      <div class="company-form-grid">
+        <label>Regime tributário<select [(ngModel)]="draft().fiscal.tax_regime" name="tax_regime" (ngModelChange)="markManual('fiscal.tax_regime')"><option value="nao_informado">Não informado</option><option value="simples_nacional">Simples Nacional</option><option value="mei">MEI</option><option value="lucro_presumido">Lucro Presumido</option><option value="lucro_real">Lucro Real</option></select></label>
+        <label>Contribuinte de ICMS<select [(ngModel)]="draft().fiscal.icms_taxpayer" name="icms"><option [ngValue]="null">Não informado</option><option [ngValue]="true">Sim</option><option [ngValue]="false">Não</option></select></label>
+        <label>Vigência da configuração<input type="date" [(ngModel)]="draft().fiscal.effective_on" name="fiscal_effective" /></label>
+        <label>Percentual ou regra documentada (%)<input type="number" min="0" max="100" step="0.01" [(ngModel)]="draft().fiscal.icms_rate_pct" name="icms_rate" /></label>
+        <label class="wide">Regra/benefício de ICMS<input [(ngModel)]="draft().fiscal.icms_rule" name="icms_rule" /></label>
+        <label class="wide">Observações fiscais<textarea rows="4" [(ngModel)]="draft().fiscal.notes" name="fiscal_notes"></textarea></label>
+      </div>
+      <p class="inline-warning">Lucro Presumido e Lucro Real nunca são inferidos do Cartão CNPJ. A alíquota só deve ser informada com regra e vigência documentadas.</p>
+    }
+
+    @if (tab() === 'estudo') {
+      <div class="company-form-grid">
+        <label>Margem de contribuição desejada (%)<input type="number" min="0" max="99.99" step="0.01" [(ngModel)]="draft().market_study.target_margin_pct" name="target_margin" (ngModelChange)="markManual('market_study.target_margin_pct')" /></label>
+        <label>Comissão padrão do canal (%)<input type="number" min="0" max="99.99" step="0.01" [(ngModel)]="draft().market_study.channel_commission_pct" name="commission" (ngModelChange)="markManual('market_study.channel_commission_pct')" /></label>
+        <label>Tarifa fixa por venda (R$)<input type="number" min="0" step="0.01" [(ngModel)]="draft().market_study.fixed_sale_fee" name="fixed_fee" /></label>
+        <label>Devoluções esperadas (%)<input type="number" min="0" max="99.99" step="0.01" [(ngModel)]="draft().market_study.expected_return_pct" name="returns" (ngModelChange)="markManual('market_study.expected_return_pct')" /></label>
+        <label>Região padrão<input [(ngModel)]="draft().market_study.default_region" name="default_region" /></label>
+        <label>Categoria comercial padrão<input [(ngModel)]="draft().market_study.default_category" name="default_category" /></label>
+        <label class="wide">Regra do frete de saída<textarea rows="3" [(ngModel)]="draft().market_study.outbound_shipping_rule" name="outbound_rule"></textarea></label>
+      </div>
+      <p class="muted">Campos vazios significam “não informado” e não viram zero. Moeda de apresentação: BRL.</p>
+    }
+
+    @if (tab() === 'importacao') {
+      <div class="company-form-grid">
+        <label>Empresa habilitada para importar<select [(ngModel)]="draft().import_profile.enabled" name="import_enabled"><option [ngValue]="null">Não informado</option><option [ngValue]="true">Sim</option><option [ngValue]="false">Não</option></select></label>
+        <label>Modalidade Siscomex/RADAR<input [(ngModel)]="draft().import_profile.radar_modality" name="radar" /></label>
+        <label>Incoterm padrão<select [(ngModel)]="draft().import_profile.default_incoterm" name="incoterm" (ngModelChange)="markManual('import_profile.default_incoterm')"><option value="nao_informado">Não informado</option><option value="FOB">FOB</option><option value="EXW">EXW</option><option value="CIF">CIF</option></select></label>
+        <label>Modal preferido<select [(ngModel)]="draft().import_profile.preferred_mode" name="mode" (ngModelChange)="markManual('import_profile.preferred_mode')"><option value="nao_informado">Não informado</option><option value="maritimo">Marítimo</option><option value="aereo">Aéreo</option></select></label>
+        <label>Porto ou aeroporto de destino<input [(ngModel)]="draft().import_profile.destination_port" name="destination_port" /></label>
+        <label>UF de desembaraço<input maxlength="2" [(ngModel)]="draft().import_profile.clearance_state" name="clearance_state" (ngModelChange)="markManual('import_profile.clearance_state')" /></label>
+        <label>Spread cambial (%)<input type="number" min="0" step="0.01" [(ngModel)]="draft().import_profile.exchange_spread_pct" name="spread" (ngModelChange)="markManual('import_profile.exchange_spread_pct')" /></label>
+        <label>Despachante ou operador logístico<input [(ngModel)]="draft().import_profile.logistics_operator" name="operator" /></label>
+        <label class="wide">Seguro<textarea rows="2" [(ngModel)]="draft().import_profile.insurance_rule" name="insurance"></textarea></label>
+        <label class="wide">Capatazia<textarea rows="2" [(ngModel)]="draft().import_profile.terminal_handling_rule" name="handling"></textarea></label>
+        <label class="wide">Armazenagem<textarea rows="2" [(ngModel)]="draft().import_profile.storage_rule" name="storage"></textarea></label>
+        <label class="wide">Frete doméstico<textarea rows="2" [(ngModel)]="draft().import_profile.domestic_freight_rule" name="domestic_freight"></textarea></label>
+        <label class="wide">Observações operacionais<textarea rows="3" [(ngModel)]="draft().import_profile.notes" name="import_notes"></textarea></label>
+      </div>
+      <p class="inline-warning">O NCM pertence ao produto. Alíquotas de importação só entram no estudo quando houver regra fiscal versionada; nenhum percentual fixo é presumido.</p>
+    }
+
+    <div class="company-actions">
+      <p>Campos editados manualmente não serão substituídos por nova importação sem confirmação.</p>
+      <button class="primary" type="button" [disabled]="saving()" (click)="save()">
+        {{ saving() ? 'Salvando…' : 'Salvar cadastro da empresa' }}
+      </button>
+    </div>
+
+    @if (error()) {
+      <p class="settings-message is-error" role="alert">{{ error() }}</p>
+    }
+    @if (message()) {
+      <p class="settings-message" role="status">{{ message() }}</p>
+    }
+
+    @if (history().length) {
+      <details class="audit-history">
+        <summary>Histórico de alterações ({{ history().length }} versões)</summary>
+        @for (row of history().slice(0, 12); track row.id) {
+          <div>
+            <strong>Versão {{ row.revision }}</strong>
+            <span>{{ row.changed_by || 'Usuário removido' }}</span>
+            <span>{{ row.created_at | date: 'dd/MM/yyyy HH:mm' }}</span>
+            <small>{{ row.changed_fields.length }} campo(s): {{ row.changed_fields.join(', ') }}</small>
+          </div>
+        }
+      </details>
+    }
+  }
+</section>

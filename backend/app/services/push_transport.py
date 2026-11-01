@@ -87,14 +87,18 @@ def deliver(
         if sound not in SOUND_OPTIONS or (sound == "kaching" and device.sound_settings_version < 2):
             sound = "system"
         channel_id = "sales"
-        if (
+        if notification.data.get("type") == "ready_to_ship":
+            channel_id = "parts_v1_sales_silent"
+        elif (
             device.sound_settings_version >= 1
             and notification.category in SOUND_CATEGORIES
             and sound != "system"
         ):
             channel_id = f"parts_v1_{notification.category}_{sound}"
         data = {str(key): str(value) for key, value in notification.data.items()}
-        if channel_id != "sales":
+        if notification.data.get("type") == "ready_to_ship":
+            data.update(notification_channel=channel_id, notification_sound="silent")
+        elif channel_id != "sales":
             data.update(notification_channel=channel_id, notification_sound=sound)
         response = httpx.post(
             url,

@@ -9,6 +9,7 @@ from app.models import (
     users,  # noqa: F401
     vehicle_market,  # noqa: F401
 )
+from app.models.ad_metrics import AdDailyMetric  # noqa: F401
 from app.models.catalog import (  # noqa: F401
     Product,
     ProductMarketplaceListing,

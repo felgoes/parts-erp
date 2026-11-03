@@ -30,10 +30,7 @@ def _merge_listing_images(
         row
         for row in existing
         if isinstance(row, dict)
-        and not (
-            row.get("source") == provider
-            and row.get("external_item_id") == external_item_id
-        )
+        and not (row.get("source") == provider and row.get("external_item_id") == external_item_id)
     ]
     seen_urls = {str(row.get("url") or "") for row in retained}
     imported: list[dict] = []
@@ -68,8 +65,7 @@ def _merge_listing_images(
             }
         )
     product.images = [
-        {**row, "position": position}
-        for position, row in enumerate([*retained, *imported])
+        {**row, "position": position} for position, row in enumerate([*retained, *imported])
     ]
 
 
@@ -132,10 +128,7 @@ def _merge_vehicle_fitments(
         row
         for row in product.fitments or []
         if isinstance(row, dict)
-        and not (
-            row.get("source") == provider
-            and row.get("external_item_id") == external_item_id
-        )
+        and not (row.get("source") == provider and row.get("external_item_id") == external_item_id)
     ]
     product.fitments = [*retained, *fitments]
 
@@ -205,6 +198,7 @@ def sync_products(db: Session, account: MarketplaceAccount) -> int:
                 )
                 db.add(listing)
             listing.product_id = product.id
+            listing.parent_item_id = str(detail.get("parent_item_id") or "") or None
             listing.title = str(detail.get("title") or product.name)[:200]
             listing.permalink = detail.get("permalink")
             listing.thumbnail = detail.get("thumbnail")
@@ -226,9 +220,7 @@ def sync_products(db: Session, account: MarketplaceAccount) -> int:
             listing.synchronized_at = datetime.now(UTC)
             _merge_listing_images(product, "mercadolivre", external_id, picture_payloads)
             try:
-                compatibility = client.get(
-                    f"/items/{external_id}/compatibilities?extended=true"
-                )
+                compatibility = client.get(f"/items/{external_id}/compatibilities?extended=true")
             except MercadoLivreError:
                 compatibility = None
             if compatibility:
@@ -326,6 +318,8 @@ def sync_product_stock(db: Session, product: Product) -> int:
             result = client.put(f"/items/{external_id}", {"available_quantity": quantity})
         listing.available_quantity = product.current_stock
         listing.payload = result if isinstance(result, dict) else listing.payload
+        if isinstance(result, dict) and result.get("parent_item_id"):
+            listing.parent_item_id = str(result["parent_item_id"])
         listing.synchronized_at = datetime.now(UTC)
         updated += 1
     db.commit()

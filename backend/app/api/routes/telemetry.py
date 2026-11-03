@@ -12,8 +12,9 @@ from sqlalchemy.orm import Session
 from app.api.deps import require_permission
 from app.core.config import get_settings
 from app.core.permissions import Permission
+from app.core.queue import get_queue_pool
 from app.db.session import get_db
-from app.models import HealthSnapshot, Product, TelemetryEvent, User
+from app.models import HealthSnapshot, MarketplaceAccount, Product, TelemetryEvent, User
 from app.schemas.common import (
     EventCount,
     ProductViewCount,
@@ -22,6 +23,7 @@ from app.schemas.common import (
     TelemetryHealthOut,
     TelemetrySummary,
 )
+from app.services.ad_performance import ad_performance_summary
 
 router = APIRouter(prefix="/telemetry", tags=["Monitoramento"])
 
@@ -33,7 +35,7 @@ ALLOWED_EVENTS = {
     "whatsapp_click",
     "catalog_empty_result",
 }
-ALLOWED_PROPERTIES = {"sku", "placement", "brand", "model", "year", "source", "campaign"}
+ALLOWED_PROPERTIES = {"sku", "provider", "external_item_id", "listing_id", "placement", "brand", "model", "year", "source", "campaign"}
 _rate_windows: dict[str, deque[float]] = defaultdict(deque)
 _rate_lock = Lock()
 
@@ -182,3 +184,59 @@ def health(
     return list(
         db.scalars(select(HealthSnapshot).order_by(HealthSnapshot.checked_at.desc()).limit(50))
     )
+
+
+@router.get("/ad-performance")
+def ad_performance(
+    start_date: date = Query(...),
+    end_date: date = Query(...),
+    channel: str | None = Query(default=None, max_length=30),
+    status: str | None = Query(default=None, max_length=40),
+    search: str | None = Query(default=None, max_length=160),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=25, ge=1, le=100),
+    sort_by: str = Query(default="visits", pattern="^(title|status|visits|orders|conversion)$"),
+    sort_direction: str = Query(default="desc", pattern="^(asc|desc)$"),
+    db: Session = Depends(get_db),
+    _: User = Depends(require_permission(Permission.MONITORING_READ)),
+) -> dict[str, Any]:
+    today = datetime.now(timezone(timedelta(hours=-3))).date()
+    if start_date > end_date:
+        raise HTTPException(status_code=422, detail="A data inicial deve ser anterior à data final")
+    if end_date > today:
+        raise HTTPException(status_code=422, detail="A data final não pode estar no futuro")
+    if (end_date - start_date).days > 149:
+        raise HTTPException(status_code=422, detail="O período máximo é de 150 dias")
+    return ad_performance_summary(
+        db,
+        start=start_date,
+        end=end_date,
+        channel=channel,
+        status=status,
+        search=search,
+        page=page,
+        page_size=page_size,
+        sort_by=sort_by,
+        sort_direction=sort_direction,
+    )
+
+
+@router.post("/ad-performance/refresh", status_code=202)
+async def refresh_ad_performance(
+    db: Session = Depends(get_db),
+    _: User = Depends(require_permission(Permission.MONITORING_READ)),
+) -> dict[str, str | bool]:
+    account = db.scalar(
+        select(MarketplaceAccount).where(
+            MarketplaceAccount.active.is_(True), MarketplaceAccount.provider == "mercadolivre"
+        )
+    )
+    if not account:
+        raise HTTPException(
+            status_code=409, detail="Conecte uma conta do Mercado Livre para atualizar os anúncios"
+        )
+    queue = await get_queue_pool()
+    job = await queue.enqueue_job(
+        "sync_mercadolivre_ad_metrics", account.id, _job_id=f"ad-metrics:{account.id}"
+    )
+    return {"accepted": True, "status": "queued" if job else "already_queued"}

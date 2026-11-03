@@ -28,6 +28,7 @@ import {
   CustomerDetail,
   User,
   TelemetrySummary,
+  AdPerformanceSummary,
   ErpSettings,
   PushPreference,
   PushSound,
@@ -455,6 +456,10 @@ export class ApiService {
   connectShopee(): Observable<{ authorization_url: string }> {
     return this.marketplaceApi.connectShopee();
   }
+  adPerformance(params: { start_date: string; end_date: string; channel?: string; status?: string; search?: string; page?: number; page_size?: number; sort_by?: string; sort_direction?: string }): Observable<AdPerformanceSummary> {
+    return this.integrationsApi.adPerformance(params);
+  }
+  refreshAdPerformance(): Observable<{ accepted: boolean; status: string }> { return this.integrationsApi.refreshAdPerformance(); }
   telemetrySummary(startDate: string, endDate: string): Observable<TelemetrySummary> {
     return this.integrationsApi.telemetrySummary(startDate, endDate);
   }

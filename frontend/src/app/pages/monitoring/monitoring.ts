@@ -8,10 +8,11 @@ import { TelemetryHealth, TelemetrySummary } from '../../core/models';
 import { DateRange, quickDateRange } from '../../core/quick-date-ranges';
 import { PageHeader } from '../../shared/page-header';
 import { PeriodFilter } from '../../shared/period-filter';
+import { AdPerformance } from './ad-performance';
 
 @Component({
   selector: 'app-monitoring',
-  imports: [DatePipe, DecimalPipe, PageHeader, PeriodFilter],
+  imports: [DatePipe, DecimalPipe, PageHeader, PeriodFilter, AdPerformance],
   templateUrl: './monitoring.html',
   styleUrl: './monitoring.scss',
 })
@@ -19,6 +20,7 @@ export class MonitoringPage implements OnInit {
   private readonly api = inject(ApiService);
   private readonly live = inject(LiveUpdatesService);
   private readonly destroyRef = inject(DestroyRef);
+  readonly activeTab = signal("ads");
   readonly data = signal<TelemetrySummary | null>(null);
   readonly loading = signal(false);
   readonly error = signal(false);

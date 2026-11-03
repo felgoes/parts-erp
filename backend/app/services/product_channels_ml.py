@@ -215,6 +215,7 @@ def _publish_mercadolivre(
     if not isinstance(external, dict) or not external.get("id"):
         raise RuntimeError("O Mercado Livre não retornou o identificador do anúncio")
     listing.external_item_id = str(external["id"])
+    listing.parent_item_id = str(external.get("parent_item_id") or "") or None
     listing.title = str(external.get("title") or title)[:200]
     listing.permalink = external.get("permalink")
     listing.thumbnail = external.get("thumbnail")

@@ -1,2 +1,4 @@
 @use './monitoring-1';
 @use './monitoring-2';
+
+.monitor-tabs{display:flex;gap:6px;border-bottom:1px solid var(--line);margin:0 0 18px;overflow-x:auto}.monitor-tabs button{border:0;border-bottom:2px solid transparent;background:transparent;padding:11px 14px;color:var(--muted);font:inherit;font-size:13px;white-space:nowrap;cursor:pointer}.monitor-tabs button.active{border-color:var(--brand-primary);color:var(--brand-primary);font-weight:600}.monitor-tabs button:focus-visible{outline:2px solid var(--brand-accent);outline-offset:2px}

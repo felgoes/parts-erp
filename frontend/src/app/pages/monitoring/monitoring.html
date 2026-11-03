@@ -1,8 +1,27 @@
 <app-page-header
   eyebrow="Operação"
   title="Monitoramento"
-  subtitle="Saúde técnica e comportamento no catálogo."
+  subtitle="Acompanhe catálogo, anúncios e saúde técnica."
 />
+<nav class="monitor-tabs" aria-label="Seções do monitoramento" role="tablist">
+  <button type="button" role="tab" [attr.aria-selected]="activeTab() === 'catalog'" [class.active]="activeTab() === 'catalog'" (click)="activeTab.set('catalog')">Catálogo</button>
+  <button type="button" role="tab" [attr.aria-selected]="activeTab() === 'ads'" [class.active]="activeTab() === 'ads'" (click)="activeTab.set('ads')">Anúncios ML</button>
+  <button type="button" role="tab" [attr.aria-selected]="activeTab() === 'health'" [class.active]="activeTab() === 'health'" (click)="activeTab.set('health')">Saúde técnica</button>
+</nav>
+@if (activeTab() === 'ads') {
+  <app-ad-performance />
+} @else if (activeTab() === 'health') {
+  @if (data(); as summary) {
+    <section class="card health-card">
+      <div class="card-title"><div><h2>Saúde da operação</h2><p>Última verificação de cada serviço monitorado.</p></div><span class="health-summary">{{ healthyCount(summary) }}/{{ healthChecks(summary).length }} OK</span></div>
+      <div class="health">
+        @for (item of healthChecks(summary); track item.check_name) {
+          <div><span class="dot" [class.down]="!item.ok"></span><div><strong>{{ healthLabel(item.check_name) }}</strong><small>{{ item.ok ? 'Operacional' : 'Falha' }} · {{ item.latency_ms | number: '1.0-0' }} ms · {{ item.detail || 'Sem detalhe' }} · {{ item.checked_at | date: 'dd/MM HH:mm' }}</small></div></div>
+        } @empty { <p class="muted">Ainda não há verificações registradas.</p> }
+      </div>
+    </section>
+  } @else { <div class="loading">Carregando saúde técnica...</div> }
+} @else {
 <app-period-filter
   heading="Período analisado"
   description="As datas consideram o horário de Brasília."
@@ -135,35 +154,7 @@
         }
       </div>
     </article>
-    <article class="card health-card">
-      <div class="card-title">
-        <div>
-          <h2>Saúde da operação</h2>
-          <p>Última verificação de cada serviço monitorado.</p>
-        </div>
-        <span class="health-summary"
-          >{{ healthyCount(summary) }}/{{ healthChecks(summary).length }} OK</span
-        >
-      </div>
-      <div class="health">
-        @for (item of healthChecks(summary); track item.check_name) {
-          <div>
-            <span class="dot" [class.down]="!item.ok"></span>
-            <div>
-              <strong>{{ healthLabel(item.check_name) }}</strong
-              ><small
-                >{{ item.ok ? 'Operacional' : 'Falha' }} ·
-                {{ item.latency_ms | number: '1.0-0' }} ms · {{ item.detail || 'Sem detalhe' }} ·
-                {{ item.checked_at | date: 'dd/MM HH:mm' }}</small
-              >
-            </div>
-          </div>
-        } @empty {
-          <p class="muted">Ainda não há verificações registradas.</p>
-        }
-      </div>
-    </article>
-  </section>
+    </section>
   <section class="card product-views-card">
     <div class="card-title">
       <div>
@@ -217,4 +208,6 @@
   </section>
 } @else {
   <div class="loading">Carregando monitoramento...</div>
+}
+
 }

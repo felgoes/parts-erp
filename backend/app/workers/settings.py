@@ -22,6 +22,7 @@ from app.integrations.mercadolivre.sync import (
 from app.integrations.shopee.sync import sync_all as sync_shopee_all
 from app.integrations.shopee.sync import sync_order as sync_shopee_order
 from app.models import MarketplaceAccount, MarketplaceOrder, MarketplaceOrderEvent
+from app.services.ad_performance import sync_ad_metrics_for_account
 from app.services.after_sale import after_sale_notification, upsert_after_sale_case
 from app.services.push_notifications import (
     deliver_pending_notifications,
@@ -36,6 +37,8 @@ from app.workers.marketplace_costs import reconcile_marketplace_costs
 from app.workers.vehicle_market import refresh_vehicle_market_fleet
 
 logger = logging.getLogger(__name__)
+
+
 def _process_mercadolivre_notification(topic: str, resource: str, seller_id: str) -> None:
     started_at = clock.monotonic()
     logger.info(
@@ -299,6 +302,29 @@ def _retry_pending_push_notifications() -> int:
         return deliver_pending_notifications(db)
 
 
+def _sync_ad_metrics(account_id: str | None = None) -> dict[str, int]:
+    updated = errors = 0
+    with SessionLocal() as db:
+        query = select(MarketplaceAccount).where(
+            MarketplaceAccount.active.is_(True), MarketplaceAccount.provider == "mercadolivre"
+        )
+        if account_id:
+            query = query.where(MarketplaceAccount.id == account_id)
+        accounts = list(db.scalars(query))
+        for account in accounts:
+            result = sync_ad_metrics_for_account(db, account.id)
+            updated += result["updated"]
+            errors += result["errors"]
+    return {"updated": updated, "errors": errors}
+
+
+async def sync_mercadolivre_ad_metrics(
+    ctx: dict[str, Any], account_id: str | None = None
+) -> dict[str, int]:
+    del ctx
+    return await asyncio.to_thread(_sync_ad_metrics, account_id)
+
+
 async def retry_pending_push_notifications(ctx: dict[str, Any]) -> int:
     del ctx
     return await asyncio.to_thread(_retry_pending_push_notifications)
@@ -315,6 +341,7 @@ class WorkerSettings:
         retry_pending_push_notifications,
         scheduled_google_drive_backup,
         refresh_vehicle_market_fleet,
+        sync_mercadolivre_ad_metrics,
     ]
     cron_jobs = [
         cron(
@@ -347,6 +374,13 @@ class WorkerSettings:
             minute=set(range(60)),
             hour=set(range(24)),
             second=45,
+        ),
+        cron(
+            sync_mercadolivre_ad_metrics,
+            name="sync-mercadolivre-ad-metrics",
+            hour=set(range(0, 24, 6)),
+            minute=10,
+            second=20,
         ),
         cron(
             refresh_vehicle_market_fleet,

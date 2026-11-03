@@ -83,6 +83,7 @@ class ProductMarketplaceListing(TimestampMixin, Base):
     sync_error: Mapped[str | None] = mapped_column(Text)
     category_id: Mapped[str | None] = mapped_column(String(80))
     channel_data: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    parent_item_id: Mapped[str | None] = mapped_column(String(80))
     payload: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
     synchronized_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 

@@ -1,4 +1,5 @@
 from app.models.entities import (
+    AdDailyMetric,
     AfterSaleCase,
     AfterSaleCaseEvent,
     AfterSaleCaseItem,
@@ -48,6 +49,7 @@ from app.models.entities import (
 )
 
 __all__ = [
+    "AdDailyMetric",
     "AfterSaleCase",
     "AfterSaleCaseEvent",
     "AfterSaleCaseItem",

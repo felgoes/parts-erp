@@ -12,3 +12,5 @@ export * from './models/marketplace';
 export * from './models/catalog';
 export * from './models/telemetry';
 export * from './models/notifications';
+
+export * from './models/ad-performance';

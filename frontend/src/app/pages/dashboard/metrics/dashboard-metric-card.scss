@@ -21,3 +21,33 @@
 .is-attention .metric-meta { color: var(--state-warning-text); }
 :host-context(body[data-theme='dark']) .metric-card { background: transparent; color: var(--text-primary); }
 @media (max-width: 767px) { :host { height: 100px; } .metric-card { height: 100px; min-height: 100px; grid-template-rows: 28px 26px 14px; gap: 3px; padding: 8px; } .metric-label { font-size: 11px; line-height: 14px; } .metric-icon { width: 16px; height: 16px; flex-basis: 16px; } .metric-value { font-size: 24px; line-height: 28px; } .metric-foot { font-size: 10px; line-height: 13px; gap: 3px; } .metric-meta, .metric-detail { font-size: 10px; } }
+
+@media (max-width: 400px) {
+  :host { height: auto; min-height: 112px; }
+  .metric-card {
+    height: auto;
+    min-height: 112px;
+    grid-template-rows: auto auto 1fr;
+    align-content: start;
+    gap: 4px;
+    padding: 9px 10px;
+  }
+  .metric-top, .metric-label-wrap { align-items: flex-start; }
+  .metric-label { font-size: 12px; line-height: 16px; overflow-wrap: anywhere; }
+  .metric-value { font-size: 24px; line-height: 28px; }
+  .metric-foot {
+    display: grid;
+    align-content: start;
+    gap: 2px;
+    overflow: visible;
+    white-space: normal;
+  }
+  .metric-meta, .metric-detail {
+    font-size: 11px;
+    line-height: 14px;
+    overflow: visible;
+    overflow-wrap: anywhere;
+    text-overflow: clip;
+    white-space: normal;
+  }
+}

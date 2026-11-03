@@ -69,3 +69,13 @@
   .purchase-select select { flex: 1; }
   .purchase-pages { margin-left: 0; }
 }
+@media (max-width: 400px) {
+  .purchase-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .purchase-stat:nth-child(2) { border-right: 0; }
+  .purchase-stat:last-child {
+    grid-column: 1 / -1;
+    justify-content: flex-start;
+    border-top: 1px solid var(--divider);
+    border-right: 0;
+  }
+}

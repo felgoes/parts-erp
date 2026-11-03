@@ -281,8 +281,12 @@
   .app-shell.menu-collapsed .app-topbar { margin-left: 0; }
   .app-shell.menu-collapsed .sidebar { width: 100%; }
   .app-shell.menu-open .nav-copy, .app-shell.menu-open .nav-section-label, .app-shell.menu-open .nav-children { display: initial; }
-  .app-shell.menu-open .sidebar-foot .profile-copy, .app-shell.menu-open .sidebar-foot .profile-chevron,
+  .app-shell.menu-open .sidebar-foot .profile-copy { display: grid; }
+  .app-shell.menu-open .sidebar-foot .profile-chevron,
   .app-shell.menu-open .sidebar-foot > .icon-button { display: initial; }
+  .app-shell.menu-open .sidebar-foot { justify-content: space-between; gap: 8px; padding-inline: 4px; }
+  .app-shell.menu-open .profile-trigger { flex: 1 1 auto; min-width: 0; justify-content: flex-start; }
+  .app-shell.menu-open .profile-copy { min-width: 0; flex: 1 1 auto; }
   .app-shell.menu-open .nav-item { justify-content: flex-start; min-height: 44px; gap: 10px; padding: 0 10px; }
   .app-shell.menu-open .nav-icon { width: 28px; height: 28px; flex-basis: 28px; }
   .app-shell .menu-collapse { display: none; }

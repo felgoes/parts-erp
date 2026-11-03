@@ -1,5 +1,8 @@
 ## 3 de novembro de 2026 — ajustes de alinhamento no celular
 
+- [Marca centralizada e alertas alinhados no celular · e081960](https://github.com/felgoes/parts-erp/commit/e081960bebb917f6482012864b05e0daa65335d4): centralizamos a marca na barra e alinhamos o botão de alertas verticalmente. Implantado em produção em 03/11/2026; ERP e site responderam HTTP 200 com bundles carregados.
+
+
 - [Atalho “Nova venda” removido da Visão geral · 1619b5b](https://github.com/felgoes/parts-erp/commit/1619b5b599202d555c3fe10ad7a17291c55e7d98): removemos essa ação rápida do painel inicial; a criação de vendas continua em Faturas de venda. Implantado em produção em 03/11/2026; ERP e site responderam HTTP 200 e os bundles carregaram.
 
 

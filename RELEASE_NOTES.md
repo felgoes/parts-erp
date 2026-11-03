@@ -1,3 +1,7 @@
+## 2 de novembro de 2026 — leitura mais clara e anúncios atualizados ao abrir
+
+- [Clareza visual, tipografia aberta e monitoramento de anúncios · f8e17b7](https://github.com/felgoes/parts-erp/commit/f8e17b7a0c753da6c1905dd301800c0f2f9934a5): telas, listas e navegação do ERP ficaram mais claras e compactas em desktop e celular. O app usa Source Sans 3, com licença SIL OFL 1.1. O painel de anúncios atualiza os dados ao ser aberto quando há uma conta do Mercado Livre conectada. Implantado em produção em 02/11/2026; os smoke checks públicos do site e do ERP responderam HTTP 200 e os bundles carregaram.
+
 ## 25 de outubro de 2026 — Frota separada entre carros e motos
 
 - [Abas de Carros e Motos na Frota do Brasil · 469fd0c](https://github.com/felgoes/parts-erp/commit/469fd0c): a página Frota do Brasil deixou de misturar todas as categorias e agora abre em Carros, com uma aba própria para Motos e sem a opção “Todos”. Totais, rankings, gráficos, filtros, faixa etária e lista respeitam a aba escolhida. Em setembro de 2026, a base ficou separada em 96.855.529 carros e 39.402.533 motos, preservando Peugeot em Carros e Honda/Yamaha nos rankings de Motos. Como o arquivo oficial RENAVAM não traz o tipo do veículo, a classificação usa regras determinísticas e versionadas sobre a marca/modelo; os registros não reconhecidos como moto permanecem em Carros. A atualização reimportou o snapshot existente uma vez e só publicou os novos dados após validar o total nacional. Implantado em produção em 25/10/2026; site e ERP responderam HTTP 200.

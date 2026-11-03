@@ -1,10 +1,4 @@
-<app-page-header
-  title="Visão geral"
->
-  @if (canSell()) {
-    <a class="primary" routerLink="/invoices">+ Nova venda</a>
-  }
-</app-page-header>
+<app-page-header title="Visão geral" />
 @if (data(); as summary) {
   <app-dashboard-metrics
     [summary]="summary"

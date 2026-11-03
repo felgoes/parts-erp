@@ -1,7 +1,7 @@
 from collections import defaultdict
-from datetime import UTC, date, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta, timezone
 from urllib.parse import quote
-from zoneinfo import ZoneInfo
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -16,7 +16,10 @@ from app.models import (
     ProductMarketplaceListing,
 )
 
-LOCAL_ZONE = ZoneInfo("America/Sao_Paulo")
+try:
+    LOCAL_ZONE = ZoneInfo("America/Sao_Paulo")
+except ZoneInfoNotFoundError:  # Termux pode não ter o pacote tzdata.
+    LOCAL_ZONE = timezone(timedelta(hours=-3), name="America/Sao_Paulo")
 
 
 def _chunks(values: list[str], size: int = 20):

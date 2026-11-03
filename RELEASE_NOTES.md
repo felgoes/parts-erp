@@ -1,5 +1,8 @@
 ## 3 de novembro de 2026 — ajustes de alinhamento no celular
 
+- [Atalho “Nova venda” removido da Visão geral · 1619b5b](https://github.com/felgoes/parts-erp/commit/1619b5b599202d555c3fe10ad7a17291c55e7d98): removemos essa ação rápida do painel inicial; a criação de vendas continua em Faturas de venda. Implantado em produção em 03/11/2026; ERP e site responderam HTTP 200 e os bundles carregaram.
+
+
 - [Perfil do menu móvel alinhado · 72b4627](https://github.com/felgoes/parts-erp/commit/72b4627): no menu aberto, avatar, nome e função ficam organizados no rodapé, sem sobreposição, e a ação de sair permanece separada. Implantado em produção em 03/11/2026; site e ERP responderam HTTP 200 e os bundles carregaram.
 
 - [Correção do recuo lateral no celular · 8d30e92](https://github.com/felgoes/parts-erp/commit/8d30e92): a preferência de navegação recolhida deixa de empurrar a tela principal para a direita quando o app abre em um aparelho estreito. Implantado em produção em 03/11/2026; site e ERP responderam HTTP 200 e os bundles carregaram.

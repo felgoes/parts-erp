@@ -277,6 +277,8 @@
   .app-shell .app-topbar app-notifications-menu .trigger-copy { display: none; }
   .app-shell .mobile-bar { height: 58px; padding: 0 104px 0 14px; background: var(--brand-primary); box-shadow: none; }
   .app-shell > main { margin: 0; padding: 16px 16px calc(24px + env(safe-area-inset-bottom)); }
+  .app-shell.menu-collapsed > main { margin-left: 0; }
+  .app-shell.menu-collapsed .app-topbar { margin-left: 0; }
   .app-shell.menu-collapsed .sidebar { width: 100%; }
   .app-shell.menu-open .nav-copy, .app-shell.menu-open .nav-section-label, .app-shell.menu-open .nav-children { display: initial; }
   .app-shell.menu-open .sidebar-foot .profile-copy, .app-shell.menu-open .sidebar-foot .profile-chevron,

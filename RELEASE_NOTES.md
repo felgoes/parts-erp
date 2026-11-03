@@ -1,3 +1,7 @@
+## 3 de novembro de 2026 — ajustes de alinhamento no celular
+
+- [Indicadores, filtros e listas responsivos · 77639e5](https://github.com/felgoes/parts-erp/commit/77639e5): corrigimos cortes de texto nos indicadores do painel, alinhamos os filtros de contas a pagar e reorganizamos os títulos em cartões para facilitar a leitura em telas estreitas. O resumo de compras também se ajusta a aparelhos compactos. Implantado em produção em 03/11/2026; site e ERP responderam HTTP 200 e os bundles carregaram.
+
 ## 2 de novembro de 2026 — leitura mais clara e anúncios atualizados ao abrir
 
 - [Clareza visual, tipografia aberta e monitoramento de anúncios · f8e17b7](https://github.com/felgoes/parts-erp/commit/f8e17b7a0c753da6c1905dd301800c0f2f9934a5): telas, listas e navegação do ERP ficaram mais claras e compactas em desktop e celular. O app usa Source Sans 3, com licença SIL OFL 1.1. O painel de anúncios atualiza os dados ao ser aberto quando há uma conta do Mercado Livre conectada. Implantado em produção em 02/11/2026; os smoke checks públicos do site e do ERP responderam HTTP 200 e os bundles carregaram.

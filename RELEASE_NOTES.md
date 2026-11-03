@@ -1,5 +1,7 @@
 ## 3 de novembro de 2026 — ajustes de alinhamento no celular
 
+- [Correção do recuo lateral no celular · 8d30e92](https://github.com/felgoes/parts-erp/commit/8d30e92): a preferência de navegação recolhida deixa de empurrar a tela principal para a direita quando o app abre em um aparelho estreito. Implantado em produção em 03/11/2026; site e ERP responderam HTTP 200 e os bundles carregaram.
+
 - [Indicadores, filtros e listas responsivos · 77639e5](https://github.com/felgoes/parts-erp/commit/77639e5): corrigimos cortes de texto nos indicadores do painel, alinhamos os filtros de contas a pagar e reorganizamos os títulos em cartões para facilitar a leitura em telas estreitas. O resumo de compras também se ajusta a aparelhos compactos. Implantado em produção em 03/11/2026; site e ERP responderam HTTP 200 e os bundles carregaram.
 
 ## 2 de novembro de 2026 — leitura mais clara e anúncios atualizados ao abrir

@@ -4,6 +4,8 @@
     routerLink="/dashboard"
     routerLinkActive="active"
     ariaCurrentWhenActive="page"
+    [attr.aria-label]="collapsed() ? 'Visão geral' : null"
+    [attr.title]="collapsed() ? 'Visão geral' : null"
     (click)="closeRequested.emit()"
   >
     <span class="nav-icon" aria-hidden="true">
@@ -23,6 +25,8 @@
           [routerLink]="item.path"
           routerLinkActive="active"
           ariaCurrentWhenActive="page"
+          [attr.aria-label]="collapsed() ? item.label : null"
+          [attr.title]="collapsed() ? item.label : null"
           (click)="closeRequested.emit()"
         >
           <span class="nav-icon" aria-hidden="true">
@@ -43,6 +47,8 @@
         [class.active]="isConfigurationActive()"
         [attr.aria-expanded]="settingsOpen()"
         aria-controls="configuration-links"
+        [attr.aria-label]="collapsed() ? 'Configurações' : null"
+        [attr.title]="collapsed() ? 'Configurações' : null"
         (click)="toggleSettings()"
       >
         <span class="nav-icon" aria-hidden="true">
@@ -65,6 +71,8 @@
               [routerLink]="item.path"
               routerLinkActive="active"
               ariaCurrentWhenActive="page"
+              [attr.aria-label]="collapsed() ? item.label : null"
+              [attr.title]="collapsed() ? item.label : null"
               (click)="closeRequested.emit()"
             >
               <span class="nav-icon" aria-hidden="true">

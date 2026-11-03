@@ -1,8 +1,13 @@
 @use './assistant-chat-panel';
 
 :host {
-  position: relative;
+  position: fixed;
+  inset: 0;
   z-index: 40;
+  pointer-events: none;
+}
+.assistant-panel {
+  pointer-events: auto;
 }
 
 .assistant-fab {

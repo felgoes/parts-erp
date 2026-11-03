@@ -1,17 +1,16 @@
 <section class="dashboard-metrics" aria-label="Indicadores da operação">
   <div class="revenue-card">
-    <button class="revenue-card-main" type="button" (click)="financialRequested.emit()">
+    <button class="revenue-card-main" type="button" aria-label="Abrir composição da receita líquida no período" (click)="financialRequested.emit()">
       <span class="revenue-top">
-        <span class="revenue-kicker">Resumo financeiro</span>
+        <span class="revenue-kicker">Receita líquida</span>
         <span class="revenue-action"
-          >Abrir análise
+          >Detalhes
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="M7 17 17 7M8 7h9v9" />
           </svg>
         </span>
       </span>
       <span class="revenue-main">
-        <span class="revenue-label">Receita líquida no período</span>
         <span class="revenue-value">{{
           financialSummaryHidden() ? '••••••' : (summary().revenue_month | currency: 'BRL')
         }}</span>
@@ -21,19 +20,12 @@
           <span class="revenue-signal" aria-hidden="true"></span>
           @if (summary().marketplace_costs_pending) {
             Parcial · {{ summary().marketplace_costs_pending }} venda(s) sem custo completo do ML
+          } @else if (financialSummaryHidden()) {
+            Valores ocultos
           } @else {
-            Após comissões e frete do vendedor
+            Líquida após tarifas
           }
         </span>
-        @if (financialSummaryHidden()) {
-          <span class="revenue-detail">Valores ocultos</span>
-        } @else {
-          <span class="revenue-detail"
-            >Bruto {{ summary().gross_revenue_month | currency: 'BRL' }} ·
-            {{ totalMarketplaceCosts() | currency: 'BRL' }}
-            em taxas e frete</span
-          >
-        }
       </span>
     </button>
     <button

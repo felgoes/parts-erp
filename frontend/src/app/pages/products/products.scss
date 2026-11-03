@@ -1,2 +1,13 @@
 @use './products-1';
 @use './products-2';
+
+.product-name-link { display: block; color: var(--text-primary); font-size: 14px; font-weight: 600; line-height: 20px; overflow-wrap: anywhere; text-decoration: none; }
+.product-name-link:hover { color: var(--forest); text-decoration: underline; }
+.product-thumb { width: 40px; height: 40px; flex: 0 0 40px; object-fit: contain; border-radius: 4px; background: var(--surface); }
+.product { align-items: center; gap: 10px; }
+.product > span { display: none; }
+.products .toolbar, .toolbar { border-radius: 6px; box-shadow: none; }
+@media (max-width: 767px) {
+  .product-thumb { width: 36px; height: 36px; flex-basis: 36px; }
+  .toolbar { flex-wrap: wrap; }
+}

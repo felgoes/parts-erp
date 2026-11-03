@@ -53,6 +53,9 @@ export class AssistantChat implements OnInit, OnDestroy {
     })}% do limite`;
   });
   private readonly messagesEnd = viewChild<ElementRef<HTMLElement>>('messagesEnd');
+  private readonly panel = viewChild<ElementRef<HTMLElement>>('panel');
+  private readonly closeButton = viewChild<ElementRef<HTMLButtonElement>>('closeButton');
+  private opener: HTMLButtonElement | null = null;
   private loaded = false;
   private viewportTimers: ReturnType<typeof setTimeout>[] = [];
   private readonly viewportChanged = () => this.updateViewport();
@@ -68,19 +71,39 @@ export class AssistantChat implements OnInit, OnDestroy {
     for (const timer of this.viewportTimers) clearTimeout(timer);
   }
 
-  toggle(): void {
+  toggle(event?: Event): void {
     const next = !this.open();
+    if (next && event?.currentTarget instanceof HTMLButtonElement) this.opener = event.currentTarget;
     this.open.set(next);
     if (next) {
       this.loadConfiguration();
       this.loadConversations(!this.loaded);
       this.loaded = true;
       this.updateViewport();
-    }
+      requestAnimationFrame(() => this.closeButton()?.nativeElement.focus());
+    } else this.restoreOpener();
   }
 
   close(): void {
     this.open.set(false);
+    this.restoreOpener();
+  }
+
+  onPanelKeydown(event: KeyboardEvent): void {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      this.close();
+      return;
+    }
+    if (event.key !== 'Tab' || this.panelTop() === null) return;
+    const items = Array.from(this.panel()?.nativeElement.querySelectorAll<HTMLElement>('button:not(:disabled), a[href], input:not(:disabled), textarea:not(:disabled), [tabindex="0"]') ?? []);
+    const first = items[0], last = items[items.length - 1];
+    if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+    else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+  }
+
+  private restoreOpener(): void {
+    requestAnimationFrame(() => this.opener?.focus());
   }
 
   private loadConfiguration(): void {

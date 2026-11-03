@@ -1,7 +1,5 @@
 <app-page-header
-  eyebrow="Catálogo"
   title="Produtos e estoque"
-  subtitle="Peças, preços e disponibilidade em um só lugar."
 >
   @if (canManageCatalog()) {
     <button class="primary" (click)="openNew()">+ Novo produto</button>
@@ -21,8 +19,9 @@
 </nav>
 <section class="toolbar">
   <div class="search">
-    <span>⌕</span
+    <span aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" /><path d="m16 16 5 5" /></svg></span
     ><input
+      aria-label="Buscar produtos por nome ou SKU"
       placeholder="Buscar por peça ou SKU…"
       [value]="search()"
       (input)="search.set($any($event.target).value)"
@@ -53,17 +52,17 @@
           <th>Preço</th>
           <th>Estoque</th>
           <th>Condição</th>
-          <th></th>
+          <th aria-label="Ações"></th>
         </tr>
       </thead>
       <tbody>
         @for (product of filtered(); track product.id) {
-          <tr class="clickable-row" (click)="openDetails(product)">
+          <tr>
             <td>
               <div class="product">
-                <span>{{ product.name[0] }}</span>
+                @if (product.images.length) { <img class="product-thumb" [src]="product.images[0].url" alt="" /> }
                 <div>
-                  <strong>{{ product.name }}</strong
+                  <a class="product-name-link" [routerLink]="['/products', product.id]" [state]="{ productListOrigin: true }">{{ product.name }}</a
                   ><small>{{ product.description || 'Sem descrição' }}</small>
                 </div>
               </div>
@@ -92,9 +91,10 @@
             <td class="right">
               <button
                 class="secondary small"
-                (click)="$event.stopPropagation(); openDetails(product)"
+                [routerLink]="['/products', product.id]"
+                [state]="{ productListOrigin: true }"
               >
-                Detalhes
+                Ver produto
               </button>
               @if (canAdjustStock()) {
                 <button
@@ -108,7 +108,7 @@
           </tr>
         } @empty {
           <tr>
-            <td colspan="6"><div class="empty">Nenhum produto encontrado.</div></td>
+            <td colspan="6"><div class="empty">Nenhum produto com estes filtros.</div></td>
           </tr>
         }
       </tbody>

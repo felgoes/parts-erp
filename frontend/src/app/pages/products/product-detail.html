@@ -1,0 +1,108 @@
+<app-page-header [title]="product()?.name || 'Produto'" [subtitle]="product()?.sku ? 'SKU ' + product()!.sku : ''">
+  <div class="product-detail-actions">
+    <button class="secondary" type="button" (click)="back()">Voltar à lista</button>
+    @if (product() && canManageCatalog()) {
+      <button class="secondary" type="button" (click)="edit()">Editar ficha</button>
+      <button class="secondary" type="button" (click)="prepareListing()">Preparar anúncio</button>
+    }
+    @if (product() && canAdjustStock()) {
+      <button class="primary" type="button" (click)="adjust()">Ajustar estoque</button>
+    }
+  </div>
+</app-page-header>
+
+@if (loading()) {
+  <p class="product-detail-state" role="status">Carregando produto…</p>
+} @else if (error()) {
+  <section class="product-detail-state" role="alert">
+    <strong>{{ error() }}</strong>
+    @if (error().startsWith('Não foi possível')) {
+      <button class="secondary" type="button" (click)="retry()">Tentar novamente</button>
+    }
+    <button class="secondary" type="button" (click)="back()">Voltar à lista</button>
+  </section>
+} @else if (product(); as item) {
+  <section class="product-overview" [class.has-image]="item.images.length > 0" aria-label="Resumo do produto">
+    @if (item.images.length) {
+      <img class="product-hero-image" [src]="item.images[0].url" [alt]="'Foto de ' + item.name" />
+    }
+    <dl class="product-summary">
+      <div><dt>SKU</dt><dd><code>{{ item.sku }}</code><button type="button" class="copy-sku" (click)="copySku(item.sku)">{{ copied() ? 'Copiado' : 'Copiar' }}</button></dd></div>
+      <div><dt>Preço de venda</dt><dd>{{ item.sale_price | currency: 'BRL' }}</dd></div>
+      @if (canReadCosts()) {
+        <div><dt>Custo</dt><dd>{{ item.cost_price === null ? 'Não informado' : (item.cost_price | currency: 'BRL') }}</dd></div>
+      }
+      <div><dt>Saldo</dt><dd>{{ item.current_stock | number: '1.0-3' }} un.</dd></div>
+      <div><dt>Estoque mínimo</dt><dd>{{ item.minimum_stock | number: '1.0-3' }} un.</dd></div>
+      <div><dt>Condição</dt><dd>{{ item.item_condition === 'new' ? 'Novo' : item.item_condition === 'used' ? 'Usado' : 'Recondicionado' }}</dd></div>
+      <div><dt>Situação</dt><dd>{{ item.active ? 'Ativo' : 'Inativo' }}</dd></div>
+    </dl>
+  </section>
+
+  <div class="product-detail-sections">
+    <section class="product-detail-section">
+      <h2>Dados do produto</h2>
+      <dl class="product-data">
+        <div><dt>Descrição</dt><dd>{{ item.description || 'Não informado' }}</dd></div>
+        <div><dt>Marca</dt><dd>{{ item.brand || 'Não informado' }}</dd></div>
+        <div><dt>Fabricante</dt><dd>{{ item.manufacturer || 'Não informado' }}</dd></div>
+        <div><dt>Código do fabricante</dt><dd><code>{{ item.manufacturer_part_number || 'Não informado' }}</code></dd></div>
+        <div><dt>Código de barras</dt><dd><code>{{ item.barcode || 'Não informado' }}</code></dd></div>
+        <div><dt>Categoria</dt><dd>{{ item.category || 'Não informado' }}</dd></div>
+        <div><dt>Origem</dt><dd>{{ item.origin_country || 'Não informado' }}</dd></div>
+        <div><dt>Garantia</dt><dd>{{ item.warranty_days === null ? 'Não informado' : item.warranty_days + ' dias' }}</dd></div>
+        @for (entry of entries(item.attributes); track entry[0]) {
+          <div><dt>{{ entry[0] }}</dt><dd>{{ entry[1] || 'Não informado' }}</dd></div>
+        }
+      </dl>
+    </section>
+
+    <section class="product-detail-section">
+      <h2>Anúncios</h2>
+      @if (item.listings.length) {
+        <div class="product-listings">
+          @for (listing of item.listings; track listing.id) {
+            <article class="product-listing">
+              <div><strong>{{ listing.title || item.name }}</strong><small>{{ listing.provider }} · {{ listing.external_item_id || 'Sem código externo' }}</small></div>
+              <span>{{ listing.status || listing.sync_status }}</span>
+              <span>{{ listing.marketplace_price === null ? 'Preço não informado' : (listing.marketplace_price | currency: 'BRL') }}</span>
+              @if (listing.permalink) { <a [href]="listing.permalink" target="_blank" rel="noopener">Abrir anúncio</a> }
+            </article>
+          }
+        </div>
+      } @else {
+        <p class="product-detail-empty">Nenhum anúncio vinculado.</p>
+      }
+    </section>
+
+    @if (item.fitments.length) {
+      <section class="product-detail-section">
+        <h2>Aplicações</h2>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Marca</th><th>Modelo</th><th>Ano</th><th>Motor</th><th>Versão</th></tr></thead>
+          <tbody>
+            @for (fitment of item.fitments; track $index) {
+              <tr><td>{{ fitment.make }}</td><td>{{ fitment.model }}</td><td>{{ fitment.year_from || '—' }}–{{ fitment.year_to || '—' }}</td><td>{{ fitment.engine || '—' }}</td><td>{{ fitment.version || '—' }}</td></tr>
+            }
+          </tbody>
+        </table></div>
+      </section>
+    }
+
+    <section class="product-detail-section">
+      <h2>Movimentações</h2>
+      @if (movements().length) {
+        <div class="table-wrap"><table>
+          <thead><tr><th>Data</th><th>Movimento</th><th>Motivo</th><th class="numeric">Quantidade</th><th class="numeric">Saldo</th></tr></thead>
+          <tbody>
+            @for (movement of movements(); track movement.id) {
+              <tr><td>{{ movement.created_at | date: 'dd/MM/yyyy HH:mm' : 'America/Sao_Paulo' }}</td><td>{{ movement.movement_type }}</td><td>{{ movement.reason || '—' }}</td><td class="numeric">{{ movement.quantity | number: '1.0-3' }}</td><td class="numeric">{{ movement.balance_after | number: '1.0-3' }}</td></tr>
+            }
+          </tbody>
+        </table></div>
+      } @else {
+        <p class="product-detail-empty">Nenhuma movimentação registrada.</p>
+      }
+    </section>
+  </div>
+}

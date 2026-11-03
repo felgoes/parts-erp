@@ -1,24 +1,17 @@
 import { CurrencyPipe, DatePipe, DecimalPipe } from '@angular/common';
-import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 import { debounceTime, finalize } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-
 import { ApiService } from '../../core/api.service';
 import { LiveUpdatesService } from '../../core/live-updates.service';
 import { AuthService } from '../../core/auth.service';
-import {
-  Product,
-  ProductChannelDraft,
-  ProductChannelMetadata,
-  ProductDetail,
-  ProductFitment,
-  ProductImage,
-  StockMovement,
-} from '../../core/models';
+import { Product, ProductChannelDraft, ProductChannelMetadata, ProductDetail, ProductFitment, ProductImage, StockMovement } from '../../core/models';
 import { canAdjustStock, canManageCatalog, canReadCosts } from '../../core/user-access';
 import { PageHeader } from '../../shared/page-header';
 import { MoneyInputDirective } from '../../shared/money-input.directive';
+import { restoreProductListView, saveProductListView, takeProductListAction } from './product-list-context';
 
 @Component({
   selector: 'app-products',
@@ -28,21 +21,24 @@ import { MoneyInputDirective } from '../../shared/money-input.directive';
     DecimalPipe,
     MoneyInputDirective,
     ReactiveFormsModule,
+    RouterLink,
     PageHeader,
   ],
   templateUrl: './products.html',
   styleUrl: './products.scss',
 })
-export class ProductsPage implements OnInit {
+export class ProductsPage implements OnInit, OnDestroy {
   private readonly api = inject(ApiService);
   private readonly live = inject(LiveUpdatesService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly auth = inject(AuthService);
   private readonly fb = inject(FormBuilder);
+  private readonly initialView = restoreProductListView();
+  private pendingProductAction = takeProductListAction();
   readonly products = signal<Product[]>([]);
-  readonly stockTab = signal<'product' | 'warehouse'>('product');
-  readonly search = signal('');
-  readonly onlyLow = signal(false);
+  readonly stockTab = signal<'product' | 'warehouse'>(this.initialView.stockTab);
+  readonly search = signal(this.initialView.search);
+  readonly onlyLow = signal(this.initialView.onlyLow);
   readonly modal = signal(false);
   readonly adjusting = signal<Product | null>(null);
   readonly detail = signal<ProductDetail | null>(null);
@@ -54,15 +50,9 @@ export class ProductsPage implements OnInit {
   readonly attributesText = signal('');
   readonly fitmentsText = signal('');
   readonly channelProvider = signal<'mercadolivre' | 'shopee'>('mercadolivre');
-  canManageCatalog() {
-    return canManageCatalog(this.auth.user()?.role);
-  }
-  canAdjustStock() {
-    return canAdjustStock(this.auth.user()?.role);
-  }
-  canReadCosts() {
-    return canReadCosts(this.auth.user()?.role);
-  }
+  canManageCatalog() { return canManageCatalog(this.auth.user()?.role); }
+  canAdjustStock() { return canAdjustStock(this.auth.user()?.role); }
+  canReadCosts() { return canReadCosts(this.auth.user()?.role); }
   readonly channelMetadata = signal<ProductChannelMetadata | null>(null);
   readonly categoryQuery = signal('');
   readonly selectedCategory = signal('');
@@ -74,12 +64,7 @@ export class ProductsPage implements OnInit {
   readonly channelAttributes = signal<Record<string, string>>({});
   readonly selectedLogistics = signal<number[]>([]);
   readonly channelMessage = signal('');
-  isLowStock(product: Product): boolean {
-    return (
-      product.stock_type === 'product' &&
-      Number(product.current_stock) < Number(product.minimum_stock)
-    );
-  }
+  isLowStock(product: Product): boolean { return product.stock_type === 'product' && Number(product.current_stock) < Number(product.minimum_stock); }
 
   readonly filtered = computed(() => {
     const q = this.search().toLowerCase();
@@ -118,17 +103,20 @@ export class ProductsPage implements OnInit {
   });
   ngOnInit() {
     this.load();
-    this.live.changes$
-      .pipe(debounceTime(250), takeUntilDestroyed(this.destroyRef))
-      .subscribe(() => this.load());
+    requestAnimationFrame(() => window.scrollTo(0, this.initialView.scrollY));
+    this.live.changes$.pipe(debounceTime(250), takeUntilDestroyed(this.destroyRef)).subscribe(() => this.load());
   }
+  ngOnDestroy(): void { saveProductListView({ search: this.search(), stockTab: this.stockTab(), onlyLow: this.onlyLow(), scrollY: window.scrollY }); }
   setStockTab(value: 'product' | 'warehouse') {
     this.stockTab.set(value);
     this.onlyLow.set(false);
     this.load();
   }
   load() {
-    this.api.products('', false, this.stockTab()).subscribe((v) => this.products.set(v));
+    this.api.products('', false, this.stockTab()).subscribe((items) => {
+      this.products.set(items);
+      this.applyPendingProductAction();
+    });
     const detailId = this.detail()?.id;
     if (detailId) {
       this.api.productDetail(detailId).subscribe((full) => {
@@ -138,6 +126,18 @@ export class ProductsPage implements OnInit {
         if (this.detail()?.id === detailId) this.movements.set(movements);
       });
     }
+  }
+  private applyPendingProductAction(): void {
+    const action = this.pendingProductAction;
+    if (!action) return;
+    this.pendingProductAction = null;
+    this.api.productDetail(action.id).subscribe({
+      next: (product) => {
+        if (action.type === 'edit') this.openEdit(product);
+        else if (action.type === 'adjust') this.openAdjust(product);
+        else this.openDetails(product);
+      },
+    });
   }
   openNew() {
     this.adjusting.set(null);

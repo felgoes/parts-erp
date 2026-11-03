@@ -1,7 +1,5 @@
 <app-page-header
-  eyebrow="Controle financeiro"
   title="Financeiro"
-  subtitle="Custos do estoque, entradas, saídas e resultado das vendas — com rastreabilidade por peça."
 />
 
 <app-period-filter
@@ -34,7 +32,7 @@
         >{{ metrics.inventory_units | number: '1.0-3' : 'pt-BR' }} unidades em
         {{ metrics.by_product.length }}
         {{ metrics.by_product.length === 1 ? 'peça' : 'peças' }}</small
-      ><i aria-hidden="true">◒</i>
+      >
     </article>
     <article class="finance-highlight">
       <span>Entradas de estoque</span

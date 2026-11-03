@@ -1,8 +1,4 @@
-<app-page-header
-  eyebrow="Operação"
-  title="Monitoramento"
-  subtitle="Acompanhe catálogo, anúncios e saúde técnica."
-/>
+<app-page-header title="Monitoramento" />
 <nav class="monitor-tabs" aria-label="Seções do monitoramento" role="tablist">
   <button type="button" role="tab" [attr.aria-selected]="activeTab() === 'catalog'" [class.active]="activeTab() === 'catalog'" (click)="activeTab.set('catalog')">Catálogo</button>
   <button type="button" role="tab" [attr.aria-selected]="activeTab() === 'ads'" [class.active]="activeTab() === 'ads'" (click)="activeTab.set('ads')">Anúncios ML</button>

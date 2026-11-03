@@ -5,7 +5,7 @@ import { Component, input } from '@angular/core';
   templateUrl: './page-header.html',
 })
 export class PageHeader {
-  readonly eyebrow = input('Operação');
+  readonly eyebrow = input('');
   readonly title = input.required<string>();
   readonly subtitle = input('');
 }

@@ -1,7 +1,5 @@
 <app-page-header
-  eyebrow="Financeiro"
   title="Contas a pagar"
-  subtitle="Títulos gerados por compras e despesas, com baixa parcial, conciliação e relatórios."
 >
   <div class="payables-header-actions">
     <button class="secondary" type="button" (click)="exportCsv()">Exportar CSV</button
@@ -50,8 +48,8 @@
         listing.summary.paid_in_period | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR'
       }}</strong
       ><small
-        >{{ listing.summary.paid_count }} título(s) quitado(s) ·
-        {{ listing.summary.unreconciled_payments }} pagamento(s) sem conciliação</small
+        >{{ listing.summary.paid_count }} pagos ·
+        {{ listing.summary.unreconciled_payments }} sem conciliação</small
       >
     </article>
   </section>
@@ -92,24 +90,6 @@
     <span class="muted">{{ listing.items.length }} título(s)</span>
   </section>
 
-  <section class="card payables-aging" aria-label="Aging dos títulos">
-    <div class="section-title">
-      <div>
-        <p class="eyebrow">Aging</p>
-        <h2>Distribuição por atraso</h2>
-        <p>Saldo em aberto por faixa de vencimento, considerando os filtros aplicados.</p>
-      </div>
-    </div>
-    <div class="aging-grid">
-      @for (bucket of listing.aging; track bucket.label) {
-        <div class="aging-cell" [class.aging-overdue]="bucket.label !== 'A vencer'">
-          <span>{{ bucket.label }}</span
-          ><strong>{{ bucket.balance | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR' }}</strong
-          ><small>{{ bucket.count }} título(s)</small>
-        </div>
-      }
-    </div>
-  </section>
 
   <section class="card payables-table-card">
     <div class="table-wrap">
@@ -180,6 +160,20 @@
       </table>
     </div>
   </section>
+
+  <details class="card payables-aging">
+    <summary>Distribuição por atraso</summary>
+    <p class="aging-description">Saldo em aberto por faixa de vencimento, considerando os filtros aplicados.</p>
+    <div class="aging-grid">
+      @for (bucket of listing.aging; track bucket.label) {
+        <div class="aging-cell" [class.aging-overdue]="bucket.label !== 'A vencer'">
+          <span>{{ bucket.label }}</span
+          ><strong>{{ bucket.balance | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR' }}</strong
+          ><small>{{ bucket.count }} título(s)</small>
+        </div>
+      }
+    </div>
+  </details>
 
   <section class="card payables-report">
     <div class="section-title">

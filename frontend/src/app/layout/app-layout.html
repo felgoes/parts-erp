@@ -1,5 +1,12 @@
-<div class="app-shell" [class.menu-open]="menuOpen()">
-  <aside class="sidebar">
+<div class="app-shell" [class.menu-open]="menuOpen()" [class.menu-collapsed]="menuCollapsed()">
+  <aside
+    class="sidebar"
+    [attr.inert]="mobileShell() && !menuOpen() ? '' : null"
+    [attr.aria-hidden]="mobileShell() && !menuOpen() ? 'true' : null"
+    [attr.role]="mobileShell() ? 'dialog' : null"
+    [attr.aria-modal]="mobileShell() && menuOpen() ? 'true' : null"
+    aria-label="Navegação principal"
+  >
     <div class="sidebar-head">
       <a
         class="brand"
@@ -27,14 +34,14 @@
         class="sidebar-close"
         type="button"
         aria-label="Fechar menu"
-        (click)="menuOpen.set(false)"
+        (click)="closeMobileMenu()"
       >
         <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
           <path d="M6 6l12 12M18 6 6 18" />
         </svg>
       </button>
     </div>
-    <app-navigation-menu (closeRequested)="menuOpen.set(false)" />
+    <app-navigation-menu [collapsed]="menuCollapsed()" (expandRequested)="expandMenu()" (closeRequested)="closeMobileMenu()" />
     <div class="sidebar-foot">
       <button
         class="profile-trigger"
@@ -56,9 +63,21 @@
       <button class="icon-button" title="Sair" aria-label="Sair" (click)="auth.logout()">↗</button>
     </div>
   </aside>
-  <app-notifications-menu />
-  <div class="mobile-bar">
-    <button class="icon-button" aria-label="Abrir menu" (click)="menuOpen.set(!menuOpen())">
+  <header class="app-topbar" aria-label="Ações globais" [attr.inert]="menuOpen() ? '' : null">
+    <button class="menu-collapse" type="button" [attr.aria-label]="menuCollapsed() ? 'Expandir navegação' : 'Recolher navegação'" [attr.aria-expanded]="!menuCollapsed()" (click)="toggleMenuCollapsed()">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16" /></svg>
+    </button>
+    <span class="topbar-spacer"></span>
+    @if (assistant.isAdmin()) {
+    <button class="global-action assistant-trigger" type="button" [attr.aria-expanded]="assistant.open()" aria-controls="assistant-panel" (click)="assistant.toggle($event)">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v4m0 10v4M3 12h4m10 0h4M5.6 5.6l2.8 2.8m7.2 7.2 2.8 2.8m0-12.8-2.8 2.8m-7.2 7.2-2.8 2.8" /></svg>
+      <span>Assistente</span>
+    </button>
+    }
+    <app-notifications-menu />
+  </header>
+  <div class="mobile-bar" [attr.inert]="menuOpen() ? '' : null">
+    <button class="icon-button" aria-label="Abrir menu" [attr.aria-expanded]="menuOpen()" (click)="toggleMobileMenu()">
       ☰
     </button>
     <a
@@ -83,7 +102,7 @@
       >
     </a>
   </div>
-  <button class="scrim" aria-label="Fechar menu" (click)="menuOpen.set(false)"></button>
+  <button class="scrim" aria-label="Fechar menu" (click)="closeMobileMenu()"></button>
   @if (profileOpen()) {
     <div class="profile-backdrop" (click)="closeProfile()">
       <section
@@ -158,6 +177,7 @@
     </div>
   }
   <main
+    [attr.inert]="menuOpen() ? '' : null"
     (touchstart)="onTouchStart($event)"
     (touchmove)="onTouchMove($event)"
     (touchend)="onTouchEnd()"
@@ -221,5 +241,5 @@
     }
     <router-outlet />
   </main>
-  <app-assistant-chat />
+  <app-assistant-chat #assistant />
 </div>

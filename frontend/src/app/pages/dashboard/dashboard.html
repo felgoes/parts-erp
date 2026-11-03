@@ -1,7 +1,5 @@
 <app-page-header
-  eyebrow="Centro de controle"
   title="Visão geral"
-  subtitle="O pulso da sua operação, agora."
 >
   @if (canSell()) {
     <a class="primary" routerLink="/invoices">+ Nova venda</a>
@@ -27,7 +25,6 @@
       <div class="card-head">
         <div>
           <h2>Vendas recentes</h2>
-          <p>Últimas movimentações da loja</p>
         </div>
         <a routerLink="/invoices">Ver todas →</a>
       </div>

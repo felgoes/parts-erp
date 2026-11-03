@@ -27,7 +27,7 @@ import { PeriodFilter } from '../../shared/period-filter';
   selector: 'app-payables',
   imports: [CurrencyPipe, DecimalPipe, FormsModule, MoneyInputDirective, PageHeader, PeriodFilter],
   templateUrl: './payables.html',
-  styleUrl: './payables.scss',
+  styleUrls: ['./payables.scss', './payables-3.scss'],
 })
 export class PayablesPage implements OnInit {
   private readonly api = inject(ApiService);

@@ -1,215 +1,23 @@
-:host {
-  display: block;
-  min-width: 0;
-}
-
+:host { display: block; height: 104px; min-width: 0; }
 .metric-card {
-  display: grid;
-  height: 100%;
-  min-height: 154px;
-  grid-template-rows: auto 1fr auto;
-  gap: 15px;
-  padding: 18px 19px;
-  border: 1px solid #e1e4dc;
-  border-radius: 15px;
-  background: var(--surface);
-  color: inherit;
-  text-decoration: none;
-  box-shadow:
-    0 1px 2px #1b2a200a,
-    0 8px 24px #1b2a2007;
-  transition:
-    border-color 180ms ease,
-    box-shadow 180ms ease,
-    transform 180ms ease;
+  display: grid; height: 104px; min-height: 104px; grid-template-rows: 16px 30px 16px; gap: 4px;
+  padding: 10px 12px; border: 0; border-radius: 0; background: transparent; color: var(--text-primary);
+  text-decoration: none; box-shadow: none;
 }
-
-.metric-card:hover {
-  border-color: #cbd3c7;
-  box-shadow:
-    0 2px 4px #1b2a200d,
-    0 16px 34px #1b2a2011;
-  transform: translateY(-2px);
-}
-
-.metric-card:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 3px;
-}
-
-.metric-top {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  gap: 10px;
-}
-
-.metric-label-wrap {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  gap: 9px;
-}
-
-.metric-icon {
-  display: grid;
-  width: 27px;
-  height: 27px;
-  flex: 0 0 27px;
-  place-items: center;
-  border-radius: 8px;
-  background: #f1f4ee;
-  color: #536c55;
-}
-
-.metric-icon svg {
-  width: 15px;
-  height: 15px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.65;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.metric-label {
-  min-width: 0;
-  color: #66736b;
-  font-size: 11.5px;
-  font-weight: 680;
-  line-height: 1.3;
-}
-
-.metric-open {
-  display: grid;
-  width: 25px;
-  height: 25px;
-  flex: 0 0 25px;
-  place-items: center;
-  margin-left: auto;
-  border: 1px solid #e6e8e3;
-  border-radius: 50%;
-  color: #98a29b;
-  transition:
-    border-color 180ms ease,
-    color 180ms ease,
-    transform 180ms ease;
-}
-
-.metric-open svg {
-  width: 11px;
-  height: 11px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.7;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.metric-card:hover .metric-open {
-  border-color: #bdc9be;
-  color: var(--forest);
-  transform: translate(1px, -1px);
-}
-
-.metric-value {
-  align-self: end;
-  overflow: hidden;
-  font-size: clamp(29px, 2.3vw, 36px);
-  font-variant-numeric: tabular-nums;
-  font-weight: 760;
-  letter-spacing: -0.05em;
-  line-height: 1;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.metric-foot {
-  display: flex;
-  min-height: 28px;
-  flex-direction: column;
-  justify-content: end;
-  gap: 3px;
-  color: #7b867f;
-  font-size: 10.5px;
-  line-height: 1.35;
-}
-
-.metric-meta {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-}
-
-.metric-meta.has-signal::before {
-  width: 6px;
-  height: 6px;
-  flex: 0 0 6px;
-  border-radius: 50%;
-  background: #76a05e;
-  box-shadow: 0 0 0 3px #edf4e8;
-  content: '';
-}
-
-.metric-detail {
-  color: #929c95;
-}
-
-.is-positive .metric-meta.has-signal {
-  color: #4f7544;
-  font-weight: 680;
-}
-
-.is-attention {
-  border-color: #ead8bf;
-  background: #fffcf7;
-}
-
-.is-attention .metric-icon {
-  background: #fff0da;
-  color: #a9651d;
-}
-
-.is-attention .metric-meta.has-signal {
-  color: #9d601d;
-  font-weight: 680;
-}
-
-.is-attention .metric-meta.has-signal::before {
-  background: #d18a34;
-  box-shadow: 0 0 0 3px #fff0da;
-}
-
-:host-context(body[data-theme='dark']) .metric-card {
-  border-color: var(--line);
-  background: var(--surface);
-  box-shadow: none;
-}
-
-:host-context(body[data-theme='dark']) .metric-card:hover {
-  border-color: #53665a;
-}
-
-:host-context(body[data-theme='dark']) .metric-icon {
-  background: #25362c;
-  color: #a9c69c;
-}
-
-:host-context(body[data-theme='dark']) .metric-open {
-  border-color: #3a4b40;
-  color: #87988d;
-}
-
-:host-context(body[data-theme='dark']) .metric-detail {
-  color: #829087;
-}
-
-:host-context(body[data-theme='dark']) .is-attention {
-  border-color: #5b492f;
-  background: #27231b;
-}
-
-:host-context(body[data-theme='dark']) .is-attention .metric-icon {
-  background: #3d3020;
-  color: #e8b36a;
-}
+.metric-card:hover { background: color-mix(in srgb, var(--forest) 5%, var(--surface)); }
+.metric-top { display: flex; min-width: 0; align-items: center; gap: 6px; }
+.metric-label-wrap { display: flex; min-width: 0; align-items: center; gap: 6px; }
+.metric-icon { display: grid; width: 18px; height: 18px; flex: 0 0 18px; place-items: center; color: var(--text-secondary); }
+.metric-icon svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.6; }
+.metric-label { min-width: 0; color: var(--text-secondary); font-size: 12px; font-weight: 600; line-height: 16px; }
+.metric-open { display: none; }
+.metric-value { align-self: end; color: var(--text-primary); font-size: 28px; font-weight: 600; font-variant-numeric: tabular-nums; line-height: 34px; overflow-wrap: anywhere; }
+.metric-foot { display: flex; min-width: 0; min-height: 16px; align-items: center; justify-content: flex-start; gap: 5px; overflow: hidden; color: var(--text-secondary); font-size: 12px; line-height: 14px; white-space: nowrap; }
+.metric-meta, .metric-detail { min-width: 0; overflow: hidden; color: var(--text-secondary); font-size: 12px; text-overflow: ellipsis; }
+.metric-meta { flex: 0 0 auto; }
+.metric-detail { flex: 1 1 auto; }
+.metric-meta.has-signal::before { width: 6px; height: 6px; flex: 0 0 6px; border-radius: 50%; background: var(--state-success-text); content: ''; }
+.is-attention .metric-meta.has-signal::before { background: var(--state-warning-text); }
+.is-attention .metric-meta { color: var(--state-warning-text); }
+:host-context(body[data-theme='dark']) .metric-card { background: transparent; color: var(--text-primary); }
+@media (max-width: 767px) { :host { height: 100px; } .metric-card { height: 100px; min-height: 100px; grid-template-rows: 28px 26px 14px; gap: 3px; padding: 8px; } .metric-label { font-size: 11px; line-height: 14px; } .metric-icon { width: 16px; height: 16px; flex-basis: 16px; } .metric-value { font-size: 24px; line-height: 28px; } .metric-foot { font-size: 10px; line-height: 13px; gap: 3px; } .metric-meta, .metric-detail { font-size: 10px; } }

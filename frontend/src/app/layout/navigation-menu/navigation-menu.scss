@@ -204,3 +204,21 @@ nav::-webkit-scrollbar-thumb {
     font-size: 14px;
   }
 }
+
+nav { gap: 8px; }
+.nav-section-label { margin: 8px 10px 2px; color: #bac9bf; font-size: 12px; font-weight: 600; letter-spacing: 0; text-transform: none; }
+.nav-item { min-height: 36px; gap: 10px; padding: 4px 8px; border-radius: 4px; font-size: 14px; font-weight: 400; }
+.nav-item.active { background: #1b3b2e; border-color: transparent; font-weight: 600; }
+.nav-icon, .nav-item.active .nav-icon, .nav-overview .nav-icon { width: 20px; height: 20px; flex-basis: 20px; border-radius: 4px; background: transparent; }
+.nav-icon svg { width: 18px; height: 18px; }
+.nav-child { min-height: 36px; border-radius: 4px; font-size: 13px; }
+:host-context(.app-shell.menu-collapsed:not(.menu-open)) .nav-item { min-height: 44px; padding: 0; }
+:host-context(.app-shell.menu-collapsed:not(.menu-open)) .nav-section-label,
+:host-context(.app-shell.menu-collapsed:not(.menu-open)) .nav-copy,
+:host-context(.app-shell.menu-collapsed:not(.menu-open)) .nav-chevron,
+:host-context(.app-shell.menu-collapsed:not(.menu-open)) .nav-children { display: none; }
+:host-context(.app-shell.menu-collapsed:not(.menu-open)) .nav-icon { margin: 0; }
+@media (max-width: 767px) {
+  .nav-item, .nav-child { min-height: 44px; font-size: 14px; }
+  .nav-section-label { font-size: 12px; }
+}

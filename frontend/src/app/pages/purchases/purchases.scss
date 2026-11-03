@@ -2,3 +2,70 @@
 @use './purchases-2';
 @use './purchases-3';
 @use './purchases-4';
+
+.purchase-list-controls {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.95fr) minmax(0, 1.65fr);
+  align-items: center;
+  gap: 6px 12px;
+  margin: 0 0 12px;
+  padding: 8px 12px;
+  border: 1px solid var(--divider);
+  border-radius: 6px;
+  background: var(--surface);
+}
+.purchase-list-controls > app-period-filter { min-width: 0; }
+.purchase-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; }
+.purchase-stat {
+  display: flex; min-width: 0; min-height: 36px; align-items: center; justify-content: center; gap: 6px;
+  padding: 4px 8px; border: 0; border-right: 1px solid var(--divider); border-radius: 0;
+  background: transparent; color: var(--text-primary); font: inherit; text-align: left; cursor: pointer;
+}
+.purchase-stat:last-child { border-right: 0; }
+.purchase-stat span { color: var(--text-secondary); font-size: 12px; line-height: 16px; }
+.purchase-stat strong { color: var(--text-primary); font-size: 16px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.purchase-stat small { display: none; }
+.purchase-stat.active-stat { box-shadow: inset 0 -2px var(--focus-ring); }
+.purchase-toolbar {
+  grid-column: 1 / -1; display: flex; min-width: 0; align-items: center; gap: 8px; flex-wrap: wrap;
+  padding-top: 6px; border-top: 1px solid var(--divider);
+}
+.purchase-search { display: flex; min-width: min(280px, 100%); flex: 1 1 280px; align-items: center; gap: 8px; }
+.purchase-search span { display: grid; width: 18px; height: 18px; place-items: center; color: var(--text-secondary); }
+.purchase-search svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; }
+.purchase-search input { width: 100%; min-height: 36px; }
+.purchase-select { display: flex; align-items: center; gap: 8px; color: var(--text-secondary); font-size: 13px; }
+.purchase-select select { min-width: 150px; min-height: 36px; }
+.purchase-toolbar > .muted { white-space: nowrap; }
+.purchase-pages { margin-left: auto; }
+.purchase-table-card { border-radius: 6px; }
+.purchase-table-card table { min-width: 1120px; }
+.purchase-table-card th:first-child, .purchase-table-card td:first-child { width: 36px; }
+.purchase-table-card th:nth-child(2), .purchase-table-card td:nth-child(2) { min-width: 156px; }
+.purchase-table-card th:nth-child(3), .purchase-table-card td:nth-child(3) { min-width: 180px; }
+.purchase-table-card th:nth-child(4), .purchase-table-card td:nth-child(4) { min-width: 220px; }
+.purchase-table-card th:nth-child(5), .purchase-table-card td:nth-child(5) { min-width: 130px; }
+.purchase-table-card th:nth-child(6), .purchase-table-card td:nth-child(6) { min-width: 95px; }
+.purchase-table-card th:nth-child(7), .purchase-table-card td:nth-child(7) { min-width: 100px; }
+.purchase-table-card th:nth-child(8), .purchase-table-card td:nth-child(8) { min-width: 95px; }
+.purchase-table-card th:nth-child(9), .purchase-table-card td:nth-child(9) { min-width: 100px; }
+.purchase-table-card th, .purchase-table-card td { padding: 8px 10px; vertical-align: middle; }
+.purchase-table-card td > strong, .purchase-table-card td > small { display: block; }
+.purchase-table-card td:nth-child(2) > strong { white-space: nowrap; font-family: var(--font-mono); font-size: 13px; }
+.purchase-products span { display: block; line-height: 18px; overflow-wrap: anywhere; }
+.purchase-table-card td:nth-child(4) > strong { line-height: 18px; }
+.purchase-table-card td:nth-child(4) > small { margin-top: 2px; line-height: 16px; }
+.purchase-table-card th { white-space: nowrap; }
+.purchase-table-card td:nth-child(7), .purchase-table-card th:nth-child(7) { text-align: right; }
+.purchase-table-card .purchase-id, .purchase-table-card code { white-space: nowrap; font-family: var(--font-mono); }
+.purchase-table-card .purchase-row:hover { background: color-mix(in srgb, var(--forest) 5%, var(--surface)); }
+@media (max-width: 767px) {
+  .purchase-list-controls { grid-template-columns: minmax(0, 1fr); gap: 4px; padding: 8px; }
+  .purchase-summary { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .purchase-stat { min-height: 40px; flex-wrap: wrap; justify-content: flex-start; gap: 2px 5px; padding: 4px; }
+  .purchase-stat span { flex-basis: 100%; }
+  .purchase-toolbar { grid-column: auto; }
+  .purchase-select { width: 100%; }
+  .purchase-select select { flex: 1; }
+  .purchase-pages { margin-left: 0; }
+}

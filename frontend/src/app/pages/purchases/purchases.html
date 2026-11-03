@@ -1,7 +1,5 @@
 <app-page-header
-  eyebrow="Suprimentos"
   title="Compras"
-  subtitle="Peças para o estoque e despesas operacionais da empresa."
 >
   @if (canManagePurchases()) {
     <div class="purchase-header-actions">
@@ -29,6 +27,7 @@
 @if (message()) {
   <p class="purchase-success" role="status">{{ message() }}</p>
 }
+<section class="purchase-list-controls">
 <section class="purchase-summary">
   @for (card of summary(); track card.status) {
     <button
@@ -101,6 +100,7 @@
       </button></span
     >
   }
+</section>
 </section>
 <section class="card purchase-table-card" [class.restricted-costs]="!canReadCosts()">
   <div class="table-wrap" (scroll)="closeRowMenu()">

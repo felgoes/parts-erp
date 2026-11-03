@@ -32,6 +32,11 @@ export class AdPerformance {
   readonly pageSize = signal(25);
   readonly selected = signal<AdPerformanceRow | null>(null);
   readonly exporting = signal(false);
+  readonly filtersOpen = signal(false);
+  get activeFilterCount() {
+    return Number(this.channel() !== "all") + Number(this.status() !== "all") +
+      Number(!!this.search().trim()) + Number(this.start() !== this.initial.startDate || this.end() !== this.initial.endDate);
+  }
   readonly Math = Math;
   private debounce: ReturnType<typeof setTimeout> | null = null;
 

@@ -1,5 +1,5 @@
 import { DatePipe } from '@angular/common';
-import { Component, DestroyRef, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, HostListener, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink, RouterOutlet } from '@angular/router';
@@ -39,6 +39,8 @@ export class AppLayout implements OnInit, OnDestroy {
   readonly appearance = inject(AppearanceService);
   readonly live = inject(LiveUpdatesService);
   readonly menuOpen = signal(false);
+  readonly mobileShell = signal(window.innerWidth <= 767);
+  readonly menuCollapsed = signal(this.restoreMenuPreference());
   readonly profileOpen = signal(false);
   readonly avatarUrl = signal<string | null>(null);
   readonly previewUrl = signal<string | null>(null);
@@ -82,6 +84,79 @@ export class AppLayout implements OnInit, OnDestroy {
   }
   ngOnDestroy(): void {
     if (this.backupTimer !== null) clearInterval(this.backupTimer);
+  }
+
+  expandMenu(): void {
+    if (!this.menuCollapsed()) return;
+    this.menuCollapsed.set(false);
+    try {
+      localStorage.setItem('parts-erp-menu-collapsed', 'false');
+    } catch {
+      // A navegação continua funcional quando o armazenamento local está indisponível.
+    }
+  }
+
+  toggleMenuCollapsed(): void {
+    this.menuCollapsed.update((collapsed) => !collapsed);
+    try {
+      localStorage.setItem('parts-erp-menu-collapsed', String(this.menuCollapsed()));
+    } catch {
+      // A navegação continua funcional quando o armazenamento local está indisponível.
+    }
+  }
+
+  toggleMobileMenu(): void {
+    const open = !this.menuOpen();
+    this.menuOpen.set(open);
+    requestAnimationFrame(() => {
+      const target = open
+        ? document.querySelector<HTMLElement>('.sidebar a[href]')
+        : document.querySelector<HTMLButtonElement>('.mobile-bar button[aria-label="Abrir menu"]');
+      target?.focus();
+    });
+  }
+
+  closeMobileMenu(): void {
+    if (!this.menuOpen()) return;
+    this.menuOpen.set(false);
+    requestAnimationFrame(() => document.querySelector<HTMLButtonElement>('.mobile-bar button[aria-label="Abrir menu"]')?.focus());
+  }
+
+  @HostListener('window:resize')
+  onShellResize(): void {
+    const mobile = window.innerWidth <= 767;
+    this.mobileShell.set(mobile);
+    if (!mobile) this.menuOpen.set(false);
+  }
+
+  @HostListener('document:keydown', ['$event'])
+  onShellKeydown(event: KeyboardEvent): void {
+    if (!this.menuOpen()) return;
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      this.closeMobileMenu();
+      return;
+    }
+    if (event.key !== 'Tab') return;
+    const items = Array.from(document.querySelectorAll<HTMLElement>('.sidebar a[href], .sidebar button:not(:disabled)'));
+    const first = items[0];
+    const last = items[items.length - 1];
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last?.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first?.focus();
+    }
+  }
+
+  private restoreMenuPreference(): boolean {
+    try {
+      const saved = localStorage.getItem('parts-erp-menu-collapsed');
+      return saved === null ? window.innerWidth < 1200 : saved === 'true';
+    } catch {
+      return window.innerWidth < 1200;
+    }
   }
   /**
    * Gesto de puxar para atualizar (P17). Só vale no aplicativo Android — no navegador do celular o

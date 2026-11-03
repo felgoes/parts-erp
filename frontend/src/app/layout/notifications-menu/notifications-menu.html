@@ -22,11 +22,9 @@
   </span>
   <span class="trigger-copy">
     <strong>Alertas</strong>
-    <small>{{
-      notificationCount()
-        ? notificationCount() + (notificationCount() === 1 ? ' novo' : ' novos')
-        : 'Tudo em dia'
-    }}</small>
+    @if (notificationCount()) {
+      <small>{{ notificationCount() + (notificationCount() === 1 ? ' novo' : ' novos') }}</small>
+    }
   </span>
 </button>
 

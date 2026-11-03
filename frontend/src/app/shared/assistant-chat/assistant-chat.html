@@ -1,22 +1,12 @@
 @if (isAdmin()) {
-  <button
-    class="assistant-fab"
-    type="button"
-    [class.is-open]="open()"
-    [attr.aria-expanded]="open()"
-    aria-controls="assistant-panel"
-    aria-label="Abrir assistente de IA"
-    (click)="toggle()"
-  >
-    <span class="assistant-fab-mark" aria-hidden="true">✦</span>
-    <span class="assistant-fab-label">Assistente</span>
-  </button>
-
   @if (open()) {
     <section
       id="assistant-panel"
+      #panel
       class="assistant-panel"
       role="dialog"
+      [attr.aria-modal]="panelTop() !== null ? 'true' : null"
+      (keydown)="onPanelKeydown($event)"
       aria-label="Assistente de IA"
       [style.top.px]="panelTop()"
       [style.left.px]="panelLeft()"
@@ -24,7 +14,6 @@
       [style.height.px]="panelHeight()"
       [style.right]="panelTop() !== null ? 'auto' : null"
       [style.bottom]="panelTop() !== null ? 'auto' : null"
-      (keydown.escape)="close()"
     >
       <header class="assistant-head">
         <div class="assistant-title">
@@ -57,7 +46,7 @@
           >
             ＋
           </button>
-          <button type="button" class="assistant-icon" aria-label="Fechar assistente" (click)="close()">
+          <button #closeButton type="button" class="assistant-icon" aria-label="Fechar assistente" (click)="close()">
             ×
           </button>
         </div>

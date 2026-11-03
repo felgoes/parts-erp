@@ -5,6 +5,7 @@ import {
   OnInit,
   computed,
   inject,
+  input,
   output,
   signal,
   viewChild,
@@ -26,6 +27,8 @@ export class NavigationMenu implements OnInit {
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
   readonly closeRequested = output<void>();
+  readonly expandRequested = output<void>();
+  readonly collapsed = input(false);
   readonly settingsOpen = signal(false);
   readonly sections = computed(() => visibleNavigationSections(this.auth.user()?.role));
   readonly isAdmin = computed(() => this.auth.user()?.role === 'admin');
@@ -48,6 +51,10 @@ export class NavigationMenu implements OnInit {
   }
 
   toggleSettings(): void {
+    if (this.collapsed()) {
+      this.expandRequested.emit();
+      return;
+    }
     const open = !this.settingsOpen();
     this.settingsOpen.set(open);
     if (open) this.revealAdminSection();

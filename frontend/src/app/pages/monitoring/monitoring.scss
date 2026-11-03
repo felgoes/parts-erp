@@ -2,3 +2,7 @@
 @use './monitoring-2';
 
 .monitor-tabs{display:flex;gap:6px;border-bottom:1px solid var(--line);margin:0 0 18px;overflow-x:auto}.monitor-tabs button{border:0;border-bottom:2px solid transparent;background:transparent;padding:11px 14px;color:var(--muted);font:inherit;font-size:13px;white-space:nowrap;cursor:pointer}.monitor-tabs button.active{border-color:var(--brand-primary);color:var(--brand-primary);font-weight:600}.monitor-tabs button:focus-visible{outline:2px solid var(--brand-accent);outline-offset:2px}
+
+.monitor-tabs { border-color: var(--divider); }
+.monitor-tabs button { min-height: 44px; border-radius: 4px 4px 0 0; color: var(--text-secondary); }
+.monitor-tabs button.active { border-color: var(--forest); background: color-mix(in srgb, var(--forest) 8%, var(--canvas)); color: var(--text-primary); }

@@ -1,3 +1,7 @@
+## 7 de novembro de 2026 — navegação, Vendas e Compras
+
+- A Visão geral reúne receita líquida, atalhos para pendências e as duas últimas vendas. Vendas e compras abrem em páginas próprias, com retorno ao contexto da lista. Compras ganhou quatro grupos de status e uma seção para registrar recebimentos. O sino e a central abrem a venda vinculada ao aviso. Implantado em 07/11/2026, com as verificações públicas do ERP e do site aprovadas. [Commit implantado · 200e1be](https://github.com/felgoes/parts-erp/commit/200e1be1eaf057494e341f7ddd9a0639824295d2)
+
 ## 7 de novembro de 2026 — listagens responsivas do ERP
 
 - O cartão de Receita líquida voltou ao verde escuro. Vendas recentes e Pedidos do Mercado Livre ganharam registros alinhados e ações de documentos identificadas. Faturas, Produtos, Clientes, Compras e Contas a pagar usam a largura disponível no celular. Implantado em 07/11/2026, com ERP e site respondendo HTTP 200 e arquivos do novo build conferidos. [Commit implantado · 03693c2](https://github.com/felgoes/parts-erp/commit/03693c2b1a72b636531fc9846eccf74ed6e54a58)

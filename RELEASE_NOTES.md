@@ -1,3 +1,7 @@
+## 7 de novembro de 2026 — listagens responsivas do ERP
+
+- O cartão de Receita líquida voltou ao verde escuro. Vendas recentes e Pedidos do Mercado Livre ganharam registros alinhados e ações de documentos identificadas. Faturas, Produtos, Clientes, Compras e Contas a pagar usam a largura disponível no celular. Implantado em 07/11/2026, com ERP e site respondendo HTTP 200 e arquivos do novo build conferidos. [Commit implantado · 03693c2](https://github.com/felgoes/parts-erp/commit/03693c2b1a72b636531fc9846eccf74ed6e54a58)
+
 ## 7 de novembro de 2026 — endereço de destino nos modais
 
 - [Endereço reconhecido no formato atual do Mercado Livre · b7fe138](https://github.com/felgoes/parts-erp/commit/b7fe138414e74ca79ff624efd2af1fd3db2159e): o ERP passa a ler o endereço em destination.shipping_address e a mostrá-lo no resumo inicial das vendas. Implantado em produção em 07/11/2026; ERP e site responderam HTTP 200 com título e bundle esperados.

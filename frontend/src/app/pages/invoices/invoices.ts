@@ -1,5 +1,5 @@
 import { CurrencyPipe, DatePipe } from '@angular/common';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { debounceTime, forkJoin } from 'rxjs';
@@ -12,12 +12,12 @@ import { Customer, Invoice, Product } from '../../core/models';
 import { canSell } from '../../core/user-access';
 import { statusLabel } from '../../core/status-labels';
 import { saleStageForInvoice, saleStageLabel } from '../../core/sale-stage';
-import { documentLabel, invoiceDocumentLabel } from '../../core/document-labels';
+import { invoiceDocumentLabel } from '../../core/document-labels';
 import { documentsWithoutXml } from '../../core/document-visibility';
 import { PageHeader } from '../../shared/page-header';
 import { PeriodFilter, PeriodFilterStatusOption } from '../../shared/period-filter';
-import { AfterSaleWorkflow } from '../../shared/after-sale-workflow';
-import { TrackingPanel } from '../../shared/tracking-panel';
+import { QuickDatePreset, matchingDatePreset } from '../../core/quick-date-ranges';
+import { RecordOrigin, recordOrigin, restoreRecordPosition } from '../../shared/record-origin';
 
 @Component({
   selector: 'app-invoices',
@@ -27,8 +27,7 @@ import { TrackingPanel } from '../../shared/tracking-panel';
     FormsModule,
     PageHeader,
     PeriodFilter,
-    AfterSaleWorkflow,
-    TrackingPanel,
+    RouterLink,
   ],
   templateUrl: './invoices.html',
   styleUrl: './invoices.scss',
@@ -46,8 +45,9 @@ export class InvoicesPage implements OnInit {
   readonly products = signal<Product[]>([]);
   readonly customers = signal<Customer[]>([]);
   readonly modal = signal(false);
-  readonly detail = signal<Invoice | null>(null);
-  readonly invoiceTab = signal<'items' | 'tracking' | 'documents' | 'aftersale'>('items');
+  private pendingReturn = window.history.state?.recordReturn as RecordOrigin | undefined;
+  readonly loadError = signal(false);
+  readonly loading = signal(true);
   statusFilter: 'all' | 'open' | 'post_sale' = 'all';
   readonly filterStatusOptions = computed<PeriodFilterStatusOption[]>(() => [
     { value: 'all', label: 'Todas', count: this.invoices().length },
@@ -61,7 +61,6 @@ export class InvoicesPage implements OnInit {
   readonly statusLabel = statusLabel;
   readonly saleStageForInvoice = saleStageForInvoice;
   readonly saleStageLabel = saleStageLabel;
-  readonly documentLabel = documentLabel;
   readonly invoiceDocumentLabel = invoiceDocumentLabel;
   readonly listingDocuments = documentsWithoutXml;
   visibleInvoices() {
@@ -91,25 +90,22 @@ export class InvoicesPage implements OnInit {
           : 'Cancelamento';
     return `${title} · ${statusLabel(invoice.after_sale.status)}`;
   }
-  afterSaleReason(value: string) {
-    if (value.trim().toLowerCase() === 'mediations cancel the order')
-      return 'A mediação cancelou o pedido';
-    return value;
-  }
-  requesterLabel(value: string) {
-    return (
-      ({ meli: 'Mercado Livre', buyer: 'Comprador', seller: 'Vendedor' } as Record<string, string>)[
-        value.toLowerCase()
-      ] ?? value
-    );
-  }
   readonly lines = signal<{ product: Product; quantity: number }[]>([]);
   customerId = '';
   selectedProduct = '';
   quantity = 1;
   startDate = this.monthStart();
   endDate = this.today();
+  initialPreset: QuickDatePreset = 'thisMonth';
+
   ngOnInit() {
+    const view = this.pendingReturn?.view as { startDate?: string; endDate?: string; status?: string } | undefined;
+    if (view?.startDate && view.endDate) {
+      this.startDate = view.startDate;
+      this.endDate = view.endDate;
+      this.setStatusFilter(view.status || 'all');
+      this.initialPreset = matchingDatePreset(this.startDate, this.endDate);
+    }
     this.load();
     this.live.changes$
       .pipe(debounceTime(250), takeUntilDestroyed(this.destroyRef))
@@ -117,12 +113,22 @@ export class InvoicesPage implements OnInit {
   }
   load() {
     if (!this.validRange()) return;
-    this.api.invoices(this.startDate, this.endDate).subscribe((v) => this.invoices.set(v));
-    const detailId = this.detail()?.id;
-    if (detailId)
-      this.api.invoice(detailId).subscribe((full) => {
-        if (this.detail()?.id === detailId) this.detail.set(full);
-      });
+    const { startDate, endDate } = this;
+    this.api.invoices(startDate, endDate).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: (invoices) => {
+        if (startDate !== this.startDate || endDate !== this.endDate) return;
+        this.invoices.set(invoices);
+        this.loadError.set(false);
+        this.loading.set(false);
+        restoreRecordPosition(this.pendingReturn);
+        this.pendingReturn = undefined;
+      },
+      error: () => {
+        if (startDate !== this.startDate || endDate !== this.endDate) return;
+        this.loading.set(false);
+        this.loadError.set(true);
+      },
+    });
   }
   applyDateFilter(range: { startDate: string; endDate: string }) {
     this.startDate = range.startDate;
@@ -181,9 +187,16 @@ export class InvoicesPage implements OnInit {
   confirm(i: Invoice) {
     this.api.confirmInvoice(i.id).subscribe(() => this.load());
   }
-  openDetails(i: Invoice) {
-    this.invoiceTab.set('items');
-    this.api.invoice(i.id).subscribe((full) => this.detail.set(full));
+  openDetails(event: MouseEvent, invoice: Invoice): void {
+    if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+    event.preventDefault();
+    void this.router.navigate(['/invoices', invoice.id], {
+      state: recordOrigin(this.router.url, 'Vendas', invoice.id, {
+        startDate: this.startDate,
+        endDate: this.endDate,
+        status: this.statusFilter,
+      }),
+    });
   }
   openDocument(invoiceId: string, documentId: string) {
     // Popup + blob falha no WebView Android e resulta em about:blank.
@@ -191,15 +204,5 @@ export class InvoicesPage implements OnInit {
   }
   documentViewerUrl(invoiceId: string, documentId: string) {
     return `/document-viewer/${invoiceId}/${documentId}`;
-  }
-  label(s: string) {
-    return (
-      (
-        { draft: 'Rascunho', confirmed: 'Confirmada', cancelled: 'Cancelada' } as Record<
-          string,
-          string
-        >
-      )[s] ?? statusLabel(s)
-    );
   }
 }

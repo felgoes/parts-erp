@@ -19,15 +19,10 @@ from app.schemas.common import (
 from app.services.after_sale import after_sales_for_invoices
 from app.services.invoice_tracking import attach_invoice_tracking
 from app.services.marketplace_costs import revenue_by_invoice, revenue_totals
-from app.services.shipping_status import (
-    DISPATCHED_SHIPPING_SUBSTATUSES,
-    shipping_progress_history_exists,
-)
+from app.services.shipping_status import pending_dispatch_filters
 
 router = APIRouter(prefix="/dashboard", tags=["Painel"])
 BRAZIL_TZ = timezone(timedelta(hours=-3))
-PENDING_SHIPMENT_STATUS = "ready_to_ship"
-INACTIVE_ORDER_STATUSES = ("cancelled", "canceled", "in_cancel")
 
 
 def _period(
@@ -74,14 +69,10 @@ def summary(
     cancelled_amount = db.scalar(
         select(func.coalesce(func.sum(SalesInvoice.total), 0)).where(*cancelled_filter)
     )
-    shipping_substatus = func.lower(func.coalesce(MarketplaceOrder.shipping_substatus, ""))
     sales_to_ship = (
         db.scalar(
             select(func.count(MarketplaceOrder.id)).where(
-                MarketplaceOrder.shipping_status == PENDING_SHIPMENT_STATUS,
-                MarketplaceOrder.status.not_in(INACTIVE_ORDER_STATUSES),
-                shipping_substatus.not_in(DISPATCHED_SHIPPING_SUBSTATUSES),
-                ~shipping_progress_history_exists(MarketplaceOrder.id),
+                *pending_dispatch_filters(),
             )
         )
         or 0

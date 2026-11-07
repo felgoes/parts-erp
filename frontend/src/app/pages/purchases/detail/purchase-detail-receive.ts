@@ -1,16 +1,15 @@
-import { CurrencyPipe, DecimalPipe } from '@angular/common';
-import { Component, inject } from '@angular/core';
+import { DecimalPipe } from '@angular/common';
+import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 
 import { PurchaseItem } from '../../../core/models';
-import { MoneyInputDirective } from '../../../shared/money-input.directive';
 import { PurchaseDetailEditing } from './purchase-detail-editing';
 import { PurchaseDetailState } from './purchase-detail-state';
 
 /** Itens e recebimento: quantidade que chegou, produto de destino e registro de cada entrada. */
 @Component({
   selector: 'app-purchase-detail-receive',
-  imports: [CurrencyPipe, DecimalPipe, FormsModule, MoneyInputDirective],
+  imports: [DecimalPipe, FormsModule],
   templateUrl: './purchase-detail-receive.html',
   styleUrl: './purchase-detail-receive.scss',
 })
@@ -19,7 +18,13 @@ export class PurchaseDetailReceive {
   private readonly editing = inject(PurchaseDetailEditing);
 
   readonly detail = this.flow.detail;
-  readonly progress = this.flow.progress;
+  readonly selectedId = signal('');
+  readonly pendingItems = computed(() => (this.detail()?.items ?? []).filter(
+    (item) => Number(item.received_quantity) < Number(item.quantity),
+  ));
+  readonly selectedItem = computed(() => this.pendingItems().find(
+    (item) => item.id === this.selectedId(),
+  ) ?? this.pendingItems()[0]);
   readonly receiveValues = this.editing.receiveValues;
   readonly saving = this.flow.saving;
 

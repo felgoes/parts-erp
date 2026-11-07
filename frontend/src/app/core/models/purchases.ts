@@ -218,6 +218,7 @@ export interface PurchaseListItem extends Omit<
 
 /** Contagens dos cartões, sempre do período escolhido. */
 export interface PurchaseListSummary {
+  groups: Record<string, number>;
   negotiating: number;
   ordered: number;
   received: number;

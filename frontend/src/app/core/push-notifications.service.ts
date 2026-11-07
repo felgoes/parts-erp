@@ -1,11 +1,17 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject, signal } from '@angular/core';
-import { Capacitor, registerPlugin } from '@capacitor/core';
+import { NavigationEnd, Router } from '@angular/router';
+import { Capacitor, PluginListenerHandle, registerPlugin } from '@capacitor/core';
 import { firstValueFrom } from 'rxjs';
+import type { AuthService } from './auth.service';
+import type { User } from './models';
+import { notificationDestination } from './notification-destination';
 import { apiUrl } from './api-url';
 
 interface NativePushNotifications {
   register(): Promise<{ token: string }>;
+  takeLaunch(): Promise<Record<string, unknown>>;
+  addListener(event: 'notificationOpened', listener: (action: Record<string, unknown>) => void): Promise<PluginListenerHandle>;
 }
 
 export type PushRegistrationStatus = 'idle' | 'checking' | 'registered' | 'unavailable' | 'error';
@@ -20,6 +26,10 @@ const nativePush = registerPlugin<NativePushNotifications>('PushNotifications');
 @Injectable({ providedIn: 'root' })
 export class PushNotificationsService {
   private readonly http = inject(HttpClient);
+  private readonly router = inject(Router);
+  private launch: Record<string, unknown> | undefined;
+  private launchInitialized = false;
+  private resolvingLaunch = false;
   private registeredToken = '';
   private registrationRequest: Promise<void> | null = null;
   readonly registrationState = signal<PushRegistrationState>({
@@ -29,6 +39,46 @@ export class PushNotificationsService {
 
   isAndroidApp(): boolean {
     return Capacitor.isNativePlatform() && Capacitor.getPlatform() === 'android';
+  }
+
+  async listenForNotificationOpens(auth: AuthService): Promise<void> {
+    if (!this.isAndroidApp() || this.launchInitialized) return;
+    this.launchInitialized = true;
+    this.router.events.subscribe((event) => {
+      if (event instanceof NavigationEnd) void this.routePendingNotification(auth);
+    });
+    try {
+      await nativePush.addListener('notificationOpened', (action) => this.queueLaunch(action, auth));
+      this.queueLaunch(await nativePush.takeLaunch(), auth);
+    } catch {
+      // An older Android release can still register and receive push.
+    }
+  }
+
+  private queueLaunch(action: Record<string, unknown>, auth: AuthService): void {
+    if (typeof action['parts_event_id'] !== 'string') return;
+    this.launch = action;
+    void this.routePendingNotification(auth);
+  }
+
+  private async routePendingNotification(auth: AuthService): Promise<void> {
+    const launch = this.launch;
+    if (!launch || this.resolvingLaunch || !this.router.navigated
+      || this.router.url.startsWith('/login') || !auth.isAuthenticated()) return;
+
+    this.resolvingLaunch = true;
+    try {
+      const user = await firstValueFrom(this.http.get<User>(apiUrl('/auth/me')));
+      if (this.launch !== launch || !auth.isAuthenticated()) return;
+      const target = notificationDestination(launch, user.role);
+      this.launch = undefined;
+      await this.router.navigate([target.route], { queryParams: target.query });
+    } catch {
+      // Keep the target if an expired session redirects to login.
+    } finally {
+      this.resolvingLaunch = false;
+      if (this.launch && this.launch !== launch) void this.routePendingNotification(auth);
+    }
   }
 
   async enableForCurrentDevice(): Promise<void> {

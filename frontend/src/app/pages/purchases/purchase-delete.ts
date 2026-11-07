@@ -1,5 +1,5 @@
 import { CurrencyPipe } from '@angular/common';
-import { Component, inject, input, output, signal } from '@angular/core';
+import { Component, ElementRef, afterRenderEffect, inject, input, output, signal, viewChild } from '@angular/core';
 import { finalize } from 'rxjs';
 
 import { ApiService } from '../../core/api.service';
@@ -27,6 +27,14 @@ export class PurchaseDelete {
   readonly reason = signal('');
   readonly saving = signal(false);
   readonly error = signal('');
+  private readonly dialog = viewChild<ElementRef<HTMLDialogElement>>('dialog');
+
+  constructor() {
+    afterRenderEffect(() => {
+      const dialog = this.dialog()?.nativeElement;
+      if (dialog && !dialog.open) dialog.showModal();
+    });
+  }
 
   purchaseTotal(purchase: Purchase) {
     return purchase.purchase_type === 'expense'
@@ -34,7 +42,12 @@ export class PurchaseDelete {
       : (purchase.total_amount ?? 0);
   }
 
-  cancelDelete() {
+  cancelDelete(event?: Event) {
+    event?.preventDefault();
+    if (this.saving()) return;
+    this.dialog()?.nativeElement.close();
+    this.reason.set('');
+    this.error.set('');
     this.closed.emit();
   }
 

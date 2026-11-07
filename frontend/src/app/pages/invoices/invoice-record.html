@@ -1,0 +1,90 @@
+<a class="record-back" [href]="origin.path" (click)="back($event)">← {{ origin.label }}</a>
+
+@if (error()) { <p class="empty" role="alert">{{ error() }}</p> }
+@if (invoice(); as sale) {
+  <header class="sale-header">
+    <div>
+      <p class="muted">{{ sale.number }}</p>
+      <h1>{{ sale.customer?.name || 'Consumidor não identificado' }}</h1>
+    </div>
+    <div class="sale-total">
+      <span class="muted">Total da venda</span>
+      <strong>{{ sale.total | currency: 'BRL' }}</strong>
+    </div>
+    <p class="sale-stage" [attr.data-stage]="sale.status">{{ status(sale) }}</p>
+    @if (sale.tracking?.destination_locality; as locality) {
+      <p class="sale-destination"><span class="muted">Destino</span> <strong>{{ locality }}</strong></p>
+    }
+    @if (canConfirm()) {
+      <button type="button" class="primary" (click)="confirm(sale)" [disabled]="confirming()">
+        {{ confirming() ? 'Confirmando…' : 'Confirmar venda' }}
+      </button>
+    }
+  </header>
+  <nav class="record-tabs" aria-label="Detalhes da venda">
+    <button type="button" [attr.aria-pressed]="tab() === 'items'" (click)="tab.set('items')">Itens</button>
+    <button type="button" [attr.aria-pressed]="tab() === 'delivery'" (click)="tab.set('delivery')">Entrega</button>
+    <button type="button" [attr.aria-pressed]="tab() === 'documents'" (click)="tab.set('documents')">Documentos</button>
+    @if (sale.after_sale) {
+      <button type="button" [attr.aria-pressed]="tab() === 'after-sale'" (click)="tab.set('after-sale')">Pós-venda</button>
+    }
+  </nav>
+  @switch (tab()) {
+    @case ('items') {
+      <section aria-labelledby="sale-items">
+        <header class="record-section-heading">
+          <h2 id="sale-items">Itens da venda</h2>
+          @if (sale.documents.length > 1) {
+            <button type="button" class="record-action" (click)="tab.set('documents')">Ver {{ sale.documents.length }} documentos →</button>
+          } @else if (sale.documents[0]; as doc) {
+            <a class="record-action" [routerLink]="['/document-viewer', sale.id, doc.id]" [queryParams]="{ from: 'invoice' }">
+              Abrir {{ documentLabel(doc, sale.documents) }} →
+            </a>
+          }
+        </header>
+        <ul class="record-lines">
+          @for (item of sale.items; track item.id) {
+            <li>
+              <span><strong>{{ item.description }}</strong><small>{{ item.sku }} · {{ item.quantity | number: '1.0-3' }} un. · {{ item.unit_price | currency: 'BRL' }} cada</small></span>
+              <strong>{{ item.total | currency: 'BRL' }}</strong>
+            </li>
+          } @empty { <li>Nenhum item registrado.</li> }
+        </ul>
+      </section>
+    }
+    @case ('delivery') {
+      <section aria-labelledby="sale-delivery">
+        <h2 id="sale-delivery">Entrega</h2>
+        <dl class="record-facts">
+          <div><dt>Origem</dt><dd>{{ sale.source === 'mercadolivre' ? 'Mercado Livre' : sale.source === 'shopee' ? 'Shopee' : 'Balcão' }}</dd></div>
+          <div><dt>{{ sale.issued_at ? 'Emissão' : 'Criação' }}</dt><dd>{{ sale.issued_at || sale.created_at | date: 'dd/MM/yyyy HH:mm' : '-0300' }}</dd></div>
+          @if (sale.marketplace_order_id; as orderId) { <div><dt>Pedido</dt><dd>{{ orderId }}</dd></div> }
+          @if (sale.customer?.document || sale.customer?.email; as customerReference) {
+            <div><dt>Cadastro do cliente</dt><dd>{{ customerReference }}</dd></div>
+          }
+          @if (sale.notes) { <div><dt>Observações</dt><dd>{{ sale.notes }}</dd></div> }
+        </dl>
+        @if (sale.tracking; as tracking) { <app-tracking-panel [tracking]="tracking" /> }
+      </section>
+    }
+    @case ('documents') {
+      <section aria-labelledby="sale-documents">
+        <h2 id="sale-documents">Documentos da venda</h2>
+        <ul class="record-lines">
+          @for (doc of sale.documents; track doc.id) {
+            <li>
+              <a class="record-action" [routerLink]="['/document-viewer', sale.id, doc.id]" [queryParams]="{ from: 'invoice' }">
+                {{ documentLabel(doc, sale.documents) }} <small>{{ doc.filename }}</small>
+              </a>
+            </li>
+          } @empty { <li>Nenhum documento anexado.</li> }
+        </ul>
+      </section>
+    }
+    @case ('after-sale') {
+      @if (sale.after_sale; as afterSale) { <app-after-sale-workflow [afterSale]="afterSale" /> }
+    }
+  }
+} @else if (!error()) {
+  <p class="loading" role="status">Carregando venda…</p>
+}

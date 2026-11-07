@@ -16,6 +16,7 @@ from app.models import PushDevice, PushNotification
 
 logger = logging.getLogger(__name__)
 SOUND_CATEGORIES = {"sales", "order_status", "fiscal", "backup", "vehicle_market", "system"}
+SALE_EVENTS = {"sale", "ready_to_ship", "order_status"}
 SOUND_OPTIONS = {"system", "bell", "chime", "soft", "kaching", "silent"}
 _access_token = ""
 _access_token_expires_at = 0.0
@@ -72,6 +73,19 @@ def _firebase_access_token(credentials: dict[str, Any]) -> str:
     return _access_token
 
 
+
+def notification_copy(notification: PushNotification) -> tuple[str, str]:
+    event_type = notification.data.get("type")
+    if event_type not in SALE_EVENTS:
+        return notification.title, notification.body
+    title = "Venda pronta para envio" if event_type == "ready_to_ship" else notification.title
+    provider = {"mercadolivre": "Mercado Livre", "shopee": "Shopee"}.get(
+        notification.data.get("provider"), "Venda"
+    )
+    number = notification.data.get("invoice_number")
+    return title, f"{provider} · {number}" if number else provider
+
+
 def deliver(
     credentials: dict[str, Any],
     devices: list[PushDevice],
@@ -82,6 +96,7 @@ def deliver(
     url = f"https://fcm.googleapis.com/v1/projects/{credentials['project_id']}/messages:send"
     headers = {"Authorization": f"Bearer {access_token}"}
     delivered, failures = 0, []
+    title, body = notification_copy(notification)
     for device in devices:
         sound = (sound_by_user or {}).get(device.user_id, "system")
         if sound not in SOUND_OPTIONS or (sound == "kaching" and device.sound_settings_version < 2):
@@ -95,7 +110,12 @@ def deliver(
             and sound != "system"
         ):
             channel_id = f"parts_v1_{notification.category}_{sound}"
-        data = {str(key): str(value) for key, value in notification.data.items()}
+        data = {
+            key: str(notification.data[key])
+            for key in ("type", "route", "invoice_id", "marketplace_order_id")
+            if notification.data.get(key)
+        }
+        data["parts_event_id"] = notification.id
         if notification.data.get("type") == "ready_to_ship":
             data.update(notification_channel=channel_id, notification_sound="silent")
         elif channel_id != "sales":
@@ -106,7 +126,7 @@ def deliver(
             json={
                 "message": {
                     "token": device.token,
-                    "notification": {"title": notification.title, "body": notification.body},
+                    "notification": {"title": title, "body": body},
                     "data": data,
                     "android": {"priority": "HIGH", "notification": {"channel_id": channel_id}},
                 }

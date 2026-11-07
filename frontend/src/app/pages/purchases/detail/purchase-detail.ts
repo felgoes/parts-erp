@@ -1,9 +1,10 @@
 import { CurrencyPipe, DatePipe, DecimalPipe } from '@angular/common';
-import { Component, inject, output } from '@angular/core';
+import { Component, computed, inject, output, signal } from '@angular/core';
 
 import { AuthService } from '../../../core/auth.service';
 import { Purchase, PurchaseListItem } from '../../../core/models';
 import { canAdjustStock, canManagePurchases, canReadCosts } from '../../../core/user-access';
+import { purchaseGroup } from '../purchase-status-groups';
 import { PurchaseDetailAside } from './purchase-detail-aside';
 import { PurchaseDetailDraft } from './purchase-detail-draft';
 import { PurchaseDetailEditing } from './purchase-detail-editing';
@@ -31,6 +32,7 @@ import { PurchaseDetailState } from './purchase-detail-state';
     PurchaseDetailQuotes,
   ],
   templateUrl: './purchase-detail.html',
+  styleUrl: './purchase-record.scss',
 })
 export class PurchaseDetail {
   private readonly flow = inject(PurchaseDetailState);
@@ -42,11 +44,26 @@ export class PurchaseDetail {
   readonly copy = output<Purchase>();
   readonly remove = output<Purchase>();
 
+  readonly section = signal<'items' | 'documents' | 'finance' | 'history' | 'receiving'>('items');
+  readonly group = purchaseGroup;
+  readonly selectedQuote = (purchase: Purchase) => this.flow.selectedQuote(purchase);
+  readonly receivedUnits = (purchase: Purchase) => this.flow.receivedUnits(purchase);
+  readonly totalUnits = (purchase: Purchase) => this.flow.totalUnits(purchase);
+  readonly canReceive = computed(() => {
+    const purchase = this.detail();
+    return this.canAdjustStock() && !!purchase && purchaseGroup(purchase.status).value === 'receiving'
+      && purchase.items.some((item) => Number(item.received_quantity) < Number(item.quantity));
+  });
   readonly detail = this.flow.detail;
   readonly saving = this.flow.saving;
   readonly error = this.flow.error;
-  readonly workflow = this.flow.workflow;
   readonly draftEditor = this.editing.draftEditor;
+
+  constructor() {
+    this.flow.changed.subscribe(() => {
+      if (this.section() === 'receiving') this.section.set('items');
+    });
+  }
 
   canManagePurchases() {
     return canManagePurchases(this.auth.user()?.role);
@@ -63,9 +80,6 @@ export class PurchaseDetail {
   dateOnly(value: string | null | undefined) {
     return this.flow.dateOnly(value);
   }
-  stepIndex(status: Purchase['status']) {
-    return this.flow.stepIndex(status);
-  }
   isOverdue(purchase: PurchaseListItem) {
     return this.flow.isOverdue(purchase);
   }
@@ -79,6 +93,7 @@ export class PurchaseDetail {
     this.flow.downloadAttachment(purchase, attachment);
   }
   openDraftEditor() {
+    this.section.set('items');
     this.editing.openDraftEditor();
   }
   closeDraftEditor() {

@@ -1,0 +1,45 @@
+:host { display: block; max-width: 1120px; margin-inline: auto; }
+.record-back, .record-action { color: var(--focus-ring); }
+.record-back, .record-action, .record-tabs button {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  background: transparent;
+  border: 0;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  padding: 0 4px;
+  cursor: pointer;
+}
+
+.sale-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+  align-items: end;
+  gap: 8px 16px;
+  margin: 16px 0;
+}
+
+.sale-header p, h1 { margin: 0; }
+h1, .sale-total strong { font-size: clamp(22px, 3vw, 28px); font-weight: 600; overflow-wrap: anywhere; }
+.sale-total { text-align: end; }
+.sale-total strong { display: block; }
+.sale-stage, .sale-destination { grid-column: 1 / -1; }
+.sale-destination strong { margin-inline-start: 6px; }
+.sale-stage::before { content: '•'; margin-inline-end: 6px; }
+.sale-stage[data-stage='cancelled'] { color: var(--state-danger-text); }
+.sale-header .primary { justify-self: start; }
+.record-tabs { display: flex; flex-wrap: wrap; gap: 8px; border-block: 1px solid var(--divider); }
+.record-tabs button { color: var(--text-secondary); text-decoration: none; border-bottom: 2px solid transparent; }
+.record-tabs button[aria-pressed='true'] { color: var(--text-primary); border-bottom-color: var(--focus-ring); font-weight: 700; }
+.record-section-heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+h2 { margin: 16px 0 8px; font-size: 16px; }
+.record-lines { list-style: none; margin: 0; padding: 0; }
+.record-lines li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--divider); }
+.record-lines small { display: block; }
+.record-lines li > span, .record-action { min-width: 0; overflow-wrap: anywhere; }
+.record-action { flex-wrap: wrap; gap: 8px; }
+.record-facts { display: flex; flex-wrap: wrap; gap: 12px 24px; overflow-wrap: anywhere; }
+.record-facts div { min-width: 0; }
+.record-facts dt { color: var(--text-secondary); font-size: 12px; }
+.record-facts dd { margin: 0; }

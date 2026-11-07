@@ -23,12 +23,23 @@ public class MainActivity extends BridgeActivity {
         getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
             @Override
             public void handleOnBackPressed() {
-                if (bridge != null && bridge.getWebView() != null && bridge.getWebView().canGoBack()) {
-                    bridge.getWebView().goBack();
+                WebView webView = bridge == null ? null : bridge.getWebView();
+                if (webView == null) {
+                    setEnabled(false);
+                    getOnBackPressedDispatcher().onBackPressed();
                     return;
                 }
-                setEnabled(false);
-                getOnBackPressedDispatcher().onBackPressed();
+                webView.evaluateJavascript(
+                    "window.dispatchEvent(new Event('parts-erp-back', {cancelable: true}))",
+                    proceed -> {
+                        if ("false".equals(proceed)) return;
+                        if (webView.canGoBack()) webView.goBack();
+                        else {
+                            setEnabled(false);
+                            getOnBackPressedDispatcher().onBackPressed();
+                        }
+                    }
+                );
             }
         });
     }

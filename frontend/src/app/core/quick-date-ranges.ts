@@ -42,6 +42,14 @@ export function quickDateRange(
   return { startDate: formatLocalDate(new Date(today.getFullYear(), 0, 1, 12)), endDate };
 }
 
+export function matchingDatePreset(startDate: string, endDate: string): QuickDatePreset {
+  return QUICK_DATE_PRESETS.find(({ id }) => {
+    if (id === 'custom') return false;
+    const range = quickDateRange(id);
+    return range.startDate === startDate && range.endDate === endDate;
+  })?.id ?? 'custom';
+}
+
 function formatLocalDate(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 }

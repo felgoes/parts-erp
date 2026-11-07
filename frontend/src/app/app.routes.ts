@@ -43,6 +43,11 @@ export const routes: Routes = [
         loadComponent: () => import('./pages/products/products').then((m) => m.ProductsPage),
       },
       {
+        path: 'purchases/:id',
+        canActivate: [accessGuard],
+        loadComponent: () => import('./pages/purchases/purchases').then((m) => m.PurchasesPage),
+      },
+      {
         path: 'purchases',
         loadComponent: () => import('./pages/purchases/purchases').then((m) => m.PurchasesPage),
       },
@@ -80,6 +85,11 @@ export const routes: Routes = [
       {
         path: 'payables',
         loadComponent: () => import('./pages/payables/payables').then((m) => m.PayablesPage),
+      },
+      {
+        path: 'invoices/:id',
+        canActivate: [accessGuard],
+        loadComponent: () => import('./pages/invoices/invoice-record').then((m) => m.InvoiceRecord),
       },
       {
         path: 'invoices',

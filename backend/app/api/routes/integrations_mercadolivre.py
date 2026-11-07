@@ -32,6 +32,7 @@ from app.schemas.common import (
 )
 from app.services.invoice_tracking import attach_invoice_tracking
 from app.services.shipping_destination_refresh import refresh_shipping_destination
+from app.services.shipping_status import pending_dispatch_filters
 from app.services.tracking_destination import tracking_destination_address
 
 logger = logging.getLogger(__name__)
@@ -207,18 +208,18 @@ def _orders_with_shipping_history(
 
 @router.get("/orders", response_model=list[MarketplaceOrderOut])
 def orders(
+    pending_dispatch: bool = False,
     db: Session = Depends(get_db),
     _: User = Depends(require_permission(Permission.MARKETPLACE_READ)),
 ) -> list[MarketplaceOrderOut]:
-    rows = list(
-        db.scalars(
-            select(MarketplaceOrder)
-            .options(selectinload(MarketplaceOrder.invoice))
-            .order_by(MarketplaceOrder.created_at.desc())
-            .limit(200)
-        )
+    query = (
+        select(MarketplaceOrder)
+        .options(selectinload(MarketplaceOrder.invoice))
+        .order_by(MarketplaceOrder.created_at.desc())
     )
-    return _orders_with_shipping_history(db, rows)
+    if pending_dispatch:
+        query = query.where(*pending_dispatch_filters())
+    return _orders_with_shipping_history(db, list(db.scalars(query.limit(200))))
 
 
 @router.get("/orders/{order_id}", response_model=MarketplaceOrderOut)

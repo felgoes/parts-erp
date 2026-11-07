@@ -110,16 +110,23 @@ export class AppLayout implements OnInit, OnDestroy {
     this.menuOpen.set(open);
     requestAnimationFrame(() => {
       const target = open
-        ? document.querySelector<HTMLElement>('.sidebar a[href]')
-        : document.querySelector<HTMLButtonElement>('.mobile-bar button[aria-label="Abrir menu"]');
+        ? document.querySelector<HTMLElement>('.nav-overview')
+        : document.querySelector<HTMLButtonElement>('.menu-trigger');
       target?.focus();
     });
   }
 
-  closeMobileMenu(): void {
+  closeMobileMenu(restoreFocus = true): void {
     if (!this.menuOpen()) return;
     this.menuOpen.set(false);
-    requestAnimationFrame(() => document.querySelector<HTMLButtonElement>('.mobile-bar button[aria-label="Abrir menu"]')?.focus());
+    if (restoreFocus) requestAnimationFrame(() => document.querySelector<HTMLButtonElement>('.menu-trigger')?.focus());
+  }
+
+  @HostListener('window:parts-erp-back', ['$event'])
+  onNativeBack(event: Event): void {
+    if (!this.menuOpen()) return;
+    event.preventDefault();
+    this.closeMobileMenu();
   }
 
   @HostListener('window:resize')
@@ -138,7 +145,7 @@ export class AppLayout implements OnInit, OnDestroy {
       return;
     }
     if (event.key !== 'Tab') return;
-    const items = Array.from(document.querySelectorAll<HTMLElement>('.sidebar a[href], .sidebar button:not(:disabled)'));
+    const items = Array.from(document.querySelectorAll<HTMLElement>('.app-topbar a[href], .app-topbar button:not(:disabled), .sidebar a[href], .sidebar button:not(:disabled)')).filter((item) => item.getClientRects().length);
     const first = items[0];
     const last = items[items.length - 1];
     if (event.shiftKey && document.activeElement === first) {

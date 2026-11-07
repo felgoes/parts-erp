@@ -84,13 +84,14 @@
 
 :root {
   --space-1:4px;--space-2:8px;--space-3:12px;--space-4:16px;--space-6:24px;--space-8:32px;
-  --radius-control:4px;--radius-surface:6px;--radius-overlay:8px;--text-primary:#16261e;--text-secondary:#52605a;
-  --divider:#d5ddd6;--control-border:#7c8b81;--action-bg:#0f2d23;--action-text:#fff;--focus-ring:#2f6d47;
+  --canvas:#f7f6f2;--surface:#fffefb;--navigation:#f1f0ea;--text:#202725;--ink:#202725;--muted:#555d57;--line:#deddd5;
+  --radius-control:4px;--radius-surface:8px;--radius-overlay:8px;--text-primary:#202725;--text-secondary:#555d57;
+  --divider:#deddd5;--control-border:#788177;--action-bg:#272e2a;--action-text:#fff;--focus-ring:#246046;
   --state-success-text:#24663a;--state-success-bg:#edf7ef;--state-warning-text:#784c09;--state-warning-bg:#fff5df;
   --state-danger-text:#9e352a;--state-danger-bg:#fff0ed;--state-info-text:#205986;--state-info-bg:#eef5fb;
   --font-size-page-title:24px;--font-size-section-title:16px;--font-size-body:14px;--font-size-caption:12px;--font-size-metric:28px;--line-height-body:20px;
 }
-body[data-theme='dark']{--canvas:#101b16;--surface:#15251e;--text:#edf3ef;--text-primary:#edf3ef;--text-secondary:#bac9bf;--ink:#edf3ef;--muted:#bac9bf;--line:#354b3f;--divider:#354b3f;--control-border:#728b7a;--forest:#9be25b;--accent:#9be25b;--action-bg:#9be25b;--action-text:#0f2d23;--focus-ring:#9be25b;--state-success-text:#b3e1bc;--state-success-bg:#203b2a;--state-warning-text:#f2d29c;--state-warning-bg:#3b301e;--state-danger-text:#f4b5ac;--state-danger-bg:#402521;--state-info-text:#b0d4f4;--state-info-bg:#1d3243;}
+body[data-theme='dark']{--canvas:#1d1e20;--surface:#27292c;--navigation:#222325;--text:#f3f2ee;--text-primary:#f3f2ee;--text-secondary:#bfc1ba;--ink:#f3f2ee;--muted:#bfc1ba;--line:#494b45;--divider:#494b45;--control-border:#858881;--forest:#afe89c;--accent:#afe89c;--action-bg:#e9e9e1;--action-text:#242824;--focus-ring:#afe89c;--state-success-text:#b3e1bc;--state-success-bg:#203b2a;--state-warning-text:#f2d29c;--state-warning-bg:#3b301e;--state-danger-text:#f4b5ac;--state-danger-bg:#402521;--state-info-text:#b0d4f4;--state-info-bg:#1d3243;}
 .page-header{align-items:center;gap:var(--space-6);margin-bottom:var(--space-4)}
 .page-header>div:first-child{min-width:0}
 .page-header h1{color:var(--text-primary);font-size:var(--font-size-page-title);font-weight:600;letter-spacing:0;line-height:32px}

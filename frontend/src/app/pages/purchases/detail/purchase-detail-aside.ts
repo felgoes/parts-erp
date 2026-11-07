@@ -1,5 +1,5 @@
 import { CurrencyPipe, DatePipe, DecimalPipe } from '@angular/common';
-import { Component, inject, output } from '@angular/core';
+import { Component, inject, input, output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 
 import { AuthService } from '../../../core/auth.service';
@@ -25,6 +25,7 @@ export class PurchaseDetailAside {
   private readonly editing = inject(PurchaseDetailEditing);
   private readonly auth = inject(AuthService);
 
+  readonly section = input.required<'finance' | 'history' | 'receiving'>();
   readonly remove = output<Purchase>();
 
   readonly detail = this.flow.detail;

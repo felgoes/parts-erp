@@ -1,9 +1,21 @@
 from collections.abc import Mapping
 from typing import Any
+from unicodedata import normalize
 
 from app.models import MarketplaceOrder
 
 DESTINATION_METADATA_KEY = "_erp_destination_address"
+LOCALITY_METADATA_KEY = "_erp_destination_locality"
+STATE_NAMES = {
+    "acre": "AC", "alagoas": "AL", "amapa": "AP", "amazonas": "AM",
+    "bahia": "BA", "ceara": "CE", "distrito federal": "DF", "espirito santo": "ES",
+    "goias": "GO", "maranhao": "MA", "mato grosso": "MT", "mato grosso do sul": "MS",
+    "minas gerais": "MG", "para": "PA", "paraiba": "PB", "parana": "PR",
+    "pernambuco": "PE", "piaui": "PI", "rio de janeiro": "RJ", "rio grande do norte": "RN",
+    "rio grande do sul": "RS", "rondonia": "RO", "roraima": "RR", "santa catarina": "SC",
+    "sao paulo": "SP", "sergipe": "SE", "tocantins": "TO",
+}
+STATE_CODES = frozenset(STATE_NAMES.values())
 
 
 def _text(value: object) -> str | None:
@@ -69,10 +81,41 @@ def tracking_destination_address(order: MarketplaceOrder) -> str | None:
     return _text(payload.get(DESTINATION_METADATA_KEY))
 
 
+def shipping_destination_locality(shipment: Mapping[str, Any] | None) -> str | None:
+    if not isinstance(shipment, Mapping):
+        return None
+    address = _first_address(shipment)
+    if not isinstance(address, Mapping):
+        return None
+    city_value = address.get("city")
+    city = _text(city_value.get("name")) if isinstance(city_value, Mapping) else _text(city_value)
+    state_value = address.get("state")
+    candidates = (state_value.get("id"), state_value.get("name")) if isinstance(state_value, Mapping) else (state_value,)
+    for value in candidates:
+        state = _text(value) or ""
+        code = state.upper().removeprefix("BR-")
+        name = normalize("NFKD", state).encode("ascii", "ignore").decode().casefold()
+        uf = code if code in STATE_CODES else STATE_NAMES.get(name)
+        if city and uf:
+            return f"{city}, {uf}"
+    return None
+
+
+def tracking_destination_locality(order: MarketplaceOrder) -> str | None:
+    payload = order.payload if isinstance(order.payload, dict) else {}
+    return _text(payload.get(LOCALITY_METADATA_KEY))
+
+
 def persist_tracking_destination(
     order: MarketplaceOrder, shipment: Mapping[str, Any] | None
 ) -> str | None:
     address = format_shipping_destination(shipment)
+    locality = shipping_destination_locality(shipment)
+    updates = {}
     if address and address != tracking_destination_address(order):
-        order.payload = {**(order.payload or {}), DESTINATION_METADATA_KEY: address}
+        updates[DESTINATION_METADATA_KEY] = address
+    if locality and locality != tracking_destination_locality(order):
+        updates[LOCALITY_METADATA_KEY] = locality
+    if updates:
+        order.payload = {**(order.payload or {}), **updates}
     return address

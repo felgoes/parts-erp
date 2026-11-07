@@ -39,3 +39,16 @@
   font-size: 11px;
   line-height: 1.5;
 }
+
+.delete-modal {
+  max-width: calc(100% - 24px);
+  max-height: calc(100dvh - 24px);
+  overflow: auto;
+  background: var(--surface);
+  color: var(--text-primary);
+}
+
+.delete-modal::backdrop { background: #161c1880; }
+.delete-effects { color: var(--text-secondary); }
+.delete-modal > label { font-size: 14px; letter-spacing: normal; text-transform: none; }
+.delete-modal > label input { min-height: 44px; }

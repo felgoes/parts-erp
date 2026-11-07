@@ -1,27 +1,20 @@
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { Subject, debounceTime } from 'rxjs';
-import { CurrencyPipe, DatePipe, DecimalPipe } from '@angular/common';
+import { Subject, debounceTime, finalize } from 'rxjs';
+import { CurrencyPipe, DatePipe } from '@angular/common';
 import { Component, DestroyRef, OnInit, computed, inject, signal, viewChild } from '@angular/core';
 import {
-  FormArray,
-  FormBuilder,
   FormsModule,
   ReactiveFormsModule,
-  Validators,
 } from '@angular/forms';
-import { finalize } from 'rxjs';
+import { ActivatedRoute, Router } from '@angular/router';
 import { ApiService } from '../../core/api.service';
 import { LiveUpdatesService } from '../../core/live-updates.service';
 import { AuthService } from '../../core/auth.service';
 import {
-  PaymentConditionType,
   Product,
   Purchase,
-  PurchaseItem,
   PurchaseListItem,
-  PurchasePayable,
   PurchaseQuote,
-  PurchaseStatus,
 } from '../../core/models';
 import {
   canAdjustStock,
@@ -29,11 +22,12 @@ import {
   canManagePurchases,
   canReadCosts,
 } from '../../core/user-access';
-import { DateRange, quickDateRange } from '../../core/quick-date-ranges';
+import { DateRange, QuickDatePreset, matchingDatePreset, quickDateRange } from '../../core/quick-date-ranges';
 import { PageHeader } from '../../shared/page-header';
 import { PeriodFilter } from '../../shared/period-filter';
-import { MoneyInputDirective } from '../../shared/money-input.directive';
 import { dateOnlyLabel, dateOnlyValue } from '../../shared/date-only';
+import { RecordOrigin, readRecordOrigin, recordOrigin, restoreRecordPosition } from '../../shared/record-origin';
+import { PURCHASE_GROUPS, purchaseGroup } from './purchase-status-groups';
 import { PurchaseDelete } from './purchase-delete';
 import { PurchaseNew, SupplierOption } from './purchase-new';
 import { PurchaseDetail } from './detail/purchase-detail';
@@ -49,9 +43,7 @@ import { PurchaseImportState } from './import/purchase-import-state';
   imports: [
     CurrencyPipe,
     DatePipe,
-    DecimalPipe,
     FormsModule,
-    MoneyInputDirective,
     ReactiveFormsModule,
     PageHeader,
     PeriodFilter,
@@ -73,13 +65,16 @@ import { PurchaseImportState } from './import/purchase-import-state';
 })
 export class PurchasesPage implements OnInit {
   private readonly api = inject(ApiService);
+  private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
+  readonly recordId = this.route.snapshot.paramMap.get('id');
+  readonly origin = readRecordOrigin({ '/purchases': 'Compras' }, '/purchases');
+  private pendingReturn = window.history.state?.recordReturn as RecordOrigin | undefined;
   private readonly live = inject(LiveUpdatesService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly auth = inject(AuthService);
-  private readonly fb = inject(FormBuilder);
   private readonly importFlow = inject(PurchaseImportState);
   readonly detailState = inject(PurchaseDetailState);
-  private readonly quoteLogic = inject(PurchaseQuoteLogic);
   // A revisão vive em componentes próprios; a página só mostra o aviso e o estado do botão.
   readonly importError = this.importFlow.importError;
   readonly importLoading = this.importFlow.importLoading;
@@ -87,28 +82,23 @@ export class PurchasesPage implements OnInit {
   readonly purchases = signal<PurchaseListItem[]>([]);
   private readonly newPurchase = viewChild(PurchaseNew);
 
-  /** Abre o cadastro manual; o menu da linha sai de cena antes. */
   openNew() {
     this.closeRowMenu();
     this.newPurchase()?.open();
   }
-  /** Compra criada no cadastro manual: entra na lista e abre o detalhe. */
   onCreated(purchase: Purchase) {
     this.purchases.update((list) => [purchase, ...list]);
     this.openDetails(purchase);
   }
-  /** Fornecedor cadastrado dentro do cadastro de compra entra na lista da página. */
   onSupplierCreated(supplier: SupplierOption) {
     this.suppliers.update((items) =>
       items.some((entry) => entry.id === supplier.id) ? items : [...items, supplier],
     );
   }
-  /** Produtos do catálogo disponíveis para vincular numa linha da compra. */
 
   onImportDocument(event: Event) {
     this.importFlow.startAnalysis(event);
   }
-  /** Compra criada pela revisão do documento: entra na lista, avisa do anexo e abre o detalhe. */
   onImported(result: { purchase: Purchase; document: { filename: string; size: number } }) {
     const { purchase, document } = result;
     this.purchases.update((list) => [purchase, ...list]);
@@ -159,7 +149,9 @@ export class PurchasesPage implements OnInit {
   private readonly initialRange = quickDateRange('last30');
   readonly startDate = signal(this.initialRange.startDate);
   readonly endDate = signal(this.initialRange.endDate);
-  readonly statuses = this.detailState.statuses;
+  readonly statuses = PURCHASE_GROUPS;
+  readonly groupValue = (purchase: PurchaseListItem) => purchaseGroup(purchase.status).value;
+  initialPreset: QuickDatePreset = 'last30';
   readonly detail = this.detailState.detail;
   readonly products = this.detailState.products;
 
@@ -167,7 +159,7 @@ export class PurchasesPage implements OnInit {
     return this.detailState.selectedQuote(purchase);
   }
   purchaseStatusLabel(purchase: PurchaseListItem) {
-    return this.detailState.purchaseStatusLabel(purchase);
+    return purchaseGroup(purchase.status).label;
   }
   dateOnly(value: string | null | undefined) {
     return this.detailState.dateOnly(value);
@@ -177,10 +169,21 @@ export class PurchasesPage implements OnInit {
   }
   readonly suppliers = this.detailState.suppliers;
 
-  /** O detalhe busca a compra completa; o menu da linha sai de cena antes. */
-  openDetails(purchase: PurchaseListItem) {
+  openDetails(purchase: PurchaseListItem, event?: MouseEvent) {
+    if (event?.ctrlKey || event?.metaKey || event?.shiftKey || event?.altKey) return;
+    event?.preventDefault();
     this.closeRowMenu();
-    this.detailState.openDetails(purchase);
+    const state = this.recordId ? { recordOrigin: this.origin } : recordOrigin(this.router.url, 'Compras', purchase.id, {
+      search: this.search(), status: this.statusFilter(), page: this.page(),
+      startDate: this.startDate(), endDate: this.endDate(),
+    });
+    void this.router.navigate(['/purchases', purchase.id], { state });
+  }
+
+  back(event?: MouseEvent): void {
+    if (event?.ctrlKey || event?.metaKey || event?.shiftKey || event?.altKey) return;
+    event?.preventDefault();
+    void this.router.navigateByUrl(this.origin.path, { state: { recordReturn: this.origin } });
   }
   refreshProducts() {
     this.detailState.refreshProducts();
@@ -189,35 +192,31 @@ export class PurchasesPage implements OnInit {
     this.detailState.loadSuppliers();
   }
   readonly total = signal(0);
-  readonly summaryCounts = signal({ negotiating: 0, ordered: 0, received: 0 });
-  readonly summary = computed(() => {
-    const counts = this.summaryCounts();
-    return [
-      {
-        status: 'negotiating',
-        label: 'Em negociação',
-        count: counts.negotiating,
-        note: 'Aguardando propostas',
-      },
-      {
-        status: 'ordered',
-        label: 'Aguardando recebimento',
-        count: counts.ordered,
-        note: 'Peças e materiais pendentes',
-      },
-      {
-        status: 'received',
-        label: 'Concluídas',
-        count: counts.received,
-        note: 'Compras recebidas ou despesas lançadas',
-      },
-    ];
-  });
+  readonly summaryCounts = signal<Record<string, number>>({});
+  readonly summary = computed(() => PURCHASE_GROUPS.map((group) => ({
+    ...group, count: this.summaryCounts()[group.value] ?? 0,
+  })));
 
   ngOnInit() {
-    this.load();
     this.refreshProducts();
     this.loadSuppliers();
+    if (this.recordId) {
+      this.route.paramMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
+        const id = params.get('id');
+        if (id) this.detailState.openDetails(id);
+      });
+      return;
+    }
+    const view = this.pendingReturn?.view as { search: string; status: string; page: number; startDate: string; endDate: string } | undefined;
+    if (view) {
+      this.search.set(view.search);
+      this.statusFilter.set(view.status);
+      this.page.set(view.page);
+      this.startDate.set(view.startDate);
+      this.endDate.set(view.endDate);
+      this.initialPreset = matchingDatePreset(view.startDate, view.endDate);
+    }
+    this.load();
     // Busca no servidor: espera o usuário parar de digitar e volta para a primeira página.
     this.searchChanges
       .pipe(debounceTime(300), takeUntilDestroyed(this.destroyRef))
@@ -234,23 +233,31 @@ export class PurchasesPage implements OnInit {
       });
   }
 
+  private loadVersion = 0;
   load() {
+    const version = ++this.loadVersion;
     this.api
       .purchases({
         limit: this.pageSize,
         offset: (this.page() - 1) * this.pageSize,
         search: this.search().trim() || undefined,
-        status: this.statusFilter() === 'all' ? undefined : this.statusFilter(),
+        statusGroup: this.statusFilter() === 'all' ? undefined : this.statusFilter(),
         startDate: this.startDate() || undefined,
         endDate: this.endDate() || undefined,
       })
+      .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (page) => {
+          if (version !== this.loadVersion) return;
           this.purchases.set(page.items);
           this.total.set(page.total);
-          this.summaryCounts.set(page.summary);
+          this.summaryCounts.set(page.summary.groups ?? {});
+          restoreRecordPosition(this.pendingReturn);
+          this.pendingReturn = undefined;
         },
-        error: () => this.error.set('Não foi possível carregar as compras. Tente novamente.'),
+        error: () => {
+          if (version === this.loadVersion) this.error.set('Não foi possível carregar as compras. Tente novamente.');
+        },
       });
   }
   onSearch(value: string) {
@@ -264,7 +271,10 @@ export class PurchasesPage implements OnInit {
     this.load();
   }
   toggleStatus(status: string) {
-    this.statusFilter.set(this.statusFilter() === status ? 'all' : status);
+    this.setStatus(this.statusFilter() === status ? 'all' : status);
+  }
+  setStatus(status: string) {
+    this.statusFilter.set(status);
     this.page.set(1);
     this.load();
   }
@@ -297,7 +307,6 @@ export class PurchasesPage implements OnInit {
   }
   copyPurchase(purchase: PurchaseListItem) {
     this.closeRowMenu();
-    this.detail.set(null);
     this.newPurchase()?.openCopy(purchase);
   }
 
@@ -312,13 +321,13 @@ export class PurchasesPage implements OnInit {
       error: () => this.error.set('Não foi possível abrir a compra. Tente novamente.'),
     });
   }
-  /** Compra excluída pelo componente de confirmação: sai da lista e fecha o detalhe. */
   onDeleted(id: string) {
     const removed = this.purchases().find((item) => item.id === id);
-    if (this.detail()?.id === id) this.detail.set(null);
+    if (this.detail()?.id === id) this.back();
     this.deleteTarget.set(null);
     this.purchases.update((items) => items.filter((item) => item.id !== id));
     this.message.set(`${removed?.number ?? 'A compra'} foi excluída com os registros ligados.`);
+    if (!this.recordId) this.load();
   }
   purchaseTotal(purchase: PurchaseListItem) {
     if (purchase.purchase_type === 'expense') return purchase.expense_amount ?? 0;
@@ -328,9 +337,6 @@ export class PurchasesPage implements OnInit {
   }
   totalPages() {
     return Math.max(1, Math.ceil(this.total() / this.pageSize));
-  }
-  pagedPurchases() {
-    return this.purchases();
   }
   goToPage(delta: number) {
     this.page.set(Math.min(this.totalPages(), Math.max(1, this.page() + delta)));

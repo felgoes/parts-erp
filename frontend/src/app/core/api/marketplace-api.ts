@@ -70,8 +70,10 @@ export class MarketplaceApi {
       payload,
     );
   }
-  marketplaceOrders(): Observable<MarketplaceOrder[]> {
-    return this.http.get<MarketplaceOrder[]>(`${this.base}/integrations/mercadolivre/orders`);
+  marketplaceOrders(pendingDispatch = false): Observable<MarketplaceOrder[]> {
+    return this.http.get<MarketplaceOrder[]>(`${this.base}/integrations/mercadolivre/orders`, {
+      params: pendingDispatch ? { pending_dispatch: true } : {},
+    });
   }
   marketplaceOrder(id: string): Observable<MarketplaceOrder> {
     return this.http.get<MarketplaceOrder>(`${this.base}/integrations/mercadolivre/orders/${id}`);

@@ -5,13 +5,15 @@
 
 .alerts-trigger {
   display: flex;
-  min-height: 36px;
+  min-height: 44px;
+  min-width: 44px;
+  justify-content: center;
   align-items: center;
   gap: 10px;
-  padding: 6px 12px 6px 7px;
-  border: 1px solid var(--line);
+  padding: 0;
+  border: 1px solid transparent;
   border-radius: 4px;
-  background: var(--surface);
+  background: transparent;
   color: var(--ink);
   font: inherit;
   cursor: pointer;
@@ -41,8 +43,8 @@
   flex: 0 0 32px;
   place-items: center;
   border-radius: 10px;
-  background: #eef3ec;
-  color: var(--forest);
+  background: transparent;
+  color: inherit;
 }
 
 .bell-icon {
@@ -57,35 +59,21 @@
 
 .notification-badge {
   position: absolute;
-  top: -5px;
-  right: -5px;
-  display: grid;
-  min-width: 18px;
-  height: 18px;
-  padding: 0 4px;
-  place-items: center;
-  border: 2px solid var(--surface);
-  border-radius: 10px;
-  background: #d8493d;
-  color: #fff;
-  font-size: 9px;
-  font-weight: 800;
+  top: 3px;
+  right: 3px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--focus-ring);
 }
 
-.trigger-copy {
-  display: grid;
-  gap: 1px;
-  text-align: left;
-}
+.trigger-copy { display: none; }
 
-.trigger-copy strong {
-  color: var(--ink);
-  font-size: 12px;
-  line-height: 1.2;
-}
+@media (width < 768px) {
+  .alerts-trigger, .alerts-trigger:hover, .alerts-trigger[aria-expanded='true'] {
+    background: transparent;
+    color: #f3f8f2;
+  }
 
-.trigger-copy small {
-  color: var(--muted);
-  font-size: 9.5px;
-  line-height: 1.2;
+  .notification-badge { background: #b9eb9b; }
 }

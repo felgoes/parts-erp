@@ -1,12 +1,6 @@
 @if (purchase(); as target) {
-  <div class="modal-backdrop" (click)="cancelDelete()">
-    <section
-      class="modal purchase-modal delete-modal"
-      role="dialog"
-      aria-modal="true"
-      [attr.aria-label]="'Excluir compra ' + target.number"
-      (click)="$event.stopPropagation()"
-    >
+  <dialog #dialog class="modal purchase-modal delete-modal"
+    [attr.aria-label]="'Excluir compra ' + target.number" (cancel)="cancelDelete($event)">
       <div class="modal-head">
         <div>
           <p class="eyebrow">Suprimentos · {{ target.number }}</p>
@@ -50,13 +44,12 @@
         <button type="button" class="secondary" (click)="cancelDelete()">Cancelar</button
         ><button
           type="button"
-          class="danger-outline"
+          class="primary"
           [disabled]="saving() || deleteBlockedByPayment(target)"
           (click)="confirmDelete(target)"
         >
           {{ saving() ? 'Excluindo…' : 'Excluir compra' }}
         </button>
       </div>
-    </section>
-  </div>
+  </dialog>
 }

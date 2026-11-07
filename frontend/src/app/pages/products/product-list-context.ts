@@ -12,7 +12,8 @@ export interface ProductListAction {
 
 const VIEW_KEY = 'parts-erp.products-list-view';
 
-export function restoreProductListView(): ProductListView {
+export function restoreProductListView(lowStockEntry = false): ProductListView {
+  if (lowStockEntry) return { stockTab: 'product', search: '', onlyLow: true, scrollY: 0 };
   try {
     const value = JSON.parse(sessionStorage.getItem(VIEW_KEY) || '{}');
     return {

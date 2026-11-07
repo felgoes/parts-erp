@@ -9,6 +9,7 @@
   heading="Período"
   [description]="invoices().length + ' fatura(s)'"
   ariaLabel="Filtrar faturas por período e situação"
+  [initialPreset]="initialPreset"
   [initialStartDate]="startDate"
   [initialEndDate]="endDate"
   [statusOptions]="filterStatusOptions()"
@@ -16,14 +17,19 @@
   (rangeChange)="applyDateFilter($event)"
   (statusChange)="setStatusFilter($event)"
 />
-<section class="card table-card operational-list">
+@if (loadError()) {
+  <p class="empty" role="status">Não foi possível carregar as vendas. <button class="secondary" (click)="load()">Tentar novamente</button></p>
+} @else if (loading()) {
+  <p class="loading" role="status">Carregando vendas…</p>
+}
+<section class="card table-card operational-list record-list sale-list">
   <div class="table-wrap">
     <table role="table" aria-label="Faturas de venda">
       <thead role="rowgroup">
         <tr role="row">
-          <th scope="col">Fatura</th>
-          <th scope="col">Status</th>
           <th scope="col">Cliente</th>
+          <th scope="col">Status</th>
+          <th scope="col">Fatura</th>
           <th scope="col">Origem</th>
           <th scope="col">Emissão</th>
           <th scope="col">Documentos</th>
@@ -33,31 +39,23 @@
       </thead>
       <tbody role="rowgroup">
         @for (i of visibleInvoices(); track i.id) {
-          <tr role="row" class="clickable-row" (click)="openDetails(i)">
-            <td role="cell">
-              <button type="button" class="record-link" (click)="$event.stopPropagation(); openDetails(i)">
-                {{ i.number }}
-              </button>
-              @if (i.marketplace_order_id) {
-                <small class="block">Pedido #{{ i.marketplace_order_id }}</small>
-              }
+          <tr role="row">
+            <td role="cell" class="sale-list-client">
+              <a class="record-link" [attr.href]="'/invoices/' + i.id" [attr.data-record-focus]="i.id" (click)="openDetails($event, i)">
+                {{ i.customer?.name || 'Consumidor não identificado' }}
+              </a>
+              @if (i.tracking?.destination_locality; as locality) { <small>{{ locality }}</small> }
             </td>
-            <td role="cell" class="record-status"><span class="record-label">Status</span>
-              <span class="badge" [class]="i.status">{{
-                saleStageLabel(saleStageForInvoice(i))
-              }}</span>
-              @if (i.after_sale) {
-                <small class="post-sale-summary">{{ afterSaleLabel(i) }}</small>
-              }
+            <td role="cell" class="sale-list-status">
+              <span>{{ saleStageLabel(saleStageForInvoice(i)) }}</span>
+              @if (i.after_sale) { <small class="post-sale-summary">{{ afterSaleLabel(i) }}</small> }
             </td>
-            <td role="cell" class="record-wide customer-cell"><span class="record-label">Cliente</span>
-              <strong>{{ i.customer?.name || 'Consumidor não identificado' }}</strong>
-              <small>{{
-                i.customer?.document || i.customer?.email || 'Sem cadastro vinculado'
-              }}</small>
+            <td role="cell" class="sale-list-secondary">
+              {{ i.number }}
+              @if (i.marketplace_order_id) { <small class="block">Pedido #{{ i.marketplace_order_id }}</small> }
             </td>
-            <td role="cell"><span class="record-label">Origem</span>{{ i.source === 'mercadolivre' ? 'Mercado Livre' : 'Manual' }}</td>
-            <td role="cell"><span class="record-label">Emissão</span>{{ i.issued_at || i.created_at | date: 'dd/MM/yyyy HH:mm' : '-0300' }}</td>
+            <td role="cell" class="sale-list-secondary"><span class="record-label">Origem</span>{{ i.source === 'mercadolivre' ? 'Mercado Livre' : 'Manual' }}</td>
+            <td role="cell" class="sale-list-secondary"><span class="record-label">Emissão</span>{{ i.issued_at || i.created_at | date: 'dd/MM/yyyy HH:mm' : '-0300' }}</td>
             <td role="cell"><span class="record-label">Documentos</span>
               @if (listingDocuments(i.documents).length) {
                 <div class="record-actions">
@@ -72,7 +70,7 @@
                 <span class="muted">—</span>
               }
             </td>
-            <td role="cell" class="right"><span class="record-label">Total</span>
+            <td role="cell" class="right sale-list-total"><span class="record-label">Total</span>
               <strong>{{ i.total | currency: 'BRL' }}</strong>
             </td>
             <td role="cell" class="record-wide right">
@@ -84,6 +82,7 @@
             </td>
           </tr>
         } @empty {
+          @if (!loading() && !loadError()) {
           <tr role="row">
             <td role="cell" colspan="8">
               <div class="empty">
@@ -95,6 +94,7 @@
               </div>
             </td>
           </tr>
+          }
         }
       </tbody>
     </table>
@@ -150,145 +150,6 @@
       <button class="primary full" [disabled]="!lines().length" (click)="save()">
         Criar fatura em rascunho
       </button>
-    </section>
-  </div>
-}
-@if (detail(); as invoice) {
-  <div class="modal-backdrop" (click)="detail.set(null)">
-    <section class="modal wide object-modal" (click)="$event.stopPropagation()">
-      <div class="modal-head detail-hero">
-        <div>
-          <p class="eyebrow">
-            Venda {{ invoice.source === 'mercadolivre' ? 'Mercado Livre' : 'manual' }}
-          </p>
-          <h2>{{ invoice.number }}</h2>
-          <p class="detail-subtitle">
-            Criada em {{ invoice.created_at | date: 'dd/MM/yyyy HH:mm'
-            }}{{
-              invoice.issued_at
-                ? ' · emitida em ' + (invoice.issued_at | date: 'dd/MM/yyyy HH:mm')
-                : ''
-            }}
-          </p>
-        </div>
-        <div class="hero-actions">
-          <span class="badge" [class]="invoice.status">{{ label(invoice.status) }}</span
-          ><button class="close" aria-label="Fechar detalhe" (click)="detail.set(null)">×</button>
-        </div>
-      </div>
-      <div class="detail-summary">
-        <div>
-          <span>Cliente</span
-          ><strong>{{ invoice.customer?.name || 'Consumidor não identificado' }}</strong
-          ><small>{{
-            invoice.customer?.document || invoice.customer?.email || 'Sem cadastro vinculado'
-          }}</small>
-        </div>
-        <div>
-          <span>Pedido relacionado</span
-          ><strong>{{
-            invoice.marketplace_order_id ? '#' + invoice.marketplace_order_id : 'Venda local'
-          }}</strong
-          ><small
-            >{{ invoice.items.length }} item(ns) · {{ invoice.total | currency: 'BRL' }}</small
-          >
-        </div>
-        @if (invoice.tracking?.destination_address; as address) {
-          <div class="delivery-address">
-            <span>Endereço de entrega</span>
-            <strong>{{ address }}</strong>
-          </div>
-        }
-      </div>
-      <nav class="detail-tabs" aria-label="Detalhes da venda">
-        <button [class.active]="invoiceTab() === 'items'" (click)="invoiceTab.set('items')">
-          Itens <small>{{ invoice.items.length }}</small></button
-        ><button [class.active]="invoiceTab() === 'tracking'" (click)="invoiceTab.set('tracking')">
-          Rastreio</button
-        ><button
-          [class.active]="invoiceTab() === 'documents'"
-          (click)="invoiceTab.set('documents')"
-        >
-          Documentos <small>{{ invoice.documents.length }}</small>
-        </button>
-        @if (invoice.after_sale) {
-          <button
-            [class.active]="invoiceTab() === 'aftersale'"
-            (click)="invoiceTab.set('aftersale')"
-          >
-            Pós-venda
-          </button>
-        }
-      </nav>
-      @if (invoiceTab() === 'items') {
-        <section class="detail-section">
-          <div class="section-heading">
-            <div>
-              <p class="eyebrow">Composição</p>
-              <h3>Itens vendidos</h3>
-            </div>
-            <strong>{{ invoice.total | currency: 'BRL' }}</strong>
-          </div>
-          <div class="invoice-detail-lines">
-            @for (item of invoice.items; track item.id) {
-              <div>
-                <span class="item-main"
-                  ><strong>{{ item.description }}</strong
-                  ><small
-                    >SKU {{ item.sku }} · {{ item.quantity }} unidade(s) ·
-                    {{ item.unit_price | currency: 'BRL' }} cada</small
-                  ></span
-                ><strong>{{ item.total | currency: 'BRL' }}</strong>
-              </div>
-            }
-          </div>
-        </section>
-      }
-      @if (invoiceTab() === 'tracking') {
-        @if (invoice.tracking; as tracking) {
-          <app-tracking-panel [tracking]="tracking" />
-        } @else {
-          <div class="empty">Esta venda não está vinculada a um pedido de marketplace.</div>
-        }
-      }
-      @if (invoiceTab() === 'documents') {
-        <section class="detail-section">
-          <div class="section-heading">
-            <div>
-              <p class="eyebrow">Fiscal</p>
-              <h3>Documentos da venda</h3>
-            </div>
-            <span class="muted">Clique para abrir em nova guia</span>
-          </div>
-          @if (invoice.documents.length) {
-            <div class="document-list">
-              @for (doc of invoice.documents; track doc.id) {
-                <a
-                  class="document-card"
-                  href="#"
-                  (click)="$event.preventDefault(); openDocument(invoice.id, doc.id)"
-                  ><span class="document-icon">{{ documentLabel(doc.document_type) }}</span
-                  ><span
-                    ><strong>{{ doc.filename }}</strong
-                    ><small>{{
-                      doc.document_type === 'pdf'
-                        ? 'Nota fiscal (DANFE)'
-                        : doc.document_type === 'label_pdf'
-                          ? 'Etiqueta de envio'
-                          : 'Nota fiscal eletrônica (XML)'
-                    }}</small></span
-                  ><b>↗</b></a
-                >
-              }
-            </div>
-          } @else {
-            <div class="empty">Nenhum documento anexado ainda.</div>
-          }
-        </section>
-      }
-      @if (invoiceTab() === 'aftersale' && invoice.after_sale) {
-        <app-after-sale-workflow [afterSale]="invoice.after_sale" />
-      }
     </section>
   </div>
 }

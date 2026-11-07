@@ -197,6 +197,7 @@ export class ApiService {
     offset?: number;
     search?: string;
     status?: string;
+    statusGroup?: string;
     startDate?: string;
     endDate?: string;
   }): Observable<PurchaseListOut> {
@@ -429,8 +430,8 @@ export class ApiService {
   saveMarketplaceConfig(payload: Record<string, unknown>): Observable<MarketplaceConfig> {
     return this.marketplaceApi.saveMarketplaceConfig(payload);
   }
-  marketplaceOrders(): Observable<MarketplaceOrder[]> {
-    return this.marketplaceApi.marketplaceOrders();
+  marketplaceOrders(pendingDispatch = false): Observable<MarketplaceOrder[]> {
+    return this.marketplaceApi.marketplaceOrders(pendingDispatch);
   }
   marketplaceOrder(id: string): Observable<MarketplaceOrder> {
     return this.marketplaceApi.marketplaceOrder(id);

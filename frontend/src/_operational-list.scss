@@ -109,3 +109,18 @@
     min-height: 44px;
   }
 }
+
+.card.record-list {
+  border: 1px solid var(--divider);
+  border-radius: var(--radius-surface);
+  box-shadow: 0 1px 2px #29251f0c;
+}
+
+.record-list td strong { font-weight: 600; }
+
+@container (max-width: 820px) {
+  .record-list > .table-wrap { background: var(--canvas); }
+  .record-list tbody > tr { padding-block: 12px; }
+  .record-list tbody > tr + tr { border-top: 1px solid var(--divider); }
+  .record-list .record-actions { align-items: center; }
+}

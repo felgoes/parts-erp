@@ -1,6 +1,6 @@
 import { DatePipe, DecimalPipe, JsonPipe } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Capacitor } from '@capacitor/core';
 import { Component, DestroyRef, OnInit, inject, signal } from '@angular/core';
 import { ApiService } from '../../core/api.service';
@@ -12,12 +12,14 @@ import { MarketplaceOrder, MarketplaceOrderEvent, MarketplaceStatus } from '../.
 import { statusLabel, trackingDetailLabel, trackingEventLabel } from '../../core/status-labels';
 import { saleStageForOrder, saleStageLabel } from '../../core/sale-stage';
 import { documentLabel } from '../../core/document-labels';
+import { recordOrigin } from '../../shared/record-origin';
+import { canAccessPage } from '../../core/user-access';
 import { PageHeader } from '../../shared/page-header';
 import { TrackingTimeline } from '../../shared/tracking-timeline';
 
 @Component({
   selector: 'app-marketplace',
-  imports: [DatePipe, DecimalPipe, JsonPipe, PageHeader, TrackingTimeline],
+  imports: [DatePipe, DecimalPipe, JsonPipe, PageHeader, RouterLink, TrackingTimeline],
   templateUrl: './marketplace.html',
   styleUrl: './marketplace.scss',
 })
@@ -29,6 +31,7 @@ export class MarketplacePage implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   readonly status = signal<MarketplaceStatus | null>(null);
+  readonly pendingDispatch = signal(false);
   readonly orders = signal<MarketplaceOrder[]>([]);
   readonly syncing = signal(false);
   readonly feedback = signal<{ kind: 'success' | 'error' | 'info'; message: string } | null>(null);
@@ -59,6 +62,14 @@ export class MarketplacePage implements OnInit {
   trackingUpdateValue(order: MarketplaceOrder): string | number | null {
     return this.platformUpdatedAt(order) || order.synchronized_at;
   }
+  canOpenInvoice(): boolean {
+    return canAccessPage(this.auth.user()?.role, '/invoices');
+  }
+  openInvoice(event: MouseEvent, id: string): void {
+    if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+    event.preventDefault();
+    void this.router.navigate(['/invoices', id], { state: recordOrigin(this.router.url, 'Pedidos online') });
+  }
   canProcess() {
     const role = this.auth.user()?.role;
     return role === 'admin' || role === 'manager';
@@ -67,16 +78,18 @@ export class MarketplacePage implements OnInit {
     this.route.queryParamMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
       const orderId = params.get('order_id');
       if (orderId) this.openDetailsById(orderId);
+      this.pendingDispatch.set(params.get('fila') === 'despachar');
+      this.load();
     });
-    this.load();
     this.live.changes$
       .pipe(debounceTime(250), takeUntilDestroyed(this.destroyRef))
       .subscribe(() => this.load());
   }
   load() {
     this.api.marketplaceStatus().subscribe((v) => this.status.set(v));
-    this.api.marketplaceOrders().subscribe({
-      next: (v) => this.orders.set(v),
+    const pendingDispatch = this.pendingDispatch();
+    this.api.marketplaceOrders(pendingDispatch).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: (v) => { if (this.pendingDispatch() === pendingDispatch) this.orders.set(v); },
       error: () =>
         this.showFeedback('error', 'Não foi possível carregar os pedidos do Mercado Livre.'),
     });

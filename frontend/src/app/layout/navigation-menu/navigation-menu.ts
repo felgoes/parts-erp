@@ -30,6 +30,7 @@ export class NavigationMenu implements OnInit {
   readonly expandRequested = output<void>();
   readonly collapsed = input(false);
   readonly settingsOpen = signal(false);
+  readonly expandedGroups = signal(new Set<string>());
   readonly sections = computed(() => visibleNavigationSections(this.auth.user()?.role));
   readonly isAdmin = computed(() => this.auth.user()?.role === 'admin');
   readonly configurationItems = CONFIGURATION_ITEMS;
@@ -44,6 +45,17 @@ export class NavigationMenu implements OnInit {
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe((event) => this.syncConfiguration(event.urlAfterRedirects));
+  }
+
+  groupOpen(label: string): boolean {
+    return this.collapsed() || this.expandedGroups().has(label);
+  }
+
+  toggleGroup(label: string): void {
+    const groups = new Set(this.expandedGroups());
+    if (groups.has(label)) groups.delete(label);
+    else groups.add(label);
+    this.expandedGroups.set(groups);
   }
 
   isConfigurationActive(): boolean {
@@ -61,7 +73,11 @@ export class NavigationMenu implements OnInit {
   }
 
   private syncConfiguration(url: string): void {
-    const route = url.split('?')[0].replace(/^\//, '');
+    const route = url.split(/[?#]/)[0].replace(/^\//, '');
+    const group = this.sections().find((section) =>
+      section.items.some((item) => item.path === '/' + route.split('/')[0]),
+    );
+    if (group) this.expandedGroups.update((groups) => new Set([...groups, group.label]));
     const active =
       route === 'settings' ||
       route.startsWith('settings/') ||

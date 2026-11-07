@@ -12,11 +12,12 @@ import {
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterLink } from '@angular/router';
-import { filter } from 'rxjs';
-import { ApiService } from '../../core/api.service';
+import { debounceTime, filter } from 'rxjs';
+import { NotificationHistory } from '../../core/notification-history.service';
+import { notificationActions } from '../../core/notification-destination';
+import { LiveUpdatesService } from '../../core/live-updates.service';
 import { AuthService } from '../../core/auth.service';
 import { PushNotification, PushNotificationAction } from '../../core/models';
-import { SettingsApi } from '../../core/api/settings-api';
 
 interface AlertCategory {
   label: string;
@@ -58,23 +59,25 @@ const CATEGORY_META: Record<string, AlertCategory> = {
   styleUrl: './notifications-menu.scss',
 })
 export class NotificationsMenu implements OnInit {
-  private readonly api = inject(ApiService);
-  private readonly settingsApi = inject(SettingsApi);
+  readonly feed = inject(NotificationHistory);
+  private readonly live = inject(LiveUpdatesService);
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
   private readonly host = inject(ElementRef) as ElementRef<HTMLElement>;
   private readonly trigger = viewChild<ElementRef<HTMLButtonElement>>('trigger');
   readonly open = signal(false);
-  readonly loading = signal(false);
-  readonly history = signal<PushNotification[]>([]);
-  readonly deleting = signal<string | null>(null);
-  readonly notificationCount = signal(0);
+  readonly loading = this.feed.loading;
+  readonly history = this.feed.history;
+  readonly deleting = this.feed.deleting;
+  readonly notificationCount = this.feed.unread;
   readonly preview = computed(() => this.history().slice(0, 4));
   private readonly newSince = signal<string | null>(null);
 
   ngOnInit(): void {
-    this.load();
+    this.feed.load();
+    this.live.changes$.pipe(debounceTime(250), takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => this.feed.load(this.open()));
     this.router.events
       .pipe(
         filter((event): event is NavigationEnd => event instanceof NavigationEnd),
@@ -88,9 +91,9 @@ export class NotificationsMenu implements OnInit {
       this.close(false);
       return;
     }
-    this.newSince.set(this.notificationsSeenAt());
+    this.newSince.set(this.feed.seenAt());
     this.open.set(true);
-    this.load(true);
+    this.feed.load(true);
   }
 
   close(restoreFocus = true): void {
@@ -103,29 +106,12 @@ export class NotificationsMenu implements OnInit {
   }
 
   actions(item: PushNotification): PushNotificationAction[] {
-    const value = item.data['actions'];
-    if (!Array.isArray(value)) return [];
-    return value.filter(
-      (action): action is PushNotificationAction =>
-        typeof action === 'object' &&
-        action !== null &&
-        typeof action['label'] === 'string' &&
-        typeof action['route'] === 'string',
-    );
+    return notificationActions(item.data, this.auth.user()?.role);
   }
 
   isNew(item: PushNotification): boolean {
     const since = this.newSince();
     return !since || item.created_at > since;
-  }
-
-  dismiss(item: PushNotification): void {
-    this.deleting.set(item.id);
-    this.settingsApi.dismissPushNotification(item.id).subscribe({
-      next: () => this.history.update((items) => items.filter((value) => value.id !== item.id)),
-      error: () => this.deleting.set(null),
-      complete: () => this.deleting.set(null),
-    });
   }
 
   @HostListener('document:pointerdown', ['$event'])
@@ -140,34 +126,4 @@ export class NotificationsMenu implements OnInit {
     if (this.open()) this.close();
   }
 
-  private load(markSeen = false): void {
-    this.loading.set(true);
-    this.api.pushHistory().subscribe({
-      next: (items) => {
-        this.history.set(items);
-        if (markSeen) {
-          this.markNotificationsSeen(items);
-          this.notificationCount.set(0);
-          return;
-        }
-        const seenAt = this.notificationsSeenAt();
-        this.notificationCount.set(
-          items.filter((item) => !seenAt || item.created_at > seenAt).length,
-        );
-      },
-      error: () => this.history.set([]),
-      complete: () => this.loading.set(false),
-    });
-  }
-
-  private notificationsSeenAt(): string | null {
-    const userId = this.auth.user()?.id;
-    return userId ? localStorage.getItem(`parts-erp.notifications.seen.${userId}`) : null;
-  }
-
-  private markNotificationsSeen(items: PushNotification[]): void {
-    const userId = this.auth.user()?.id;
-    const latest = items[0]?.created_at;
-    if (userId && latest) localStorage.setItem(`parts-erp.notifications.seen.${userId}`, latest);
-  }
 }

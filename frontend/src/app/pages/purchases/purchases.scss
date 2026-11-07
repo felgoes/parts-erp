@@ -73,3 +73,25 @@
     justify-content: space-between;
   }
 }
+
+.purchase-summary { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.purchase-record-back { display: inline-flex; align-items: center; min-height: 44px; color: var(--focus-ring); }
+
+.purchase-list-status .purchase-badge {
+  padding: 0;
+  background: transparent;
+  color: var(--text-secondary);
+}
+.purchase-list-status .purchase-badge::before { content: '•'; margin-inline-end: 5px; }
+.purchase-list-status .purchase-badge[data-group='receiving'] { color: var(--state-warning-text); }
+.purchase-list-status .purchase-badge[data-group='finished'] { color: var(--state-success-text); }
+.purchase-list-status .purchase-badge[data-group='cancelled'] { color: var(--state-danger-text); }
+
+@container (max-width: 820px) {
+  .purchase-table-card tbody > tr > .purchase-list-supplier { grid-area: 1 / 1; }
+  .purchase-table-card tbody > tr > .purchase-list-reference { grid-area: 2 / 1; }
+  .purchase-table-card tbody > tr > .purchase-list-total { grid-area: 1 / 2; }
+  .purchase-table-card tbody > tr > .purchase-list-status { grid-area: 2 / 2; text-align: end; }
+  .purchase-list-supplier .record-label, .purchase-list-total .record-label,
+  .purchase-list-status .record-label { display: none; }
+}

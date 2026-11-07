@@ -104,6 +104,7 @@ export class PurchasesApi {
     offset?: number;
     search?: string;
     status?: string;
+    statusGroup?: string;
     startDate?: string;
     endDate?: string;
   }): Observable<PurchaseListOut> {
@@ -113,6 +114,7 @@ export class PurchasesApi {
         offset: params?.offset,
         search: params?.search,
         status: params?.status,
+        status_group: params?.statusGroup,
         start_date: params?.startDate,
         end_date: params?.endDate,
       }),

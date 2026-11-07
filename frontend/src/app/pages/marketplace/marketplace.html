@@ -52,12 +52,15 @@
     </section>
   }
 }
-<section class="card table-card operational-list">
+<section class="card table-card operational-list record-list">
   <div class="card-head">
     <div>
-      <h2 id="order-queue-heading">Fila de pedidos</h2>
+      <h2 id="order-queue-heading">{{ pendingDispatch() ? 'Pedidos a despachar' : 'Fila de pedidos' }}</h2>
       <p>Uma venda só baixa o estoque depois da conciliação do SKU.</p>
     </div>
+    @if (pendingDispatch()) {
+      <a class="secondary" routerLink="/marketplace">Ver todos os pedidos</a>
+    }
   </div>
   <div class="table-wrap">
     <table role="table" aria-labelledby="order-queue-heading">
@@ -102,7 +105,9 @@
                 <small class="error-text">{{ o.sync_error }}</small>
               }
             </td>
-            <td role="cell" class="record-wide"><span class="record-label">Fatura</span>{{ o.invoice_id ? 'Gerada' : '—' }}</td>
+            <td role="cell" class="record-wide"><span class="record-label">Fatura</span>@if (o.invoice_id && canOpenInvoice()) {
+                <a class="record-link" [attr.href]="'/invoices/' + o.invoice_id" (click)="$event.stopPropagation(); openInvoice($event, o.invoice_id)">Abrir fatura</a>
+              } @else { {{ o.invoice_id ? 'Gerada' : '—' }} }</td>
             <td role="cell"><span class="record-label">NF-e</span>
               <span
                 class="badge"
@@ -320,6 +325,9 @@
             <div>
               <p class="eyebrow">Comercial</p>
               <h3>Fatura e itens</h3>
+              @if (canOpenInvoice()) {
+                <a class="record-link" [attr.href]="'/invoices/' + invoice.id" (click)="openInvoice($event, invoice.id)">Abrir venda {{ invoice.number }}</a>
+              }
             </div>
             <strong>{{ invoice.total | number: '1.2-2' }}</strong>
           </div>

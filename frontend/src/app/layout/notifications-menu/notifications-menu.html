@@ -15,15 +15,7 @@
       <path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4" />
     </svg>
     @if (notificationCount() > 0) {
-      <span class="notification-badge">{{
-        notificationCount() > 9 ? '9+' : notificationCount()
-      }}</span>
-    }
-  </span>
-  <span class="trigger-copy">
-    <strong>Alertas</strong>
-    @if (notificationCount()) {
-      <small>{{ notificationCount() + (notificationCount() === 1 ? ' novo' : ' novos') }}</small>
+      <span class="notification-badge"></span>
     }
   </span>
 </button>
@@ -32,8 +24,7 @@
   <section id="alerts-panel" class="alerts-panel" role="dialog" aria-label="Alertas recentes">
     <header class="alerts-head">
       <div>
-        <span>Central de alertas</span>
-        <strong>Atividade recente</strong>
+        <strong>Notificações</strong>
       </div>
       <button class="alerts-close" type="button" aria-label="Fechar alertas" (click)="close()">
         <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -43,13 +34,14 @@
     </header>
 
     <div class="alerts-body">
-      @if (loading()) {
+      @if (feed.error()) { <p class="alerts-state" role="status">{{ feed.error() }}</p> }
+      @if (loading() && !preview().length) {
         <div class="alerts-state">
           <span class="loading-ring" aria-hidden="true"></span>
           <strong>Carregando alertas</strong>
           <p>Conferindo as últimas movimentações da operação.</p>
         </div>
-      } @else if (!preview().length) {
+      } @else if (!preview().length && !feed.error()) {
         <div class="alerts-state is-empty">
           <span class="empty-icon" aria-hidden="true">
             <svg viewBox="0 0 24 24">
@@ -73,7 +65,7 @@
               <div class="alert-copy">
                 <span class="alert-meta">
                   <span>{{ category(item).label }}</span>
-                  <time>{{ item.created_at | date: 'dd/MM · HH:mm' }}</time>
+                  <time>{{ item.created_at | date: 'dd/MM · HH:mm' : '-0300' }}</time>
                 </span>
                 <strong>{{ item.title }}</strong>
                 <p>{{ item.body }}</p>
@@ -96,7 +88,7 @@
                 type="button"
                 [disabled]="deleting() === item.id"
                 [attr.aria-label]="'Excluir notificação: ' + item.title"
-                (click)="dismiss(item)"
+                (click)="feed.dismiss(item)"
               >
                 {{ deleting() === item.id ? '…' : 'Excluir' }}
               </button>
@@ -107,7 +99,7 @@
     </div>
 
     <a class="alerts-footer" routerLink="/notifications" (click)="close(false)">
-      Abrir central de alertas
+      Ver histórico
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M14 7l5 5-5 5" /></svg>
     </a>
   </section>

@@ -1,5 +1,6 @@
 @if (detail(); as purchase) {
-  <aside class="purchase-aside">
+  <div class="purchase-aside">
+    @if (section() === 'finance') {
     <section class="purchase-aside-card">
       <p class="eyebrow">Resumo</p>
       <div>
@@ -92,6 +93,8 @@
         }
       </section>
     }
+    }
+    @if (section() === 'history') {
     <section class="purchase-aside-card timeline-card">
       <p class="eyebrow">Histórico da compra</p>
       @for (event of purchase.events; track event.id) {
@@ -99,7 +102,7 @@
           <i></i>
           <div>
             <strong>{{ event.detail }}</strong
-            ><small>{{ event.created_at | date: 'dd/MM/yyyy HH:mm' }}</small>
+            ><small>{{ event.created_at | date: 'dd/MM/yyyy HH:mm' : '-0300' }}</small>
           </div>
         </div>
       }
@@ -107,8 +110,8 @@
     @if (purchaseStatusNote(purchase); as note) {
       <p class="purchase-status-note">{{ note }}</p>
     }
-    @if (canManagePurchases() && isActive(purchase)) {
-      <div class="purchase-lifecycle-actions">
+    }
+    @if (canManagePurchases() && isActive(purchase) && section() === 'receiving') {
         @if (purchase.status === 'ordered' || purchase.status === 'partially_received') {
           <button
             type="button"
@@ -116,9 +119,12 @@
             [disabled]="saving()"
             (click)="receiveAll(purchase)"
           >
-            Receber tudo
+            Receber todo o saldo
           </button>
         }
+    }
+    @if (canManagePurchases() && isActive(purchase) && section() === 'history') {
+      <div class="purchase-lifecycle-actions">
         @if (purchase.status === 'ordered' || purchase.status === 'partially_received') {
           <button
             type="button"
@@ -147,7 +153,7 @@
         </button>
       </div>
     }
-    @if (lifecycleForm(); as form) {
+    @if (section() === 'history' && lifecycleForm(); as form) {
       <section class="purchase-aside-card lifecycle-form">
         <p class="eyebrow">
           {{ form.mode === 'cancel' ? 'Cancelar compra' : 'Encerrar saldo pendente' }}
@@ -197,5 +203,5 @@
         </div>
       </section>
     }
-  </aside>
+  </div>
 }

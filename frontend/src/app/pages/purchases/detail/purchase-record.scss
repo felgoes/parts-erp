@@ -1,0 +1,48 @@
+:host { display: block; }
+.purchase-record { max-width: 1120px; margin-inline: auto; }
+
+.purchase-record-heading, .purchase-record-facts, .purchase-record-actions, .purchase-record-items header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+}
+
+.purchase-record-heading { justify-content: space-between; margin-block: 12px 16px; }
+.purchase-record-heading h1 { margin: 0; font-size: clamp(22px, 3vw, 28px); overflow-wrap: anywhere; }
+.purchase-record-heading p { margin: 0; }
+.purchase-record-facts { flex-basis: 100%; }
+.purchase-record-status::before { content: '•'; margin-inline-end: 5px; }
+.purchase-record-status[data-group='receiving'] { color: var(--state-warning-text); }
+.purchase-record-status[data-group='finished'] { color: var(--state-success-text); }
+.purchase-record-status[data-group='cancelled'] { color: var(--state-danger-text); }
+
+.purchase-record-tabs { display: flex; flex-wrap: wrap; gap: 8px; border-block: 1px solid var(--divider); margin-bottom: 16px; }
+.purchase-record-tabs button {
+  min-height: 44px;
+  background: transparent;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.purchase-record-tabs button[aria-pressed='true'] {
+  color: var(--text-primary);
+  border-bottom-color: var(--focus-ring);
+  font-weight: 700;
+}
+
+.purchase-record-items header { justify-content: space-between; }
+.purchase-record-items h2 { margin: 0; font-size: 16px; }
+.purchase-record-items ul { list-style: none; padding: 0; margin: 0 0 12px; }
+.purchase-record-items li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding-block: 12px;
+  border-bottom: 1px solid var(--divider);
+  overflow-wrap: anywhere;
+}
+.purchase-record-items small { display: block; }
+.purchase-record .primary, .purchase-record .secondary { min-height: 44px; }

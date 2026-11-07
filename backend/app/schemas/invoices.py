@@ -58,6 +58,7 @@ class InvoiceTrackingEventOut(UtcModel):
 class InvoiceTrackingOut(UtcModel):
     shipment_id: str | None
     destination_address: str | None = None
+    destination_locality: str | None = None
     status: str | None
     shipping_status: str | None
     shipping_substatus: str | None

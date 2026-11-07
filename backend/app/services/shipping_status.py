@@ -2,7 +2,7 @@
 
 from sqlalchemy import func, or_, select
 
-from app.models import MarketplaceOrderEvent
+from app.models import MarketplaceOrder, MarketplaceOrderEvent
 
 DISPATCHED_SHIPPING_SUBSTATUSES = (
     "authorized_by_carrier",
@@ -37,4 +37,16 @@ def shipping_progress_history_exists(order_id: object):
             ),
         )
         .exists()
+    )
+
+
+def pending_dispatch_filters():
+    """Apply the same operational definition to the dashboard and the dispatch queue."""
+    return (
+        MarketplaceOrder.shipping_status == "ready_to_ship",
+        MarketplaceOrder.status.not_in(("cancelled", "canceled", "in_cancel")),
+        func.lower(func.coalesce(MarketplaceOrder.shipping_substatus, "")).not_in(
+            DISPATCHED_SHIPPING_SUBSTATUSES
+        ),
+        ~shipping_progress_history_exists(MarketplaceOrder.id),
     )

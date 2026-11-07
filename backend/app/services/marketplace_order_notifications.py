@@ -7,7 +7,7 @@ import hashlib
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models import MarketplaceOrder, PushNotification
+from app.models import MarketplaceOrder, PushNotification, SalesInvoice
 from app.services.push_notifications import deliver_pending_notifications
 
 _ORDER_STATUS_LABELS = {
@@ -130,6 +130,7 @@ def enqueue_order_status_notification(
     else:
         status = _ORDER_STATUS_LABELS.get(order.status.lower(), "Status do pedido atualizado")
         title = f"Pedido atualizado no {provider}"
+    invoice = db.get(SalesInvoice, order.invoice_id) if order.invoice_id else None
     notification = PushNotification(
         dedupe_key=dedupe_key,
         category="order_status",
@@ -139,6 +140,8 @@ def enqueue_order_status_notification(
             "type": "order_status",
             "provider": order.provider,
             "order_id": order.external_order_id,
+            "invoice_id": invoice.id if invoice else "",
+            "invoice_number": invoice.number if invoice else "",
             "status": order.status,
             "shipping_status": order.shipping_status or "",
             "shipping_substatus": order.shipping_substatus or "",

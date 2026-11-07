@@ -1,9 +1,17 @@
 <section
   class="date-filter card shared-period-filter"
+  [class.period-compact]="compact"
   [class.invoice-filter-toolbar]="statusOptions.length > 0"
   [class.has-custom-range]="activePreset === 'custom'"
   [attr.aria-label]="ariaLabel"
 >
+  @if (compact) {
+    <select aria-label="Período" [ngModel]="activePreset" (ngModelChange)="selectPreset($event)">
+      @for (preset of datePresets; track preset.id) {
+        <option [value]="preset.id">{{ preset.label }}</option>
+      }
+    </select>
+  } @else {
   <div class="date-filter-heading">
     <strong>{{ heading }}</strong>
     @if (description) {
@@ -54,6 +62,8 @@
         </button>
       }
     </div>
+  }
+
   }
 
   @if (activePreset === 'custom') {

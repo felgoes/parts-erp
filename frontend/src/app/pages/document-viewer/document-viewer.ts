@@ -145,7 +145,9 @@ export class DocumentViewerPage implements OnInit, OnDestroy {
   private readonly api = inject(ApiService);
   private readonly sanitizer = inject(DomSanitizer);
   readonly fromMarketplace = history.state?.fromMarketplace === true;
-  readonly returnRoute = this.fromMarketplace ? '/marketplace' : '/dashboard';
+  readonly returnRoute = this.route.snapshot.queryParamMap.get('from') === 'invoice'
+    ? '/invoices/' + this.route.snapshot.paramMap.get('invoiceId')
+    : this.fromMarketplace ? '/marketplace' : '/dashboard';
   readonly returnParams = this.fromMarketplace && typeof history.state?.marketplaceOrderId === 'string'
     ? { order_id: history.state.marketplaceOrderId }
     : null;

@@ -319,54 +319,6 @@
   }
 }
 
-@media (max-width: 780px) {
-  :host {
-    top: 10px;
-    right: 14px;
-  }
-
-  .alerts-trigger {
-    width: 44px;
-    height: 44px;
-    min-height: 44px;
-    justify-content: center;
-    padding: 0;
-    border-color: #ffffff33;
-    border-radius: 12px;
-    background: #ffffff12;
-    color: #fff;
-    box-shadow: none;
-  }
-
-  .alerts-trigger:hover,
-  .alerts-trigger[aria-expanded='true'] {
-    border-color: var(--brand-accent);
-    background: #ffffff1f;
-  }
-
-  .bell-shell {
-    width: 26px;
-    height: 26px;
-    flex-basis: 26px;
-    background: transparent;
-    color: #fff;
-  }
-
-  .notification-badge {
-    border-color: var(--brand-primary);
-  }
-
-  .trigger-copy {
-    display: none;
-  }
-
-  .alerts-panel {
-    top: 54px;
-    max-height: calc(100dvh - 82px);
-    border-radius: 16px;
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
   .alerts-panel,
   .loading-ring {
@@ -391,4 +343,25 @@
 
 :host-context(body[data-theme='dark']) .alert-item:hover {
   background: #1e2a22;
+}
+
+@media (width < 768px) {
+  :host { inset: auto; }
+
+  :host-context(body) .alerts-trigger {
+    border: 0;
+    background: transparent;
+    color: #f3f8f2;
+  }
+
+  :host-context(body) .bell-shell {
+    background: transparent;
+    color: #f3f8f2;
+  }
+
+  .alerts-panel {
+    top: calc(100% + 8px);
+    width: min(390px, calc(100vw - 16px));
+    border-radius: var(--radius-overlay);
+  }
 }

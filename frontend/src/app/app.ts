@@ -14,6 +14,7 @@ export class App {
   private readonly pushNotifications = inject(PushNotificationsService);
 
   constructor() {
+    void this.pushNotifications.listenForNotificationOpens(this.auth);
     if (this.auth.isAuthenticated()) {
       this.auth.refreshCurrentUser();
       void this.pushNotifications.enableForCurrentDevice();

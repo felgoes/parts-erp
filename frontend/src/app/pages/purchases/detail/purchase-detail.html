@@ -1,149 +1,133 @@
 @if (detail(); as purchase) {
-  <div class="modal-backdrop" (click)="detail.set(null)">
-    <section
-      class="modal wide purchase-modal purchase-detail"
-      [class.restricted-costs]="!canReadCosts()"
-      [class.read-only-purchases]="!canManagePurchases()"
-      [class.no-receiving]="!canAdjustStock()"
-      [class.costs-pending]="purchase.purchase_type === 'parts' && !purchase.selected_quote_id"
-      role="dialog"
-      aria-modal="true"
-      [attr.aria-label]="'Compra ' + purchase.number"
-      (click)="$event.stopPropagation()"
-    >
-      <div class="modal-head">
-        <div>
-          <p class="eyebrow">Suprimentos · {{ purchase.number }}</p>
-          <h2>{{ purchase.number }}</h2>
-          @if (purchase.supplier_order_number || purchase.document_date) {
-            <p class="modal-intro">
-              Pedido do fornecedor {{ purchase.supplier_order_number || '—' }}
-              @if (purchase.document_date) {
-                · documento de {{ dateOnly(purchase.document_date) }}
-              }
-            </p>
-          }
-          <p class="modal-intro">
-            Criada em {{ purchase.created_at | date: 'dd/MM/yyyy HH:mm' }}
-            @if (purchase.needed_by) {
-              · Previsão {{ dateOnly(purchase.needed_by) }}
-            }
-            @if (isOverdue(purchase)) {
-              <strong class="overdue-chip">previsão vencida</strong>
-            }
-          </p>
-        </div>
-        <div class="detail-head-actions">
-          <span class="purchase-badge" [attr.data-status]="purchase.status">{{
-            purchaseStatusLabel(purchase)
-          }}</span>
-          @if (
-            canManagePurchases() &&
-            (purchase.status === 'negotiating' || purchase.status === 'approved')
-          ) {
-            <button
-              type="button"
-              class="secondary small"
-              [disabled]="saving()"
-              (click)="draftEditor() ? closeDraftEditor() : openDraftEditor()"
-            >
-              {{ draftEditor() ? 'Fechar edição' : 'Editar dados' }}
-            </button>
-          }
-          @if (canManagePurchases()) {
-            <button type="button" class="secondary small" (click)="copyPurchase(purchase)">
-              Copiar compra
-            </button>
-          }
-          <button class="close" aria-label="Fechar" (click)="detail.set(null)">×</button>
-        </div>
+  <article class="purchase-record purchase-detail"
+    [class.restricted-costs]="!canReadCosts()"
+    [class.read-only-purchases]="!canManagePurchases()">
+    <header class="purchase-record-heading">
+      <div>
+        <p class="muted">{{ purchase.number }}</p>
+        <h1>{{ selectedQuote(purchase)?.supplier_name || purchase.supplier_name || purchase.expense_description || 'Compra sem fornecedor' }}</h1>
       </div>
-      @if (purchase.purchase_type === 'parts') {
-        <div class="purchase-steps" aria-label="Etapas da compra">
-          @for (step of workflow; track step.value; let i = $index) {
-            <div
-              class="purchase-step"
-              [class.step-done]="stepIndex(purchase.status) > i"
-              [class.step-current]="stepIndex(purchase.status) === i"
-            >
-              <span>{{ stepIndex(purchase.status) > i ? '✓' : i + 1 }}</span
-              ><small>{{ step.label }}</small>
-            </div>
-          }
-        </div>
-      } @else {
-        <div class="expense-banner">
-          <strong>{{ purchase.expense_description || 'Despesa da empresa' }}</strong
-          ><span
-            >{{ purchase.expense_category }} · {{ purchase.expense_amount | currency: 'BRL' }}</span
-          >
-        </div>
+      @if (canReceive() && section() !== 'receiving') {
+        <button type="button" class="primary" (click)="section.set('receiving')">Registrar recebimento</button>
       }
-      <div class="purchase-detail-grid">
-        <div class="purchase-detail-main">
-          @if (
-            draftEditor() &&
-            canManagePurchases() &&
-            (purchase.status === 'negotiating' || purchase.status === 'approved')
-          ) {
-            <app-purchase-detail-draft />
+      <div class="purchase-record-facts">
+        <span class="purchase-record-status" [attr.data-group]="group(purchase.status).value">{{ group(purchase.status).label }}</span>
+        <span class="muted">Criada em {{ purchase.created_at | date: 'dd/MM/yyyy HH:mm' : '-0300' }}</span>
+        @if (canReadCosts() && (purchase.expense_amount ?? purchase.total_amount) != null) {
+          <strong>{{ (purchase.purchase_type === 'expense' ? purchase.expense_amount : purchase.total_amount) | currency: 'BRL' }}</strong>
+        }
+      </div>
+    </header>
+    <nav class="purchase-record-tabs" aria-label="Detalhes da compra">
+      <button type="button" [attr.aria-pressed]="section() === 'items'" (click)="section.set('items')">Itens</button>
+      <button type="button" [attr.aria-pressed]="section() === 'documents'" (click)="section.set('documents')">Documentos</button>
+      <button type="button" [attr.aria-pressed]="section() === 'finance'" (click)="section.set('finance')">Financeiro</button>
+      <button type="button" [attr.aria-pressed]="section() === 'history'" (click)="section.set('history')">Histórico</button>
+    </nav>
+    @if (error()) { <p class="purchase-error" role="alert">{{ error() }}</p> }
+    @switch (section()) {
+      @case ('items') {
+        <section class="purchase-record-items">
+          <header>
+            <h2>{{ purchase.purchase_type === 'expense' ? 'Materiais da despesa' : 'Itens da compra' }}</h2>
+            @if (purchase.items.length) {
+              <span class="muted">{{ receivedUnits(purchase) | number: '1.0-3' }} de {{ totalUnits(purchase) | number: '1.0-3' }} unidades recebidas</span>
+            }
+          </header>
+          @if (purchase.status === 'closed') { <p class="muted">O saldo restante foi encerrado.</p> }
+          @if (purchase.purchase_type === 'expense') {
+            <p>{{ purchase.expense_description || 'Despesa da empresa' }} · {{ purchase.expense_category }}</p>
           }
-          <app-purchase-detail-receive />
-          <app-purchase-detail-quotes />
-          @if (purchase.status === 'approved' && canManagePurchases()) {
-            <div class="workflow-action">
-              <div>
-                <strong>Cotação aprovada</strong><span>A compra ainda não altera o estoque.</span>
-              </div>
-              <button class="primary" [disabled]="saving()" (click)="placeOrder()">
-                Registrar pedido ao fornecedor
-              </button>
-            </div>
-          }
-          @if (purchase.notes) {
-            <section class="purchase-notes">
-              <span class="eyebrow">Observações internas</span>
-              <p>{{ purchase.notes }}</p>
-            </section>
-          }
-          <section class="purchase-form-section">
-            <div class="section-heading">
-              <div>
-                <p class="eyebrow">Documentação</p>
-                <h3>Documentos anexados</h3>
-              </div>
-              @if (canManagePurchases()) {
-                <label class="attachment-inline"
-                  >+ Anexar documentos<input
-                    type="file"
-                    multiple
-                    (change)="uploadAttachments(purchase, $any($event.target).files)"
-                /></label>
-              }
-            </div>
-            @if (purchase.attachments.length) {
-              <div class="attachment-list">
-                @for (attachment of purchase.attachments; track attachment.id) {
-                  <button
-                    type="button"
-                    class="attachment-row"
-                    (click)="downloadAttachment(purchase, attachment)"
-                  >
-                    <span>📎 {{ attachment.filename }}</span
-                    ><small>{{ formatBytes(attachment.size_bytes) }}</small>
-                  </button>
+          <ul>
+            @for (item of purchase.items; track item.id) {
+              <li>
+                <div>
+                  <strong>{{ item.description }}</strong>
+                  <small>{{ item.sku }} · {{ item.received_quantity | number: '1.0-3' }}/{{ item.quantity | number: '1.0-3' }} {{ item.unit }} recebidas</small>
+                </div>
+                @if (canReadCosts() && item.unit_cost != null) {
+                  <strong>{{ item.unit_cost * item.quantity | currency: 'BRL' }}</strong>
                 }
-              </div>
-            } @else {
-              <p class="muted">Nenhum documento anexado ainda.</p>
+              </li>
+            } @empty { <li>Nenhum item nesta compra.</li> }
+          </ul>
+          <div class="purchase-record-actions">
+            @if (canManagePurchases() && (purchase.status === 'negotiating' || purchase.status === 'approved')) {
+              <button type="button" class="secondary" [disabled]="saving()" (click)="draftEditor() ? closeDraftEditor() : openDraftEditor()">
+                {{ draftEditor() ? 'Fechar edição' : 'Editar dados' }}
+              </button>
             }
-          </section>
-        </div>
-        <app-purchase-detail-aside (remove)="remove.emit($event)" />
-      </div>
-      @if (error()) {
-        <p class="purchase-error" role="alert">{{ error() }}</p>
+            @if (canManagePurchases()) {
+              <button type="button" class="secondary" (click)="copyPurchase(purchase)">Copiar compra</button>
+            }
+          </div>
+          @if (draftEditor() && canManagePurchases()) { <app-purchase-detail-draft /> }
+        </section>
       }
-    </section>
-  </div>
+      @case ('receiving') {
+        @if (canReceive()) {
+          <app-purchase-detail-receive />
+          <app-purchase-detail-aside section="receiving" />
+        }
+      }
+      @case ('documents') {
+        @if (purchase.supplier_order_number || purchase.document_date) {
+          <p>Pedido do fornecedor {{ purchase.supplier_order_number || '—' }}
+            @if (purchase.document_date) { · documento de {{ dateOnly(purchase.document_date) }} }
+          </p>
+        }
+      <section class="purchase-form-section">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Documentação</p>
+            <h3>Documentos anexados</h3>
+          </div>
+          @if (canManagePurchases()) {
+            <label class="attachment-inline"
+              >+ Anexar documentos<input
+                type="file"
+                multiple
+                (change)="uploadAttachments(purchase, $any($event.target).files)"
+            /></label>
+          }
+        </div>
+        @if (purchase.attachments.length) {
+          <div class="attachment-list">
+            @for (attachment of purchase.attachments; track attachment.id) {
+              <button
+                type="button"
+                class="attachment-row"
+                (click)="downloadAttachment(purchase, attachment)"
+              >
+                <span>📎 {{ attachment.filename }}</span
+                ><small>{{ formatBytes(attachment.size_bytes) }}</small>
+              </button>
+            }
+          </div>
+        } @else {
+          <p class="muted">Nenhum documento anexado ainda.</p>
+        }
+      </section>
+      }
+      @case ('finance') {
+        <app-purchase-detail-quotes />
+        @if (purchase.status === 'approved' && canManagePurchases()) {
+          <button class="primary" [disabled]="saving()" (click)="placeOrder()">Registrar pedido ao fornecedor</button>
+        }
+        <app-purchase-detail-aside section="finance" />
+      }
+      @case ('history') {
+        <p><strong>Etapa interna</strong> · {{ purchaseStatusLabel(purchase) }}</p>
+        @if (purchase.needed_by) {
+          <p>Previsão {{ dateOnly(purchase.needed_by) }} @if (isOverdue(purchase)) { <strong class="overdue-chip">Atrasada</strong> }</p>
+        }
+        @if (purchase.notes) { <p>{{ purchase.notes }}</p> }
+        <app-purchase-detail-aside section="history" (remove)="remove.emit($event)" />
+      }
+    }
+  </article>
+} @else if (error()) {
+  <p class="purchase-error" role="alert">{{ error() }}</p>
+} @else {
+  <p class="loading" role="status">Carregando compra…</p>
 }

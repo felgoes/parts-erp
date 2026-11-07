@@ -42,7 +42,7 @@
     {{ stockTab() === 'product' ? 'produtos' : 'itens de almoxarifado' }}</span
   >
 </section>
-<section class="card table-card operational-list">
+<section class="card table-card operational-list record-list">
   <div class="table-wrap">
     <table role="table" aria-label="Produtos e estoque">
       <thead role="rowgroup">
@@ -63,7 +63,7 @@
                 @if (product.images.length) { <img class="product-thumb" [src]="product.images[0].url" alt="" /> }
                 <div>
                   <a class="product-name-link record-link" [routerLink]="['/products', product.id]" [state]="{ productListOrigin: true }">{{ product.name }}</a
-                  ><small>{{ product.description || 'Sem descrição' }}</small>
+                  ><small>{{ product.sku }}</small>
                 </div>
               </div>
             </td>

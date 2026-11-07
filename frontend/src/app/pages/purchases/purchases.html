@@ -1,3 +1,7 @@
+@if (recordId) {
+  <a class="purchase-record-back" [href]="origin.path" (click)="back($event)">← {{ origin.label }}</a>
+  <app-purchase-detail (copy)="copyPurchase($event)" (remove)="openDelete($event)" />
+} @else {
 <app-page-header
   title="Compras"
 >
@@ -29,16 +33,16 @@
 }
 <section class="purchase-list-controls">
 <section class="purchase-summary">
-  @for (card of summary(); track card.status) {
+  @for (card of summary(); track card.value) {
     <button
       type="button"
       class="purchase-stat"
-      [class.active-stat]="statusFilter() === card.status"
-      (click)="toggleStatus(card.status)"
+      [class.active-stat]="statusFilter() === card.value"
+      (click)="toggleStatus(card.value)"
     >
       <span>{{ card.label }}</span
       ><strong>{{ card.count }}</strong
-      ><small>{{ card.note }}</small>
+      >
     </button>
   }
 </section>
@@ -46,7 +50,7 @@
   heading="Período das compras"
   description="Filtra pela data de abertura da negociação."
   ariaLabel="Filtrar compras por período"
-  initialPreset="last30"
+  [initialPreset]="initialPreset"
   [initialStartDate]="startDate()"
   [initialEndDate]="endDate()"
   (rangeChange)="applyPeriod($event)"
@@ -61,9 +65,9 @@
       (input)="onSearch($any($event.target).value)"
   /></label>
   <label class="purchase-select"
-    >Etapa
-    <select [value]="statusFilter()" (change)="statusFilter.set($any($event.target).value)">
-      <option value="all">Todas</option>
+    >Status
+    <select [value]="statusFilter()" (change)="setStatus($any($event.target).value)">
+      <option value="all">Todos os status</option>
       @for (status of statuses; track status.value) {
         <option [value]="status.value">{{ status.label }}</option>
       }
@@ -102,7 +106,7 @@
   }
 </section>
 </section>
-<section class="card purchase-table-card operational-list" [class.restricted-costs]="!canReadCosts()">
+<section class="card purchase-table-card operational-list record-list" [class.restricted-costs]="!canReadCosts()">
   <div class="table-wrap" (scroll)="closeRowMenu()">
     <table role="table" aria-label="Compras">
       <thead role="rowgroup">
@@ -111,7 +115,7 @@
           <th scope="col">Compra</th>
           <th scope="col">Peças</th>
           <th scope="col">Fornecedor / cotações</th>
-          <th scope="col">Etapa</th>
+          <th scope="col">Status</th>
           <th scope="col">Previsão</th>
           <th scope="col" class="right">Valor</th>
           <th scope="col">Aberta em</th>
@@ -119,13 +123,8 @@
         </tr>
       </thead>
       <tbody role="rowgroup">
-        @for (purchase of pagedPurchases(); track purchase.id) {
-          <tr role="row"
-            class="purchase-row"
-            tabindex="0"
-            (click)="openDetails(purchase)"
-            (keydown.enter)="$event.target === $event.currentTarget ? openDetails(purchase) : null"
-          >
+        @for (purchase of purchases(); track purchase.id) {
+          <tr role="row" class="purchase-row">
             <td role="cell" class="row-select">
               @if (isSelectable(purchase)) {
                 <input
@@ -137,9 +136,8 @@
                 />
               }
             </td>
-            <td role="cell">
-              <strong>{{ purchase.number }}</strong
-              ><small>{{
+            <td role="cell" class="purchase-list-reference">
+              <a class="record-link" [attr.href]="'/purchases/' + purchase.id" [attr.data-record-focus]="purchase.id" (click)="openDetails(purchase, $event)">{{ purchase.number }}</a><small>{{
                 purchase.purchase_type === 'expense'
                   ? 'Despesa da empresa'
                   : purchase.items.length + (purchase.items.length === 1 ? ' item' : ' itens')
@@ -185,8 +183,8 @@
                 }}</small>
               }
             </td>
-            <td role="cell"><span class="record-label">Etapa</span>
-              <span class="purchase-badge" [attr.data-status]="purchase.status">{{
+            <td role="cell" class="purchase-list-status"><span class="record-label">Status</span>
+              <span class="purchase-badge" [attr.data-group]="groupValue(purchase)">{{
                 purchaseStatusLabel(purchase)
               }}</span>
             </td>
@@ -196,16 +194,13 @@
                 <small class="overdue-chip">Atrasada</small>
               }
             </td>
-            <td role="cell" class="right"><span class="record-label">Valor</span>{{ purchaseTotal(purchase) | currency: 'BRL' }}</td>
+            <td role="cell" class="right purchase-list-total"><span class="record-label">Valor</span>
+              @if (canReadCosts() && (purchase.expense_amount ?? purchase.total_amount) != null) {
+                <strong>{{ purchaseTotal(purchase) | currency: 'BRL' }}</strong>
+              } @else { <span class="muted">—</span> }
+            </td>
             <td role="cell"><span class="record-label">Aberta em</span>{{ purchase.created_at | date: 'dd/MM/yyyy' : '-0300' }}</td>
             <td role="cell" class="record-wide row-action">
-              <button
-                type="button"
-                class="row-open"
-                (click)="$event.stopPropagation(); openDetails(purchase)"
-              >
-                Abrir <span>→</span>
-              </button>
               <div class="purchase-row-menu">
                 <button
                   type="button"
@@ -261,6 +256,7 @@
     }
   </div>
 }
+}
 <app-purchase-delete
   [purchase]="deleteTarget()"
   (deleted)="onDeleted($event)"
@@ -276,6 +272,3 @@
   (created)="onCreated($event)"
   (supplierCreated)="onSupplierCreated($event)"
 />
-
-<!-- Copiar e excluir continuam sendo ações da página: a casca do detalhe só pede. -->
-<app-purchase-detail (copy)="copyPurchase($event)" (remove)="openDelete($event)" />

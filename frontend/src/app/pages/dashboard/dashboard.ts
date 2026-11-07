@@ -8,16 +8,11 @@ import { UsersApi } from '../../core/api/users-api';
 import { LiveUpdatesService } from '../../core/live-updates.service';
 import { AuthService } from '../../core/auth.service';
 import { DashboardFinancialMetrics, DashboardSummary, Invoice } from '../../core/models';
-import { canSell } from '../../core/user-access';
-import { statusLabel } from '../../core/status-labels';
+import { canAccessPage } from '../../core/user-access';
 import { saleStageForInvoice, saleStageLabel } from '../../core/sale-stage';
-import { invoiceDocumentLabel } from '../../core/document-labels';
-import { documentsWithoutXml } from '../../core/document-visibility';
-import { PageHeader } from '../../shared/page-header';
+import { QuickDatePreset, matchingDatePreset } from '../../core/quick-date-ranges';
+import { RecordOrigin, recordOrigin, restoreRecordPosition } from '../../shared/record-origin';
 import { PeriodFilter } from '../../shared/period-filter';
-import { AfterSaleWorkflow } from '../../shared/after-sale-workflow';
-import { TrackingPanel } from '../../shared/tracking-panel';
-import { DashboardMetrics } from './metrics/dashboard-metrics';
 
 @Component({
   selector: 'app-dashboard',
@@ -26,11 +21,7 @@ import { DashboardMetrics } from './metrics/dashboard-metrics';
     DatePipe,
     DecimalPipe,
     RouterLink,
-    PageHeader,
     PeriodFilter,
-    AfterSaleWorkflow,
-    TrackingPanel,
-    DashboardMetrics,
   ],
   templateUrl: './dashboard.html',
   styleUrl: './dashboard.scss',
@@ -41,45 +32,27 @@ export class DashboardPage implements OnInit {
   private readonly live = inject(LiveUpdatesService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly auth = inject(AuthService);
-  canSell() {
-    return canSell(this.auth.user()?.role);
+  canOpen(path: string): boolean {
+    return canAccessPage(this.auth.user()?.role, path);
   }
   private readonly router = inject(Router);
   readonly data = signal<DashboardSummary | null>(null);
+  readonly loadError = signal(false);
   readonly financial = signal<DashboardFinancialMetrics | null>(null);
-  readonly detail = signal<Invoice | null>(null);
   readonly financialSummaryHidden = computed(() => !!this.auth.user()?.financial_summary_hidden);
-  readonly invoiceTab = signal<'items' | 'tracking' | 'documents' | 'aftersale'>('items');
   startDate = this.monthStart();
   endDate = this.today();
-  readonly statusLabel = statusLabel;
+  initialPreset: QuickDatePreset = 'thisMonth';
   readonly saleStageForInvoice = saleStageForInvoice;
   readonly saleStageLabel = saleStageLabel;
-  readonly documentsForDownload = documentsWithoutXml;
-  readonly invoiceDocumentLabel = invoiceDocumentLabel;
-  afterSaleLabel(invoice: Invoice) {
-    if (!invoice.after_sale) return '';
-    const kind =
-      invoice.after_sale.kind === 'return'
-        ? 'Devolução'
-        : invoice.after_sale.kind === 'claim'
-          ? 'Reclamação'
-          : 'Cancelamento';
-    return `${kind} · ${statusLabel(invoice.after_sale.status)}`;
-  }
-  afterSaleReason(value: string) {
-    if (value.trim().toLowerCase() === 'mediations cancel the order')
-      return 'A mediação cancelou o pedido';
-    return value;
-  }
-  requesterLabel(value: string) {
-    return (
-      ({ meli: 'Mercado Livre', buyer: 'Comprador', seller: 'Vendedor' } as Record<string, string>)[
-        value.toLowerCase()
-      ] ?? value
-    );
-  }
+  private pendingReturn = window.history.state?.recordReturn as RecordOrigin | undefined;
   ngOnInit() {
+    const view = this.pendingReturn?.view as { startDate?: string; endDate?: string } | undefined;
+    if (view?.startDate && view.endDate) {
+      this.startDate = view.startDate;
+      this.endDate = view.endDate;
+      this.initialPreset = matchingDatePreset(this.startDate, this.endDate);
+    }
     this.load();
     this.live.changes$
       .pipe(debounceTime(250), takeUntilDestroyed(this.destroyRef))
@@ -87,12 +60,19 @@ export class DashboardPage implements OnInit {
   }
   load() {
     if (!this.validRange()) return;
-    this.api.dashboard(this.startDate, this.endDate).subscribe((v) => this.data.set(v));
-    const detailId = this.detail()?.id;
-    if (detailId)
-      this.api.invoice(detailId).subscribe((full) => {
-        if (this.detail()?.id === detailId) this.detail.set(full);
-      });
+    const { startDate, endDate } = this;
+    this.api.dashboard(startDate, endDate).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: (summary) => {
+        if (startDate !== this.startDate || endDate !== this.endDate) return;
+        this.loadError.set(false);
+        this.data.set(summary);
+        restoreRecordPosition(this.pendingReturn);
+        this.pendingReturn = undefined;
+      },
+      error: () => {
+        if (startDate === this.startDate && endDate === this.endDate) this.loadError.set(true);
+      },
+    });
   }
   applyDateFilter(range: { startDate: string; endDate: string }) {
     this.startDate = range.startDate;
@@ -108,19 +88,15 @@ export class DashboardPage implements OnInit {
   private monthStart() {
     return `${this.today().slice(0, 7)}-01`;
   }
-  status(value: string) {
-    return (
-      (
-        { draft: 'Rascunho', confirmed: 'Confirmada', cancelled: 'Cancelada' } as Record<
-          string,
-          string
-        >
-      )[value] ?? statusLabel(value)
-    );
-  }
-  openRecent(invoice: Invoice) {
-    this.invoiceTab.set('items');
-    this.api.invoice(invoice.id).subscribe((full) => this.detail.set(full));
+  openRecent(event: MouseEvent, invoice: Invoice): void {
+    if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+    event.preventDefault();
+    void this.router.navigate(['/invoices', invoice.id], {
+      state: recordOrigin(this.router.url, 'Visão geral', invoice.id, {
+        startDate: this.startDate,
+        endDate: this.endDate,
+      }),
+    });
   }
   openFinancial() {
     this.api
@@ -141,12 +117,5 @@ export class DashboardPage implements OnInit {
   }
   sourceWidth(value: number, total: number) {
     return total ? Math.max(4, (value / total) * 100) : 0;
-  }
-  openDocument(invoiceId: string, documentId: string) {
-    // Popup + blob falha no WebView Android e resulta em about:blank.
-    this.router.navigate(['/document-viewer', invoiceId, documentId]);
-  }
-  documentViewerUrl(invoiceId: string, documentId: string) {
-    return `/document-viewer/${invoiceId}/${documentId}`;
   }
 }

@@ -5,9 +5,9 @@ servidor e paginação — e porque o arquivo de compras já está grande demais
 """
 
 from datetime import date
-from typing import Annotated
+from typing import Annotated, Literal
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session, selectinload
 
@@ -36,7 +36,13 @@ LIST_STATUSES = {
     "closed",
     "cancelled",
 }
-AWAITING_STATUSES = ("ordered", "partially_received")
+STATUS_GROUPS = {
+    "preparation": ("negotiating", "approved"),
+    "receiving": ("ordered", "partially_received"),
+    "finished": ("received", "closed"),
+    "cancelled": ("cancelled",),
+}
+PurchaseStatusGroup = Literal["preparation", "receiving", "finished", "cancelled"]
 
 
 @router.get("", response_model=PurchaseListOut)
@@ -45,11 +51,14 @@ def list_purchases(
     offset: Annotated[int, Query(ge=0)] = 0,
     search: Annotated[str | None, Query(max_length=120)] = None,
     status: Annotated[str | None, Query(max_length=30)] = None,
+    status_group: PurchaseStatusGroup | None = None,
     start_date: Annotated[date | None, Query()] = None,
     end_date: Annotated[date | None, Query()] = None,
     db: Session = Depends(get_db),
     user: User = Depends(require_permission(Permission.PURCHASE_READ)),
 ) -> PurchaseListOut:
+    if status is not None and status_group is not None:
+        raise HTTPException(422, "Informe status ou status_group, sem combinar os dois.")
     since, until = optional_period_window(start_date, end_date)
     period_filters = []
     if since is not None:
@@ -57,13 +66,11 @@ def list_purchases(
     if until is not None:
         period_filters.append(PurchaseCase.created_at < until)
 
-    filters = list(period_filters)
-    if status in LIST_STATUSES:
-        filters.append(PurchaseCase.status == status)
+    base_filters = list(period_filters)
     term = (search or "").strip()
     if term:
         like = f"%{term}%"
-        filters.append(
+        base_filters.append(
             or_(
                 PurchaseCase.number.ilike(like),
                 PurchaseCase.supplier_name.ilike(like),
@@ -73,13 +80,19 @@ def list_purchases(
             )
         )
 
+    filters = list(base_filters)
+    if status_group:
+        filters.append(PurchaseCase.status.in_(STATUS_GROUPS[status_group]))
+    elif status in LIST_STATUSES:
+        filters.append(PurchaseCase.status == status)
+
     total = db.scalar(select(func.count(PurchaseCase.id)).where(*filters)) or 0
     purchases = list(
         db.scalars(
             select(PurchaseCase)
             .options(selectinload(PurchaseCase.items), selectinload(PurchaseCase.quotes))
             .where(*filters)
-            .order_by(PurchaseCase.created_at.desc())
+            .order_by(PurchaseCase.created_at.desc(), PurchaseCase.id.desc())
             .offset(offset)
             .limit(limit)
         )
@@ -93,10 +106,21 @@ def list_purchases(
             .group_by(PurchaseCase.status)
         ).all()
     )
+    matching_counts = counts if not term else dict(
+        db.execute(
+            select(PurchaseCase.status, func.count(PurchaseCase.id))
+            .where(*base_filters)
+            .group_by(PurchaseCase.status)
+        ).all()
+    )
     summary = PurchaseListSummary(
         negotiating=counts.get("negotiating", 0),
-        ordered=sum(counts.get(state, 0) for state in AWAITING_STATUSES),
+        ordered=sum(counts.get(state, 0) for state in STATUS_GROUPS["receiving"]),
         received=counts.get("received", 0),
+        groups={
+            group: sum(matching_counts.get(state, 0) for state in states)
+            for group, states in STATUS_GROUPS.items()
+        },
     )
     return PurchaseListOut(
         items=[_present_list_item(purchase, user) for purchase in purchases],

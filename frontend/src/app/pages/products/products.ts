@@ -1,7 +1,7 @@
 import { CurrencyPipe, DatePipe, DecimalPipe } from '@angular/common';
 import { Component, DestroyRef, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { debounceTime, finalize } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ApiService } from '../../core/api.service';
@@ -33,7 +33,7 @@ export class ProductsPage implements OnInit, OnDestroy {
   private readonly destroyRef = inject(DestroyRef);
   private readonly auth = inject(AuthService);
   private readonly fb = inject(FormBuilder);
-  private readonly initialView = restoreProductListView();
+  private readonly initialView = restoreProductListView(inject(ActivatedRoute).snapshot.queryParamMap.get('estoque') === 'baixo');
   private pendingProductAction = takeProductListAction();
   readonly products = signal<Product[]>([]);
   readonly stockTab = signal<'product' | 'warehouse'>(this.initialView.stockTab);

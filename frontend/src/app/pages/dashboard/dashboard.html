@@ -1,95 +1,81 @@
-<app-page-header title="Visão geral" />
-@if (data(); as summary) {
-  <app-dashboard-metrics
-    [summary]="summary"
-    [financialSummaryHidden]="financialSummaryHidden()"
-    (financialRequested)="openFinancial()"
-    (financialSummaryHiddenChange)="setFinancialSummaryHidden($event)"
-  />
-  <app-period-filter class="dashboard-period"
-    heading="Período da visão geral"
-    description="Faturamento, vendas e vendas recentes"
+<header class="overview-heading">
+  <h1>Visão geral</h1>
+  <app-period-filter
+    [compact]="true"
     ariaLabel="Filtrar visão geral por período"
+    [initialPreset]="initialPreset"
     [initialStartDate]="startDate"
     [initialEndDate]="endDate"
     (rangeChange)="applyDateFilter($event)"
   />
-  <section class="dashboard-grid">
-    <article class="card table-card operational-list">
-      <div class="card-head">
-        <h2 id="recent-sales-heading">Vendas recentes</h2>
-        <a routerLink="/invoices">Ver todas →</a>
+</header>
+@if (loadError()) {
+  <p class="empty" role="status">
+    Não foi possível atualizar a Visão geral.
+    <button class="secondary" type="button" (click)="load()">Tentar novamente</button>
+  </p>
+}
+@if (data(); as summary) {
+  <div class="overview-summary">
+    <section class="overview-revenue" aria-labelledby="overview-revenue-heading">
+      <div class="overview-section-heading">
+        <h2 id="overview-revenue-heading">Receita líquida</h2>
+        <button class="overview-link" type="button" [attr.aria-pressed]="!financialSummaryHidden()"
+          (click)="setFinancialSummaryHidden(!financialSummaryHidden())">
+          {{ financialSummaryHidden() ? 'Mostrar' : 'Ocultar' }}
+        </button>
       </div>
-      @if (summary.recent_invoices.length) {
-        <div class="table-wrap">
-          <table role="table" aria-labelledby="recent-sales-heading">
-            <thead role="rowgroup">
-              <tr role="row">
-                <th scope="col">Fatura</th>
-                <th scope="col">Status</th>
-                <th scope="col">Pedido</th>
-                <th scope="col">Cliente</th>
-                <th scope="col">Origem</th>
-                <th scope="col">Emissão</th>
-                <th scope="col">Documentos</th>
-                <th scope="col" class="right">Total</th>
-              </tr>
-            </thead>
-            <tbody role="rowgroup">
-              @for (invoice of summary.recent_invoices; track invoice.id) {
-                <tr role="row" class="clickable-row" (click)="openRecent(invoice)">
-                  <td role="cell">
-                    <button type="button" class="record-link" (click)="$event.stopPropagation(); openRecent(invoice)">
-                      {{ invoice.number }}
-                    </button>
-                  </td>
-                  <td role="cell" class="record-status">
-                    <span class="record-label">Status</span>
-                    <span class="badge" [class]="invoice.status">{{ saleStageLabel(saleStageForInvoice(invoice)) }}</span>
-                    @if (invoice.after_sale) {
-                      <small class="post-sale-summary">{{ afterSaleLabel(invoice) }}</small>
-                    }
-                  </td>
-                  <td role="cell" class="record-wide">
-                    <span class="record-label">Pedido</span>
-                    {{ invoice.marketplace_order_id ? '#' + invoice.marketplace_order_id : 'Venda local' }}
-                  </td>
-                  <td role="cell" class="record-wide">
-                    <span class="record-label">Cliente</span>
-                    <strong>{{ invoice.customer?.name || 'Consumidor não identificado' }}</strong>
-                    <small class="block">{{ invoice.customer?.document || invoice.customer?.email || 'Sem cadastro vinculado' }}</small>
-                  </td>
-                  <td role="cell"><span class="record-label">Origem</span>{{ invoice.source === 'mercadolivre' ? 'Mercado Livre' : 'Balcão' }}</td>
-                  <td role="cell"><span class="record-label">Emissão</span>{{ invoice.issued_at || invoice.created_at | date: 'dd/MM/yyyy HH:mm' : '-0300' }}</td>
-                  <td role="cell">
-                    <span class="record-label">Documentos</span>
-                    @if (documentsForDownload(invoice.documents).length) {
-                      <div class="record-actions">
-                        @for (doc of documentsForDownload(invoice.documents); track doc.id) {
-                          <button type="button" class="record-link"
-                            [attr.title]="doc.filename"
-                            (click)="$event.stopPropagation(); openDocument(invoice.id, doc.id)">
-                            {{ invoiceDocumentLabel(doc, invoice.documents) }}
-                          </button>
-                        }
-                      </div>
-                    } @else {
-                      <span class="muted">—</span>
-                    }
-                  </td>
-                  <td role="cell" class="right">
-                    <span class="record-label">Total</span>
-                    <strong>{{ invoice.total | currency: 'BRL' }}</strong>
-                  </td>
-                </tr>
-              }
-            </tbody>
-          </table>
-        </div>
-      } @else {
-        <div class="empty">Nenhuma venda registrada ainda.</div>
+      <strong class="overview-value">{{ financialSummaryHidden() ? '••••••' : (summary.revenue_month | currency: 'BRL') }}</strong>
+      <p>{{ summary.confirmed_sales }} {{ summary.confirmed_sales === 1 ? 'venda confirmada' : 'vendas confirmadas' }}</p>
+      @if (summary.marketplace_costs_pending) {
+        <p class="overview-warning">Receita parcial · {{ summary.marketplace_costs_pending }} venda(s) sem custo completo do ML</p>
       }
-    </article>
+      <button class="overview-link" type="button" (click)="openFinancial()">Ver composição</button>
+    </section>
+    <section class="overview-tasks" aria-labelledby="overview-tasks-heading">
+      <h2 id="overview-tasks-heading">Para resolver</h2>
+      <div class="overview-task-list">
+        @if (summary.sales_to_ship && canOpen('/marketplace')) {
+          <a routerLink="/marketplace" [queryParams]="{ fila: 'despachar' }">
+            <strong>{{ summary.sales_to_ship }} <span aria-hidden="true">↗</span></strong>
+            Despachar venda
+          </a>
+        }
+        @if (summary.low_stock_count && canOpen('/products')) {
+          <a routerLink="/products" [queryParams]="{ estoque: 'baixo' }">
+            <strong>{{ summary.low_stock_count }} <span aria-hidden="true">↗</span></strong>
+            Repor estoque
+          </a>
+        }
+        @if (!(summary.sales_to_ship && canOpen('/marketplace')) && !(summary.low_stock_count && canOpen('/products'))) {
+          <p>Nenhuma pendência no momento.</p>
+        }
+      </div>
+    </section>
+  </div>
+  <section class="overview-recent" aria-labelledby="recent-sales-heading">
+    <div class="overview-section-heading">
+      <h2 id="recent-sales-heading">Últimas vendas</h2>
+      @if (canOpen('/invoices')) {
+        <a class="overview-link" routerLink="/invoices">Ver todas →</a>
+      }
+    </div>
+    <ul class="overview-sales">
+      @for (invoice of summary.recent_invoices.slice(0, 2); track invoice.id) {
+        <li>
+          <a class="overview-sale" [attr.href]="'/invoices/' + invoice.id" [attr.data-record-focus]="invoice.id" (click)="openRecent($event, invoice)">
+            <span>
+              <strong>{{ invoice.customer?.name || 'Consumidor não identificado' }}</strong>
+              @if (invoice.tracking?.destination_locality; as locality) { <small>{{ locality }}</small> }
+            </span>
+            <span><strong>{{ invoice.total | currency: 'BRL' }}</strong><small>{{ saleStageLabel(saleStageForInvoice(invoice)) }}</small></span>
+            <span aria-hidden="true">›</span>
+          </a>
+        </li>
+      } @empty {
+        <li><p>Nenhuma venda neste período</p></li>
+      }
+    </ul>
   </section>
   @if (financial(); as finance) {
     <div class="modal-backdrop" (click)="financial.set(null)">
@@ -206,150 +192,6 @@
       </section>
     </div>
   }
-  @if (detail(); as invoice) {
-    <div class="modal-backdrop" (click)="detail.set(null)">
-      <section class="modal wide object-modal" (click)="$event.stopPropagation()">
-        <div class="modal-head detail-hero">
-          <div>
-            <p class="eyebrow">
-              Venda {{ invoice.source === 'mercadolivre' ? 'Mercado Livre' : 'manual' }}
-            </p>
-            <h2>{{ invoice.number }}</h2>
-            <p class="detail-subtitle">
-              Criada em {{ invoice.created_at | date: 'dd/MM/yyyy HH:mm' : '-0300'
-              }}{{
-                invoice.issued_at
-                  ? ' · emitida em ' + (invoice.issued_at | date: 'dd/MM/yyyy HH:mm' : '-0300')
-                  : ''
-              }}
-            </p>
-          </div>
-          <div class="hero-actions">
-            <span class="badge" [class]="invoice.status">{{
-              saleStageLabel(saleStageForInvoice(invoice))
-            }}</span
-            ><button class="close" aria-label="Fechar detalhe" (click)="detail.set(null)">×</button>
-          </div>
-        </div>
-        <div class="detail-summary">
-          <div>
-            <span>Cliente</span
-            ><strong>{{ invoice.customer?.name || 'Consumidor não identificado' }}</strong
-            ><small>{{
-              invoice.customer?.document || invoice.customer?.email || 'Sem cadastro vinculado'
-            }}</small>
-          </div>
-          <div>
-            <span>Pedido relacionado</span
-            ><strong>{{
-              invoice.marketplace_order_id ? '#' + invoice.marketplace_order_id : 'Venda local'
-            }}</strong
-            ><small
-              >{{ invoice.items.length }} item(ns) · {{ invoice.total | currency: 'BRL' }}</small
-            >
-          </div>
-          @if (invoice.tracking?.destination_address; as address) {
-            <div class="delivery-address">
-              <span>Endereço de entrega</span>
-              <strong>{{ address }}</strong>
-            </div>
-          }
-        </div>
-        <nav class="detail-tabs" aria-label="Detalhes da venda">
-          <button [class.active]="invoiceTab() === 'items'" (click)="invoiceTab.set('items')">
-            Itens <small>{{ invoice.items.length }}</small></button
-          ><button
-            [class.active]="invoiceTab() === 'tracking'"
-            (click)="invoiceTab.set('tracking')"
-          >
-            Rastreio</button
-          ><button
-            [class.active]="invoiceTab() === 'documents'"
-            (click)="invoiceTab.set('documents')"
-          >
-            Documentos <small>{{ invoice.documents.length }}</small>
-          </button>
-          @if (invoice.after_sale) {
-            <button
-              [class.active]="invoiceTab() === 'aftersale'"
-              (click)="invoiceTab.set('aftersale')"
-            >
-              Pós-venda
-            </button>
-          }
-        </nav>
-        @if (invoiceTab() === 'items') {
-          <section class="detail-section">
-            <div class="section-heading">
-              <div>
-                <p class="eyebrow">Composição</p>
-                <h3>Itens vendidos</h3>
-              </div>
-              <strong>{{ invoice.total | currency: 'BRL' }}</strong>
-            </div>
-            <div class="invoice-detail-lines">
-              @for (item of invoice.items; track item.id) {
-                <div>
-                  <span class="item-main"
-                    ><strong>{{ item.description }}</strong
-                    ><small
-                      >SKU {{ item.sku }} · {{ item.quantity }} unidade(s) ·
-                      {{ item.unit_price | currency: 'BRL' }} cada</small
-                    ></span
-                  ><strong>{{ item.total | currency: 'BRL' }}</strong>
-                </div>
-              }
-            </div>
-          </section>
-        }
-        @if (invoiceTab() === 'tracking') {
-          @if (invoice.tracking; as tracking) {
-            <app-tracking-panel [tracking]="tracking" />
-          } @else {
-            <div class="empty">Esta venda não está vinculada a um pedido de marketplace.</div>
-          }
-        }
-        @if (invoiceTab() === 'documents') {
-          <section class="detail-section">
-            <div class="section-heading">
-              <div>
-                <p class="eyebrow">Fiscal</p>
-                <h3>Documentos da venda</h3>
-              </div>
-              <span class="muted">Clique para abrir em nova guia</span>
-            </div>
-            @if (invoice.documents.length) {
-              <div class="document-list">
-                @for (doc of invoice.documents; track doc.id) {
-                  <a
-                    class="document-card"
-                    href="#"
-                    (click)="$event.preventDefault(); openDocument(invoice.id, doc.id)"
-                    ><span class="document-icon">{{
-                      doc.document_type === 'pdf' ? 'PDF' : 'XML'
-                    }}</span
-                    ><span
-                      ><strong>{{ doc.filename }}</strong
-                      ><small>{{
-                        doc.document_type === 'pdf'
-                          ? 'DANFE para visualização'
-                          : 'Nota fiscal eletrônica'
-                      }}</small></span
-                    ><b>↗</b></a
-                  >
-                }
-              </div>
-            } @else {
-              <div class="empty">Nenhum documento anexado ainda.</div>
-            }
-          </section>
-        }
-        @if (invoiceTab() === 'aftersale' && invoice.after_sale) {
-          <app-after-sale-workflow [afterSale]="invoice.after_sale" />
-        }
-      </section>
-    </div>
-  }
-} @else {
+} @else if (!loadError()) {
   <div class="loading">Carregando sua operação…</div>
 }

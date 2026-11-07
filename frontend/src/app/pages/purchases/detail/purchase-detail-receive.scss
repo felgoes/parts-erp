@@ -5,3 +5,10 @@
   font-size: 11px;
   line-height: 1.5;
 }
+
+.purchase-receiving { max-width: 34rem; margin-bottom: 16px; }
+.purchase-receiving h2 { font-size: 18px; }
+.purchase-receiving label { display: grid; gap: 4px; }
+.purchase-receiving select, .purchase-receiving input:not([type='checkbox']) { min-height: 44px; width: 100%; }
+.receive-controls { display: grid; gap: 12px; }
+.receive-controls .primary { justify-self: start; min-height: 44px; }

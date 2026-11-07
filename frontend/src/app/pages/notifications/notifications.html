@@ -1,7 +1,11 @@
 <app-page-header
   title="Notificações"
-  subtitle="Histórico e preferências de alertas."
-/>
+>
+  <button type="button" class="secondary" (click)="load()">Atualizar</button>
+</app-page-header>
+@if (unavailableSale()) {
+  <p class="empty" role="status">A venda deste aviso não está disponível. Consulte o histórico abaixo.</p>
+}
 <article
   class="panel device-status"
   [class.ok]="pushState().status === 'registered'"
@@ -20,7 +24,54 @@
   }
 </article>
 <section class="notification-grid">
-  <article class="panel preferences">
+  <article class="panel history">
+    <div class="section-head">
+      <div>
+        <h2>Histórico</h2>
+      </div>
+
+    </div>
+    @if (feed.error()) { <p class="empty" role="status">{{ feed.error() }}</p> }
+    @if (loading()) {
+      <p class="empty">Carregando notificações…</p>
+    }
+    @for (item of history(); track item.id) {
+      <div class="history-item">
+        <span class="dot" [class.failed]="item.status === 'failed'"></span>
+        <div>
+          <strong>{{ item.title }}</strong>
+          <p>{{ item.body }}</p>
+          @if (actions(item).length) {
+            <div class="history-actions">
+              @for (action of actions(item); track action.label) {
+                <a [routerLink]="action.route" [queryParams]="action.query || null">{{
+                  action.label
+                }}</a>
+              }
+            </div>
+          }
+          <small
+            >{{ item.created_at | date: 'dd/MM/yyyy HH:mm' : '-0300' }} · {{ status(item.status) }}</small
+          >
+        </div>
+        <button
+          class="history-delete"
+          type="button"
+          [disabled]="deleting() === item.id"
+          [attr.aria-label]="'Excluir notificação: ' + item.title"
+          (click)="feed.dismiss(item)"
+        >
+          {{ deleting() === item.id ? 'Excluindo…' : 'Excluir' }}
+        </button>
+      </div>
+    } @empty {
+      @if (!loading() && !feed.error()) {
+        <p class="empty">Nenhuma notificação registrada ainda.</p>
+      }
+    }
+    <a class="secondary" href="#notification-preferences" (click)="$event.preventDefault(); preferencesPanel.scrollIntoView({ block: 'start' }); preferencesPanel.focus({ preventScroll: true })">Preferências de notificação →</a>
+  </article>
+  <article #preferencesPanel id="notification-preferences" class="panel preferences" tabindex="-1">
     <div class="section-head">
       <div>
         <p class="eyebrow">Preferências</p>
@@ -69,52 +120,6 @@
           </button>
         </div>
       </div>
-    }
-  </article>
-  <article class="panel history">
-    <div class="section-head">
-      <div>
-        <p class="eyebrow">Atividade recente</p>
-        <h2>Histórico de pushs</h2>
-      </div>
-      <button type="button" class="refresh" (click)="load()">Atualizar</button>
-    </div>
-    @if (loading()) {
-      <p class="empty">Carregando notificações…</p>
-    }
-    @for (item of history(); track item.id) {
-      <div class="history-item">
-        <span class="dot" [class.failed]="item.status === 'failed'"></span>
-        <div>
-          <strong>{{ item.title }}</strong>
-          <p>{{ item.body }}</p>
-          @if (actions(item).length) {
-            <div class="history-actions">
-              @for (action of actions(item); track action.label) {
-                <a [routerLink]="action.route" [queryParams]="action.query || null">{{
-                  action.label
-                }}</a>
-              }
-            </div>
-          }
-          <small
-            >{{ item.created_at | date: 'dd/MM/yyyy HH:mm' }} · {{ status(item.status) }}</small
-          >
-        </div>
-        <button
-          class="history-delete"
-          type="button"
-          [disabled]="deleting() === item.id"
-          [attr.aria-label]="'Excluir notificação: ' + item.title"
-          (click)="dismiss(item)"
-        >
-          {{ deleting() === item.id ? 'Excluindo…' : 'Excluir' }}
-        </button>
-      </div>
-    } @empty {
-      @if (!loading()) {
-        <p class="empty">Nenhuma notificação registrada ainda.</p>
-      }
     }
   </article>
 </section>

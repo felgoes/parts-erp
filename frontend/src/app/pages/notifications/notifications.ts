@@ -1,6 +1,6 @@
 import { DatePipe } from '@angular/common';
 import { Component, OnInit, inject, signal } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { ApiService } from '../../core/api.service';
 import {
   PushNotification,
@@ -9,7 +9,11 @@ import {
   PushSound,
 } from '../../core/models';
 import { PushNotificationsService } from '../../core/push-notifications.service';
-import { SettingsApi } from '../../core/api/settings-api';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { map } from 'rxjs';
+import { AuthService } from '../../core/auth.service';
+import { NotificationHistory } from '../../core/notification-history.service';
+import { notificationActions } from '../../core/notification-destination';
 import { PageHeader } from '../../shared/page-header';
 
 @Component({
@@ -24,7 +28,7 @@ import { PageHeader } from '../../shared/page-header';
       }
       .notification-grid {
         display: grid;
-        grid-template-columns: minmax(280px, 0.8fr) minmax(360px, 1.2fr);
+        grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr);
         gap: 18px;
       }
       .panel {
@@ -274,14 +278,19 @@ import { PageHeader } from '../../shared/page-header';
 })
 export class NotificationsPage implements OnInit {
   private readonly api = inject(ApiService);
-  private readonly settingsApi = inject(SettingsApi);
+  private readonly auth = inject(AuthService);
+  private readonly route = inject(ActivatedRoute);
+  readonly feed = inject(NotificationHistory);
+  readonly unavailableSale = toSignal(this.route.queryParamMap.pipe(
+    map((params) => params.get('aviso') === 'venda-indisponivel'),
+  ), { initialValue: false });
   private readonly pushNotifications = inject(PushNotificationsService);
   readonly pushState = this.pushNotifications.registrationState;
   readonly preferences = signal<PushPreference[]>([]);
-  readonly history = signal<PushNotification[]>([]);
-  readonly loading = signal(true);
+  readonly history = this.feed.history;
+  readonly loading = this.feed.loading;
   readonly saving = signal<string | null>(null);
-  readonly deleting = signal<string | null>(null);
+  readonly deleting = this.feed.deleting;
   readonly sounds: { value: PushSound; label: string }[] = [
     { value: 'system', label: 'Padrão do Android' },
     { value: 'bell', label: 'Sino' },
@@ -293,37 +302,18 @@ export class NotificationsPage implements OnInit {
   private previewAudio: HTMLAudioElement | null = null;
 
   actions(item: PushNotification): PushNotificationAction[] {
-    const value = item.data['actions'];
-    if (!Array.isArray(value)) return [];
-    return value.filter(
-      (action): action is PushNotificationAction =>
-        typeof action === 'object' &&
-        action !== null &&
-        typeof action['label'] === 'string' &&
-        typeof action['route'] === 'string',
-    );
+    return notificationActions(item.data, this.auth.user()?.role);
   }
+
   ngOnInit() {
     void this.pushNotifications.enableForCurrentDevice();
     this.load();
   }
   load() {
-    this.loading.set(true);
-    this.api.pushPreferences().subscribe({
-      next: (value) => this.preferences.set(value),
-      error: () => {},
-      complete: () => this.loading.set(false),
-    });
-    this.api.pushHistory().subscribe({ next: (value) => this.history.set(value) });
+    this.feed.load(true);
+    this.api.pushPreferences().subscribe({ next: (value) => this.preferences.set(value) });
   }
-  dismiss(item: PushNotification) {
-    this.deleting.set(item.id);
-    this.settingsApi.dismissPushNotification(item.id).subscribe({
-      next: () => this.history.update((items) => items.filter((value) => value.id !== item.id)),
-      error: () => this.deleting.set(null),
-      complete: () => this.deleting.set(null),
-    });
-  }
+
   retryPush() {
     void this.pushNotifications.enableForCurrentDevice();
   }

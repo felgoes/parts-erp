@@ -222,3 +222,40 @@ nav { gap: 8px; }
   .nav-item, .nav-child { min-height: 44px; font-size: 14px; }
   .nav-section-label { font-size: 12px; }
 }
+
+.nav-item, .nav-icon, .nav-item.active .nav-icon, .nav-overview .nav-icon, .nav-chevron {
+  color: var(--text-primary);
+}
+
+.nav-section-label, .group-toggle {
+  color: var(--text-primary);
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.nav-item:hover, .nav-item.active {
+  background: color-mix(in srgb, var(--text-primary) 6%, var(--navigation));
+  color: var(--text-primary);
+}
+
+.nav-item.active { border-inline-start: 2px solid var(--focus-ring); }
+.nav-section { border-top: 1px solid var(--divider); padding-top: 4px; }
+.admin-section { margin-top: 0; }
+.nav-children { border-color: var(--divider); }
+
+button.nav-section-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  min-height: 36px;
+  margin: 0;
+  padding: 0 10px;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+@media (width < 768px) {
+  button.nav-section-label { min-height: 44px; }
+  .nav-item:not(.configuration-toggle) .nav-icon { display: none; }
+}

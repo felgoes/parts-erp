@@ -20,6 +20,7 @@ export interface PeriodFilterStatusOption {
   templateUrl: './period-filter.html',
 })
 export class PeriodFilter implements OnInit {
+  @Input() compact = false;
   @Input() heading = 'Período';
   @Input() description = '';
   @Input() ariaLabel = 'Filtrar por período';

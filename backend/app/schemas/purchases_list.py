@@ -52,6 +52,7 @@ class PurchaseListSummary(BaseModel):
     negotiating: int = 0
     ordered: int = 0
     received: int = 0
+    groups: dict[str, int] = Field(default_factory=dict)
 
 
 class PurchaseListOut(BaseModel):

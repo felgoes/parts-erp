@@ -34,7 +34,6 @@ export interface SupplierOption {
 export class PurchaseDetailState {
   private readonly api = inject(ApiService);
   private readonly live = inject(LiveUpdatesService);
-  private readonly destroyRef = inject(DestroyRef);
 
   /** Avisa a página quando algo muda para ela recarregar a lista. */
   readonly changed = new Subject<void>();
@@ -105,13 +104,23 @@ export class PurchaseDetailState {
       ? `${Math.ceil(bytes / 1024)} KB`
       : `${(bytes / 1024 / 1024).toFixed(1)} MB`;
   }
-  openDetails(purchase: PurchaseListItem) {
+  private readonly destroyRef = inject(DestroyRef);
+  private currentRecordId: string | null = null;
+
+  openDetails(id: string) {
     // A lista não traz histórico, anexos nem títulos (projeção leve): o detalhe busca a
     // compra completa ao abrir, então a tela sempre mostra o estado atual.
     this.error.set('');
-    this.api.purchase(purchase.id).subscribe({
-      next: (full) => this.showDetail(full),
-      error: () => this.error.set('Não foi possível abrir a compra. Tente novamente.'),
+    this.detail.set(null);
+    this.currentRecordId = id;
+    this.api.purchase(id).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: (full) => { if (id === this.currentRecordId) this.showDetail(full); },
+      error: (err) => {
+        if (id !== this.currentRecordId) return;
+        this.error.set(err.status === 404 ? 'Compra não encontrada.'
+          : err.status === 403 ? 'Você não tem acesso a esta compra.'
+          : 'Não foi possível abrir a compra. Tente novamente.');
+      },
     });
   }
   showDetail(purchase: Purchase) {

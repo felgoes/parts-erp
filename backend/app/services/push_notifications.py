@@ -57,6 +57,7 @@ def _sale_copy(
             "provider": order.provider,
             "order_id": order.external_order_id,
             "invoice_id": order.invoice_id or "",
+            "invoice_number": invoice.number if invoice else "",
             "marketplace_order_id": order.id,
             "route": "/marketplace",
             "actions": [
@@ -186,6 +187,7 @@ def enqueue_ready_to_ship_notification(
     existing = db.scalar(select(PushNotification).where(PushNotification.dedupe_key == dedupe_key))
     if existing is not None:
         return existing
+    invoice = db.get(SalesInvoice, order.invoice_id)
     notification = PushNotification(
         dedupe_key=dedupe_key,
         category="sales",
@@ -197,6 +199,7 @@ def enqueue_ready_to_ship_notification(
             "order_id": order.external_order_id,
             "marketplace_order_id": order.id,
             "invoice_id": order.invoice_id,
+            "invoice_number": invoice.number if invoice else "",
             "invoice_document_id": invoice_doc.id,
             "label_document_id": label_doc.id,
             "route": "/marketplace",

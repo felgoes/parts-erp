@@ -1,3 +1,7 @@
+## 7 de novembro de 2026 — endereço de destino nos modais
+
+- [Endereço reconhecido no formato atual do Mercado Livre · b7fe138](https://github.com/felgoes/parts-erp/commit/b7fe138414e74ca79ff624efd2af1fd3db2159e): o ERP passa a ler o endereço em destination.shipping_address e a mostrá-lo no resumo inicial das vendas. Implantado em produção em 07/11/2026; ERP e site responderam HTTP 200 com título e bundle esperados.
+
 ## 3 de novembro de 2026 — ajustes de alinhamento no celular
 
 - [Marca centralizada e alertas alinhados no celular · e081960](https://github.com/felgoes/parts-erp/commit/e081960bebb917f6482012864b05e0daa65335d4): centralizamos a marca na barra e alinhamos o botão de alertas verticalmente. Implantado em produção em 03/11/2026; ERP e site responderam HTTP 200 com bundles carregados.

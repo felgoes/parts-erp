@@ -95,9 +95,6 @@
   padding: 0;
   overflow: hidden;
 }
-.purchase-table-card table {
-  min-width: 800px;
-}
 .purchase-row {
   cursor: pointer;
 }
@@ -251,8 +248,5 @@
   .purchase-detail-grid {
     grid-template-columns: minmax(0, 1fr) 220px;
     gap: 15px;
-  }
-  .purchase-table-card table {
-    min-width: 780px;
   }
 }

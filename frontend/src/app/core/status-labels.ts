@@ -148,7 +148,7 @@ export function trackingEventLabel(status: string, detail?: string | null): stri
   return detailLabel ? `${translatedStatus} · ${detailLabel}` : translatedStatus;
 }
 
-function trackingDetailLabel(value: string | null | undefined): string | null {
+export function trackingDetailLabel(value: string | null | undefined): string | null {
   if (!value?.trim()) return null;
   const normalized = normalizeStatus(value);
   if (labels[normalized]) return labels[normalized];

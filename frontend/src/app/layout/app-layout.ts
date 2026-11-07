@@ -39,7 +39,7 @@ export class AppLayout implements OnInit, OnDestroy {
   readonly appearance = inject(AppearanceService);
   readonly live = inject(LiveUpdatesService);
   readonly menuOpen = signal(false);
-  readonly mobileShell = signal(window.innerWidth <= 767);
+  readonly mobileShell = signal(window.matchMedia('(width < 768px)').matches);
   readonly menuCollapsed = signal(this.restoreMenuPreference());
   readonly profileOpen = signal(false);
   readonly avatarUrl = signal<string | null>(null);
@@ -124,7 +124,7 @@ export class AppLayout implements OnInit, OnDestroy {
 
   @HostListener('window:resize')
   onShellResize(): void {
-    const mobile = window.innerWidth <= 767;
+    const mobile = window.matchMedia('(width < 768px)').matches;
     this.mobileShell.set(mobile);
     if (!mobile) this.menuOpen.set(false);
   }

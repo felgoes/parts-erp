@@ -1,6 +1,6 @@
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { Capacitor, registerPlugin } from '@capacitor/core';
 import { Browser } from '@capacitor/browser';
 import { firstValueFrom } from 'rxjs';
@@ -18,6 +18,7 @@ const documentOpener = registerPlugin<DocumentOpenerPlugin>('DocumentOpener');
 
 @Component({
   selector: 'app-document-viewer',
+  imports: [RouterLink],
   templateUrl: './document-viewer.html',
   styles: [
     `
@@ -143,6 +144,11 @@ export class DocumentViewerPage implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly api = inject(ApiService);
   private readonly sanitizer = inject(DomSanitizer);
+  readonly fromMarketplace = history.state?.fromMarketplace === true;
+  readonly returnRoute = this.fromMarketplace ? '/marketplace' : '/dashboard';
+  readonly returnParams = this.fromMarketplace && typeof history.state?.marketplaceOrderId === 'string'
+    ? { order_id: history.state.marketplaceOrderId }
+    : null;
   readonly loading = signal(true);
   readonly error = signal(false);
   readonly nativeReady = signal(false);

@@ -91,35 +91,35 @@
   </section>
 
 
-  <section class="card payables-table-card">
+  <section class="card payables-table-card operational-list">
     <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>VENCIMENTO</th>
-            <th>FORNECEDOR</th>
-            <th>ORIGEM</th>
-            <th>VALOR</th>
-            <th>PAGO</th>
-            <th>SALDO</th>
-            <th>SITUAÇÃO</th>
-            <th></th>
+      <table role="table" aria-label="Contas a pagar">
+        <thead role="rowgroup">
+          <tr role="row">
+            <th scope="col">Vencimento</th>
+            <th scope="col">Fornecedor</th>
+            <th scope="col">Origem</th>
+            <th scope="col" class="right">Valor</th>
+            <th scope="col" class="right">Pago</th>
+            <th scope="col" class="right">Saldo</th>
+            <th scope="col">Situação</th>
+            <th scope="col" aria-label="Ações"></th>
           </tr>
         </thead>
-        <tbody>
+        <tbody role="rowgroup">
           @for (item of listing.items; track item.id) {
-            <tr class="payable-row" [class.overdue-row]="item.days_overdue > 0">
-              <td>
+            <tr role="row" class="payable-row" [class.overdue-row]="item.days_overdue > 0">
+              <td role="cell"><span class="record-label">Vencimento</span>
                 <strong>{{ dateOnly(item.due_date) }}</strong>
                 @if (item.days_overdue > 0) {
                   <small class="overdue-chip">{{ item.days_overdue }} dia(s) em atraso</small>
                 }
               </td>
-              <td>
+              <td role="cell" class="record-wide"><span class="record-label">Fornecedor</span>
                 {{ item.supplier_name || 'Sem fornecedor'
                 }}<small>{{ payableContext(item) }}</small>
               </td>
-              <td>
+              <td role="cell" class="record-wide"><span class="record-label">Origem</span>
                 <code>{{ item.purchase_number }}</code
                 ><small
                   >{{ item.payment_count }} pagamento(s)
@@ -128,17 +128,17 @@
                   }
                 </small>
               </td>
-              <td>{{ item.amount | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR' }}</td>
-              <td>{{ item.paid_amount | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR' }}</td>
-              <td>
+              <td role="cell" class="right"><span class="record-label">Valor</span>{{ item.amount | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR' }}</td>
+              <td role="cell" class="right"><span class="record-label">Pago</span>{{ item.paid_amount | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR' }}</td>
+              <td role="cell" class="right"><span class="record-label">Saldo</span>
                 <strong>{{ item.balance | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR' }}</strong>
               </td>
-              <td>
+              <td role="cell"><span class="record-label">Situação</span>
                 <span class="payable-badge" [attr.data-status]="item.status">{{
                   payableStatusLabel(item.status)
                 }}</span>
               </td>
-              <td class="row-action">
+              <td role="cell" class="record-wide row-action">
                 <button type="button" class="secondary small" (click)="openDetail(item)">
                   {{
                     canManage() && item.status !== 'cancelled' ? 'Baixar / histórico' : 'Histórico'
@@ -147,8 +147,8 @@
               </td>
             </tr>
           } @empty {
-            <tr>
-              <td colspan="8">
+            <tr role="row">
+              <td role="cell" colspan="8">
                 <div class="payables-empty">
                   <strong>Nenhum título com esses filtros</strong
                   ><span>Compras recebidas e despesas lançadas geram títulos automaticamente.</span>

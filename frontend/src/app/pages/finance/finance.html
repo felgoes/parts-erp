@@ -165,17 +165,17 @@
       >
     </div>
     @if (metrics.by_product.length) {
-      <div class="product-table-wrap">
+      <div class="product-table-wrap" role="region" aria-label="Comparação de custo e movimentações por produto" tabindex="0">
         <table>
           <thead>
             <tr>
-              <th>PEÇA / SKU</th>
-              <th>ESTOQUE</th>
-              <th>CUSTO MÉDIO</th>
-              <th>VALOR EM ESTOQUE</th>
-              <th>ENTRADAS</th>
-              <th>SAÍDAS</th>
-              <th>DEVOLUÇÕES</th>
+              <th scope="col">Peça / SKU</th>
+              <th scope="col" class="right">Estoque</th>
+              <th scope="col" class="right">Custo médio</th>
+              <th scope="col" class="right">Valor em estoque</th>
+              <th scope="col" class="right">Entradas</th>
+              <th scope="col" class="right">Saídas</th>
+              <th scope="col" class="right">Devoluções</th>
             </tr>
           </thead>
           <tbody>
@@ -185,28 +185,28 @@
                   <strong>{{ product.name }}</strong
                   ><small>{{ product.sku }}</small>
                 </td>
-                <td>{{ product.current_stock | number: '1.0-3' : 'pt-BR' }} un.</td>
-                <td class="money-cell">
+                <td class="right">{{ product.current_stock | number: '1.0-3' : 'pt-BR' }} un.</td>
+                <td class="money-cell right">
                   {{ product.average_cost | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR' }}
                 </td>
-                <td class="money-cell">
+                <td class="money-cell right">
                   {{ product.inventory_value | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR' }}
                 </td>
-                <td>
+                <td class="right">
                   <strong class="quantity-in"
                     >+{{ product.inbound_quantity | number: '1.0-3' : 'pt-BR' }}</strong
                   ><small>{{
                     product.inbound_value | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR'
                   }}</small>
                 </td>
-                <td>
+                <td class="right">
                   <strong class="quantity-out"
                     >−{{ product.outbound_quantity | number: '1.0-3' : 'pt-BR' }}</strong
                   ><small>{{
                     product.outbound_value | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR'
                   }}</small>
                 </td>
-                <td>
+                <td class="right">
                   <strong>{{ product.return_quantity | number: '1.0-3' : 'pt-BR' }}</strong
                   ><small>{{
                     product.return_value | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR'

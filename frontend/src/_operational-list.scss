@@ -1,0 +1,111 @@
+// A single table supplies the desktop columns and the narrow record layout.
+.card.operational-list {
+  --list-inset: 16px;
+  container-type: inline-size;
+  min-width: 0;
+  padding: 0;
+}
+
+.operational-list > .card-head {
+  gap: 12px;
+  margin: 0;
+  padding: 12px var(--list-inset);
+}
+
+.operational-list > .table-wrap {
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+.operational-list :is(th, td) {
+  padding: 8px;
+  overflow-wrap: anywhere;
+}
+
+@container (width > 820px) {
+  .operational-list :is(th, td):first-child { padding-inline-start: var(--list-inset); }
+  .operational-list :is(th, td):last-child { padding-inline-end: var(--list-inset); }
+}
+
+.operational-list .record-label { display: none; }
+.operational-list .record-link {
+  max-width: 100%;
+  padding: 4px 0;
+  border: 0;
+  background: transparent;
+  color: var(--forest);
+  font: inherit;
+  font-weight: 600;
+  text-align: start;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+
+.operational-list .record-link:hover { text-decoration: underline; }
+
+.operational-list .record-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+}
+
+.operational-list td.right > .record-actions { justify-content: flex-end; }
+
+.operational-list .record-actions :is(button, a) {
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+@media (width < 360px) {
+  .card.operational-list { --list-inset: 12px; }
+}
+
+@container (max-width: 820px) {
+  .operational-list > .card-head { padding-block-end: 8px; }
+  .operational-list > .table-wrap { overflow: visible; }
+  .operational-list table,
+  .operational-list tbody { display: block; min-width: 0; }
+  .operational-list thead { display: none; }
+
+  .operational-list tbody > tr {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px 12px;
+    padding: 8px var(--list-inset) 12px;
+  }
+
+  .operational-list tbody > tr + tr { border-top: 1px solid var(--divider); }
+
+  .operational-list tbody > tr > td {
+    display: block;
+    min-width: 0;
+    padding: 0;
+    border: 0;
+  }
+
+  .operational-list td:is(.record-wide, [colspan]) { grid-column: 1 / -1; }
+  .operational-list .record-status { align-self: start; }
+  .operational-list td.right > .record-actions { justify-content: flex-start; }
+  .operational-list .record-label {
+    display: block;
+    color: var(--text-secondary);
+    font-size: var(--font-size-caption);
+    font-weight: 600;
+  }
+  .operational-list .record-status .badge { white-space: normal; }
+}
+
+@media (width < 768px) {
+  .operational-list .card-head a,
+  .operational-list .record-actions :is(a, button),
+  .operational-list .record-link {
+    display: inline-flex;
+    align-items: center;
+    min-width: 44px;
+    min-height: 44px;
+  }
+}

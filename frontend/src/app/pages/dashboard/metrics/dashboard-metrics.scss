@@ -2,7 +2,7 @@
 .dashboard-metrics {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
-  margin: 0 0 16px;
+  margin: 0 0 12px;
   border: 1px solid var(--divider);
   border-radius: 6px;
   background: var(--surface);
@@ -19,9 +19,10 @@
   min-height: 104px;
   padding: 0;
   border: 0;
-  border-radius: 0;
-  background: transparent;
-  color: var(--text-primary);
+  border-radius: 5px 0 0;
+  background: #17372a;
+  color: #fff;
+  --focus-ring: #b8ea91;
   box-shadow: none;
 }
 .revenue-card::after { content: none; }
@@ -33,48 +34,51 @@
   gap: 4px;
   padding: 10px 12px 10px 14px;
   border: 0;
+  border-radius: inherit;
   background: transparent;
   color: inherit;
   font: inherit;
   text-align: left;
   cursor: pointer;
 }
-.revenue-card-main:hover { background: color-mix(in srgb, var(--forest) 5%, var(--surface)); }
+.revenue-card-main:hover { background: rgb(255 255 255 / 7%); }
 .revenue-top { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
-.revenue-kicker { color: var(--text-secondary); font-size: 12px; font-weight: 600; letter-spacing: 0; text-transform: none; }
-.revenue-action { display: inline-flex; align-items: center; gap: 4px; color: var(--text-secondary); font-size: 12px; font-weight: 600; }
+.revenue-kicker { color: #dcebe1; font-size: 12px; font-weight: 600; letter-spacing: 0; text-transform: none; }
+.revenue-action { display: inline-flex; align-items: center; gap: 4px; color: #dcebe1; font-size: 12px; font-weight: 600; }
 .revenue-action svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.7; }
 .revenue-main { display: grid; gap: 1px; }
-.revenue-label { color: var(--text-secondary); font-size: 12px; line-height: 16px; }
-.revenue-value { color: var(--text-primary); font-size: 24px; font-weight: 600; font-variant-numeric: tabular-nums; line-height: 30px; overflow-wrap: anywhere; }
-.revenue-foot { display: grid; margin-right: 36px; gap: 2px; color: var(--text-secondary); font-size: 12px; line-height: 16px; }
+.revenue-label { color: #dcebe1; font-size: 12px; line-height: 16px; }
+.revenue-value { color: #fff; font-size: 24px; font-weight: 600; font-variant-numeric: tabular-nums; line-height: 30px; overflow-wrap: anywhere; }
+.revenue-foot { display: grid; margin-right: 44px; gap: 2px; color: #dcebe1; font-size: 12px; line-height: 16px; }
 .revenue-status { display: inline-flex; align-items: flex-start; gap: 6px; }
-.revenue-status.is-warning { color: var(--state-warning-text); }
-.revenue-signal { width: 6px; height: 6px; margin-top: 5px; flex: 0 0 6px; border-radius: 50%; background: var(--state-success-text); }
-.revenue-status.is-warning .revenue-signal { background: var(--state-warning-text); }
-.revenue-detail { color: var(--text-secondary); }
+.revenue-status.is-warning { color: #ffe1a2; }
+.revenue-signal { width: 6px; height: 6px; margin-top: 5px; flex: 0 0 6px; border-radius: 50%; background: #b8ea91; }
+.revenue-status.is-warning .revenue-signal { background: #ffe1a2; }
+.revenue-detail { color: #dcebe1; }
 .revenue-visibility {
   position: absolute; right: 8px; bottom: 8px; z-index: 2; display: grid; width: 32px; height: 32px;
-  place-items: center; border: 1px solid var(--divider); border-radius: 4px; background: var(--surface);
-  color: var(--text-primary); cursor: pointer;
+  place-items: center; border: 1px solid #a4c1b2; border-radius: 4px; background: #17372a;
+  color: #fff; cursor: pointer;
 }
 .revenue-visibility svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.7; }
-@media (max-width: 1199px) {
+@media (width < 1200px) {
   .dashboard-metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .dashboard-metrics > *:nth-child(3) { border-right: 0; }
   .dashboard-metrics > *:nth-child(n+4) { border-top: 1px solid var(--divider); }
 }
-@media (max-width: 767px) {
+@media (width < 768px) {
   .dashboard-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .dashboard-metrics > * { min-height: 104px; border-top: 1px solid var(--divider); }
   .dashboard-metrics > *:nth-child(odd) { border-right: 1px solid var(--divider); }
   .dashboard-metrics > *:nth-child(even) { border-right: 0; }
   .dashboard-metrics > .revenue-card { grid-column: 1 / -1; border-top: 0; border-right: 0; }
-  .revenue-card-main { padding: 12px 12px 12px 14px; }
+  .revenue-card-main { padding-inline: 12px 14px; }
+  .revenue-card { border-radius: 5px 5px 0 0; }
+  .revenue-visibility { width: 44px; height: 44px; }
+  .revenue-foot { margin-right: 50px; }
   .revenue-value { font-size: 24px; }
 }
 
-.revenue-card-main { height: 104px; min-height: 104px; grid-template-rows: 18px 30px 16px; align-content: space-between; gap: 0; padding-block: 10px; }
-.revenue-main { height: 30px; overflow: hidden; }
-.revenue-foot { height: 16px; overflow: hidden; line-height: 14px; }
-.revenue-status { line-height: 14px; }
+.revenue-card-main { min-height: 104px; align-content: space-between; }
+.revenue-card-main:focus-visible { outline-offset: -4px; }
+.revenue-visibility:hover { background: #2b4b3e; }

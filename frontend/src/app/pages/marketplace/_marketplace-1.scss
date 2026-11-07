@@ -47,13 +47,6 @@
   background: #36a85f;
   box-shadow: 0 0 0 5px #36a85f1c;
 }
-.table-card {
-  padding: 0;
-  overflow: hidden;
-}
-.table-card .card-head {
-  padding: 20px 22px;
-}
 .error-text {
   display: block;
   max-width: 280px;
@@ -218,15 +211,6 @@
     opacity: 1;
     transform: translateY(0);
   }
-}
-.link-button {
-  border: 0;
-  background: transparent;
-  color: var(--forest);
-  font: inherit;
-  font-weight: 800;
-  cursor: pointer;
-  padding: 0;
 }
 .detail-grid {
   display: grid;

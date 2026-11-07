@@ -114,9 +114,8 @@ td{font-size:var(--font-size-body)}
 .badge,.status-badge,.chip{border-radius:var(--radius-control);font-size:var(--font-size-caption);font-weight:600;letter-spacing:0;text-transform:none}
 .card-head h2,.section-heading h3,.section-title{color:var(--text-primary);font-size:var(--font-size-section-title);font-weight:600;letter-spacing:0}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
-@media(max-width:767px){.page-header{align-items:flex-start;flex-direction:column;gap:var(--space-3);margin-bottom:var(--space-4)}.page-header h1{font-size:22px;line-height:28px}.page-header>:last-child:not(:first-child){width:100%;flex-wrap:wrap;justify-content:flex-start}.page-header>:last-child:not(:first-child)>a,.page-header>:last-child:not(:first-child)>button{min-height:44px}}
-@media(max-width:359px){main{padding-inline:12px!important}}
-body[data-theme='dark'] .card,body[data-theme='dark'] .table-card,body[data-theme='dark'] .metric-card,body[data-theme='dark'] .revenue-card,body[data-theme='dark'] .filter-panel,body[data-theme='dark'] .toolbar,body[data-theme='dark'] .table-wrap,body[data-theme='dark'] .ad-kpis article,body[data-theme='dark'] .ad-charts article,body[data-theme='dark'] .ad-table,body[data-theme='dark'] .drawer,body[data-theme='dark'] .modal,body[data-theme='dark'] .object-modal{border-color:var(--divider);background-color:var(--surface);color:var(--text-primary);box-shadow:none}
+@media(width < 768px){.page-header{align-items:flex-start;flex-direction:column;gap:var(--space-3);margin-bottom:var(--space-4)}.page-header h1{font-size:22px;line-height:28px}.page-header>:last-child:not(:first-child){width:100%;flex-wrap:wrap;justify-content:flex-start}.page-header>:last-child:not(:first-child)>a,.page-header>:last-child:not(:first-child)>button{min-height:44px}}
+body[data-theme='dark'] .card,body[data-theme='dark'] .table-card,body[data-theme='dark'] .metric-card,body[data-theme='dark'] .filter-panel,body[data-theme='dark'] .toolbar,body[data-theme='dark'] .table-wrap,body[data-theme='dark'] .ad-kpis article,body[data-theme='dark'] .ad-charts article,body[data-theme='dark'] .ad-table,body[data-theme='dark'] .drawer,body[data-theme='dark'] .modal,body[data-theme='dark'] .object-modal{border-color:var(--divider);background-color:var(--surface);color:var(--text-primary);box-shadow:none}
 body[data-theme='dark'] th,body[data-theme='dark'] td{border-color:var(--divider);color:var(--text-primary)}
 body[data-theme='dark'] .empty,body[data-theme='dark'] .muted,body[data-theme='dark'] small,body[data-theme='dark'] .subtitle{color:var(--text-secondary)}
 body[data-theme='dark'] .primary,body[data-theme='dark'] button.primary{background:var(--action-bg);color:var(--action-text)}
@@ -130,7 +129,7 @@ body[data-theme='dark'] .primary,body[data-theme='dark'] button.primary{backgrou
 .purchase-list-controls .date-filter-heading small { color: var(--text-secondary); font-size: 12px; }
 .purchase-list-controls .date-quick-filters { justify-content: flex-end; gap: 4px; }
 .purchase-list-controls .date-preset { min-height: 32px; padding: 5px 8px; border-radius: 4px; font-size: 12px; }
-@media (max-width: 767px) {
+@media (width < 768px) {
   .purchase-list-controls .date-filter { flex-wrap: wrap; justify-content: flex-start; }
   .purchase-list-controls .date-quick-filters { justify-content: flex-start; flex-wrap: wrap; }
 }
@@ -138,4 +137,50 @@ body[data-theme='dark'] .primary,body[data-theme='dark'] button.primary{backgrou
 .page-heading-copy { min-width: 0; }
 .page-header-actions:empty { display: none; }
 .page-header-actions > a, .page-header-actions > button { white-space: nowrap; }
-@media (max-width:767px){.app-shell main button,.app-shell main input:not([type=checkbox]),.app-shell main select,.app-shell main textarea{min-height:44px}}
+@media (width < 768px){.app-shell main button,.app-shell main input:not([type=checkbox]),.app-shell main select,.app-shell main textarea{min-height:44px}}
+
+.shared-period-filter .date-filter-heading,
+.shared-period-filter .date-quick-filters,
+.shared-period-filter .date-filter-options,
+.shared-period-filter .invoice-status-filter {
+  flex-wrap: wrap;
+  overflow: visible;
+  white-space: normal;
+}
+
+.shared-period-filter .date-quick-filters button,
+.shared-period-filter .invoice-status-filter button {
+  min-width: 0;
+  border-radius: var(--radius-control);
+  font-size: var(--font-size-caption);
+  white-space: normal;
+}
+
+.shared-period-filter .date-range-fields { flex-wrap: wrap; }
+.shared-period-filter .date-range-fields label { min-width: min(110px, 100%); }
+.shared-period-filter .date-range-fields input { background: var(--surface); }
+
+@media (width < 768px) {
+  .date-filter.shared-period-filter { padding-inline: var(--page-gutter, 16px); }
+  .shared-period-filter .date-quick-filters {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    justify-content: stretch;
+  }
+  .shared-period-filter button { min-width: 44px; min-height: 44px; }
+}
+
+@media (width < 360px) {
+  .shared-period-filter > .date-quick-filters,
+  .shared-period-filter .date-filter-options .date-quick-filters,
+  .shared-period-filter .date-filter-options .invoice-status-filter {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (width >= 1200px) {
+  .dashboard-period .shared-period-filter {
+    margin-bottom: 12px;
+    padding-block: 8px;
+  }
+}

@@ -42,39 +42,39 @@
     {{ stockTab() === 'product' ? 'produtos' : 'itens de almoxarifado' }}</span
   >
 </section>
-<section class="card table-card">
+<section class="card table-card operational-list">
   <div class="table-wrap">
-    <table>
-      <thead>
-        <tr>
-          <th>Produto</th>
-          <th>SKU</th>
-          <th>Preço</th>
-          <th>Estoque</th>
-          <th>Condição</th>
-          <th aria-label="Ações"></th>
+    <table role="table" aria-label="Produtos e estoque">
+      <thead role="rowgroup">
+        <tr role="row">
+          <th scope="col">Produto</th>
+          <th scope="col">SKU</th>
+          <th scope="col" class="right">Preço</th>
+          <th scope="col" class="right">Estoque</th>
+          <th scope="col">Condição</th>
+          <th scope="col" aria-label="Ações"></th>
         </tr>
       </thead>
-      <tbody>
+      <tbody role="rowgroup">
         @for (product of filtered(); track product.id) {
-          <tr>
-            <td>
+          <tr role="row">
+            <td role="cell" class="record-wide">
               <div class="product">
                 @if (product.images.length) { <img class="product-thumb" [src]="product.images[0].url" alt="" /> }
                 <div>
-                  <a class="product-name-link" [routerLink]="['/products', product.id]" [state]="{ productListOrigin: true }">{{ product.name }}</a
+                  <a class="product-name-link record-link" [routerLink]="['/products', product.id]" [state]="{ productListOrigin: true }">{{ product.name }}</a
                   ><small>{{ product.description || 'Sem descrição' }}</small>
                 </div>
               </div>
             </td>
-            <td>
+            <td role="cell" class="record-wide"><span class="record-label">SKU</span>
               <code>{{ product.sku }}</code>
             </td>
-            <td>{{ product.sale_price | currency: 'BRL' }}</td>
-            <td>
+            <td role="cell" class="right"><span class="record-label">Preço</span>{{ product.sale_price | currency: 'BRL' }}</td>
+            <td role="cell" class="right"><span class="record-label">Estoque</span>
               <strong>{{ product.current_stock | number: '1.0-3' }}</strong> un.
             </td>
-            <td>
+            <td role="cell"><span class="record-label">Condição</span>
               <span
                 class="badge"
                 [class.warning]="isLowStock(product)"
@@ -88,8 +88,8 @@
                 }}</span
               >
             </td>
-            <td class="right">
-              <button
+            <td role="cell" class="record-wide right">
+              <div class="record-actions"><button
                 class="secondary small"
                 [routerLink]="['/products', product.id]"
                 [state]="{ productListOrigin: true }"
@@ -103,12 +103,12 @@
                 >
                   Ajustar
                 </button>
-              }
+              }</div>
             </td>
           </tr>
         } @empty {
-          <tr>
-            <td colspan="6"><div class="empty">Nenhum produto com estes filtros.</div></td>
+          <tr role="row">
+            <td role="cell" colspan="6"><div class="empty">Nenhum produto com estes filtros.</div></td>
           </tr>
         }
       </tbody>

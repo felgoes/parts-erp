@@ -12,7 +12,7 @@ import { Customer, Invoice, Product } from '../../core/models';
 import { canSell } from '../../core/user-access';
 import { statusLabel } from '../../core/status-labels';
 import { saleStageForInvoice, saleStageLabel } from '../../core/sale-stage';
-import { documentLabel } from '../../core/document-labels';
+import { documentLabel, invoiceDocumentLabel } from '../../core/document-labels';
 import { documentsWithoutXml } from '../../core/document-visibility';
 import { PageHeader } from '../../shared/page-header';
 import { PeriodFilter, PeriodFilterStatusOption } from '../../shared/period-filter';
@@ -62,6 +62,7 @@ export class InvoicesPage implements OnInit {
   readonly saleStageForInvoice = saleStageForInvoice;
   readonly saleStageLabel = saleStageLabel;
   readonly documentLabel = documentLabel;
+  readonly invoiceDocumentLabel = invoiceDocumentLabel;
   readonly listingDocuments = documentsWithoutXml;
   visibleInvoices() {
     const invoices = this.invoices();

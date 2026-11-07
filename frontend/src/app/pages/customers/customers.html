@@ -16,21 +16,21 @@
   </div>
   <span class="count">{{ filtered().length }} clientes</span>
 </div>
-<section class="card table-card">
+<section class="card table-card operational-list">
   <div class="table-wrap">
-    <table>
-      <thead>
-        <tr>
-          <th>Cliente</th>
-          <th>Documento</th>
-          <th>Contato</th>
-          <th>Desde</th>
+    <table role="table" aria-label="Clientes">
+      <thead role="rowgroup">
+        <tr role="row">
+          <th scope="col">Cliente</th>
+          <th scope="col">Documento</th>
+          <th scope="col">Contato</th>
+          <th scope="col">Desde</th>
         </tr>
       </thead>
-      <tbody>
+      <tbody role="rowgroup">
         @for (c of filtered(); track c.id) {
-          <tr class="clickable-row" (click)="openDetails(c)">
-            <td>
+          <tr role="row" class="clickable-row" (click)="openDetails(c)">
+            <td role="cell" class="record-wide">
               <button
                 class="customer-link"
                 type="button"
@@ -44,16 +44,16 @@
                 ><span class="customer-chevron" aria-hidden="true">›</span>
               </button>
             </td>
-            <td>{{ c.document || '—' }}</td>
-            <td>
+            <td role="cell"><span class="record-label">Documento</span>{{ c.document || '—' }}</td>
+            <td role="cell"><span class="record-label">Contato</span>
               <span class="contact-main">{{ c.phone || 'Sem telefone' }}</span
               ><small>{{ c.email || 'Sem e-mail' }}</small>
             </td>
-            <td>{{ c.created_at | date: 'dd/MM/yyyy' }}</td>
+            <td role="cell" class="record-wide"><span class="record-label">Cliente desde</span>{{ c.created_at | date: 'dd/MM/yyyy' : '-0300' }}</td>
           </tr>
         } @empty {
-          <tr>
-            <td colspan="4"><div class="empty">Nenhum cliente cadastrado.</div></td>
+          <tr role="row">
+            <td role="cell" colspan="4"><div class="empty">Nenhum cliente cadastrado.</div></td>
           </tr>
         }
       </tbody>

@@ -1,6 +1,5 @@
 <app-page-header
   title="Faturas de venda"
-  subtitle="Do orçamento à baixa de estoque, sem retrabalho."
 >
   @if (canSell()) {
     <button class="primary" (click)="openNew()">+ Nova venda</button>
@@ -17,41 +16,33 @@
   (rangeChange)="applyDateFilter($event)"
   (statusChange)="setStatusFilter($event)"
 />
-<section class="card table-card">
+<section class="card table-card operational-list">
   <div class="table-wrap">
-    <table>
-      <thead>
-        <tr>
-          <th>Fatura</th>
-          <th>Cliente</th>
-          <th>Origem</th>
-          <th>Emissão</th>
-          <th>Status</th>
-          <th>Documentos</th>
-          <th class="right">Total</th>
-          <th></th>
+    <table role="table" aria-label="Faturas de venda">
+      <thead role="rowgroup">
+        <tr role="row">
+          <th scope="col">Fatura</th>
+          <th scope="col">Status</th>
+          <th scope="col">Cliente</th>
+          <th scope="col">Origem</th>
+          <th scope="col">Emissão</th>
+          <th scope="col">Documentos</th>
+          <th scope="col" class="right">Total</th>
+          <th scope="col" aria-label="Ações"></th>
         </tr>
       </thead>
-      <tbody>
+      <tbody role="rowgroup">
         @for (i of visibleInvoices(); track i.id) {
-          <tr class="clickable-row" (click)="openDetails(i)">
-            <td>
-              <button class="link-button" (click)="$event.stopPropagation(); openDetails(i)">
+          <tr role="row" class="clickable-row" (click)="openDetails(i)">
+            <td role="cell">
+              <button type="button" class="record-link" (click)="$event.stopPropagation(); openDetails(i)">
                 {{ i.number }}
               </button>
               @if (i.marketplace_order_id) {
                 <small class="block">Pedido #{{ i.marketplace_order_id }}</small>
               }
             </td>
-            <td class="customer-cell">
-              <strong>{{ i.customer?.name || 'Consumidor não identificado' }}</strong>
-              <small>{{
-                i.customer?.document || i.customer?.email || 'Sem cadastro vinculado'
-              }}</small>
-            </td>
-            <td>{{ i.source === 'mercadolivre' ? 'Mercado Livre' : 'Manual' }}</td>
-            <td>{{ i.issued_at || i.created_at | date: 'dd/MM/yyyy HH:mm' }}</td>
-            <td>
+            <td role="cell" class="record-status"><span class="record-label">Status</span>
               <span class="badge" [class]="i.status">{{
                 saleStageLabel(saleStageForInvoice(i))
               }}</span>
@@ -59,27 +50,32 @@
                 <small class="post-sale-summary">{{ afterSaleLabel(i) }}</small>
               }
             </td>
-            <td>
+            <td role="cell" class="record-wide customer-cell"><span class="record-label">Cliente</span>
+              <strong>{{ i.customer?.name || 'Consumidor não identificado' }}</strong>
+              <small>{{
+                i.customer?.document || i.customer?.email || 'Sem cadastro vinculado'
+              }}</small>
+            </td>
+            <td role="cell"><span class="record-label">Origem</span>{{ i.source === 'mercadolivre' ? 'Mercado Livre' : 'Manual' }}</td>
+            <td role="cell"><span class="record-label">Emissão</span>{{ i.issued_at || i.created_at | date: 'dd/MM/yyyy HH:mm' : '-0300' }}</td>
+            <td role="cell"><span class="record-label">Documentos</span>
               @if (listingDocuments(i.documents).length) {
-                @for (doc of listingDocuments(i.documents); track doc.id) {
-                  <a
-                    class="doc"
-                    href="#"
-                    (click)="
-                      $event.preventDefault(); $event.stopPropagation(); openDocument(i.id, doc.id)
-                    "
-                  >
-                    {{ documentLabel(doc.document_type) }}
-                  </a>
-                }
+                <div class="record-actions">
+                  @for (doc of listingDocuments(i.documents); track doc.id) {
+                    <button type="button" class="record-link" [attr.title]="doc.filename"
+                      (click)="$event.stopPropagation(); openDocument(i.id, doc.id)">
+                      {{ invoiceDocumentLabel(doc, i.documents) }}
+                    </button>
+                  }
+                </div>
               } @else {
                 <span class="muted">—</span>
               }
             </td>
-            <td class="right">
+            <td role="cell" class="right"><span class="record-label">Total</span>
               <strong>{{ i.total | currency: 'BRL' }}</strong>
             </td>
-            <td class="right">
+            <td role="cell" class="record-wide right">
               @if (i.status === 'draft' && canSell()) {
                 <button class="secondary small" (click)="$event.stopPropagation(); confirm(i)">
                   Confirmar
@@ -88,8 +84,8 @@
             </td>
           </tr>
         } @empty {
-          <tr>
-            <td colspan="8">
+          <tr role="row">
+            <td role="cell" colspan="8">
               <div class="empty">
                 {{
                   invoices().length

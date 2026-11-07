@@ -218,12 +218,14 @@
   }
 }
 
-.app-shell { position: relative; }
+.app-shell { position: relative; --page-gutter: 24px; }
+@media (width < 1200px) { .app-shell { --page-gutter: 16px; } }
+@media (width < 360px) { .app-shell { --page-gutter: 12px; } }
 .app-shell .sidebar { width: 224px; padding-inline: 10px; }
-.app-shell > main { margin-left: 224px; padding: 24px clamp(24px, 4vw, 64px) 48px; min-width: 0; }
+.app-shell > main { margin-left: 224px; padding: 24px var(--page-gutter) 48px; min-width: 0; }
 .app-topbar {
   position: sticky; top: 0; z-index: 25; display: flex; align-items: center; gap: 8px;
-  height: 48px; margin-left: 224px; padding-inline: clamp(24px, 4vw, 64px);
+  height: 48px; margin-left: 224px; padding-inline: var(--page-gutter);
   border-bottom: 1px solid var(--divider); background: var(--canvas); color: var(--text-primary);
 }
 .topbar-spacer { flex: 1 1 auto; }
@@ -253,13 +255,13 @@
 .app-shell.menu-collapsed .admin-section { margin-top: auto; padding-top: 6px; }
 .app-shell .brand { border-radius: 4px; }
 .app-shell .sidebar-foot { border-color: #354b3f; }
-@media (min-width: 768px) and (max-width: 1199px) {
+@media (min-width: 768px) and (width < 1200px) {
   .app-shell:not(.menu-collapsed) .sidebar { width: 224px; }
   .app-shell:not(.menu-collapsed) > main, .app-shell:not(.menu-collapsed) .app-topbar { margin-left: 224px; }
   .app-shell.menu-collapsed .sidebar { width: 64px; }
   .app-shell.menu-collapsed > main, .app-shell.menu-collapsed .app-topbar { margin-left: 64px; }
 }
-@media (max-width: 767px) {
+@media (width < 768px) {
   .app-shell .sidebar {
     inset: 0 0 auto; width: 100%; max-height: 100dvh; height: 100dvh; padding: max(12px, env(safe-area-inset-top)) 16px max(12px, env(safe-area-inset-bottom));
     transform: translateY(-105%); transition: transform 160ms ease; border-bottom: 1px solid var(--divider);
@@ -277,7 +279,7 @@
   .app-shell .app-topbar app-notifications-menu .trigger-copy { display: none; }
   .app-shell .mobile-bar { height: 58px; padding: 0 104px 0 14px; background: var(--brand-primary); box-shadow: none; }
   .app-shell .mobile-bar > .brand { position: absolute; left: 50%; transform: translateX(-50%); margin: 0; max-width: calc(100% - 120px); }
-  .app-shell > main { margin: 0; padding: 16px 16px calc(24px + env(safe-area-inset-bottom)); }
+  .app-shell > main { margin: 0; padding: 16px max(var(--page-gutter), env(safe-area-inset-right)) calc(24px + env(safe-area-inset-bottom)) max(var(--page-gutter), env(safe-area-inset-left)); }
   .app-shell.menu-collapsed > main { margin-left: 0; }
   .app-shell.menu-collapsed .app-topbar { margin-left: 0; }
   .app-shell.menu-collapsed .sidebar { width: 100%; }
@@ -292,7 +294,7 @@
   .app-shell.menu-open .nav-icon { width: 28px; height: 28px; flex-basis: 28px; }
   .app-shell .menu-collapse { display: none; }
 }
-@media (max-width: 359px) {
+@media (width < 360px) {
   .app-shell .mobile-bar { padding-right: 100px; }
   .app-shell .app-topbar { padding-right: 4px; gap: 2px; }
   .app-shell .app-topbar app-notifications-menu { top: 0; right: 10px; transform: scale(.8); }

@@ -6,29 +6,9 @@
   display: block;
   color: var(--muted);
 }
-.customer-cell {
-  display: grid;
-  gap: 4px;
-  min-width: 170px;
-}
-.customer-cell strong {
-  font-size: 12px;
-}
 .customer-cell small {
-  color: var(--muted);
-  font-size: 11px;
-}
-.doc {
-  display: inline-block;
-  padding: 4px 7px;
-  margin-right: 4px;
-  border: 0;
-  border-radius: 5px;
-  background: #edf4ef;
-  color: var(--forest);
-  font-size: 10px;
-  font-weight: 800;
-  cursor: pointer;
+  display: block;
+  color: var(--text-secondary);
 }
 .modal > label {
   display: grid;
@@ -82,76 +62,6 @@
   font-size: 24px;
 }
 @media (max-width: 600px) {
-  .table-card .table-wrap {
-    scrollbar-width: thin;
-  }
-  .table-card table {
-    min-width: 0;
-  }
-  .table-card table thead {
-    display: none;
-  }
-  .table-card table tbody,
-  .table-card table tr,
-  .table-card table td {
-    display: block;
-  }
-  .table-card table tr {
-    padding: 13px 16px;
-    border-bottom: 1px solid var(--line);
-  }
-  .table-card table td {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 12px;
-    padding: 5px 0;
-    border: 0;
-  }
-  .table-card table td:first-child {
-    padding-top: 2px;
-  }
-  .table-card table td:not(:first-child)::before {
-    color: var(--muted);
-    content: 'Cliente';
-    font-size: 10px;
-    font-weight: 800;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-  }
-  .table-card table td::before {
-    flex: 0 0 96px;
-    text-align: left;
-  }
-  .table-card table td:nth-child(3)::before {
-    content: 'Origem';
-  }
-  .table-card table td:nth-child(4)::before {
-    content: 'Emissão';
-  }
-  .table-card table td:nth-child(5)::before {
-    content: 'Status';
-  }
-  .table-card table td:nth-child(6)::before {
-    content: 'Documentos';
-  }
-  .table-card table td:nth-child(7)::before {
-    content: 'Total';
-  }
-  .table-card table td:nth-child(8)::before {
-    content: '';
-  }
-  .table-card table td:first-child::before {
-    display: none;
-  }
-  .table-card table td:nth-child(2) {
-    display: grid;
-    grid-template-columns: 96px minmax(0, 1fr);
-  }
-  .table-card table td:nth-child(2)::before {
-    grid-row: span 2;
-    align-self: start;
-  }
   .detail-hero {
     align-items: flex-start;
   }

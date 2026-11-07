@@ -52,44 +52,45 @@
     </section>
   }
 }
-<section class="card table-card">
+<section class="card table-card operational-list">
   <div class="card-head">
     <div>
-      <h2>Fila de pedidos</h2>
+      <h2 id="order-queue-heading">Fila de pedidos</h2>
       <p>Uma venda só baixa o estoque depois da conciliação do SKU.</p>
     </div>
   </div>
   <div class="table-wrap">
-    <table>
-      <thead>
-        <tr>
-          <th>Pedido</th>
-          <th>Recebido</th>
-          <th>Status no ML</th>
-          <th>Sincronização</th>
-          <th>Fatura</th>
-          <th>NF-e</th>
-          <th>Etiqueta</th>
+    <table role="table" aria-labelledby="order-queue-heading">
+      <thead role="rowgroup">
+        <tr role="row">
+          <th scope="col">Pedido</th>
+          <th scope="col">Status no ML</th>
+          <th scope="col">Recebido</th>
+          <th scope="col">Sincronização</th>
+          <th scope="col">Fatura</th>
+          <th scope="col">NF-e</th>
+          <th scope="col">Etiqueta</th>
         </tr>
       </thead>
-      <tbody>
+      <tbody role="rowgroup">
         @for (o of orders(); track o.id) {
-          <tr class="clickable-row" (click)="openDetails(o)">
-            <td>
-              <button class="link-button" (click)="openDetails(o)">
+          <tr role="row" class="clickable-row" (click)="openDetails(o)">
+            <td role="cell">
+              <button type="button" class="record-link" (click)="$event.stopPropagation(); openDetails(o)">
                 #{{ o.external_order_id }}
               </button>
             </td>
-            <td>{{ platformCreatedAt(o) || o.created_at | date: 'dd/MM/yyyy HH:mm' }}</td>
-            <td>
-              {{ saleStageLabel(saleStageForOrder(o)) }}
-              @if (o.shipping_status) {
-                <small class="block">{{
-                  trackingEventLabel(o.shipping_status, o.shipping_substatus)
-                }}</small>
+            <td role="cell" class="record-status">
+              <span class="record-label">Status no ML</span>
+              @let stage = saleStageLabel(saleStageForOrder(o));
+              @let substatus = trackingDetailLabel(o.shipping_substatus);
+              <span>{{ stage }}</span>
+              @if (substatus && substatus !== stage) {
+                <small class="record-substatus">{{ substatus }}</small>
               }
             </td>
-            <td>
+            <td role="cell"><span class="record-label">Recebido</span>{{ platformCreatedAt(o) || o.created_at | date: 'dd/MM/yyyy HH:mm' : '-0300' }}</td>
+            <td role="cell"><span class="record-label">Sincronização</span>
               <span
                 class="badge"
                 [class.success]="o.sync_status === 'synced'"
@@ -101,8 +102,8 @@
                 <small class="error-text">{{ o.sync_error }}</small>
               }
             </td>
-            <td>{{ o.invoice_id ? 'Gerada' : '—' }}</td>
-            <td>
+            <td role="cell" class="record-wide"><span class="record-label">Fatura</span>{{ o.invoice_id ? 'Gerada' : '—' }}</td>
+            <td role="cell"><span class="record-label">NF-e</span>
               <span
                 class="badge"
                 [class.success]="o.fiscal_status === 'authorized'"
@@ -143,7 +144,7 @@
                 </button>
               }
             </td>
-            <td>
+            <td role="cell"><span class="record-label">Etiqueta</span>
               <span
                 class="badge"
                 [class.success]="o.label_status === 'downloaded'"
@@ -176,8 +177,8 @@
             </td>
           </tr>
         } @empty {
-          <tr>
-            <td colspan="7"><div class="empty">Os novos pedidos aparecerão aqui.</div></td>
+          <tr role="row">
+            <td role="cell" colspan="7"><div class="empty">Os novos pedidos aparecerão aqui.</div></td>
           </tr>
         }
       </tbody>
@@ -193,7 +194,7 @@
           <h2>#{{ order.external_order_id }}</h2>
           <p class="detail-subtitle">
             Recebido em
-            {{ platformCreatedAt(order) || order.created_at | date: 'dd/MM/yyyy HH:mm' }}
+            {{ platformCreatedAt(order) || order.created_at | date: 'dd/MM/yyyy HH:mm' : '-0300' }}
           </p>
         </div>
         <div class="object-hero-actions">
@@ -357,7 +358,7 @@
           <span class="tracking-summary">
             <small>{{
               trackingUpdateValue(order)
-                ? 'Atualizado ' + (trackingUpdateValue(order) | date: 'dd/MM/yyyy HH:mm')
+                ? 'Atualizado ' + (trackingUpdateValue(order) | date: 'dd/MM/yyyy HH:mm' : '-0300')
                 : 'Aguardando sincronização'
             }}</small>
             <strong>Destino: {{ order.destination_address || 'Ainda não disponível' }}</strong>
@@ -366,7 +367,7 @@
         <div class="timeline">
           <div>
             <strong>Pedido recebido</strong
-            ><span>{{ order.created_at | date: 'dd/MM/yyyy HH:mm' }}</span>
+            ><span>{{ order.created_at | date: 'dd/MM/yyyy HH:mm' : '-0300' }}</span>
           </div>
           @if (order.shipment_id) {
             <div>

@@ -31,9 +31,6 @@
   padding: 0;
   overflow: hidden;
 }
-.table-card table {
-  min-width: 680px;
-}
 .customer-link {
   display: flex;
   align-items: center;
@@ -44,6 +41,7 @@
   background: transparent;
   color: inherit;
   text-align: left;
+  min-height: 44px;
   cursor: pointer;
 }
 .customer-avatar {
@@ -152,55 +150,6 @@ td small {
   }
   .count {
     display: none;
-  }
-  .table-card {
-    margin: 0 -18px;
-    border-radius: 0;
-  }
-  .table-card table {
-    min-width: 0;
-  }
-  .table-card thead {
-    display: none;
-  }
-  .table-card tbody,
-  .table-card tr,
-  .table-card td {
-    display: block;
-  }
-  .table-card tr {
-    padding: 13px 0;
-  }
-  .table-card td {
-    padding: 3px 16px;
-    border: 0;
-  }
-  .table-card td:first-child {
-    padding-top: 12px;
-  }
-  .table-card td:last-child {
-    padding-bottom: 12px;
-  }
-  .table-card td:nth-child(2)::before {
-    content: 'Documento';
-  }
-  .table-card td:nth-child(3)::before {
-    content: 'Contato';
-  }
-  .table-card td:nth-child(4)::before {
-    content: 'Cliente desde';
-  }
-  .table-card td:not(:first-child)::before {
-    display: inline-block;
-    width: 96px;
-    color: var(--muted);
-    font-size: 10px;
-    font-weight: 800;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-  }
-  .table-card .empty {
-    padding: 14px 0;
   }
   .customer-detail-title {
     align-items: start;

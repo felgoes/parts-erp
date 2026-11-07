@@ -102,31 +102,31 @@
   }
 </section>
 </section>
-<section class="card purchase-table-card" [class.restricted-costs]="!canReadCosts()">
+<section class="card purchase-table-card operational-list" [class.restricted-costs]="!canReadCosts()">
   <div class="table-wrap" (scroll)="closeRowMenu()">
-    <table>
-      <thead>
-        <tr>
-          <th></th>
-          <th>COMPRA</th>
-          <th>PEÇAS</th>
-          <th>FORNECEDOR / COTAÇÕES</th>
-          <th>ETAPA</th>
-          <th>PREVISÃO</th>
-          <th>VALOR</th>
-          <th>ABERTA EM</th>
-          <th></th>
+    <table role="table" aria-label="Compras">
+      <thead role="rowgroup">
+        <tr role="row">
+          <th scope="col" aria-label="Selecionar"></th>
+          <th scope="col">Compra</th>
+          <th scope="col">Peças</th>
+          <th scope="col">Fornecedor / cotações</th>
+          <th scope="col">Etapa</th>
+          <th scope="col">Previsão</th>
+          <th scope="col" class="right">Valor</th>
+          <th scope="col">Aberta em</th>
+          <th scope="col" aria-label="Ações"></th>
         </tr>
       </thead>
-      <tbody>
+      <tbody role="rowgroup">
         @for (purchase of pagedPurchases(); track purchase.id) {
-          <tr
+          <tr role="row"
             class="purchase-row"
             tabindex="0"
             (click)="openDetails(purchase)"
-            (keydown.enter)="openDetails(purchase)"
+            (keydown.enter)="$event.target === $event.currentTarget ? openDetails(purchase) : null"
           >
-            <td class="row-select">
+            <td role="cell" class="row-select">
               @if (isSelectable(purchase)) {
                 <input
                   type="checkbox"
@@ -137,7 +137,7 @@
                 />
               }
             </td>
-            <td>
+            <td role="cell">
               <strong>{{ purchase.number }}</strong
               ><small>{{
                 purchase.purchase_type === 'expense'
@@ -145,7 +145,7 @@
                   : purchase.items.length + (purchase.items.length === 1 ? ' item' : ' itens')
               }}</small>
             </td>
-            <td>
+            <td role="cell" class="record-wide"><span class="record-label">Peças</span>
               <div class="purchase-products">
                 @if (purchase.purchase_type === 'expense') {
                   <span>{{
@@ -164,7 +164,7 @@
                 }
               </div>
             </td>
-            <td>
+            <td role="cell" class="record-wide"><span class="record-label">Fornecedor / cotações</span>
               @if (purchase.purchase_type === 'expense') {
                 <strong>{{ purchase.supplier_name || 'Sem fornecedor' }}</strong
                 ><small>Despesa lançada</small>
@@ -185,20 +185,20 @@
                 }}</small>
               }
             </td>
-            <td>
+            <td role="cell"><span class="record-label">Etapa</span>
               <span class="purchase-badge" [attr.data-status]="purchase.status">{{
                 purchaseStatusLabel(purchase)
               }}</span>
             </td>
-            <td>
+            <td role="cell"><span class="record-label">Previsão</span>
               {{ purchase.needed_by ? dateOnly(purchase.needed_by) : '—' }}
               @if (isOverdue(purchase)) {
                 <small class="overdue-chip">Atrasada</small>
               }
             </td>
-            <td>{{ purchaseTotal(purchase) | currency: 'BRL' }}</td>
-            <td>{{ purchase.created_at | date: 'dd/MM/yyyy' }}</td>
-            <td class="row-action">
+            <td role="cell" class="right"><span class="record-label">Valor</span>{{ purchaseTotal(purchase) | currency: 'BRL' }}</td>
+            <td role="cell"><span class="record-label">Aberta em</span>{{ purchase.created_at | date: 'dd/MM/yyyy' : '-0300' }}</td>
+            <td role="cell" class="record-wide row-action">
               <button
                 type="button"
                 class="row-open"
@@ -221,8 +221,8 @@
             </td>
           </tr>
         } @empty {
-          <tr>
-            <td colspan="9">
+          <tr role="row">
+            <td role="cell" colspan="9">
               <div class="purchase-empty">
                 <strong>Nenhuma compra neste período</strong
                 ><span

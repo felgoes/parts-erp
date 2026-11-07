@@ -39,24 +39,11 @@
 .purchase-toolbar > .muted { white-space: nowrap; }
 .purchase-pages { margin-left: auto; }
 .purchase-table-card { border-radius: 6px; }
-.purchase-table-card table { min-width: 1120px; }
-.purchase-table-card th:first-child, .purchase-table-card td:first-child { width: 36px; }
-.purchase-table-card th:nth-child(2), .purchase-table-card td:nth-child(2) { min-width: 156px; }
-.purchase-table-card th:nth-child(3), .purchase-table-card td:nth-child(3) { min-width: 180px; }
-.purchase-table-card th:nth-child(4), .purchase-table-card td:nth-child(4) { min-width: 220px; }
-.purchase-table-card th:nth-child(5), .purchase-table-card td:nth-child(5) { min-width: 130px; }
-.purchase-table-card th:nth-child(6), .purchase-table-card td:nth-child(6) { min-width: 95px; }
-.purchase-table-card th:nth-child(7), .purchase-table-card td:nth-child(7) { min-width: 100px; }
-.purchase-table-card th:nth-child(8), .purchase-table-card td:nth-child(8) { min-width: 95px; }
-.purchase-table-card th:nth-child(9), .purchase-table-card td:nth-child(9) { min-width: 100px; }
-.purchase-table-card th, .purchase-table-card td { padding: 8px 10px; vertical-align: middle; }
 .purchase-table-card td > strong, .purchase-table-card td > small { display: block; }
-.purchase-table-card td:nth-child(2) > strong { white-space: nowrap; font-family: var(--font-mono); font-size: 13px; }
+.purchase-table-card td:nth-child(2) > strong { font-family: var(--font-mono); font-size: 13px; }
 .purchase-products span { display: block; line-height: 18px; overflow-wrap: anywhere; }
 .purchase-table-card td:nth-child(4) > strong { line-height: 18px; }
 .purchase-table-card td:nth-child(4) > small { margin-top: 2px; line-height: 16px; }
-.purchase-table-card th { white-space: nowrap; }
-.purchase-table-card td:nth-child(7), .purchase-table-card th:nth-child(7) { text-align: right; }
 .purchase-table-card .purchase-id, .purchase-table-card code { white-space: nowrap; font-family: var(--font-mono); }
 .purchase-table-card .purchase-row:hover { background: color-mix(in srgb, var(--forest) 5%, var(--surface)); }
 @media (max-width: 767px) {
@@ -77,5 +64,12 @@
     justify-content: flex-start;
     border-top: 1px solid var(--divider);
     border-right: 0;
+  }
+}
+
+@container (max-width: 820px) {
+  .purchase-table-card td.row-action {
+    display: flex;
+    justify-content: space-between;
   }
 }

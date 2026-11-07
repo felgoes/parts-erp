@@ -6,7 +6,7 @@
     (financialRequested)="openFinancial()"
     (financialSummaryHiddenChange)="setFinancialSummaryHidden($event)"
   />
-  <app-period-filter
+  <app-period-filter class="dashboard-period"
     heading="Período da visão geral"
     description="Faturamento, vendas e vendas recentes"
     ariaLabel="Filtrar visão geral por período"
@@ -15,75 +15,70 @@
     (rangeChange)="applyDateFilter($event)"
   />
   <section class="dashboard-grid">
-    <article class="card table-card">
+    <article class="card table-card operational-list">
       <div class="card-head">
-        <div>
-          <h2>Vendas recentes</h2>
-        </div>
+        <h2 id="recent-sales-heading">Vendas recentes</h2>
         <a routerLink="/invoices">Ver todas →</a>
       </div>
       @if (summary.recent_invoices.length) {
         <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Fatura</th>
-                <th>Cliente</th>
-                <th>Origem</th>
-                <th>Emissão</th>
-                <th>Status</th>
-                <th>Documentos</th>
-                <th class="right">Total</th>
+          <table role="table" aria-labelledby="recent-sales-heading">
+            <thead role="rowgroup">
+              <tr role="row">
+                <th scope="col">Fatura</th>
+                <th scope="col">Status</th>
+                <th scope="col">Pedido</th>
+                <th scope="col">Cliente</th>
+                <th scope="col">Origem</th>
+                <th scope="col">Emissão</th>
+                <th scope="col">Documentos</th>
+                <th scope="col" class="right">Total</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody role="rowgroup">
               @for (invoice of summary.recent_invoices; track invoice.id) {
-                <tr class="clickable-row" (click)="openRecent(invoice)">
-                  <td>
-                    <strong>{{ invoice.number }}</strong
-                    ><small class="block">{{
-                      invoice.marketplace_order_id
-                        ? 'Pedido #' + invoice.marketplace_order_id
-                        : 'Venda local'
-                    }}</small>
+                <tr role="row" class="clickable-row" (click)="openRecent(invoice)">
+                  <td role="cell">
+                    <button type="button" class="record-link" (click)="$event.stopPropagation(); openRecent(invoice)">
+                      {{ invoice.number }}
+                    </button>
                   </td>
-                  <td class="dashboard-customer">
-                    <strong>{{ invoice.customer?.name || 'Consumidor não identificado' }}</strong
-                    ><small>{{
-                      invoice.customer?.document ||
-                        invoice.customer?.email ||
-                        'Sem cadastro vinculado'
-                    }}</small>
-                  </td>
-                  <td>{{ invoice.source === 'mercadolivre' ? 'Mercado Livre' : 'Balcão' }}</td>
-                  <td>{{ invoice.issued_at || invoice.created_at | date: 'dd/MM/yyyy HH:mm' }}</td>
-                  <td>
-                    <span class="badge" [class]="invoice.status">{{
-                      saleStageLabel(saleStageForInvoice(invoice))
-                    }}</span>
+                  <td role="cell" class="record-status">
+                    <span class="record-label">Status</span>
+                    <span class="badge" [class]="invoice.status">{{ saleStageLabel(saleStageForInvoice(invoice)) }}</span>
                     @if (invoice.after_sale) {
                       <small class="post-sale-summary">{{ afterSaleLabel(invoice) }}</small>
                     }
                   </td>
-                  <td>
+                  <td role="cell" class="record-wide">
+                    <span class="record-label">Pedido</span>
+                    {{ invoice.marketplace_order_id ? '#' + invoice.marketplace_order_id : 'Venda local' }}
+                  </td>
+                  <td role="cell" class="record-wide">
+                    <span class="record-label">Cliente</span>
+                    <strong>{{ invoice.customer?.name || 'Consumidor não identificado' }}</strong>
+                    <small class="block">{{ invoice.customer?.document || invoice.customer?.email || 'Sem cadastro vinculado' }}</small>
+                  </td>
+                  <td role="cell"><span class="record-label">Origem</span>{{ invoice.source === 'mercadolivre' ? 'Mercado Livre' : 'Balcão' }}</td>
+                  <td role="cell"><span class="record-label">Emissão</span>{{ invoice.issued_at || invoice.created_at | date: 'dd/MM/yyyy HH:mm' : '-0300' }}</td>
+                  <td role="cell">
+                    <span class="record-label">Documentos</span>
                     @if (documentsForDownload(invoice.documents).length) {
-                      @for (doc of documentsForDownload(invoice.documents); track doc.id) {
-                        <a
-                          class="doc"
-                          href="#"
-                          (click)="
-                            $event.preventDefault();
-                            $event.stopPropagation();
-                            openDocument(invoice.id, doc.id)
-                          "
-                          >{{ documentLabel(doc.document_type) }}</a
-                        >
-                      }
+                      <div class="record-actions">
+                        @for (doc of documentsForDownload(invoice.documents); track doc.id) {
+                          <button type="button" class="record-link"
+                            [attr.title]="doc.filename"
+                            (click)="$event.stopPropagation(); openDocument(invoice.id, doc.id)">
+                            {{ invoiceDocumentLabel(doc, invoice.documents) }}
+                          </button>
+                        }
+                      </div>
                     } @else {
                       <span class="muted">—</span>
                     }
                   </td>
-                  <td class="right">
+                  <td role="cell" class="right">
+                    <span class="record-label">Total</span>
                     <strong>{{ invoice.total | currency: 'BRL' }}</strong>
                   </td>
                 </tr>
@@ -221,10 +216,10 @@
             </p>
             <h2>{{ invoice.number }}</h2>
             <p class="detail-subtitle">
-              Criada em {{ invoice.created_at | date: 'dd/MM/yyyy HH:mm'
+              Criada em {{ invoice.created_at | date: 'dd/MM/yyyy HH:mm' : '-0300'
               }}{{
                 invoice.issued_at
-                  ? ' · emitida em ' + (invoice.issued_at | date: 'dd/MM/yyyy HH:mm')
+                  ? ' · emitida em ' + (invoice.issued_at | date: 'dd/MM/yyyy HH:mm' : '-0300')
                   : ''
               }}
             </p>

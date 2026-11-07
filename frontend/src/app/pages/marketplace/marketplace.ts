@@ -1,6 +1,7 @@
 import { DatePipe, DecimalPipe, JsonPipe } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
+import { Capacitor } from '@capacitor/core';
 import { Component, DestroyRef, OnInit, inject, signal } from '@angular/core';
 import { ApiService } from '../../core/api.service';
 import { LiveUpdatesService } from '../../core/live-updates.service';
@@ -8,7 +9,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { debounceTime } from 'rxjs';
 import { AuthService } from '../../core/auth.service';
 import { MarketplaceOrder, MarketplaceOrderEvent, MarketplaceStatus } from '../../core/models';
-import { statusLabel, trackingEventLabel } from '../../core/status-labels';
+import { statusLabel, trackingDetailLabel, trackingEventLabel } from '../../core/status-labels';
 import { saleStageForOrder, saleStageLabel } from '../../core/sale-stage';
 import { documentLabel } from '../../core/document-labels';
 import { PageHeader } from '../../shared/page-header';
@@ -26,6 +27,7 @@ export class MarketplacePage implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
   private readonly auth = inject(AuthService);
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
   readonly status = signal<MarketplaceStatus | null>(null);
   readonly orders = signal<MarketplaceOrder[]>([]);
   readonly syncing = signal(false);
@@ -35,6 +37,7 @@ export class MarketplacePage implements OnInit {
   readonly history = signal<MarketplaceOrderEvent[]>([]);
   readonly statusLabel = statusLabel;
   readonly trackingEventLabel = trackingEventLabel;
+  readonly trackingDetailLabel = trackingDetailLabel;
   readonly saleStageForOrder = saleStageForOrder;
   readonly saleStageLabel = saleStageLabel;
   readonly documentLabel = documentLabel;
@@ -308,6 +311,12 @@ export class MarketplacePage implements OnInit {
     this.api.marketplaceOrderHistory(orderId).subscribe((events) => this.history.set(events));
   }
   download(invoiceId: string, documentId: string, filename: string) {
+    if (Capacitor.isNativePlatform()) {
+      void this.router.navigate(['/document-viewer', invoiceId, documentId], {
+        state: { marketplaceOrderId: this.detail()?.id, fromMarketplace: true },
+      });
+      return;
+    }
     const documentTab = window.open('about:blank', '_blank');
     if (!documentTab) {
       this.showFeedback('error', 'Permita a abertura de novas guias para visualizar este arquivo.');

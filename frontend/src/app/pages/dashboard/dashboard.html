@@ -253,6 +253,12 @@
               >{{ invoice.items.length }} item(ns) · {{ invoice.total | currency: 'BRL' }}</small
             >
           </div>
+          @if (invoice.tracking?.destination_address; as address) {
+            <div class="delivery-address">
+              <span>Endereço de entrega</span>
+              <strong>{{ address }}</strong>
+            </div>
+          }
         </div>
         <nav class="detail-tabs" aria-label="Detalhes da venda">
           <button [class.active]="invoiceTab() === 'items'" (click)="invoiceTab.set('items')">

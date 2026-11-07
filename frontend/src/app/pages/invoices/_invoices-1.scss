@@ -236,6 +236,8 @@
   gap: 12px;
   margin: 0 0 20px;
 }
+.delivery-address { grid-column: 1 / -1; }
+.delivery-address strong { overflow-wrap: anywhere; line-height: 1.45; }
 .detail-summary > div,
 .tracking-cards > div {
   display: grid;

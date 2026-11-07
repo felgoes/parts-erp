@@ -23,9 +23,10 @@ def _first_address(shipment: Mapping[str, Any]) -> Mapping[str, Any] | str | Non
     for key in ("receiver_address", "shipping_address", "destination"):
         candidate = shipment.get(key)
         if isinstance(candidate, Mapping):
-            nested = candidate.get("address")
-            if isinstance(nested, Mapping):
-                return nested
+            for nested_key in ("address", "shipping_address"):
+                nested = candidate.get(nested_key)
+                if isinstance(nested, Mapping):
+                    return nested
             return candidate
         if _text(candidate):
             return str(candidate)

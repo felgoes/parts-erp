@@ -346,22 +346,25 @@
 }
 
 @media (width < 768px) {
-  :host { inset: auto; }
+  :host-context(body) .alerts-trigger { background: transparent; color: inherit; }
+  :host-context(body) .bell-shell { background: transparent; color: inherit; }
 
-  :host-context(body) .alerts-trigger {
-    border: 0;
-    background: transparent;
-    color: #f3f8f2;
-  }
-
-  :host-context(body) .bell-shell {
-    background: transparent;
-    color: #f3f8f2;
+  :host-context(body) .alerts-trigger[aria-expanded='true'] .bell-shell {
+    background: var(--brand-accent);
+    color: var(--brand-primary);
+    box-shadow: 0 0 12px #9be25b45;
   }
 
   .alerts-panel {
-    top: calc(100% + 8px);
-    width: min(390px, calc(100vw - 16px));
-    border-radius: var(--radius-overlay);
+    position: fixed;
+    inset: auto 0 var(--mobile-navigation-height);
+    width: auto;
+    max-height: min(520px, calc(100dvh - var(--mobile-navigation-height) - env(safe-area-inset-top) - 10px));
+    padding-inline: env(safe-area-inset-left) env(safe-area-inset-right);
+    border-radius: 20px 20px 0 0;
+    overscroll-behavior: contain;
   }
+
+  .alerts-panel::before { display: none; }
+  .alerts-body { overscroll-behavior: contain; }
 }

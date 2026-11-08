@@ -84,9 +84,9 @@ export class AssistantChat implements OnInit, OnDestroy {
     } else this.restoreOpener();
   }
 
-  close(): void {
+  close(restoreFocus = true): void {
     this.open.set(false);
-    this.restoreOpener();
+    if (restoreFocus) this.restoreOpener();
   }
 
   onPanelKeydown(event: KeyboardEvent): void {
@@ -300,7 +300,7 @@ export class AssistantChat implements OnInit, OnDestroy {
           }
         : null,
       window.innerHeight,
-      window.innerWidth <= 640,
+      window.innerWidth < 768,
     );
     this.panelTop.set(bounds?.top ?? null);
     this.panelLeft.set(bounds?.left ?? null);

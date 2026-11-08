@@ -35,7 +35,7 @@
     background: transparent;
     color: inherit;
     font: inherit;
-    font-size: 12px;
+    font-size: 11px;
     line-height: 16px;
     font-weight: 600;
     text-decoration: none;
@@ -45,7 +45,7 @@
   .mobile-nav-icon {
     display: grid;
     place-items: center;
-    width: 45px;
+    width: min(45px, 100%);
     height: 25px;
     border-radius: 12px;
   }
@@ -59,7 +59,7 @@
     stroke-linejoin: round;
   }
   .mobile-navigation .mobile-nav-item[aria-expanded='true'],
-  .app-shell:not(.menu-open) .mobile-navigation .mobile-nav-item.active {
+  .mobile-navigation:not(:has(button[aria-expanded='true'])) .mobile-nav-item.active {
     color: #f4fff5;
 
     .mobile-nav-icon {
@@ -72,6 +72,8 @@
     outline: 2px solid var(--brand-accent);
     outline-offset: -2px;
   }
+
+  .mobile-navigation > app-notifications-menu { min-width: 0; }
 
   .app-shell .sidebar {
     z-index: 50;

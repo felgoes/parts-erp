@@ -4,11 +4,10 @@
 .sale-list-client small { display: block; }
 .sale-list-status span::before { content: '•'; margin-inline-end: 5px; color: var(--focus-ring); }
 
-@container (max-width: 820px) {
+@mixin narrow-sales {
   .sale-list tbody > tr {
-    grid-template-columns: minmax(0, 1fr) minmax(0, max-content);
-    gap: 0 12px;
-    padding-inline: 0;
+    grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr);
+    gap: 0 10px;
   }
 
   .sale-list tbody > tr > :is(.sale-list-client, .sale-list-status, .sale-list-total) { display: block; }
@@ -17,6 +16,13 @@
   .sale-list-status { grid-area: 2 / 2; text-align: end; }
   .sale-list-client .record-link { display: block; color: var(--text-primary); }
   .sale-list-total .record-label, .sale-list .sale-list-secondary { display: none; }
-  .sale-list td:has(.record-actions), .sale-list td:has(.secondary) { grid-column: 1 / -1; }
-  .sale-list td:not(:has(.record-actions)):not(:has(.secondary)):has(.record-label):not(.sale-list-total) { display: none; }
+  .sale-list :is(.sale-list-docs:not(.has-docs), .sale-list-actions:not(.has-action)) { display: none; }
+}
+
+@container (max-width: 820px) {
+  @include narrow-sales;
+}
+
+@media (max-width: 767.98px) {
+  @include narrow-sales;
 }

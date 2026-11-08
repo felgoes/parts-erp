@@ -7,6 +7,7 @@ import {
   OnInit,
   computed,
   inject,
+  output,
   signal,
   viewChild,
 } from '@angular/core';
@@ -67,6 +68,7 @@ export class NotificationsMenu implements OnInit {
   private readonly host = inject(ElementRef) as ElementRef<HTMLElement>;
   private readonly trigger = viewChild<ElementRef<HTMLButtonElement>>('trigger');
   readonly open = signal(false);
+  readonly opened = output<void>();
   readonly loading = this.feed.loading;
   readonly history = this.feed.history;
   readonly deleting = this.feed.deleting;
@@ -93,6 +95,7 @@ export class NotificationsMenu implements OnInit {
     }
     this.newSince.set(this.feed.seenAt());
     this.open.set(true);
+    this.opened.emit();
     this.feed.load(true);
   }
 

@@ -1,5 +1,5 @@
 <div class="app-shell" [class.menu-open]="menuOpen()" [class.menu-collapsed]="menuCollapsed()">
-  <header class="app-topbar" aria-label="Ações globais" [attr.inert]="menuOpen() ? '' : null">
+  <header class="app-topbar" appScrollHeader aria-label="Cabeçalho do ERP" [attr.inert]="menuOpen() ? '' : null">
     <button class="menu-collapse" type="button" [attr.aria-label]="menuCollapsed() ? 'Expandir navegação' : 'Recolher navegação'" [attr.aria-expanded]="!menuCollapsed()" (click)="toggleMenuCollapsed()">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16" /></svg>
     </button>
@@ -9,7 +9,7 @@
       class="brand"
       routerLink="/dashboard"
       aria-label="Ir para a visão geral"
-      (click)="menuOpen.set(false)"
+      (click)="closeMobileMenu(false); scrollMobileToTop($event)"
     >
       @if (brand.logo()) {
         <img class="brand-logo" [src]="brand.logo()" alt="" />
@@ -21,12 +21,15 @@
       >
     </a>
   </div>
-    @if (assistant.isAdmin()) {
-    <button class="global-action assistant-trigger" type="button" aria-label="Assistente" title="Assistente" [attr.aria-expanded]="assistant.open()" aria-controls="assistant-panel" (click)="closeMobileMenu(false); assistant.toggle($event)">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 3l1.8 5.2L17 10l-5.2 1.8L10 17l-1.8-5.2L3 10l5.2-1.8L10 3Zm8 10v6m-3-3h6" /></svg>
-    </button>
+    @if (!mobileShell()) {
+      @if (assistant.isAdmin()) {
+        <button class="global-action assistant-trigger" type="button" aria-label="Assistente" title="Assistente"
+          [attr.aria-expanded]="assistant.open()" aria-controls="assistant-panel" (click)="assistant.toggle($event)">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 3l1.8 5.2L17 10l-5.2 1.8L10 17l-1.8-5.2L3 10l5.2-1.8L10 3Zm8 10v6m-3-3h6" /></svg>
+        </button>
+      }
+      <app-notifications-menu />
     }
-    <app-notifications-menu (click)="closeMobileMenu(false)" />
   </header>
   <aside
     id="primary-navigation"
@@ -231,15 +234,25 @@
     <nav class="mobile-navigation" aria-label="Atalhos principais">
       @for (item of mobileLinks(); track item.path) {
         <a class="mobile-nav-item" [routerLink]="item.path" routerLinkActive="active"
-          ariaCurrentWhenActive="page" (click)="closeMobileMenu(false)">
+          ariaCurrentWhenActive="page" (click)="mobileAlerts.close(false); assistant.close(false); closeMobileMenu(false); scrollMobileToTop($event)">
           <span class="mobile-nav-icon" aria-hidden="true">
             <svg viewBox="0 0 24 24"><path [attr.d]="item.icon" /></svg>
           </span>
           {{ item.label }}
         </a>
       }
+      @if (assistant.isAdmin()) {
+        <button class="mobile-nav-item" type="button" [attr.aria-expanded]="assistant.open()"
+          aria-controls="assistant-panel" (click)="mobileAlerts.close(false); closeMobileMenu(false); assistant.toggle($event)">
+          <span class="mobile-nav-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M10 3l1.8 5.2L17 10l-5.2 1.8L10 17l-1.8-5.2L3 10l5.2-1.8L10 3Zm8 10v6m-3-3h6" /></svg>
+          </span>
+          Assistente
+        </button>
+      }
+      <app-notifications-menu #mobileAlerts (opened)="closeMobileMenu(false); assistant.close(false)" />
       <button class="mobile-nav-item menu-trigger" type="button" aria-controls="primary-navigation"
-        [attr.aria-expanded]="menuOpen()" (click)="toggleMobileMenu()">
+        [attr.aria-expanded]="menuOpen()" (click)="mobileAlerts.close(false); assistant.close(false); toggleMobileMenu()">
         <span class="mobile-nav-icon" aria-hidden="true">
           <svg viewBox="0 0 24 24">
             <path [attr.d]="menuOpen() ? 'm6 6 12 12M18 6 6 18' : 'M4 6h16M4 12h16M4 18h16'" />

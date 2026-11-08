@@ -359,7 +359,7 @@
   border-color: #6e3128;
 }
 
-@media (max-width: 640px) {
+@media (width < 768px) {
   .assistant-panel {
     right: 8px;
     bottom: 8px;

@@ -16,12 +16,12 @@ import { SettingsApi } from '../core/api/settings-api';
 import { PushNotification } from '../core/models';
 import { AssistantChat } from '../shared/assistant-chat/assistant-chat';
 import { NavigationMenu } from './navigation-menu/navigation-menu';
+import { ScrollHeader } from './scroll-header';
 import { NotificationsMenu } from './notifications-menu/notifications-menu';
 
 const MOBILE_LINKS = [
   { path: '/dashboard', label: 'Início', icon: 'm3 10 9-7 9 7M5 9v12h14V9M10 21v-7h4v7' },
   { path: '/invoices', label: 'Vendas', icon: 'M6 3h9l4 4v14H6zM14 3v5h5M9 12h7m-7 4h7' },
-  { path: '/products', label: 'Estoque', icon: 'm3 7 9-4 9 4v10l-9 4-9-4zM3 7l9 4 9-4m-9 4v10' },
 ];
 
 @Component({
@@ -35,6 +35,7 @@ const MOBILE_LINKS = [
     AssistantChat,
     NavigationMenu,
     NotificationsMenu,
+    ScrollHeader,
   ],
   templateUrl: './app-layout.html',
   styleUrl: './app-layout.scss',
@@ -111,6 +112,11 @@ export class AppLayout implements OnInit, OnDestroy {
     } catch {
       // A navegação continua funcional quando o armazenamento local está indisponível.
     }
+  }
+
+  scrollMobileToTop(event: MouseEvent): void {
+    if (event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+    window.scrollTo({ top: 0, behavior: 'instant' });
   }
 
   toggleMobileMenu(): void {

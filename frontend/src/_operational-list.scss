@@ -64,8 +64,17 @@
   .card.operational-list { --list-inset: 12px; }
 }
 
-@container (max-width: 820px) {
-  .operational-list > .card-head { padding-block-end: 8px; }
+@mixin narrow-records {
+  .operational-list > .card-head {
+    flex-wrap: wrap;
+    padding-block-end: 8px;
+  }
+  .operational-list > .card-head > * { min-inline-size: 0; }
+  .operational-list :is(td, td code, td small, td .badge, td button, td a) {
+    max-inline-size: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
   .operational-list > .table-wrap { overflow: visible; }
   .operational-list table,
   .operational-list tbody { display: block; min-width: 0; }
@@ -96,7 +105,18 @@
     font-size: var(--font-size-caption);
     font-weight: 600;
   }
-  .operational-list .record-status .badge { white-space: normal; }
+}
+
+@container (max-width: 820px) {
+  @include narrow-records;
+}
+
+@media (max-width: 767.98px) {
+  @include narrow-records;
+
+  .app-shell .card.operational-list { --list-inset: 12px; border-radius: 12px; }
+  .operational-list tbody > tr { column-gap: 8px; }
+  .operational-list tbody > tr > td > :is(button, a) { min-block-size: 44px; }
 }
 
 @media (width < 768px) {
@@ -119,7 +139,7 @@
 .record-list td strong { font-weight: 600; }
 
 @container (max-width: 820px) {
-  .record-list > .table-wrap { background: var(--canvas); }
+  .record-list > .table-wrap { background: var(--surface); }
   .record-list tbody > tr { padding-block: 12px; }
   .record-list tbody > tr + tr { border-top: 1px solid var(--divider); }
   .record-list .record-actions { align-items: center; }

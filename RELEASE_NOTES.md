@@ -1,3 +1,7 @@
+## 8 de novembro de 2026 — navegação e listas no celular
+
+- Alertas e Assistente passaram para o rodapé. Estoque continua acessível pelo Menu. A marca fica centralizada no cabeçalho, que recolhe na descida e reaparece na subida. Os cartões continuam arredondados com margens menores, e as listas de Vendas, Mercado Livre e demais listas operacionais se ajustam à largura da tela. Implantado em 08/11/2026, com API, ERP e site verificados. [Commit implantado · 1b69f6f](https://github.com/felgoes/parts-erp/commit/1b69f6f88d9bd130619e75c509aa9a567a74907a)
+
 ## 8 de novembro de 2026 — contagens animadas na Visão geral
 
 - Ao abrir a Visão geral, a receita líquida, as vendas confirmadas e os totais de pendências contam até o valor real. A contagem respeita a receita oculta e a preferência por movimento reduzido. Implantado em 08/11/2026, com API, ERP e site verificados. [Commit implantado · 26bb3fc](https://github.com/felgoes/parts-erp/commit/26bb3fc4155e5a668cf423c598557c5807d23615)

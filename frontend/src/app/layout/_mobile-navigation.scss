@@ -58,11 +58,15 @@
     stroke-linecap: round;
     stroke-linejoin: round;
   }
-  .mobile-navigation .mobile-nav-item:is(.active, [aria-expanded='true']) { color: #f4fff5; }
-  .mobile-nav-item:is(.active, [aria-expanded='true']) .mobile-nav-icon {
-    color: var(--brand-primary);
-    background: var(--brand-accent);
-    box-shadow: 0 0 12px #9be25b45;
+  .mobile-navigation .mobile-nav-item[aria-expanded='true'],
+  .app-shell:not(.menu-open) .mobile-navigation .mobile-nav-item.active {
+    color: #f4fff5;
+
+    .mobile-nav-icon {
+      color: var(--brand-primary);
+      background: var(--brand-accent);
+      box-shadow: 0 0 12px #9be25b45;
+    }
   }
   .mobile-navigation .mobile-nav-item:focus-visible {
     outline: 2px solid var(--brand-accent);
@@ -101,7 +105,7 @@
     .app-shell .sidebar {
       transition: transform 190ms ease, opacity 160ms ease, visibility 190ms;
     }
-    .mobile-nav-icon { transition: transform 140ms ease, background-color 150ms ease, box-shadow 150ms ease; }
+    .mobile-nav-icon { transition: transform 140ms ease; }
     .mobile-nav-item:active .mobile-nav-icon { transform: scale(.9); }
   }
   @media (prefers-reduced-motion: reduce) {

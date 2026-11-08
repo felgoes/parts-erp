@@ -148,6 +148,8 @@ export class DocumentViewerPage implements OnInit, OnDestroy {
   readonly returnRoute = this.route.snapshot.queryParamMap.get('from') === 'invoice'
     ? '/invoices/' + this.route.snapshot.paramMap.get('invoiceId')
     : this.fromMarketplace ? '/marketplace' : '/dashboard';
+  readonly returnState = this.route.snapshot.queryParamMap.get('from') === 'invoice' && history.state?.recordOrigin
+    ? { recordOrigin: history.state.recordOrigin } : undefined;
   readonly returnParams = this.fromMarketplace && typeof history.state?.marketplaceOrderId === 'string'
     ? { order_id: history.state.marketplaceOrderId }
     : null;

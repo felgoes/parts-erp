@@ -1,90 +1,168 @@
-<a class="record-back" [href]="origin.path" (click)="back($event)">← {{ origin.label }}</a>
+<a class="record-back" [href]="origin.path" (click)="back($event)">
+  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 5-7 7 7 7M5 12h14" /></svg>
+  {{ origin.label }}
+</a>
 
 @if (error()) { <p class="empty" role="alert">{{ error() }}</p> }
 @if (invoice(); as sale) {
-  <header class="sale-header">
-    <div>
-      <p class="muted">{{ sale.number }}</p>
-      <h1>{{ sale.customer?.name || 'Consumidor não identificado' }}</h1>
-    </div>
-    <div class="sale-total">
-      <span class="muted">Total da venda</span>
-      <strong>{{ sale.total | currency: 'BRL' }}</strong>
-    </div>
-    <p class="sale-stage" [attr.data-stage]="sale.status">{{ status(sale) }}</p>
-    @if (sale.tracking?.destination_locality; as locality) {
-      <p class="sale-destination"><span class="muted">Destino</span> <strong>{{ locality }}</strong></p>
+  @let state = progress()!;
+  @let online = sale.source !== 'manual';
+  @let tracking = sale.tracking;
+  @let label = labelDocument();
+  <article class="sale-record" #record>
+    <header class="sale-header">
+      <div class="sale-identity">
+        <p class="sale-reference">
+          <span>{{ sale.number }}</span><span>{{ (sale.issued_at || sale.created_at) | date: 'dd/MM/yyyy · HH:mm' : '-0300' }}</span>
+        </p>
+        <h1>{{ sale.customer?.name || 'Consumidor não identificado' }}</h1>
+        <div class="sale-meta">
+          <span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h16l-1 12H5L4 9Zm4 0V7a4 4 0 0 1 8 0v2" /></svg>{{ channel() }}</span>
+          @if (tracking?.destination_locality || tracking?.shipping_route?.destination; as locality) {
+            <span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z" /><circle cx="12" cy="10" r="2.5" /></svg>{{ locality }}</span>
+          }
+          @if (!online) { <span class="sale-badge" [class.exception]="state.issue">{{ state.label }}</span> }
+        </div>
+      </div>
+      <div class="sale-total">
+        <span>Total da venda</span>
+        <strong>{{ sale.total | currency: 'BRL' }}</strong>
+        @if (!online && canConfirm()) {
+          <button type="button" class="primary" (click)="confirm(sale)" [disabled]="confirming()">
+            {{ confirming() ? 'Confirmando…' : 'Confirmar venda' }}
+          </button>
+        }
+      </div>
+    </header>
+
+    @if (online) {
+      <section class="sale-progress" aria-labelledby="sale-progress-heading">
+        <div class="progress-head">
+          <div>
+            <p id="sale-progress-heading">Andamento do pedido</p>
+            <div class="progress-live" aria-live="polite">
+              @for (current of [state.label]; track current) {
+                <h2 class="progress-status" [class.exception]="state.issue">{{ current }}</h2>
+              }
+            </div>
+          </div>
+          @if (canConfirm()) {
+            <button type="button" class="progress-action" (click)="confirm(sale)" [disabled]="confirming()">
+              {{ confirming() ? 'Confirmando…' : 'Confirmar venda' }}
+            </button>
+          } @else if (sale.after_sale) {
+            <button type="button" class="progress-action" (click)="reveal('after-sale', record)">Ver pós-venda</button>
+          } @else if (state.canTrack) {
+            <button type="button" class="progress-action" (click)="reveal('tracking', record)">Acompanhar envio</button>
+          } @else if (state.stage === 'ready_to_ship' && label) {
+            <a class="progress-action" [routerLink]="['/document-viewer', sale.id, label.id]" [queryParams]="{ from: 'invoice' }" [state]="{ recordOrigin: origin }">Abrir etiqueta</a>
+          }
+        </div>
+        <ol class="progress-steps">
+          @for (step of state.steps; track step.label; let i = $index) {
+            <li [class.done]="step.done" [class.followed]="state.steps[i + 1]?.done" [class.current]="state.currentStep === i"
+              [attr.aria-current]="state.currentStep === i ? 'step' : null">
+              <span class="step-mark" aria-hidden="true">
+                @if (step.done) {
+                  <svg viewBox="0 0 24 24"><path d="m5 12 4 4L19 6" /></svg>
+                } @else { {{ i + 1 }} }
+              </span>
+              <strong>{{ step.label }}</strong>
+              @if (step.date; as timestamp) {
+                <time [attr.datetime]="timestamp">{{ timestamp | date: 'dd/MM · HH:mm' : '-0300' }}</time>
+              } @else if (!step.done) {
+                <small>{{ state.issue ? 'Sem registro' : 'Aguardando' }}</small>
+              }
+            </li>
+          }
+        </ol>
+      </section>
     }
-    @if (canConfirm()) {
-      <button type="button" class="primary" (click)="confirm(sale)" [disabled]="confirming()">
-        {{ confirming() ? 'Confirmando…' : 'Confirmar venda' }}
-      </button>
+
+    @if (sale.after_sale; as afterSale) {
+      <details id="sale-after-sale" class="record-fold after-sale-fold" [open]="afterSaleOpen()" (toggle)="afterSaleOpen.set($any($event.currentTarget).open)">
+        <summary>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 10H4V5m0 5a8 8 0 1 1 1 7" /></svg>
+          <span><strong>Pós-venda</strong><small>{{ afterSale.reason || 'Consultar caso e histórico' }}</small></span>
+          <svg class="fold-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
+        </summary>
+        @if (afterSaleOpen()) {
+          <div class="fold-body"><app-after-sale-workflow [afterSale]="afterSale" /></div>
+        }
+      </details>
     }
-  </header>
-  <nav class="record-tabs" aria-label="Detalhes da venda">
-    <button type="button" [attr.aria-pressed]="tab() === 'items'" (click)="tab.set('items')">Itens</button>
-    <button type="button" [attr.aria-pressed]="tab() === 'delivery'" (click)="tab.set('delivery')">Entrega</button>
-    <button type="button" [attr.aria-pressed]="tab() === 'documents'" (click)="tab.set('documents')">Documentos</button>
-    @if (sale.after_sale) {
-      <button type="button" [attr.aria-pressed]="tab() === 'after-sale'" (click)="tab.set('after-sale')">Pós-venda</button>
-    }
-  </nav>
-  @switch (tab()) {
-    @case ('items') {
-      <section aria-labelledby="sale-items">
+
+    <div class="record-columns">
+      <section class="record-items" aria-labelledby="sale-items">
         <header class="record-section-heading">
           <h2 id="sale-items">Itens da venda</h2>
-          @if (sale.documents.length > 1) {
-            <button type="button" class="record-action" (click)="tab.set('documents')">Ver {{ sale.documents.length }} documentos →</button>
-          } @else if (sale.documents[0]; as doc) {
-            <a class="record-action" [routerLink]="['/document-viewer', sale.id, doc.id]" [queryParams]="{ from: 'invoice' }">
-              Abrir {{ documentLabel(doc, sale.documents) }} →
-            </a>
-          }
+          <span>{{ sale.items.length }} {{ sale.items.length === 1 ? 'item' : 'itens' }}</span>
         </header>
         <ul class="record-lines">
           @for (item of sale.items; track item.id) {
-            <li>
-              <span><strong>{{ item.description }}</strong><small>{{ item.sku }} · {{ item.quantity | number: '1.0-3' }} un. · {{ item.unit_price | currency: 'BRL' }} cada</small></span>
-              <strong>{{ item.total | currency: 'BRL' }}</strong>
+            <li class="sale-item">
+              <span class="item-mark"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 7 9-4 9 4v10l-9 4-9-4V7Zm0 0 9 4 9-4m-9 4v10" /></svg></span>
+              <span><strong>{{ item.description }}</strong><small>{{ item.sku }} · {{ item.quantity | number: '1.0-3' }} un. × {{ item.unit_price | currency: 'BRL' }}</small></span>
+              <strong class="item-value">{{ item.total | currency: 'BRL' }}</strong>
             </li>
-          } @empty { <li>Nenhum item registrado.</li> }
+          } @empty { <li class="record-empty">Nenhum item registrado.</li> }
         </ul>
+        @if (+sale.discount > 0 || +sale.shipping > 0) {
+          <dl class="record-totals">
+            <div><dt>Subtotal dos itens</dt><dd>{{ sale.subtotal | currency: 'BRL' }}</dd></div>
+            @if (+sale.discount > 0) { <div><dt>Desconto</dt><dd>−{{ sale.discount | currency: 'BRL' }}</dd></div> }
+            @if (+sale.shipping > 0) { <div><dt>Frete</dt><dd>{{ sale.shipping | currency: 'BRL' }}</dd></div> }
+          </dl>
+        }
       </section>
-    }
-    @case ('delivery') {
-      <section aria-labelledby="sale-delivery">
-        <h2 id="sale-delivery">Entrega</h2>
-        <dl class="record-facts">
-          <div><dt>Origem</dt><dd>{{ sale.source === 'mercadolivre' ? 'Mercado Livre' : sale.source === 'shopee' ? 'Shopee' : 'Balcão' }}</dd></div>
-          <div><dt>{{ sale.issued_at ? 'Emissão' : 'Criação' }}</dt><dd>{{ sale.issued_at || sale.created_at | date: 'dd/MM/yyyy HH:mm' : '-0300' }}</dd></div>
-          @if (sale.marketplace_order_id; as orderId) { <div><dt>Pedido</dt><dd>{{ orderId }}</dd></div> }
-          @if (sale.customer?.document || sale.customer?.email; as customerReference) {
-            <div><dt>Cadastro do cliente</dt><dd>{{ customerReference }}</dd></div>
-          }
-          @if (sale.notes) { <div><dt>Observações</dt><dd>{{ sale.notes }}</dd></div> }
-        </dl>
-        @if (sale.tracking; as tracking) { <app-tracking-panel [tracking]="tracking" /> }
-      </section>
-    }
-    @case ('documents') {
-      <section aria-labelledby="sale-documents">
-        <h2 id="sale-documents">Documentos da venda</h2>
-        <ul class="record-lines">
-          @for (doc of sale.documents; track doc.id) {
-            <li>
-              <a class="record-action" [routerLink]="['/document-viewer', sale.id, doc.id]" [queryParams]="{ from: 'invoice' }">
-                {{ documentLabel(doc, sale.documents) }} <small>{{ doc.filename }}</small>
-              </a>
-            </li>
-          } @empty { <li>Nenhum documento anexado.</li> }
-        </ul>
-      </section>
-    }
-    @case ('after-sale') {
-      @if (sale.after_sale; as afterSale) { <app-after-sale-workflow [afterSale]="afterSale" /> }
-    }
-  }
+
+      <aside class="record-rail" aria-label="Detalhes complementares">
+        @if (tracking) {
+          <details id="sale-tracking" class="record-fold" [open]="trackingOpen()" (toggle)="trackingOpen.set($any($event.currentTarget).open)">
+            <summary>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z" /><circle cx="12" cy="10" r="2.5" /></svg>
+              <span><strong>{{ tracking.shipment_id ? 'Rastreio e mapa' : 'Rastreio' }}</strong><small>{{ tracking.destination_locality || (tracking.shipment_id ? 'Mercado Envios' : 'Envio sem código de rastreio') }}</small></span>
+              <svg class="fold-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
+            </summary>
+            @if (trackingOpen()) {
+              <div class="fold-body"><app-tracking-panel [tracking]="tracking" /></div>
+            }
+          </details>
+        }
+        <details class="record-fold" [open]="sale.documents.length > 0">
+          <summary>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h9l4 4v14H6zM14 3v5h5M9 12h7m-7 4h7" /></svg>
+            <span><strong>Documentos</strong><small>{{ sale.documents.length === 1 ? '1 arquivo disponível' : sale.documents.length ? sale.documents.length + ' arquivos disponíveis' : 'Nenhum documento anexado' }}</small></span>
+            <svg class="fold-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
+          </summary>
+          <ul class="document-lines fold-body">
+            @for (doc of sale.documents; track doc.id) {
+              <li>
+                <a [routerLink]="['/document-viewer', sale.id, doc.id]" [queryParams]="{ from: 'invoice' }" [state]="{ recordOrigin: origin }">
+                  <span><strong>{{ documentLabel(doc, sale.documents) }}</strong><small>{{ doc.filename }}</small></span><span aria-hidden="true">↗</span>
+                </a>
+              </li>
+            } @empty { <li class="record-empty">Nenhum documento anexado.</li> }
+          </ul>
+        </details>
+        @if (sale.marketplace_order_id || sale.customer?.document || sale.customer?.email || sale.notes) {
+          <details class="record-fold">
+            <summary>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 11v5m0-8h.01" /></svg>
+              <span><strong>Dados da venda</strong></span>
+              <svg class="fold-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
+            </summary>
+            <dl class="record-facts fold-body">
+              @if (sale.marketplace_order_id; as orderId) { <div><dt>Pedido no {{ channel() }}</dt><dd>{{ orderId }}</dd></div> }
+              @if (sale.customer?.document; as document) { <div><dt>Documento do cliente</dt><dd>{{ document }}</dd></div> }
+              @if (sale.customer?.email; as email) { <div><dt>E-mail do cliente</dt><dd>{{ email }}</dd></div> }
+              @if (sale.notes; as notes) { <div><dt>Observações</dt><dd>{{ notes }}</dd></div> }
+            </dl>
+          </details>
+        }
+      </aside>
+    </div>
+  </article>
 } @else if (!error()) {
   <p class="loading" role="status">Carregando venda…</p>
 }

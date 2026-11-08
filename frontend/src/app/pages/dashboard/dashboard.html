@@ -20,37 +20,40 @@
 }
 @if (data(); as summary) {
   <div class="overview-summary">
-    <section class="overview-revenue" aria-labelledby="overview-revenue-heading">
-      <div class="overview-section-heading">
-        <h2 id="overview-revenue-heading">
-          <span class="overview-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 7-8m-5 0h5v5" /></svg>
-          </span>
-          Receita líquida
-        </h2>
-        <button class="overview-link overview-privacy" type="button"
-          (click)="setFinancialSummaryHidden(!financialSummaryHidden())">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z" /><circle cx="12" cy="12" r="2.5" />
-            @if (financialSummaryHidden()) { <path d="M3 3l18 18" /> }
-          </svg>
-          {{ financialSummaryHidden() ? 'Mostrar receita' : 'Ocultar receita' }}
-        </button>
-      </div>
-      <div class="overview-revenue-details">
-        <div>
-          <strong class="overview-value">{{ financialSummaryHidden() ? '••••••' : (summary.revenue_month | currency: 'BRL') }}</strong>
-          <p>{{ summary.confirmed_sales }} {{ summary.confirmed_sales === 1 ? 'venda confirmada' : 'vendas confirmadas' }}</p>
+    <div class="overview-main">
+      <section class="overview-revenue" aria-labelledby="overview-revenue-heading">
+        <div class="overview-section-heading">
+          <h2 id="overview-revenue-heading">
+            <span class="overview-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 7-8m-5 0h5v5" /></svg>
+            </span>
+            Receita líquida
+          </h2>
+          <button class="overview-link overview-privacy" type="button"
+            [attr.aria-label]="financialSummaryHidden() ? 'Mostrar receita' : 'Ocultar receita'"
+            (click)="setFinancialSummaryHidden(!financialSummaryHidden())">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z" /><circle cx="12" cy="12" r="2.5" />
+              @if (financialSummaryHidden()) { <path d="M3 3l18 18" /> }
+            </svg>
+            <span>{{ financialSummaryHidden() ? 'Mostrar receita' : 'Ocultar receita' }}</span>
+          </button>
         </div>
-        <button class="overview-link overview-composition" type="button" (click)="openFinancial()">
-          Ver composição <span aria-hidden="true">↗</span>
-        </button>
-      </div>
-      @if (summary.marketplace_costs_pending && !financialSummaryHidden()) {
-        <p class="overview-warning">Receita parcial · {{ summary.marketplace_costs_pending }} venda(s) sem custo completo do ML</p>
-      }
-      <app-sales-trend [daily]="summary.daily" [countOnly]="financialSummaryHidden()" />
-    </section>
+        <div class="overview-revenue-details">
+          <div>
+            <strong class="overview-value">{{ financialSummaryHidden() ? '••••••' : (summary.revenue_month | currency: 'BRL') }}</strong>
+            <p>{{ summary.confirmed_sales }} {{ summary.confirmed_sales === 1 ? 'venda confirmada' : 'vendas confirmadas' }}</p>
+          </div>
+          <button class="overview-link overview-composition" type="button" (click)="openFinancial()">
+            Ver composição <span aria-hidden="true">↗</span>
+          </button>
+        </div>
+        @if (summary.marketplace_costs_pending && !financialSummaryHidden()) {
+          <p class="overview-warning">Receita parcial · {{ summary.marketplace_costs_pending }} venda(s) sem custo completo do ML</p>
+        }
+      </section>
+      <app-sales-trend class="overview-trend" [daily]="summary.daily" [countOnly]="financialSummaryHidden()" />
+    </div>
     <div class="overview-side">
       <section class="overview-tasks" aria-labelledby="overview-tasks-heading">
         <h2 id="overview-tasks-heading">Para resolver</h2>

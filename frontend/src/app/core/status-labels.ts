@@ -141,11 +141,9 @@ export function trackingEventLabel(status: string, detail?: string | null): stri
         )
       ? 'Em trânsito'
       : null;
-  if (laterStage && ['ready_to_ship', 'handling'].includes(normalizedStatus)) {
-    return detailLabel ? `${laterStage} · ${detailLabel}` : laterStage;
-  }
-  const translatedStatus = statusLabel(status);
-  return detailLabel ? `${translatedStatus} · ${detailLabel}` : translatedStatus;
+  const translatedStatus = laterStage && ['ready_to_ship', 'handling'].includes(normalizedStatus)
+    ? laterStage : statusLabel(status);
+  return detailLabel && detailLabel !== translatedStatus ? `${translatedStatus} · ${detailLabel}` : translatedStatus;
 }
 
 export function trackingDetailLabel(value: string | null | undefined): string | null {

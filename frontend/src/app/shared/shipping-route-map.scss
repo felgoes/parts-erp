@@ -1,5 +1,6 @@
 :host {
   display: block;
+  container-type: inline-size;
   min-width: 0;
   margin: .8rem 0;
 }
@@ -240,7 +241,7 @@ dd {
   background: currentColor;
 }
 
-@media (max-width: 600px) {
+@container (max-width: 600px) {
   .route-body { grid-template-columns: minmax(0, 1fr); }
   .route-details { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .last-report { grid-column: 1 / -1; }

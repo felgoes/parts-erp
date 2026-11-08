@@ -65,3 +65,8 @@
 - Connection checks and deploy procedures are defined in the local private infrastructure setup. Run its read-only connectivity check before the official wrapper. The app repository contains an internal deployment implementation; do not bypass the private wrapper for routine deploys.
 - Keep private production connection settings local to each PC. Use individually managed SSH credentials and verified `known_hosts`; never copy private keys between PCs or disable strict host-key checking.
 - Before changing public files, inspect the diff and scan newly added content for secrets. A secret accidentally committed must be revoked at its issuer; deleting it from the latest revision does not remove it from Git history.
+
+## Movimento na interface
+
+- Em telas novas ou redesenhadas, escolha quais componentes ganham leitura com movimento ao abrir: por exemplo, desenhar uma série, encadear a entrada de seções ou destacar uma mudança de etapa. Mantenha texto e controles legíveis e prontos para uso.
+- Use transições breves, sem loop, respeite `prefers-reduced-motion` e não reexecute a abertura inteira quando uma atualização de fundo mantiver o mesmo contexto.

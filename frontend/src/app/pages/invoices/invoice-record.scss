@@ -1,45 +1,211 @@
-:host { display: block; max-width: 1120px; margin-inline: auto; }
-.record-back, .record-action { color: var(--focus-ring); }
-.record-back, .record-action, .record-tabs button {
+:host {
+  display: block;
+  max-width: 1120px;
+  margin-inline: auto;
+  min-width: 0;
+  --record-green: #14382a;
+  --record-highlight: #b9ed91;
+  --record-on-green: #f5fff2;
+  --record-muted-green: #c8e1ce;
+}
+
+svg {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.65;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.record-back {
   display: inline-flex;
   align-items: center;
+  gap: 7px;
   min-height: 44px;
-  background: transparent;
-  border: 0;
-  text-decoration: underline;
+  color: var(--focus-ring);
   text-underline-offset: 3px;
-  padding: 0 4px;
+}
+
+.sale-record { margin-top: clamp(8px, 2vw, 20px); }
+.sale-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px 24px;
+  padding-bottom: clamp(14px, 2vw, 24px);
+  border-bottom: 1px solid var(--divider);
+}
+.sale-identity { flex: 1 1 300px; min-width: 0; overflow-wrap: anywhere; }
+.sale-reference, .sale-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; }
+.sale-reference { margin: 0 0 4px; color: var(--text-secondary); font-size: .8rem; }
+.sale-reference span + span::before { content: '·'; margin-inline-end: 9px; }
+h1 {
+  margin: 0;
+  font-size: clamp(24px, 3.1vw, 36px);
+  letter-spacing: -.025em;
+  line-height: 1.13;
+}
+.sale-meta { margin-top: 9px; color: var(--text-secondary); }
+.sale-meta > span { display: inline-flex; align-items: center; gap: 5px; }
+.sale-meta svg { width: 15px; height: 15px; color: var(--focus-ring); }
+.sale-badge { padding: 2px 9px; border-radius: 999px; color: var(--state-success-text); background: var(--state-success-bg); }
+.sale-badge.exception { color: var(--state-danger-text); background: var(--state-danger-bg); }
+.sale-total {
+  min-width: 0;
+  display: grid;
+  justify-items: end;
+  gap: 2px;
+  color: var(--text-secondary);
+  font-size: .8rem;
+}
+.sale-total strong { font-size: clamp(24px, 3vw, 32px); color: var(--text-primary); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.sale-total .primary { margin-top: 8px; min-height: 44px; }
+
+.sale-progress {
+  margin-top: 14px;
+  padding: clamp(13px, 2vw, 21px);
+  border-radius: var(--radius-surface);
+  background: var(--record-green);
+  color: var(--record-on-green);
+}
+.progress-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px 14px; }
+.progress-head p { margin: 0 0 3px; color: var(--record-muted-green); font-size: .75rem; font-weight: 650; letter-spacing: .065em; text-transform: uppercase; }
+.progress-head h2 { margin: 0; font-size: clamp(21px, 2vw, 26px); line-height: 1.2; color: inherit; }
+.progress-head .exception { color: #ffe0ad; }
+.progress-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 5px 12px;
+  border: 1px solid var(--record-highlight);
+  border-radius: 6px;
+  background: var(--record-highlight);
+  color: #182e22;
+  font: inherit;
+  font-weight: 700;
+  text-decoration: none;
   cursor: pointer;
 }
-
-.sale-header {
-  display: grid;
-  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
-  align-items: end;
-  gap: 8px 16px;
-  margin: 16px 0;
+.progress-action:hover { background: #d1f7b6; }
+.progress-action:focus-visible { outline: 2px solid var(--record-highlight); outline-offset: 3px; }
+.progress-action:disabled { opacity: .65; }
+.progress-steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 14px 0 0; padding: 0; list-style: none; }
+.progress-steps li { position: relative; display: grid; align-content: start; justify-items: start; gap: 3px; min-width: 0; }
+.progress-steps li:not(:last-child)::before,
+.progress-steps li.followed::after {
+  content: '';
+  position: absolute;
+  inset: 11px 0 auto 31px;
+  border-top: 1px solid #ffffff45;
 }
+.progress-steps li.followed::after { border-color: var(--record-highlight); transform-origin: left; }
+.step-mark {
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border: 1px solid #ffffff63;
+  border-radius: 50%;
+  color: var(--record-muted-green);
+  font-size: 12px;
+}
+.step-mark svg { width: 15px; height: 15px; stroke-width: 2; }
+.done .step-mark { border-color: var(--record-highlight); color: #182e22; background: var(--record-highlight); }
+.progress-steps strong { margin-top: 3px; color: var(--record-on-green); font-size: .85rem; }
+.progress-steps :is(time, small) { color: var(--record-muted-green); font-size: .75rem; }
 
-.sale-header p, h1 { margin: 0; }
-h1, .sale-total strong { font-size: clamp(22px, 3vw, 28px); font-weight: 600; overflow-wrap: anywhere; }
-.sale-total { text-align: end; }
-.sale-total strong { display: block; }
-.sale-stage, .sale-destination { grid-column: 1 / -1; }
-.sale-destination strong { margin-inline-start: 6px; }
-.sale-stage::before { content: '•'; margin-inline-end: 6px; }
-.sale-stage[data-stage='cancelled'] { color: var(--state-danger-text); }
-.sale-header .primary { justify-self: start; }
-.record-tabs { display: flex; flex-wrap: wrap; gap: 8px; border-block: 1px solid var(--divider); }
-.record-tabs button { color: var(--text-secondary); text-decoration: none; border-bottom: 2px solid transparent; }
-.record-tabs button[aria-pressed='true'] { color: var(--text-primary); border-bottom-color: var(--focus-ring); font-weight: 700; }
-.record-section-heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
-h2 { margin: 16px 0 8px; font-size: 16px; }
-.record-lines { list-style: none; margin: 0; padding: 0; }
-.record-lines li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--divider); }
-.record-lines small { display: block; }
-.record-lines li > span, .record-action { min-width: 0; overflow-wrap: anywhere; }
-.record-action { flex-wrap: wrap; gap: 8px; }
-.record-facts { display: flex; flex-wrap: wrap; gap: 12px 24px; overflow-wrap: anywhere; }
-.record-facts div { min-width: 0; }
-.record-facts dt { color: var(--text-secondary); font-size: 12px; }
+.record-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  align-items: start;
+  gap: clamp(14px, 2.3vw, 26px);
+  margin-top: 16px;
+}
+.record-items, .record-rail { min-width: 0; }
+.record-section-heading { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; padding: 5px 0 8px; border-bottom: 1px solid var(--divider); }
+.record-section-heading h2 { margin: 0; font-size: 1.075rem; }
+.record-section-heading span, .record-empty { color: var(--text-secondary); }
+.record-lines, .document-lines { list-style: none; margin: 0; padding: 0; }
+.sale-item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 9px;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--divider);
+  overflow-wrap: anywhere;
+}
+.item-mark { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 6px; color: var(--state-success-text); background: var(--state-success-bg); }
+.item-value { font-variant-numeric: tabular-nums; }
+.sale-item small, .record-fold small { display: block; margin-top: 2px; color: var(--text-secondary); font-size: .8rem; }
+.record-totals { margin: 9px 0 0; color: var(--text-secondary); }
+.record-totals > div { display: flex; justify-content: space-between; gap: 8px; padding-block: 3px; }
+.record-totals dd { margin: 0; color: var(--text-primary); }
+
+.record-rail, .after-sale-fold { border: 1px solid var(--divider); border-radius: var(--radius-surface); background: var(--surface); }
+.after-sale-fold { margin-top: 14px; border-inline-start: 3px solid var(--state-warning-text); }
+.record-fold { min-width: 0; overflow-wrap: anywhere; scroll-margin-top: 72px; }
+.record-fold + .record-fold { border-top: 1px solid var(--divider); }
+.record-fold summary {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 9px;
+  min-height: 44px;
+  padding: 10px 12px;
+  border-radius: var(--radius-surface);
+  list-style: none;
+  cursor: pointer;
+}
+.record-fold summary:hover { background: color-mix(in srgb, var(--focus-ring) 8%, var(--surface)); }
+.record-fold summary::-webkit-details-marker { display: none; }
+.record-fold summary svg { color: var(--focus-ring); }
+.record-fold[open] .fold-chevron { transform: rotate(180deg); }
+.fold-body { padding: 0 12px 10px; }
+.document-lines a {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 44px;
+  padding: 7px 0;
+  border-top: 1px solid var(--divider);
+  color: var(--focus-ring);
+  text-decoration: none;
+}
+.document-lines a:hover strong { text-decoration: underline; }
+.record-empty { padding-block: 10px; }
+.record-facts { display: grid; gap: 7px; margin: 0; }
+.record-facts dt { color: var(--text-secondary); font-size: .8rem; }
 .record-facts dd { margin: 0; }
+
+@media (max-width: 760px) {
+  .record-columns { grid-template-columns: minmax(0, 1fr); }
+  .sale-identity { flex-basis: 100%; }
+  .sale-total { justify-items: start; }
+}
+@media (max-width: 380px) {
+  .sale-item { grid-template-columns: auto minmax(0, 1fr); }
+  .item-value { grid-column: 2; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .sale-header, .sale-progress, .record-items, .record-rail, .after-sale-fold {
+    animation: record-enter 300ms cubic-bezier(.22, .65, .26, 1) both;
+  }
+  .sale-progress { animation-delay: 60ms; }
+  .record-items { animation-delay: 100ms; }
+  .record-rail, .after-sale-fold { animation-delay: 140ms; }
+  .progress-status { animation: record-enter 220ms ease-out both; }
+  .progress-steps li.followed::after { animation: step-draw 330ms 175ms ease-out both; }
+  .progress-steps li.current .step-mark { animation: step-focus 420ms 250ms ease-out both; }
+  .record-fold[open] > .fold-body { animation: record-enter 210ms ease-out both; }
+  .fold-chevron { transition: transform 180ms ease; }
+}
+@keyframes record-enter { from { opacity: 0; transform: translateY(7px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes step-draw { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes step-focus { from { box-shadow: 0 0 0 0 #b9ed91aa; } to { box-shadow: 0 0 0 6px #b9ed9100; } }

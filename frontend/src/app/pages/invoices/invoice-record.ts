@@ -9,7 +9,7 @@ import { AuthService } from '../../core/auth.service';
 import { invoiceDocumentLabel } from '../../core/document-labels';
 import { LiveUpdatesService } from '../../core/live-updates.service';
 import { Invoice } from '../../core/models';
-import { saleStageForInvoice, saleStageLabel } from '../../core/sale-stage';
+import { invoiceProgress } from './invoice-progress';
 import { canSell } from '../../core/user-access';
 import { AfterSaleWorkflow } from '../../shared/after-sale-workflow';
 import { readRecordOrigin } from '../../shared/record-origin';
@@ -40,16 +40,26 @@ export class InvoiceRecord implements OnInit {
   readonly invoice = signal<Invoice | null>(null);
   readonly error = signal('');
   readonly confirming = signal(false);
-  readonly tab = signal<'items' | 'delivery' | 'documents' | 'after-sale'>('items');
+  readonly trackingOpen = signal(false);
+  readonly afterSaleOpen = signal(false);
+  readonly progress = computed(() => {
+    const sale = this.invoice();
+    return sale ? invoiceProgress(sale) : null;
+  });
+  readonly labelDocument = computed(() => this.invoice()?.documents.find((doc) => doc.document_type === 'label_pdf'));
+  readonly channel = computed(() => {
+    const source = this.invoice()?.source;
+    return source === 'mercadolivre' ? 'Mercado Livre' : source === 'shopee' ? 'Shopee' : 'Balcão';
+  });
   readonly canConfirm = computed(() => this.invoice()?.status === 'draft' && canSell(this.auth.user()?.role));
   readonly documentLabel = invoiceDocumentLabel;
-  readonly status = (invoice: Invoice) => saleStageLabel(saleStageForInvoice(invoice));
 
   ngOnInit(): void {
     this.route.paramMap.pipe(
       tap(() => {
         this.invoice.set(null);
-        this.tab.set('items');
+        this.trackingOpen.set(false);
+        this.afterSaleOpen.set(false);
         this.error.set('');
       }),
       switchMap((params) => this.fetch(params.get('id')!)),
@@ -79,6 +89,15 @@ export class InvoiceRecord implements OnInit {
     if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
     event.preventDefault();
     void this.router.navigateByUrl(this.origin.path, { state: { recordReturn: this.origin } });
+  }
+
+  reveal(section: 'tracking' | 'after-sale', record: HTMLElement): void {
+    const panel = record.querySelector<HTMLDetailsElement>(section === 'tracking' ? '#sale-tracking' : '#sale-after-sale');
+    if (!panel) return;
+    panel.open = true;
+    (section === 'tracking' ? this.trackingOpen : this.afterSaleOpen).set(true);
+    panel.querySelector('summary')?.focus({ preventScroll: true });
+    panel.scrollIntoView({ block: 'nearest', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
   }
 
   confirm(invoice: Invoice): void {

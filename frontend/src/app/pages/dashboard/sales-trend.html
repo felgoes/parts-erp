@@ -1,6 +1,6 @@
 <section class="trend" aria-labelledby="sales-trend-heading">
   <header class="trend-heading">
-    <h3 id="sales-trend-heading">{{ countOnly() ? 'Vendas por dia' : 'Receita por dia' }}</h3>
+    <h2 id="sales-trend-heading">{{ countOnly() ? 'Vendas por dia' : 'Receita por dia' }}</h2>
     @if (hasSales() && points()[selectedIndex()]; as selected) {
       <div class="trend-readout">
         <time [attr.datetime]="selected.date">{{ selected.label }}</time>
@@ -27,8 +27,8 @@
         </defs>
         <path class="trend-grid" d="M 0 14 H 1000 M 0 48 H 1000 M 0 82 H 1000 M 0 116 H 1000 M 0 150 H 1000" />
         <g class="trend-series">
-          <polygon [attr.points]="area()" fill="url(#sales-trend-fill)" />
-          <polyline class="trend-line" [attr.points]="line()" />
+          <polygon class="trend-fill" [attr.points]="area()" fill="url(#sales-trend-fill)" />
+          <polyline class="trend-line" pathLength="1" [attr.points]="line()" />
         </g>
         <line class="trend-guide" [attr.x1]="selected.x" [attr.x2]="selected.x" y1="14" y2="150" />
       </svg>

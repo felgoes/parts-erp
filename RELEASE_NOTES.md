@@ -1,3 +1,7 @@
+## 8 de novembro de 2026 — cabeçalho da Visão geral
+
+- A Visão geral mostra só o título e o filtro de período no cabeçalho da página. No desktop, o filtro fica à direita; no celular, logo abaixo do título. Implantado em 08/11/2026, com API, ERP e site verificados. [Commit implantado · ac2543c](https://github.com/felgoes/parts-erp/commit/ac2543c0d702128ffbb89558ce00e3a6c189bb54)
+
 ## 8 de novembro de 2026 — navegação e listas no celular
 
 - Alertas e Assistente passaram para o rodapé. Estoque continua acessível pelo Menu. A marca fica centralizada no cabeçalho, que recolhe na descida e reaparece na subida. Os cartões continuam arredondados com margens menores, e as listas de Vendas, Mercado Livre e demais listas operacionais se ajustam à largura da tela. Implantado em 08/11/2026, com API, ERP e site verificados. [Commit implantado · 1b69f6f](https://github.com/felgoes/parts-erp/commit/1b69f6f88d9bd130619e75c509aa9a567a74907a)

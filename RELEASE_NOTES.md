@@ -1,3 +1,7 @@
+## 8 de novembro de 2026 — mapa de entrega e vendas do período
+
+- O pedido online e a aba Entrega da venda mostram um mapa escuro com curvas animadas, última cidade informada e bandeira no destino. O traço pontilhado indica a ligação ilustrativa ao destino. No celular, a marca ficou à esquerda e o Assistente virou ícone ao lado do sino. Últimas vendas agora permite navegar por todas as vendas do período. Implantado em 08/11/2026, com API, ERP, site e mapa verificados. [Commit implantado · 436e886](https://github.com/felgoes/parts-erp/commit/436e886bd8fd39f453964c928243498ecfcd20e5)
+
 ## 8 de novembro de 2026 — destaque do menu no celular
 
 - Ao abrir o Menu, só ele fica destacado na faixa inferior. Ao fechar, o destaque volta para a tela atual. Implantado em 08/11/2026, com verificações do ERP e do site aprovadas. [Commit implantado · b06471e](https://github.com/felgoes/parts-erp/commit/b06471e10aebedd4c075567998ded0246a231dba)

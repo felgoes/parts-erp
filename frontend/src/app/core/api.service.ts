@@ -132,8 +132,8 @@ export class ApiService {
   runGoogleDriveBackup(): Observable<{ filename: string; message: string }> {
     return this.settingsApi.runGoogleDriveBackup();
   }
-  dashboard(startDate: string, endDate: string): Observable<DashboardSummary> {
-    return this.dashboardApi.dashboard(startDate, endDate);
+  dashboard(startDate: string, endDate: string, recentSalesOffset = 0): Observable<DashboardSummary> {
+    return this.dashboardApi.dashboard(startDate, endDate, recentSalesOffset);
   }
   dashboardFinancial(startDate: string, endDate: string): Observable<DashboardFinancialMetrics> {
     return this.dashboardApi.dashboardFinancial(startDate, endDate);

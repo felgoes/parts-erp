@@ -32,6 +32,7 @@ from app.schemas.common import (
 )
 from app.services.invoice_tracking import attach_invoice_tracking
 from app.services.shipping_destination_refresh import refresh_shipping_destination
+from app.services.shipping_route import load_shipping_route
 from app.services.shipping_status import pending_dispatch_filters
 from app.services.tracking_destination import tracking_destination_address
 
@@ -236,7 +237,9 @@ def order_detail(
     if not order:
         raise HTTPException(status_code=404, detail="Pedido não encontrado")
     refresh_shipping_destination(db, order)
-    return _orders_with_shipping_history(db, [order])[0]
+    output = _orders_with_shipping_history(db, [order])[0]
+    output.shipping_route = load_shipping_route(db, order)
+    return output
 
 
 @router.get("/orders/{order_id}/history", response_model=list[MarketplaceOrderEventOut])

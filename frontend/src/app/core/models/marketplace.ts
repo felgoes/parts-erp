@@ -1,3 +1,4 @@
+import type { ShippingRoute } from './shipping-route';
 import type { Invoice } from './invoices';
 
 export interface MarketplaceStatus {
@@ -43,6 +44,7 @@ export interface MarketplaceOrder {
   provider?: string;
   payload?: Record<string, any> | null;
   destination_address: string | null;
+  shipping_route?: ShippingRoute | null;
   invoice?: Invoice | null;
 }
 export interface MarketplaceOrderEvent {

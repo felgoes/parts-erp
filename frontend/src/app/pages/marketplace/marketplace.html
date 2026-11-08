@@ -238,6 +238,12 @@
           <small>Fatura</small><strong>{{ order.invoice_id ? 'Vinculada' : 'Não gerada' }}</strong>
         </div>
       </div>
+      @if (order.shipment_id && order.provider !== 'shopee') {
+        <app-shipping-route-map
+          [route]="order.shipping_route ?? null"
+          [status]="trackingEventLabel(order.shipping_status || 'unknown', order.shipping_substatus)"
+        />
+      }
       @if (canProcess()) {
         <section class="fulfillment-panel" aria-label="Documentos e expedição do pedido">
           <div class="fulfillment-heading">

@@ -84,7 +84,10 @@ def tracking_destination_address(order: MarketplaceOrder) -> str | None:
 def shipping_destination_locality(shipment: Mapping[str, Any] | None) -> str | None:
     if not isinstance(shipment, Mapping):
         return None
-    address = _first_address(shipment)
+    return shipping_address_locality(_first_address(shipment))
+
+
+def shipping_address_locality(address: object) -> str | None:
     if not isinstance(address, Mapping):
         return None
     city_value = address.get("city")

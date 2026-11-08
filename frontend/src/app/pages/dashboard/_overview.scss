@@ -130,6 +130,25 @@
 .overview-empty { display: flex; align-items: center; gap: 9px; margin: 0; padding-block: 9px; color: var(--text-secondary); }
 .overview-empty .overview-icon { flex: 0 0 36px; }
 .overview-sales { list-style: none; padding: 0; margin: 4px 0 0; }
+.sales-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .45rem;
+  padding-top: .7rem;
+  font-size: .8rem;
+}
+
+.sales-pagination button {
+  min-height: 38px;
+  border: 1px solid var(--divider);
+  border-radius: 8px;
+  padding: .25rem .55rem;
+  color: inherit;
+  background: transparent;
+}
+
+.sales-pagination button:disabled { opacity: .45; }
 .overview-sales li { border-top: 1px solid var(--divider); }
 .overview-customer, .overview-sale-detail { display: grid; gap: 3px; min-width: 0; overflow-wrap: anywhere; }
 .overview-sale-detail { justify-items: end; text-align: end; font-variant-numeric: tabular-nums; }

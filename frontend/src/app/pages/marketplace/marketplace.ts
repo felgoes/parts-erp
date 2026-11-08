@@ -15,11 +15,12 @@ import { documentLabel } from '../../core/document-labels';
 import { recordOrigin } from '../../shared/record-origin';
 import { canAccessPage } from '../../core/user-access';
 import { PageHeader } from '../../shared/page-header';
+import { ShippingRouteMap } from '../../shared/shipping-route-map';
 import { TrackingTimeline } from '../../shared/tracking-timeline';
 
 @Component({
   selector: 'app-marketplace',
-  imports: [DatePipe, DecimalPipe, JsonPipe, PageHeader, RouterLink, TrackingTimeline],
+  imports: [DatePipe, DecimalPipe, JsonPipe, PageHeader, RouterLink, ShippingRouteMap, TrackingTimeline],
   templateUrl: './marketplace.html',
   styleUrl: './marketplace.scss',
 })

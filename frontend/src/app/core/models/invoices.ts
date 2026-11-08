@@ -1,3 +1,4 @@
+import type { ShippingRoute } from './shipping-route';
 export interface InvoiceItem {
   id: string;
   product_id: string;
@@ -97,6 +98,7 @@ export interface InvoiceTrackingEvent {
 export interface InvoiceTracking {
   shipment_id: string | null;
   destination_address: string | null;
+  shipping_route?: ShippingRoute | null;
   destination_locality?: string | null;
   status: string | null;
   shipping_status: string | null;

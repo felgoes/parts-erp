@@ -2,11 +2,13 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models import MarketplaceAccount, MarketplaceOrder
-from app.services.tracking_destination import tracking_destination_address
+from app.services.shipping_route import shipping_route_synced
 
 
 def refresh_shipping_destination(db: Session, order: MarketplaceOrder) -> None:
-    if tracking_destination_address(order) or not order.shipment_id:
+    if order.provider != "mercadolivre" or not order.shipment_id:
+        return
+    if shipping_route_synced(order):
         return
     account = db.scalar(
         select(MarketplaceAccount).where(

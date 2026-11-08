@@ -8,6 +8,7 @@ from pydantic import (
 
 from app.schemas.base import ORMModel
 from app.schemas.invoices import InvoiceOut
+from app.schemas.shipping_route import ShippingRouteOut
 
 
 class MarketplaceOrderOut(ORMModel):
@@ -23,6 +24,7 @@ class MarketplaceOrderOut(ORMModel):
     provider: str = "mercadolivre"
     shipment_id: str | None = None
     destination_address: str | None = None
+    shipping_route: ShippingRouteOut | None = None
     shipping_status: str | None = None
     shipping_substatus: str | None = None
     fiscal_status: str = "pending"

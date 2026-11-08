@@ -9,6 +9,7 @@ from pydantic import (
 )
 
 from app.schemas.base import ORMModel, UtcModel
+from app.schemas.shipping_route import ShippingRouteOut
 
 
 class InvoiceItemCreate(BaseModel):
@@ -58,6 +59,7 @@ class InvoiceTrackingEventOut(UtcModel):
 class InvoiceTrackingOut(UtcModel):
     shipment_id: str | None
     destination_address: str | None = None
+    shipping_route: ShippingRouteOut | None = None
     destination_locality: str | None = None
     status: str | None
     shipping_status: str | None

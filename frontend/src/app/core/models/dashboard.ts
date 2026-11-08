@@ -13,7 +13,12 @@ export interface DashboardSummary {
   products_count: number;
   low_stock_count: number;
   recent_invoices: Invoice[];
+  recent_sales_next_offset?: number | null;
   daily: DashboardDailyMetric[];
+}
+export interface DashboardSalesPage {
+  items: Invoice[];
+  next_offset: number | null;
 }
 export interface DashboardBreakdown {
   label: string;

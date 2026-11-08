@@ -4,6 +4,7 @@ import { Router, RouterLink } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { debounceTime } from 'rxjs';
 import { ApiService } from '../../core/api.service';
+import { DashboardApi } from '../../core/api/dashboard-api';
 import { UsersApi } from '../../core/api/users-api';
 import { LiveUpdatesService } from '../../core/live-updates.service';
 import { AuthService } from '../../core/auth.service';
@@ -29,6 +30,7 @@ import { SalesTrend } from './sales-trend';
 })
 export class DashboardPage implements OnInit {
   private readonly api = inject(ApiService);
+  private readonly dashboardApi = inject(DashboardApi);
   private readonly usersApi = inject(UsersApi);
   private readonly live = inject(LiveUpdatesService);
   private readonly destroyRef = inject(DestroyRef);
@@ -39,6 +41,11 @@ export class DashboardPage implements OnInit {
   private readonly router = inject(Router);
   readonly data = signal<DashboardSummary | null>(null);
   readonly loadError = signal(false);
+  readonly salesOffset = signal(0);
+  readonly salesLoading = signal(false);
+  readonly salesError = signal(false);
+  readonly pageSize = 10;
+  private salesRevision = 0;
   readonly financial = signal<DashboardFinancialMetrics | null>(null);
   readonly financialSummaryHidden = computed(() => !!this.auth.user()?.financial_summary_hidden);
   startDate = this.monthStart();
@@ -48,10 +55,11 @@ export class DashboardPage implements OnInit {
   readonly saleStageLabel = saleStageLabel;
   private pendingReturn = window.history.state?.recordReturn as RecordOrigin | undefined;
   ngOnInit() {
-    const view = this.pendingReturn?.view as { startDate?: string; endDate?: string } | undefined;
+    const view = this.pendingReturn?.view as { startDate?: string; endDate?: string; salesOffset?: number } | undefined;
     if (view?.startDate && view.endDate) {
       this.startDate = view.startDate;
       this.endDate = view.endDate;
+      this.salesOffset.set(Math.max(0, view.salesOffset ?? 0));
       this.initialPreset = matchingDatePreset(this.startDate, this.endDate);
     }
     this.load();
@@ -62,10 +70,26 @@ export class DashboardPage implements OnInit {
   load() {
     if (!this.validRange()) return;
     const { startDate, endDate } = this;
-    this.api.dashboard(startDate, endDate).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+    const offset = this.salesOffset();
+    const revision = this.salesRevision;
+    this.api.dashboard(startDate, endDate, offset).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (summary) => {
         if (startDate !== this.startDate || endDate !== this.endDate) return;
         this.loadError.set(false);
+        if (revision !== this.salesRevision || offset !== this.salesOffset()) {
+          const current = this.data();
+          if (current) this.data.set({
+            ...summary,
+            recent_invoices: current.recent_invoices,
+            recent_sales_next_offset: current.recent_sales_next_offset,
+          });
+          return;
+        }
+        if (offset > 0 && !summary.recent_invoices.length) {
+          this.salesOffset.set(Math.max(0, offset - this.pageSize));
+          this.load();
+          return;
+        }
         this.data.set(summary);
         restoreRecordPosition(this.pendingReturn);
         this.pendingReturn = undefined;
@@ -75,8 +99,34 @@ export class DashboardPage implements OnInit {
       },
     });
   }
+  loadSalesPage(offset: number): void {
+    if (this.salesLoading() || offset < 0 || offset === this.salesOffset()) return;
+    const revision = ++this.salesRevision;
+    this.salesLoading.set(true);
+    this.salesError.set(false);
+    this.dashboardApi.dashboardRecentSales(this.startDate, this.endDate, offset)
+      .pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+        next: (page) => {
+          if (revision !== this.salesRevision) return;
+          this.salesOffset.set(offset);
+          this.data.update((summary) => summary && ({
+            ...summary, recent_invoices: page.items, recent_sales_next_offset: page.next_offset,
+          }));
+          this.salesLoading.set(false);
+        },
+        error: () => {
+          if (revision !== this.salesRevision) return;
+          this.salesError.set(true);
+          this.salesLoading.set(false);
+        },
+      });
+  }
   applyDateFilter(range: { startDate: string; endDate: string }) {
     if (range.startDate === this.startDate && range.endDate === this.endDate) return;
+    ++this.salesRevision;
+    this.salesOffset.set(0);
+    this.salesLoading.set(false);
+    this.salesError.set(false);
     this.data.set(null);
     this.loadError.set(false);
     this.startDate = range.startDate;
@@ -99,6 +149,7 @@ export class DashboardPage implements OnInit {
       state: recordOrigin(this.router.url, 'Visão geral', invoice.id, {
         startDate: this.startDate,
         endDate: this.endDate,
+        salesOffset: this.salesOffset(),
       }),
     });
   }

@@ -5,6 +5,7 @@ import { Observable } from 'rxjs';
 import {
   Customer,
   DashboardSummary,
+  DashboardSalesPage,
   DashboardFinancialMetrics,
   FinanceOverview,
   Invoice,
@@ -40,9 +41,14 @@ import { queryParams } from './http-helpers';
 export class DashboardApi {
   private readonly http = inject(HttpClient);
   private readonly base = apiUrl('');
-  dashboard(startDate: string, endDate: string): Observable<DashboardSummary> {
+  dashboard(startDate: string, endDate: string, recentSalesOffset = 0): Observable<DashboardSummary> {
     return this.http.get<DashboardSummary>(`${this.base}/dashboard/summary`, {
-      params: { start_date: startDate, end_date: endDate },
+      params: { start_date: startDate, end_date: endDate, recent_sales_offset: recentSalesOffset },
+    });
+  }
+  dashboardRecentSales(startDate: string, endDate: string, offset: number): Observable<DashboardSalesPage> {
+    return this.http.get<DashboardSalesPage>(`${this.base}/dashboard/recent-sales`, {
+      params: { start_date: startDate, end_date: endDate, offset },
     });
   }
   dashboardFinancial(startDate: string, endDate: string): Observable<DashboardFinancialMetrics> {

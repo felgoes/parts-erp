@@ -1,4 +1,4 @@
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from runpy import run_path
 from zoneinfo import ZoneInfoNotFoundError
@@ -9,9 +9,9 @@ from sqlalchemy.orm import Session
 
 from app.api.routes.finance import overview as finance_overview
 from app.api.routes import dashboard
-from app.api.routes.dashboard import financial_metrics, summary
+from app.api.routes.dashboard import financial_metrics, recent_sales, summary
 from app.api.routes.invoices import list_invoices
-from app.models import InvoiceSource, MarketplaceOrder, MarketplaceOrderEvent, Product
+from app.models import InvoiceSource, MarketplaceOrder, MarketplaceOrderEvent, Product, SalesInvoice
 from app.schemas.common import InvoiceCreate, InvoiceItemCreate
 from app.services.sales import cancel_invoice, confirm_invoice, create_invoice
 
@@ -69,6 +69,25 @@ def test_invoice_and_dashboard_date_filters(db: Session) -> None:
     assert dashboard.daily[14].amount == Decimal("100.00")
     assert dashboard.daily[14].count == 1
     assert dashboard.daily[15].count == 0
+
+
+def test_dashboard_can_page_through_all_sales_in_selected_day(db: Session) -> None:
+    day = date(2026, 8, 15)
+    end = datetime(2026, 8, 16, 3, tzinfo=UTC)
+    db.add_all([
+        SalesInvoice(number=f"PAGE-{minute:02d}", created_at=end - timedelta(minutes=minute))
+        for minute in range(13)
+    ])
+    db.flush()
+
+    dashboard = summary(day, day, db, None)
+    assert [invoice.number for invoice in dashboard.recent_invoices] == [
+        f"PAGE-{minute:02d}" for minute in range(1, 11)
+    ]
+    assert dashboard.recent_sales_next_offset == 10
+    last = recent_sales(day, day, dashboard.recent_sales_next_offset, db, None)
+    assert [invoice.number for invoice in last.items] == ["PAGE-11", "PAGE-12"]
+    assert last.next_offset is None
 
 
 def test_cancelled_marketplace_sale_stays_visible_but_is_not_revenue(db: Session) -> None:

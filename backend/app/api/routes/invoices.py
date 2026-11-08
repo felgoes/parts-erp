@@ -30,7 +30,11 @@ from app.schemas.common import (
 )
 from app.services.after_sale import after_sales_for_invoices, invoice_after_sale
 from app.services.invoice_tracking import attach_invoice_tracking, tracking_last_update
-from app.services.tracking_destination import tracking_destination_address
+from app.services.shipping_route import build_shipping_route, shipping_route_synced
+from app.services.tracking_destination import (
+    tracking_destination_address,
+    tracking_destination_locality,
+)
 from app.services.sales import cancel_invoice, confirm_invoice, create_invoice
 
 
@@ -196,7 +200,7 @@ def get_invoice(
                             sync_shipping_status,
                         )
 
-                        if tracking_destination_address(order):
+                        if shipping_route_synced(order):
                             sync_shipping_history(db, order, account)
                         else:
                             sync_shipping_status(db, order, account)
@@ -215,6 +219,8 @@ def get_invoice(
             result.tracking = InvoiceTrackingOut(
                 shipment_id=order.shipment_id,
                 destination_address=tracking_destination_address(order),
+                destination_locality=tracking_destination_locality(order),
+                shipping_route=build_shipping_route(order, event_list),
                 status=order.status,
                 shipping_status=order.shipping_status,
                 shipping_substatus=order.shipping_substatus,

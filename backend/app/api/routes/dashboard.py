@@ -1,5 +1,6 @@
 from datetime import UTC, date, datetime, time, timedelta, tzinfo
 from decimal import Decimal
+from typing import Annotated
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -18,6 +19,7 @@ from app.schemas.common import (
     DashboardSummary,
     InvoiceOut,
 )
+from app.schemas.dashboard import DashboardSalesPage
 from app.services.after_sale import after_sales_for_invoices
 from app.services.invoice_tracking import attach_invoice_tracking
 from app.services.marketplace_costs import InvoiceRevenue, revenue_by_invoice, revenue_totals
@@ -71,12 +73,59 @@ def _daily_metrics(
     return daily
 
 
+RECENT_SALES_PAGE_SIZE = 10
+
+
+def _recent_sales(db: Session, since: datetime, until: datetime, offset: int) -> DashboardSalesPage:
+    invoice_date = func.coalesce(SalesInvoice.issued_at, SalesInvoice.created_at)
+    recent = list(
+        db.scalars(
+            select(SalesInvoice)
+            .options(
+                selectinload(SalesInvoice.customer),
+                selectinload(SalesInvoice.documents),
+                selectinload(SalesInvoice.items),
+            )
+            .where(invoice_date >= since, invoice_date < until)
+            .order_by(invoice_date.desc(), SalesInvoice.created_at.desc(), SalesInvoice.id.desc())
+            .offset(offset)
+            .limit(RECENT_SALES_PAGE_SIZE + 1)
+        )
+    )
+    has_more = len(recent) > RECENT_SALES_PAGE_SIZE
+    recent = recent[:RECENT_SALES_PAGE_SIZE]
+    after_sales = after_sales_for_invoices(db, recent)
+    recent_outputs: list[InvoiceOut] = []
+    for invoice in recent:
+        output = InvoiceOut.model_validate(invoice)
+        output.after_sale = after_sales.get(invoice.id)
+        recent_outputs.append(output)
+    attach_invoice_tracking(db, recent_outputs)
+    return DashboardSalesPage(
+        items=recent_outputs,
+        next_offset=offset + RECENT_SALES_PAGE_SIZE if has_more else None,
+    )
+
+
+@router.get("/recent-sales", response_model=DashboardSalesPage)
+def recent_sales(
+    start_date: date | None = Query(default=None),
+    end_date: date | None = Query(default=None),
+    offset: int = Query(default=0, ge=0),
+    db: Session = Depends(get_db),
+    _: User = Depends(require_permission(Permission.DASHBOARD_READ)),
+) -> DashboardSalesPage:
+    _, _, since, until = _period(start_date, end_date)
+    return _recent_sales(db, since, until, offset)
+
+
 @router.get("/summary", response_model=DashboardSummary)
 def summary(
     start_date: date | None = Query(default=None),
     end_date: date | None = Query(default=None),
     db: Session = Depends(get_db),
     _: User = Depends(require_permission(Permission.DASHBOARD_READ)),
+    recent_sales_offset: Annotated[int, Query(ge=0)] = 0,
 ) -> DashboardSummary:
     start, end, since, until = _period(start_date, end_date)
     invoice_date = func.coalesce(SalesInvoice.issued_at, SalesInvoice.created_at)
@@ -118,26 +167,7 @@ def summary(
         )
         or 0
     )
-    recent = list(
-        db.scalars(
-            select(SalesInvoice)
-            .options(
-                selectinload(SalesInvoice.customer),
-                selectinload(SalesInvoice.documents),
-                selectinload(SalesInvoice.items),
-            )
-            .where(invoice_date >= since, invoice_date < until)
-            .order_by(SalesInvoice.created_at.desc())
-            .limit(5)
-        )
-    )
-    after_sales = after_sales_for_invoices(db, recent)
-    recent_outputs: list[InvoiceOut] = []
-    for invoice in recent:
-        output = InvoiceOut.model_validate(invoice)
-        output.after_sale = after_sales.get(invoice.id)
-        recent_outputs.append(output)
-    attach_invoice_tracking(db, recent_outputs)
+    recent = _recent_sales(db, since, until, recent_sales_offset)
     return DashboardSummary(
         revenue_month=Decimal(str(revenue or 0)),
         gross_revenue_month=revenue_summary.gross,
@@ -150,7 +180,8 @@ def summary(
         cancelled_amount=Decimal(str(cancelled_amount or 0)),
         products_count=products,
         low_stock_count=low_stock,
-        recent_invoices=recent_outputs,
+        recent_invoices=recent.items,
+        recent_sales_next_offset=recent.next_offset,
         daily=_daily_metrics(start, end, confirmed_invoices, revenues),
     )
 

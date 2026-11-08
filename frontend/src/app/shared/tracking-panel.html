@@ -1,4 +1,10 @@
 <section class="detail-section">
+  @if (tracking().shipment_id) {
+    <app-shipping-route-map
+      [route]="tracking().shipping_route ?? null"
+      [status]="trackingEventLabel(tracking().shipping_status || 'unknown', tracking().shipping_substatus)"
+    />
+  }
   <div class="tracking-cards">
     <div>
       <span>Status do pedido</span><strong>{{ statusLabel(tracking().status) }}</strong>
@@ -31,7 +37,7 @@
       tracking().last_update
         ? (tracking().last_update_source === 'platform'
             ? 'Atualizado na plataforma '
-            : 'Recebido pelo ERP ') + (tracking().last_update | date: 'dd/MM/yyyy HH:mm')
+            : 'Recebido pelo ERP ') + (tracking().last_update | date: 'dd/MM/yyyy HH:mm' : '-0300')
         : ''
     }}</small>
   </div>

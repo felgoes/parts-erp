@@ -22,9 +22,8 @@
     </a>
   </div>
     @if (assistant.isAdmin()) {
-    <button class="global-action assistant-trigger" type="button" [attr.aria-expanded]="assistant.open()" aria-controls="assistant-panel" (click)="closeMobileMenu(false); assistant.toggle($event)">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v4m0 10v4M3 12h4m10 0h4M5.6 5.6l2.8 2.8m7.2 7.2 2.8 2.8m0-12.8-2.8 2.8m-7.2 7.2-2.8 2.8" /></svg>
-      <span>Assistente</span>
+    <button class="global-action assistant-trigger" type="button" aria-label="Assistente" title="Assistente" [attr.aria-expanded]="assistant.open()" aria-controls="assistant-panel" (click)="closeMobileMenu(false); assistant.toggle($event)">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 3l1.8 5.2L17 10l-5.2 1.8L10 17l-1.8-5.2L3 10l5.2-1.8L10 3Zm8 10v6m-3-3h6" /></svg>
     </button>
     }
     <app-notifications-menu (click)="closeMobileMenu(false)" />

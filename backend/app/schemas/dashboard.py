@@ -16,6 +16,11 @@ class DashboardDailyMetric(BaseModel):
     count: int
 
 
+class DashboardSalesPage(BaseModel):
+    items: list[InvoiceOut]
+    next_offset: int | None
+
+
 class DashboardSummary(BaseModel):
     revenue_month: Decimal
     gross_revenue_month: Decimal
@@ -29,6 +34,7 @@ class DashboardSummary(BaseModel):
     products_count: int
     low_stock_count: int
     recent_invoices: list[InvoiceOut]
+    recent_sales_next_offset: int | None = None
     daily: list[DashboardDailyMetric]
 
 

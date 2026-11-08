@@ -1,0 +1,96 @@
+<section class="route-card" aria-label="Mapa do envio">
+  <div class="route-heading">
+    <div>
+      <span class="route-kicker">RASTREIO DO ENVIO</span>
+      <h4>Mapa da entrega</h4>
+    </div>
+    <span class="route-status">{{ status() }}</span>
+  </div>
+
+  <div class="route-body">
+    <figure class="map" #mapFrame [class.waiting]="motion() === 'waiting'" [class.playing]="motion() === 'playing'">
+      @if (drawing(); as map) {
+        <svg viewBox="0 0 640 300" aria-hidden="true">
+          <g [attr.transform]="map.transform" class="states">
+            @for (path of map.states; track $index) {
+              <path [attr.d]="path" vector-effect="non-scaling-stroke" fill-rule="evenodd" />
+            }
+          </g>
+          @if (map.confirmed) {
+            <path class="route-line glow" [attr.d]="map.confirmed" pathLength="1" />
+            <path class="route-line" [attr.d]="map.confirmed" pathLength="1" />
+          }
+          @if (map.pending) {
+            <defs>
+              <mask [attr.id]="maskId" maskUnits="userSpaceOnUse" x="0" y="0" width="640" height="300">
+                <path class="route-reveal" [attr.class]="map.confirmed ? 'route-reveal delayed' : 'route-reveal'" [attr.d]="map.pending" pathLength="1" />
+              </mask>
+            </defs>
+            <path class="route-pending" [attr.d]="map.pending" [attr.mask]="'url(#' + maskId + ')'" />
+          }
+          @for (pin of map.pins; track $index) {
+            <g [attr.transform]="'translate(' + pin.x + ',' + pin.y + ')'" [attr.class]="'pin ' + pin.role + (pin.destination ? ' is-destination' : '')">
+              @if (pin.role === 'latest') {
+                <circle class="pulse" r="12" />
+              }
+              <circle class="pin-halo" [attr.r]="pin.destination || pin.role === 'latest' ? 10 : 7" />
+              @if (pin.destination) {
+                <path class="pin-flag" d="M-3 5V-6h8L3-3l2 3h-8" />
+              } @else {
+                <circle class="pin-core" [attr.r]="pin.role === 'stop' ? 3 : 4" />
+              }
+            </g>
+          }
+          @for (label of map.labels; track label.role) {
+            <text [attr.class]="'map-label ' + label.role" [attr.x]="label.x" [attr.y]="label.y" text-anchor="middle">{{ label.text }}</text>
+          }
+        </svg>
+        @if (!map.hasPins) {
+          <span class="map-message">Sem locais para marcar no mapa</span>
+        }
+      } @else {
+        <span class="map-message">{{ loading() ? 'Carregando mapa…' : 'Mapa indisponível' }}</span>
+      }
+      @if (drawing(); as map) {
+        <figcaption>
+          @if (map.confirmed) { <span><i class="key-line"></i>Passagens informadas</span> }
+          @if (map.pending) { <span><i class="key-line dotted"></i>Ligação até o destino</span> }
+          @if (map.confirmed || map.pending) { <span>Traçado ilustrativo</span> }
+          <span>Mapa: IBGE</span>
+        </figcaption>
+      }
+    </figure>
+
+    <dl class="route-details">
+      <div class="last-report">
+        <dt>Último local informado</dt>
+        @if (latest(); as checkpoint) {
+          <dd>{{ checkpoint.locality }}</dd>
+          @if (checkpoint.recorded_at) {
+            <dd class="report-time">{{ checkpoint.recorded_at | date: 'dd/MM/yyyy · HH:mm' : '-0300' }}</dd>
+          }
+          @if (drawing(); as map) {
+            @if (!map.latestMapped) {
+              <dd class="report-time">Cidade sem referência no mapa.</dd>
+            }
+          }
+        } @else {
+          <dd class="report-time">A transportadora ainda não informou uma localização.</dd>
+        }
+      </div>
+      <div class="route-stop">
+        <dt><span class="legend origin"></span>Origem</dt>
+        <dd>{{ route()?.origin || 'Não informada' }}</dd>
+      </div>
+      <div class="route-stop">
+        <dt><span class="legend destination"></span>Destino</dt>
+        <dd>{{ route()?.destination || 'Não informado' }}</dd>
+        @if (drawing(); as map) {
+          @if (route()?.destination && !map.destinationMapped) {
+            <dd class="report-time">Cidade sem referência no mapa.</dd>
+          }
+        }
+      </div>
+    </dl>
+  </div>
+</section>

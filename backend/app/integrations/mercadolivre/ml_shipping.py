@@ -19,6 +19,7 @@ from app.models import (
     MarketplaceOrder,
     MarketplaceOrderEvent,
 )
+from app.services.shipping_route import persist_shipping_route
 from app.services.tracking_destination import persist_tracking_destination
 
 
@@ -41,6 +42,7 @@ def sync_shipping_status(
     record.shipping_status = str(shipment.get("status") or record.shipping_status or "unknown")
     record.shipping_substatus = str(shipment.get("substatus") or "") or None
     persist_tracking_destination(record, shipment)
+    persist_shipping_route(record, shipment)
     sync_shipping_history(db, record, account)
     return shipment
 
@@ -231,6 +233,7 @@ def sync_shipping_history(
             continue
         payload = dict(item)
         payload["source_date"] = source_date
+        payload["_erp_shipment_id"] = record.shipment_id
         db.add(
             MarketplaceOrderEvent(
                 order_id=record.id,

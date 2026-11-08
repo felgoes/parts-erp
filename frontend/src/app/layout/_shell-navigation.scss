@@ -15,6 +15,16 @@
 
 .app-topbar .mobile-bar { display: none; }
 
+.app-shell .app-topbar .assistant-trigger {
+  width: 44px;
+  padding: 0;
+}
+
+.app-shell .app-topbar .assistant-trigger svg {
+  display: block;
+  width: 20px;
+}
+
 @media (width < 768px) {
   .app-shell {
     --mobile-header-size: calc(54px + env(safe-area-inset-top));
@@ -24,7 +34,7 @@
     position: sticky;
     inset: 0 0 auto;
     height: var(--mobile-header-size);
-    padding: env(safe-area-inset-top) max(8px, env(safe-area-inset-right)) 0 max(8px, env(safe-area-inset-left));
+    padding: env(safe-area-inset-top) max(8px, env(safe-area-inset-right)) 0 max(12px, env(safe-area-inset-left));
     gap: 2px;
     background: #123328;
     color: #f3f8f2;
@@ -33,7 +43,8 @@
   .app-topbar .topbar-spacer { display: none; }
   .app-shell .app-topbar .mobile-bar {
     position: static;
-    display: block;
+    display: flex;
+    align-items: center;
     flex: 1 1 auto;
     padding: 0;
     gap: 4px;
@@ -43,11 +54,10 @@
   }
 
   .app-shell .mobile-bar > .brand {
-    position: absolute;
-    left: 50%;
-    top: calc(env(safe-area-inset-top) + 27px);
-    transform: translate(-50%, -50%);
-    max-width: calc(100% - 220px);
+    position: static;
+    transform: none;
+    margin: 0;
+    max-width: 100%;
     gap: 4px;
     color: inherit;
   }
@@ -56,28 +66,12 @@
   .mobile-bar .brand strong { font-size: 17px; }
 
   .app-shell .app-topbar .assistant-trigger {
-    width: auto;
-    padding-inline: 4px;
     color: inherit;
     border: 0;
     background: transparent;
   }
 
-  .app-shell .app-topbar .assistant-trigger span { display: inline; }
-  .app-shell .app-topbar .assistant-trigger svg { display: none; }
   .app-shell .app-topbar app-notifications-menu { inset: auto; transform: none; }
 
   .app-shell .sidebar-head { display: none; }
-}
-
-@media (width < 360px) {
-  .app-shell .mobile-bar > .brand { max-width: calc(100% - 184px); }
-  .app-shell .app-topbar .assistant-trigger svg { display: block; }
-  .app-shell .app-topbar .assistant-trigger span {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    clip-path: inset(50%);
-    overflow: hidden;
-  }
 }

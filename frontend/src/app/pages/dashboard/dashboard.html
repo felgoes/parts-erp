@@ -85,11 +85,11 @@
         <div class="overview-section-heading">
           <h2 id="recent-sales-heading">Últimas vendas</h2>
           @if (canOpen('/invoices')) {
-            <a class="overview-link" routerLink="/invoices">Ver todas <span aria-hidden="true">→</span></a>
+            <a class="overview-link" routerLink="/invoices">Abrir Vendas <span aria-hidden="true">→</span></a>
           }
         </div>
         <ul class="overview-sales">
-          @for (invoice of summary.recent_invoices.slice(0, 2); track invoice.id) {
+          @for (invoice of summary.recent_invoices; track invoice.id) {
             @let stage = saleStageForInvoice(invoice);
             <li>
               <a class="overview-sale" [attr.href]="'/invoices/' + invoice.id" [attr.data-record-focus]="invoice.id" (click)="openRecent($event, invoice)">
@@ -111,6 +111,16 @@
             <li><p class="overview-empty">Nenhuma venda neste período.</p></li>
           }
         </ul>
+        @if (salesOffset() || summary.recent_sales_next_offset != null) {
+          <nav class="sales-pagination" aria-label="Páginas das vendas do período">
+            <button type="button" [disabled]="salesOffset() === 0 || salesLoading()" (click)="loadSalesPage(salesOffset() - pageSize)">Anterior</button>
+            <span aria-live="polite">{{ salesLoading() ? 'Carregando…' : 'Página ' + (salesOffset() / pageSize + 1) }}</span>
+            <button type="button" [disabled]="summary.recent_sales_next_offset == null || salesLoading()" (click)="loadSalesPage(summary.recent_sales_next_offset!)">Próxima</button>
+          </nav>
+        }
+        @if (salesError()) {
+          <p class="overview-empty" role="status">Não foi possível carregar a página. Tente de novo.</p>
+        }
       </section>
     </div>
   </div>

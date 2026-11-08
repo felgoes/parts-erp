@@ -7,6 +7,7 @@ from app.api.routes import (
     assistant_history,
     auth,
     catalog,
+    catalog_ranking,
     company_settings,
     customers,
     dashboard,
@@ -47,6 +48,7 @@ api_router.include_router(purchases_list.router)
 api_router.include_router(suppliers.router)
 api_router.include_router(payables.router)
 api_router.include_router(catalog.router)
+api_router.include_router(catalog_ranking.router)
 api_router.include_router(telemetry.router)
 api_router.include_router(customers.router)
 api_router.include_router(invoices.router)

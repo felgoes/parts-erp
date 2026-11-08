@@ -34,7 +34,7 @@ from app.workers.backups import (  # noqa: F401
     scheduled_google_drive_backup,
 )
 from app.workers.marketplace_costs import reconcile_marketplace_costs
-from app.workers.vehicle_market import refresh_vehicle_market_fleet
+from app.workers.vehicle_market import refresh_vehicle_market_fleet, vehicle_market_cron_jobs
 
 logger = logging.getLogger(__name__)
 
@@ -382,15 +382,7 @@ class WorkerSettings:
             minute=10,
             second=20,
         ),
-        cron(
-            refresh_vehicle_market_fleet,
-            name="refresh-vehicle-market-fleet",
-            hour=6,
-            minute=20,
-            timeout=1800,
-            max_tries=2,
-            run_at_startup=True,
-        ),
+        *vehicle_market_cron_jobs,
     ]
     redis_settings = RedisSettings.from_dsn(get_settings().redis_url)
     max_jobs = 10

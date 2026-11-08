@@ -41,8 +41,14 @@
         </div>
         <div class="overview-revenue-details">
           <div>
-            <strong class="overview-value">{{ financialSummaryHidden() ? '••••••' : (summary.revenue_month | currency: 'BRL') }}</strong>
-            <p>{{ summary.confirmed_sales }} {{ summary.confirmed_sales === 1 ? 'venda confirmada' : 'vendas confirmadas' }}</p>
+            <strong class="overview-value">
+              @if (financialSummaryHidden()) {
+                ••••••
+              } @else {
+                <app-overview-count [value]="summary.revenue_month" [currency]="true" />
+              }
+            </strong>
+            <p><app-overview-count [value]="summary.confirmed_sales" [units]="confirmedSaleUnits" /></p>
           </div>
           <button class="overview-link overview-composition" type="button" (click)="openFinancial()">
             Ver composição <span aria-hidden="true">↗</span>
@@ -63,7 +69,7 @@
               <span class="overview-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24"><path d="M2 5h13v12H2zM15 9h4l3 4v4h-7" /><circle cx="6" cy="18" r="2" /><circle cx="18" cy="18" r="2" /></svg>
               </span>
-              <span>Despachar vendas</span><strong>{{ summary.sales_to_ship }}</strong><span class="overview-arrow" aria-hidden="true">↗</span>
+              <span>Despachar vendas</span><strong><app-overview-count [value]="summary.sales_to_ship" /></strong><span class="overview-arrow" aria-hidden="true">↗</span>
             </a>
           }
           @if (summary.low_stock_count && canOpen('/products')) {
@@ -71,7 +77,7 @@
               <span class="overview-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24"><path d="M3 7l9-4 9 4v10l-9 4-9-4V7Zm0 0 9 4 9-4m-9 4v10" /></svg>
               </span>
-              <span>Repor estoque</span><strong>{{ summary.low_stock_count }}</strong><span class="overview-arrow" aria-hidden="true">↗</span>
+              <span>Repor estoque</span><strong><app-overview-count [value]="summary.low_stock_count" /></strong><span class="overview-arrow" aria-hidden="true">↗</span>
             </a>
           }
           @if (!(summary.sales_to_ship && canOpen('/marketplace')) && !(summary.low_stock_count && canOpen('/products'))) {

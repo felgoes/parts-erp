@@ -14,6 +14,7 @@ import { saleStageForInvoice, saleStageLabel } from '../../core/sale-stage';
 import { QuickDatePreset, matchingDatePreset } from '../../core/quick-date-ranges';
 import { RecordOrigin, recordOrigin, restoreRecordPosition } from '../../shared/record-origin';
 import { PeriodFilter } from '../../shared/period-filter';
+import { OverviewCount } from './overview-count';
 import { SalesTrend } from './sales-trend';
 
 @Component({
@@ -23,6 +24,7 @@ import { SalesTrend } from './sales-trend';
     DecimalPipe,
     RouterLink,
     PeriodFilter,
+    OverviewCount,
     SalesTrend,
   ],
   templateUrl: './dashboard.html',
@@ -45,6 +47,7 @@ export class DashboardPage implements OnInit {
   readonly salesLoading = signal(false);
   readonly salesError = signal(false);
   readonly pageSize = 10;
+  readonly confirmedSaleUnits = ['venda confirmada', 'vendas confirmadas'] as const;
   private salesRevision = 0;
   readonly financial = signal<DashboardFinancialMetrics | null>(null);
   readonly financialSummaryHidden = computed(() => !!this.auth.user()?.financial_summary_hidden);

@@ -1,3 +1,7 @@
+## 8 de novembro de 2026 — contagens animadas na Visão geral
+
+- Ao abrir a Visão geral, a receita líquida, as vendas confirmadas e os totais de pendências contam até o valor real. A contagem respeita a receita oculta e a preferência por movimento reduzido. Implantado em 08/11/2026, com API, ERP e site verificados. [Commit implantado · 26bb3fc](https://github.com/felgoes/parts-erp/commit/26bb3fc4155e5a668cf423c598557c5807d23615)
+
 ## 8 de novembro de 2026 — desenho ao abrir a Visão geral e a venda
 
 - Um ponto percorre a curva do gráfico e revela o preenchimento. Na venda, as conexões e os checks concluídos se desenham em sequência. As duas animações recomeçam ao voltar à página e aguardam o conteúdo aparecer na tela. Implantado em 08/11/2026, com API, ERP e site verificados. [Commit implantado · 6b620b2](https://github.com/felgoes/parts-erp/commit/6b620b2c10bd844e9b944c4b191fd25895805153)

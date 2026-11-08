@@ -1,3 +1,7 @@
+## 8 de novembro de 2026 — registro de venda e gráfico da Visão geral
+
+- O registro reúne itens, entrega, documentos e pós-venda numa página. Em pedidos online, a faixa de andamento entra em sequência com os detalhes; o mapa continua animado ao abrir o rastreio. A Visão geral ganhou um cartão de receita mais compacto e um gráfico separado, cujo traço se desenha a cada abertura. Implantado em 08/11/2026, com API, ERP e site verificados. [Commit implantado · bb7d633](https://github.com/felgoes/parts-erp/commit/bb7d633f01c84519b866ffbc8f31796569d26d60)
+
 ## 8 de novembro de 2026 — mapa de entrega e vendas do período
 
 - O pedido online e a aba Entrega da venda mostram um mapa escuro com curvas animadas, última cidade informada e bandeira no destino. O traço pontilhado indica a ligação ilustrativa ao destino. No celular, a marca ficou à esquerda e o Assistente virou ícone ao lado do sino. Últimas vendas agora permite navegar por todas as vendas do período. Implantado em 08/11/2026, com API, ERP, site e mapa verificados. [Commit implantado · 436e886](https://github.com/felgoes/parts-erp/commit/436e886bd8fd39f453964c928243498ecfcd20e5)

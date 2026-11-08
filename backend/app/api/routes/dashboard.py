@@ -1,12 +1,13 @@
-from datetime import UTC, date, datetime, time, timedelta
+from datetime import UTC, date, datetime, time, timedelta, tzinfo
 from decimal import Decimal
-from zoneinfo import ZoneInfo
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.api.deps import require_permission
+from app.core.periods import BRAZIL_TZ as FIXED_BRAZIL_TZ
 from app.core.permissions import Permission
 from app.db.session import get_db
 from app.models import InvoiceStatus, MarketplaceOrder, Product, SalesInvoice, User
@@ -23,7 +24,10 @@ from app.services.marketplace_costs import InvoiceRevenue, revenue_by_invoice, r
 from app.services.shipping_status import pending_dispatch_filters
 
 router = APIRouter(prefix="/dashboard", tags=["Painel"])
-BRAZIL_TZ = ZoneInfo("America/Sao_Paulo")
+try:
+    BRAZIL_TZ: tzinfo = ZoneInfo("America/Sao_Paulo")
+except ZoneInfoNotFoundError:  # O Termux pode não ter a base IANA instalada.
+    BRAZIL_TZ = FIXED_BRAZIL_TZ
 
 
 def _period(

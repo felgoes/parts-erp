@@ -1,11 +1,14 @@
 from datetime import UTC, date, datetime
 from decimal import Decimal
+from runpy import run_path
+from zoneinfo import ZoneInfoNotFoundError
 
 import pytest
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
 from app.api.routes.finance import overview as finance_overview
+from app.api.routes import dashboard
 from app.api.routes.dashboard import financial_metrics, summary
 from app.api.routes.invoices import list_invoices
 from app.models import InvoiceSource, MarketplaceOrder, MarketplaceOrderEvent, Product
@@ -21,6 +24,18 @@ def _sale(db: Session, product: Product, issued_at: datetime) -> None:
     confirm_invoice(db, invoice)
     invoice.issued_at = issued_at
     db.flush()
+
+
+def test_dashboard_loads_and_filters_days_without_iana_timezone_data(monkeypatch) -> None:
+    def unavailable(_: str) -> None:
+        raise ZoneInfoNotFoundError("base indisponível")
+
+    monkeypatch.setattr("zoneinfo.ZoneInfo", unavailable)
+    route = run_path(dashboard.__file__)
+    day = date(2026, 11, 8)
+    _, _, start, end = route["_period"](day, day)
+    assert start == datetime(2026, 11, 8, 3, tzinfo=UTC)
+    assert end == datetime(2026, 11, 9, 3, tzinfo=UTC)
 
 
 def test_invoice_and_dashboard_date_filters(db: Session) -> None:

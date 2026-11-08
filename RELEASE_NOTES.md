@@ -1,3 +1,7 @@
+## 8 de novembro de 2026 — desenho ao abrir a Visão geral e a venda
+
+- Um ponto percorre a curva do gráfico e revela o preenchimento. Na venda, as conexões e os checks concluídos se desenham em sequência. As duas animações recomeçam ao voltar à página e aguardam o conteúdo aparecer na tela. Implantado em 08/11/2026, com API, ERP e site verificados. [Commit implantado · 6b620b2](https://github.com/felgoes/parts-erp/commit/6b620b2c10bd844e9b944c4b191fd25895805153)
+
 ## 8 de novembro de 2026 — animações da Visão geral e da entrega
 
 - O gráfico revela a linha e o preenchimento ao entrar na Visão geral. Ao abrir uma venda, as etapas de entrega ficam centralizadas e as concluídas acendem na ordem. O menu lateral do desktop e o menu aberto no celular voltaram ao verde clássico. Implantado em 08/11/2026, com API, ERP e site verificados. [Commit implantado · 66d9f47](https://github.com/felgoes/parts-erp/commit/66d9f47587501e829d75a175ff42d41a9df955dc)

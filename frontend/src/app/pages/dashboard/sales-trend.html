@@ -16,7 +16,7 @@
   </header>
 
   @if (hasSales() && points()[selectedIndex()]; as selected) {
-    <div #plot class="trend-plot" [class.is-visible]="revealed()"
+    <div class="trend-plot" [appEntryMotion]="draw"
       (pointermove)="selectPoint($event)" (pointerup)="selectPoint($event)">
       <svg viewBox="0 0 1000 164" preserveAspectRatio="none" aria-hidden="true">
         <path class="trend-grid" d="M 0 14 H 1000 M 0 48 H 1000 M 0 82 H 1000 M 0 116 H 1000 M 0 150 H 1000" />
@@ -34,6 +34,7 @@
           <polyline class="trend-line" [attr.points]="line()" />
         </svg>
       </div>
+      <span class="trend-pen" aria-hidden="true"></span>
       <span class="trend-marker" aria-hidden="true" [style.left.%]="selected.x / 10"
         [style.top.%]="selected.y / 164 * 100"></span>
     </div>

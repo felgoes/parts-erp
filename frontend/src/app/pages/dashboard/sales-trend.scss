@@ -26,7 +26,7 @@
 .trend-grid { stroke: var(--divider); stroke-dasharray: 3 4; }
 .trend-guide { stroke: var(--control-border); stroke-dasharray: 3 4; vector-effect: non-scaling-stroke; }
 .trend-line { stroke: currentColor; stroke-width: 2.5px; stroke-linejoin: round; stroke-linecap: round; }
-.trend-marker {
+.trend-marker, .trend-pen {
   position: absolute;
   width: 10px;
   height: 10px;
@@ -65,15 +65,15 @@
 @media (pointer: coarse) {
   .trend-axis input { min-height: 44px; }
 }
-@media (prefers-reduced-motion: no-preference) {
-  .trend-plot:not(.is-visible) .trend-series-clip { clip-path: inset(0 100% 0 0); }
-  .trend-plot:not(.is-visible) :is(.trend-marker, .trend-guide) { opacity: 0; }
-  .trend-plot.is-visible .trend-series-clip {
-    animation: trend-reveal 1050ms 140ms cubic-bezier(.28, .55, .48, 1) both;
-  }
-  .trend-plot.is-visible :is(.trend-marker, .trend-guide) {
-    animation: trend-point 180ms 1100ms ease-out both;
-  }
+.trend-pen {
+  opacity: 0;
+  width: 12px;
+  height: 12px;
+  box-shadow: 0 0 0 1px var(--focus-ring), 0 0 0 5px color-mix(in srgb, var(--focus-ring) 25%, transparent);
 }
-@keyframes trend-reveal { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0); } }
-@keyframes trend-point { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: no-preference) {
+  .trend-plot[data-entry-motion='waiting'] .trend-series-clip { clip-path: inset(0 100% 0 0); }
+  .trend-plot:is([data-entry-motion='waiting'], .is-drawing) :is(.trend-marker, .trend-guide) { opacity: 0; }
+  .trend-plot.is-drawing .trend-pen { opacity: 1; }
+  .trend-marker, .trend-guide { transition: opacity 170ms ease-out; }
+}

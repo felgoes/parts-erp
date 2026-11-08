@@ -114,15 +114,14 @@ h1 {
   text-align: center;
 }
 .progress-steps::before,
-.progress-steps li.followed::after {
-  content: '';
+.step-connector {
   position: absolute;
   top: calc((var(--step-size) - 2px) / 2);
   height: 2px;
   background: #ffffff45;
 }
-.progress-steps::before { inset-inline: calc(100% / 6); }
-.progress-steps li.followed::after {
+.progress-steps::before { content: ''; inset-inline: calc(100% / 6); }
+.step-connector {
   z-index: 1;
   inset-inline-start: 50%;
   width: 100%;
@@ -147,6 +146,7 @@ h1 {
   background: var(--record-highlight);
 }
 .step-check svg { width: 16px; height: 16px; stroke-width: 2; }
+.step-check path { stroke-dasharray: 1; }
 .progress-steps strong { margin-top: 3px; color: var(--record-on-green); font-size: .85rem; }
 .progress-steps :is(time, small) { color: var(--record-muted-green); font-size: .75rem; }
 
@@ -232,14 +232,11 @@ h1 {
   .record-items { animation-delay: 100ms; }
   .record-rail, .after-sale-fold { animation-delay: 140ms; }
   .progress-status { animation: record-enter 220ms ease-out both; }
-  .progress-steps li { --step-delay: calc(180ms + var(--step-index) * 420ms); }
-  .step-check { animation: step-check 210ms var(--step-delay) ease-out both; }
-  .progress-steps li.followed::after {
-    animation: step-draw 270ms calc(var(--step-delay) + 150ms) ease-in-out both;
-  }
+  .progress-steps[data-entry-motion='waiting'] :is(.step-check, .step-connector) { visibility: hidden; }
+  .progress-steps.is-drawing .step-check { opacity: 0; }
+  .progress-steps.is-drawing .step-check path { stroke-dashoffset: 1; }
+  .progress-steps.is-drawing .step-connector { transform: scaleX(0); }
   .record-fold[open] > .fold-body { animation: record-enter 210ms ease-out both; }
   .fold-chevron { transition: transform 180ms ease; }
 }
 @keyframes record-enter { from { opacity: 0; transform: translateY(7px); } to { opacity: 1; transform: translateY(0); } }
-@keyframes step-draw { from { transform: scaleX(0); } to { transform: scaleX(1); } }
-@keyframes step-check { from { opacity: 0; transform: scale(.65); } to { opacity: 1; transform: scale(1); } }

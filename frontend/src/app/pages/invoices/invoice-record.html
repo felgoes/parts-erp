@@ -58,14 +58,16 @@
             <a class="progress-action" [routerLink]="['/document-viewer', sale.id, label.id]" [queryParams]="{ from: 'invoice' }" [state]="{ recordOrigin: origin }">Abrir etiqueta</a>
           }
         </div>
-        <ol class="progress-steps">
+        <ol class="progress-steps" [appEntryMotion]="drawSteps" [entryMotionKey]="sale.id">
           @for (step of state.steps; track step.label; let i = $index) {
-            <li [class.followed]="step.done && state.steps[i + 1]?.done" [style.--step-index]="i"
-              [attr.aria-current]="state.currentStep === i ? 'step' : null">
+            <li [attr.aria-current]="state.currentStep === i ? 'step' : null">
+              @if (step.done && state.steps[i + 1]?.done) {
+                <span class="step-connector" aria-hidden="true"></span>
+              }
               <span class="step-mark" aria-hidden="true">
                 {{ i + 1 }}
                 @if (step.done) {
-                  <span class="step-check"><svg viewBox="0 0 24 24"><path d="m5 12 4 4L19 6" /></svg></span>
+                  <span class="step-check"><svg viewBox="0 0 24 24"><path pathLength="1" d="m5 12 4 4L19 6" /></svg></span>
                 }
               </span>
               <strong>{{ step.label }}</strong>

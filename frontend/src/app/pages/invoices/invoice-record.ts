@@ -3,6 +3,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { createTimeline } from 'animejs/timeline';
 import { debounceTime, filter, switchMap, tap, catchError, of } from 'rxjs';
 import { ApiService } from '../../core/api.service';
 import { AuthService } from '../../core/auth.service';
@@ -12,6 +13,7 @@ import { Invoice } from '../../core/models';
 import { invoiceProgress } from './invoice-progress';
 import { canSell } from '../../core/user-access';
 import { AfterSaleWorkflow } from '../../shared/after-sale-workflow';
+import { EntryMotion, type EntrySequence } from '../../shared/entry-motion';
 import { readRecordOrigin } from '../../shared/record-origin';
 import { TrackingPanel } from '../../shared/tracking-panel';
 
@@ -24,7 +26,7 @@ const ORIGINS = {
 
 @Component({
   selector: 'app-invoice-record',
-  imports: [AfterSaleWorkflow, CurrencyPipe, DatePipe, DecimalPipe, RouterLink, TrackingPanel],
+  imports: [AfterSaleWorkflow, CurrencyPipe, DatePipe, DecimalPipe, EntryMotion, RouterLink, TrackingPanel],
   templateUrl: './invoice-record.html',
   styleUrl: './invoice-record.scss',
 })
@@ -53,6 +55,30 @@ export class InvoiceRecord implements OnInit {
   });
   readonly canConfirm = computed(() => this.invoice()?.status === 'draft' && canSell(this.auth.user()?.role));
   readonly documentLabel = invoiceDocumentLabel;
+
+  readonly drawSteps: EntrySequence = (list) => {
+    const showFinal = () => list.classList.remove('is-drawing');
+    list.classList.add('is-drawing');
+    const timeline = createTimeline({ autoplay: false, onComplete: showFinal });
+    list.querySelectorAll('li').forEach((step, index) => {
+      const badge = step.querySelector<HTMLElement>('.step-check');
+      if (!badge) return;
+      const stroke = badge.querySelector('path')!;
+      const connector = step.querySelector<HTMLElement>('.step-connector');
+      const start = 180 + index * 510;
+      timeline
+        .add(badge, { opacity: [0, 1], scale: [.66, 1], duration: 260, ease: 'outBack(1.5)' }, start)
+        .add(stroke, { strokeDashoffset: [1, 0], duration: 210, ease: 'outQuad' }, start + 125);
+      if (connector) {
+        timeline.add(connector, { scaleX: [0, 1], duration: 300, ease: 'inOutSine' }, start + 210);
+      }
+    });
+    timeline.play();
+    return () => {
+      timeline.revert();
+      showFinal();
+    };
+  };
 
   ngOnInit(): void {
     this.route.paramMap.pipe(

@@ -1,5 +1,7 @@
 import { CurrencyPipe, DecimalPipe } from '@angular/common';
-import { Component, computed, effect, ElementRef, input, signal, viewChild } from '@angular/core';
+import { Component, computed, input, signal } from '@angular/core';
+import { animate } from 'animejs/animation';
+import { EntryMotion, type EntrySequence } from '../../shared/entry-motion';
 import type { DashboardDailyMetric } from '../../core/models/dashboard';
 
 const LEFT = 12;
@@ -9,15 +11,13 @@ const BOTTOM = 150;
 
 @Component({
   selector: 'app-sales-trend',
-  imports: [CurrencyPipe, DecimalPipe],
+  imports: [CurrencyPipe, DecimalPipe, EntryMotion],
   templateUrl: './sales-trend.html',
   styleUrl: './sales-trend.scss',
 })
 export class SalesTrend {
   readonly daily = input.required<DashboardDailyMetric[]>();
   readonly countOnly = input.required<boolean>();
-  private readonly plot = viewChild<ElementRef<HTMLElement>>('plot');
-  readonly revealed = signal(false);
   private readonly chosenDate = signal<string | null>(null);
   readonly points = computed(() => {
     const days = this.daily();
@@ -50,27 +50,43 @@ export class SalesTrend {
     return 0;
   });
 
-  constructor() {
-    effect((onCleanup) => {
-      const plot = this.plot()?.nativeElement;
-      if (!plot) {
-        this.revealed.set(false);
-        return;
-      }
-      if (this.revealed()) return;
+  readonly draw: EntrySequence = (plot) => {
+    const series = plot.querySelector<HTMLElement>('.trend-series-clip')!;
+    const pen = plot.querySelector<HTMLElement>('.trend-pen')!;
+    const progress = { value: 0 };
+    const paint = () => {
+      const points = this.points();
+      if (!points.length) return;
+      const cursor = progress.value * (points.length - 1);
+      const before = points[Math.floor(cursor)];
+      const after = points[Math.ceil(cursor)];
+      const fraction = cursor % 1;
+      const x = before.x + (after.x - before.x) * fraction;
+      const y = before.y + (after.y - before.y) * fraction;
+      series.style.clipPath = `inset(0 ${Math.max(0, 100 - x / 10 - .4)}% 0 0)`;
+      pen.style.left = `${x / 10}%`;
+      pen.style.top = `${y / 164 * 100}%`;
+    };
+    const showFinal = () => {
+      series.style.removeProperty('clip-path');
+      plot.classList.remove('is-drawing');
+    };
 
-      if (typeof IntersectionObserver === 'undefined') {
-        this.revealed.set(true);
-        return;
-      }
-      const threshold = .25;
-      const observer = new IntersectionObserver((entries) => {
-        if (entries.some((entry) => entry.intersectionRatio >= threshold)) this.revealed.set(true);
-      }, { threshold });
-      observer.observe(plot);
-      onCleanup(() => observer.disconnect());
+    paint();
+    plot.classList.add('is-drawing');
+    const animation = animate(progress, {
+      value: 1,
+      delay: 170,
+      duration: this.points().length > 1 ? 1450 : 480,
+      ease: 'inOutSine',
+      onRender: paint,
+      onComplete: showFinal,
     });
-  }
+    return () => {
+      animation.cancel();
+      showFinal();
+    };
+  };
 
   selectIndex(index: number) {
     const day = this.daily()[index];

@@ -1,3 +1,7 @@
+## 8 de novembro de 2026 — Visão geral e navegação no celular
+
+- A Visão geral ganhou um gráfico diário interativo, cartões com entrada suave e atalhos para pendências e vendas recentes. No celular, Início, Vendas, Estoque e Menu ficam na faixa inferior. Implantado em 08/11/2026, com a API, o ERP e o site público verificados. [Commit implantado · 27fb0e4](https://github.com/felgoes/parts-erp/commit/27fb0e4fcb00fe1d8c703f1bcacde2d461204b74)
+
 ## 7 de novembro de 2026 — navegação, Vendas e Compras
 
 - A Visão geral reúne receita líquida, atalhos para pendências e as duas últimas vendas. Vendas e compras abrem em páginas próprias, com retorno ao contexto da lista. Compras ganhou quatro grupos de status e uma seção para registrar recebimentos. O sino e a central abrem a venda vinculada ao aviso. Implantado em 07/11/2026, com as verificações públicas do ERP e do site aprovadas. [Commit implantado · 200e1be](https://github.com/felgoes/parts-erp/commit/200e1be1eaf057494e341f7ddd9a0639824295d2)

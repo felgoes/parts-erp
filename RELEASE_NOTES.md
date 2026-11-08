@@ -1,3 +1,7 @@
+## 8 de novembro de 2026 — emplacamentos no catálogo público
+
+- O site pode mostrar os veículos mais emplacados por segmento com a competência e a fonte. O ERP atualiza a publicação em segundo plano. Implantado em 08/11/2026, com API, ERP e site verificados. [Commit implantado · d6e9562](https://github.com/felgoes/parts-erp/commit/d6e9562fb3ac80ffcb0d6173e35c51074a2f8879)
+
 ## 8 de novembro de 2026 — seletor de período da Visão geral
 
 - Na Visão geral do celular, título e filtro de período ficam na mesma linha. O menu de períodos usa o verde do ERP para destacar a seleção e inclui os campos de datas personalizadas. Implantado em 08/11/2026, com API, ERP e site verificados. [Commit implantado · b26059f](https://github.com/felgoes/parts-erp/commit/b26059fe4eb46faa21599baa79c657b816aa9fd7)

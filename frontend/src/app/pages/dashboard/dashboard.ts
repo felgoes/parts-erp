@@ -1,4 +1,4 @@
-import { CurrencyPipe, DatePipe, DecimalPipe } from '@angular/common';
+import { CurrencyPipe, DecimalPipe } from '@angular/common';
 import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -13,15 +13,16 @@ import { saleStageForInvoice, saleStageLabel } from '../../core/sale-stage';
 import { QuickDatePreset, matchingDatePreset } from '../../core/quick-date-ranges';
 import { RecordOrigin, recordOrigin, restoreRecordPosition } from '../../shared/record-origin';
 import { PeriodFilter } from '../../shared/period-filter';
+import { SalesTrend } from './sales-trend';
 
 @Component({
   selector: 'app-dashboard',
   imports: [
     CurrencyPipe,
-    DatePipe,
     DecimalPipe,
     RouterLink,
     PeriodFilter,
+    SalesTrend,
   ],
   templateUrl: './dashboard.html',
   styleUrl: './dashboard.scss',
@@ -75,6 +76,9 @@ export class DashboardPage implements OnInit {
     });
   }
   applyDateFilter(range: { startDate: string; endDate: string }) {
+    if (range.startDate === this.startDate && range.endDate === this.endDate) return;
+    this.data.set(null);
+    this.loadError.set(false);
     this.startDate = range.startDate;
     this.endDate = range.endDate;
     this.load();
@@ -83,7 +87,7 @@ export class DashboardPage implements OnInit {
     return !!this.startDate && !!this.endDate && this.startDate <= this.endDate;
   }
   private today() {
-    return new Date().toLocaleDateString('sv-SE');
+    return new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' });
   }
   private monthStart() {
     return `${this.today().slice(0, 7)}-01`;

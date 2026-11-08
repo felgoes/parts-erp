@@ -2,7 +2,7 @@
 .scrim {
   display: none;
 }
-@media (max-width: 780px) {
+@media (width < 768px) {
   .sidebar {
     height: 100vh;
     height: 100dvh;

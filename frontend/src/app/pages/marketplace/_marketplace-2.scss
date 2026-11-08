@@ -147,7 +147,7 @@
   }
   .toast-host {
     right: 12px;
-    bottom: calc(12px + env(safe-area-inset-bottom));
+    bottom: calc(12px + var(--mobile-navigation-height, env(safe-area-inset-bottom)));
     width: calc(100vw - 24px);
   }
 }

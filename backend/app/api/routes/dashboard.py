@@ -1,5 +1,6 @@
-from datetime import UTC, date, datetime, time, timedelta, timezone
+from datetime import UTC, date, datetime, time, timedelta
 from decimal import Decimal
+from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func, select
@@ -18,11 +19,11 @@ from app.schemas.common import (
 )
 from app.services.after_sale import after_sales_for_invoices
 from app.services.invoice_tracking import attach_invoice_tracking
-from app.services.marketplace_costs import revenue_by_invoice, revenue_totals
+from app.services.marketplace_costs import InvoiceRevenue, revenue_by_invoice, revenue_totals
 from app.services.shipping_status import pending_dispatch_filters
 
 router = APIRouter(prefix="/dashboard", tags=["Painel"])
-BRAZIL_TZ = timezone(timedelta(hours=-3))
+BRAZIL_TZ = ZoneInfo("America/Sao_Paulo")
 
 
 def _period(
@@ -40,6 +41,32 @@ def _period(
     return start, end, since, until
 
 
+def _timestamp(invoice: SalesInvoice) -> datetime:
+    value = invoice.issued_at or invoice.created_at
+    # SQLite removes timezone metadata when reading back a persisted UTC timestamp.
+    return value.replace(tzinfo=UTC) if value.tzinfo is None else value.astimezone(UTC)
+
+
+def _daily_metrics(
+    start: date, end: date, invoices: list[SalesInvoice], revenues: dict[str, InvoiceRevenue]
+) -> list[DashboardDailyMetric]:
+    buckets: dict[date, tuple[Decimal, int]] = {}
+    for invoice in invoices:
+        day = _timestamp(invoice).astimezone(BRAZIL_TZ).date()
+        amount, count = buckets.get(day, (Decimal("0"), 0))
+        buckets[day] = (amount + revenues[invoice.id].net, count + 1)
+    daily = []
+    for offset in range((end - start).days + 1):
+        day = start + timedelta(days=offset)
+        amount, count = buckets.get(day, (Decimal("0"), 0))
+        daily.append(
+            DashboardDailyMetric(
+                date=day.isoformat(), label=day.strftime("%d/%m"), amount=amount, count=count
+            )
+        )
+    return daily
+
+
 @router.get("/summary", response_model=DashboardSummary)
 def summary(
     start_date: date | None = Query(default=None),
@@ -47,7 +74,7 @@ def summary(
     db: Session = Depends(get_db),
     _: User = Depends(require_permission(Permission.DASHBOARD_READ)),
 ) -> DashboardSummary:
-    _, _, since, until = _period(start_date, end_date)
+    start, end, since, until = _period(start_date, end_date)
     invoice_date = func.coalesce(SalesInvoice.issued_at, SalesInvoice.created_at)
     month_filter = (
         SalesInvoice.status == InvoiceStatus.confirmed,
@@ -55,9 +82,8 @@ def summary(
         invoice_date < until,
     )
     confirmed_invoices = list(db.scalars(select(SalesInvoice).where(*month_filter)))
-    revenue_summary = revenue_totals(
-        list(revenue_by_invoice(db, confirmed_invoices).values())
-    )
+    revenues = revenue_by_invoice(db, confirmed_invoices)
+    revenue_summary = revenue_totals(list(revenues.values()))
     revenue = revenue_summary.net
     sales = len(confirmed_invoices)
     cancelled_filter = (
@@ -121,6 +147,7 @@ def summary(
         products_count=products,
         low_stock_count=low_stock,
         recent_invoices=recent_outputs,
+        daily=_daily_metrics(start, end, confirmed_invoices, revenues),
     )
 
 
@@ -132,8 +159,8 @@ def financial_metrics(
     _: User = Depends(require_permission(Permission.DASHBOARD_READ)),
 ) -> DashboardFinancialMetrics:
     start, end, since, until = _period(start_date, end_date)
-    duration = until - since
-    previous_start = since - duration
+    previous_day = start - timedelta(days=(end - start).days + 1)
+    previous_start = datetime.combine(previous_day, time.min, BRAZIL_TZ).astimezone(UTC)
     invoice_date = func.coalesce(SalesInvoice.issued_at, SalesInvoice.created_at)
     rows = list(
         db.scalars(
@@ -143,19 +170,15 @@ def financial_metrics(
         )
     )
 
-    def timestamp(invoice: SalesInvoice) -> datetime:
-        value = invoice.issued_at or invoice.created_at
-        return value.replace(tzinfo=UTC) if value.tzinfo is None else value.astimezone(UTC)
-
     current = [
         invoice
         for invoice in rows
-        if since <= timestamp(invoice) < until and invoice.status == InvoiceStatus.confirmed
+        if since <= _timestamp(invoice) < until and invoice.status == InvoiceStatus.confirmed
     ]
     previous = [
         invoice
         for invoice in rows
-        if previous_start <= timestamp(invoice) < since
+        if previous_start <= _timestamp(invoice) < since
         and invoice.status == InvoiceStatus.confirmed
     ]
     revenues = revenue_by_invoice(db, rows)
@@ -174,31 +197,16 @@ def financial_metrics(
         label = "Mercado Livre" if source == "mercadolivre" else "Venda manual"
         amount, count = source_totals.get(label, (Decimal("0"), 0))
         source_totals[label] = (amount + revenues[invoice.id].net, count + 1)
-    daily: list[DashboardDailyMetric] = []
-    first_day = start
-    for offset in range((end - first_day).days + 1):
-        day = first_day + timedelta(days=offset)
-        day_rows = [
-            invoice for invoice in current if timestamp(invoice).astimezone(BRAZIL_TZ).date() == day
-        ]
-        daily.append(
-            DashboardDailyMetric(
-                date=day.isoformat(),
-                label=day.strftime("%d/%m"),
-                amount=sum((revenues[invoice.id].net for invoice in day_rows), Decimal("0")),
-                count=len(day_rows),
-            )
-        )
     cancelled_count = sum(
         1
         for invoice in rows
-        if since <= timestamp(invoice) < until and invoice.status == InvoiceStatus.cancelled
+        if since <= _timestamp(invoice) < until and invoice.status == InvoiceStatus.cancelled
     )
     cancelled_amount = sum(
         (
             invoice.total
             for invoice in rows
-            if since <= timestamp(invoice) < until and invoice.status == InvoiceStatus.cancelled
+            if since <= _timestamp(invoice) < until and invoice.status == InvoiceStatus.cancelled
         ),
         Decimal("0"),
     )
@@ -220,5 +228,5 @@ def financial_metrics(
             DashboardBreakdown(label=label, amount=amount, count=count)
             for label, (amount, count) in source_totals.items()
         ],
-        daily=daily,
+        daily=_daily_metrics(start, end, current, revenues),
     )

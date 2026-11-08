@@ -1,0 +1,50 @@
+<section class="trend" aria-labelledby="sales-trend-heading">
+  <header class="trend-heading">
+    <h3 id="sales-trend-heading">{{ countOnly() ? 'Vendas por dia' : 'Receita por dia' }}</h3>
+    @if (hasSales() && points()[selectedIndex()]; as selected) {
+      <div class="trend-readout">
+        <time [attr.datetime]="selected.date">{{ selected.label }}</time>
+        <strong>
+          @if (countOnly()) {
+            {{ selected.count | number }} {{ selected.count === 1 ? 'venda' : 'vendas' }}
+          } @else {
+            {{ selected.amount | currency: 'BRL' }}
+          }
+        </strong>
+      </div>
+    }
+  </header>
+
+  @if (hasSales() && points()[selectedIndex()]; as selected) {
+    <div class="trend-plot">
+      <svg viewBox="0 0 1000 164" preserveAspectRatio="none" aria-hidden="true"
+        (pointermove)="selectPoint($event)" (pointerup)="selectPoint($event)">
+        <defs>
+          <linearGradient id="sales-trend-fill" x1="0" x2="0" y1="0" y2="1">
+            <stop offset="0%" stop-color="currentColor" stop-opacity=".32" />
+            <stop offset="100%" stop-color="currentColor" stop-opacity=".02" />
+          </linearGradient>
+        </defs>
+        <path class="trend-grid" d="M 0 14 H 1000 M 0 48 H 1000 M 0 82 H 1000 M 0 116 H 1000 M 0 150 H 1000" />
+        <g class="trend-series">
+          <polygon [attr.points]="area()" fill="url(#sales-trend-fill)" />
+          <polyline class="trend-line" [attr.points]="line()" />
+        </g>
+        <line class="trend-guide" [attr.x1]="selected.x" [attr.x2]="selected.x" y1="14" y2="150" />
+      </svg>
+      <span class="trend-marker" aria-hidden="true" [style.left.%]="selected.x / 10"
+        [style.top.%]="selected.y / 164 * 100"></span>
+    </div>
+    @if (points().length > 1) {
+      <div class="trend-axis">
+        <span aria-hidden="true">{{ points()[0].label }}</span>
+        <input type="range" aria-label="Dia do gráfico" min="0" [max]="points().length - 1"
+          [value]="selectedIndex()" (input)="selectIndex($any($event.target).valueAsNumber)"
+          [attr.aria-valuetext]="selected.label + ': ' + (countOnly() ? selected.count + (selected.count === 1 ? ' venda' : ' vendas') : (selected.amount | currency: 'BRL'))" />
+        <span aria-hidden="true">{{ points().at(-1)?.label }}</span>
+      </div>
+    }
+  } @else {
+    <p class="trend-empty">Nenhuma venda confirmada neste período.</p>
+  }
+</section>

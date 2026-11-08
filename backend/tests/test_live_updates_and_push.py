@@ -282,7 +282,7 @@ def test_push_delivery_preserves_legacy_channel_and_uses_per_user_sound(db, monk
     assert sent[2]["message"]["android"]["notification"]["channel_id"] == "sales"
     assert sent[3]["message"]["android"]["notification"]["channel_id"] == "parts_v1_sales_kaching"
     assert sent[3]["message"]["data"]["notification_sound"] == "kaching"
-    assert sent[4]["message"]["notification"]["title"] == "Pronto para envio"
+    assert sent[4]["message"]["notification"]["title"] == "Venda pronta para envio"
     assert sent[4]["message"]["android"]["notification"]["channel_id"] == "parts_v1_sales_silent"
     assert sent[4]["message"]["data"]["notification_channel"] == "parts_v1_sales_silent"
     assert sent[4]["message"]["data"]["notification_sound"] == "silent"

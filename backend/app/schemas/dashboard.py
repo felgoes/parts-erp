@@ -9,6 +9,13 @@ from app.schemas.invoices import (
 )
 
 
+class DashboardDailyMetric(BaseModel):
+    date: str
+    label: str
+    amount: Decimal
+    count: int
+
+
 class DashboardSummary(BaseModel):
     revenue_month: Decimal
     gross_revenue_month: Decimal
@@ -22,16 +29,10 @@ class DashboardSummary(BaseModel):
     products_count: int
     low_stock_count: int
     recent_invoices: list[InvoiceOut]
+    daily: list[DashboardDailyMetric]
 
 
 class DashboardBreakdown(BaseModel):
-    label: str
-    amount: Decimal
-    count: int
-
-
-class DashboardDailyMetric(BaseModel):
-    date: str
     label: str
     amount: Decimal
     count: int

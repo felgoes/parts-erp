@@ -259,3 +259,26 @@ button.nav-section-label {
   button.nav-section-label { min-height: 44px; }
   .nav-item:not(.configuration-toggle) .nav-icon { display: none; }
 }
+
+.nav-item.active {
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--focus-ring) 12%, var(--navigation));
+}
+.nav-item.active .nav-icon {
+  color: var(--focus-ring);
+  filter: drop-shadow(0 0 5px color-mix(in srgb, var(--focus-ring) 45%, transparent));
+}
+@media (prefers-reduced-motion: no-preference) {
+  .nav-item.active { animation: nav-highlight 220ms ease-out; }
+  .nav-children { animation: nav-expand 200ms ease-out both; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .nav-item, .nav-icon, .nav-chevron { transition: none; }
+}
+@keyframes nav-highlight {
+  from { background: color-mix(in srgb, var(--focus-ring) 25%, var(--navigation)); }
+}
+@keyframes nav-expand {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}

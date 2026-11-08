@@ -1,13 +1,10 @@
 <div class="app-shell" [class.menu-open]="menuOpen()" [class.menu-collapsed]="menuCollapsed()">
-  <header class="app-topbar" aria-label="Ações globais">
+  <header class="app-topbar" aria-label="Ações globais" [attr.inert]="menuOpen() ? '' : null">
     <button class="menu-collapse" type="button" [attr.aria-label]="menuCollapsed() ? 'Expandir navegação' : 'Recolher navegação'" [attr.aria-expanded]="!menuCollapsed()" (click)="toggleMenuCollapsed()">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16" /></svg>
     </button>
     <span class="topbar-spacer"></span>
     <div class="mobile-bar">
-    <button class="menu-trigger" aria-label="Menu" aria-controls="primary-navigation" [attr.aria-expanded]="menuOpen()" (click)="toggleMobileMenu()">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16" /></svg> Menu
-    </button>
     <a
       class="brand"
       routerLink="/dashboard"
@@ -39,6 +36,9 @@
     [attr.aria-hidden]="mobileShell() && !menuOpen() ? 'true' : null"
     aria-label="Navegação principal"
   >
+    <div class="mobile-menu-heading">
+      <strong>Menu</strong>
+    </div>
     <div class="sidebar-head">
       <a
         class="brand"
@@ -228,5 +228,27 @@
     }
     <router-outlet />
   </main>
+  @if (mobileShell()) {
+    <nav class="mobile-navigation" aria-label="Atalhos principais">
+      @for (item of mobileLinks(); track item.path) {
+        <a class="mobile-nav-item" [routerLink]="item.path" routerLinkActive="active"
+          ariaCurrentWhenActive="page" (click)="closeMobileMenu(false)">
+          <span class="mobile-nav-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path [attr.d]="item.icon" /></svg>
+          </span>
+          {{ item.label }}
+        </a>
+      }
+      <button class="mobile-nav-item menu-trigger" type="button" aria-controls="primary-navigation"
+        [attr.aria-expanded]="menuOpen()" (click)="toggleMobileMenu()">
+        <span class="mobile-nav-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24">
+            <path [attr.d]="menuOpen() ? 'm6 6 12 12M18 6 6 18' : 'M4 6h16M4 12h16M4 18h16'" />
+          </svg>
+        </span>
+        Menu
+      </button>
+    </nav>
+  }
   <app-assistant-chat #assistant />
 </div>

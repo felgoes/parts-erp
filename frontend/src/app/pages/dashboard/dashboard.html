@@ -1,5 +1,8 @@
 <header class="overview-heading">
-  <h1>Visão geral</h1>
+  <div>
+    <p class="overview-kicker"><span aria-hidden="true"></span> Painel da operação</p>
+    <h1>Visão geral</h1>
+  </div>
   <app-period-filter
     [compact]="true"
     ariaLabel="Filtrar visão geral por período"
@@ -19,64 +22,98 @@
   <div class="overview-summary">
     <section class="overview-revenue" aria-labelledby="overview-revenue-heading">
       <div class="overview-section-heading">
-        <h2 id="overview-revenue-heading">Receita líquida</h2>
-        <button class="overview-link" type="button" [attr.aria-pressed]="!financialSummaryHidden()"
+        <h2 id="overview-revenue-heading">
+          <span class="overview-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 7-8m-5 0h5v5" /></svg>
+          </span>
+          Receita líquida
+        </h2>
+        <button class="overview-link overview-privacy" type="button"
           (click)="setFinancialSummaryHidden(!financialSummaryHidden())">
-          {{ financialSummaryHidden() ? 'Mostrar' : 'Ocultar' }}
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z" /><circle cx="12" cy="12" r="2.5" />
+            @if (financialSummaryHidden()) { <path d="M3 3l18 18" /> }
+          </svg>
+          {{ financialSummaryHidden() ? 'Mostrar receita' : 'Ocultar receita' }}
         </button>
       </div>
-      <strong class="overview-value">{{ financialSummaryHidden() ? '••••••' : (summary.revenue_month | currency: 'BRL') }}</strong>
-      <p>{{ summary.confirmed_sales }} {{ summary.confirmed_sales === 1 ? 'venda confirmada' : 'vendas confirmadas' }}</p>
-      @if (summary.marketplace_costs_pending) {
+      <div class="overview-revenue-details">
+        <div>
+          <strong class="overview-value">{{ financialSummaryHidden() ? '••••••' : (summary.revenue_month | currency: 'BRL') }}</strong>
+          <p>{{ summary.confirmed_sales }} {{ summary.confirmed_sales === 1 ? 'venda confirmada' : 'vendas confirmadas' }}</p>
+        </div>
+        <button class="overview-link overview-composition" type="button" (click)="openFinancial()">
+          Ver composição <span aria-hidden="true">↗</span>
+        </button>
+      </div>
+      @if (summary.marketplace_costs_pending && !financialSummaryHidden()) {
         <p class="overview-warning">Receita parcial · {{ summary.marketplace_costs_pending }} venda(s) sem custo completo do ML</p>
       }
-      <button class="overview-link" type="button" (click)="openFinancial()">Ver composição</button>
+      <app-sales-trend [daily]="summary.daily" [countOnly]="financialSummaryHidden()" />
     </section>
-    <section class="overview-tasks" aria-labelledby="overview-tasks-heading">
-      <h2 id="overview-tasks-heading">Para resolver</h2>
-      <div class="overview-task-list">
-        @if (summary.sales_to_ship && canOpen('/marketplace')) {
-          <a routerLink="/marketplace" [queryParams]="{ fila: 'despachar' }">
-            <strong>{{ summary.sales_to_ship }} <span aria-hidden="true">↗</span></strong>
-            Despachar venda
-          </a>
-        }
-        @if (summary.low_stock_count && canOpen('/products')) {
-          <a routerLink="/products" [queryParams]="{ estoque: 'baixo' }">
-            <strong>{{ summary.low_stock_count }} <span aria-hidden="true">↗</span></strong>
-            Repor estoque
-          </a>
-        }
-        @if (!(summary.sales_to_ship && canOpen('/marketplace')) && !(summary.low_stock_count && canOpen('/products'))) {
-          <p>Nenhuma pendência no momento.</p>
-        }
-      </div>
-    </section>
-  </div>
-  <section class="overview-recent" aria-labelledby="recent-sales-heading">
-    <div class="overview-section-heading">
-      <h2 id="recent-sales-heading">Últimas vendas</h2>
-      @if (canOpen('/invoices')) {
-        <a class="overview-link" routerLink="/invoices">Ver todas →</a>
-      }
+    <div class="overview-side">
+      <section class="overview-tasks" aria-labelledby="overview-tasks-heading">
+        <h2 id="overview-tasks-heading">Para resolver</h2>
+        <div class="overview-task-list">
+          @if (summary.sales_to_ship && canOpen('/marketplace')) {
+            <a routerLink="/marketplace" [queryParams]="{ fila: 'despachar' }">
+              <span class="overview-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M2 5h13v12H2zM15 9h4l3 4v4h-7" /><circle cx="6" cy="18" r="2" /><circle cx="18" cy="18" r="2" /></svg>
+              </span>
+              <span>Despachar vendas</span><strong>{{ summary.sales_to_ship }}</strong><span class="overview-arrow" aria-hidden="true">↗</span>
+            </a>
+          }
+          @if (summary.low_stock_count && canOpen('/products')) {
+            <a routerLink="/products" [queryParams]="{ estoque: 'baixo' }">
+              <span class="overview-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M3 7l9-4 9 4v10l-9 4-9-4V7Zm0 0 9 4 9-4m-9 4v10" /></svg>
+              </span>
+              <span>Repor estoque</span><strong>{{ summary.low_stock_count }}</strong><span class="overview-arrow" aria-hidden="true">↗</span>
+            </a>
+          }
+          @if (!(summary.sales_to_ship && canOpen('/marketplace')) && !(summary.low_stock_count && canOpen('/products'))) {
+            <p class="overview-empty">
+              <span class="overview-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="m5 12 4 4L19 6" /></svg>
+              </span>
+              Nenhuma pendência no momento.
+            </p>
+          }
+        </div>
+      </section>
+      <section class="overview-recent" aria-labelledby="recent-sales-heading">
+        <div class="overview-section-heading">
+          <h2 id="recent-sales-heading">Últimas vendas</h2>
+          @if (canOpen('/invoices')) {
+            <a class="overview-link" routerLink="/invoices">Ver todas <span aria-hidden="true">→</span></a>
+          }
+        </div>
+        <ul class="overview-sales">
+          @for (invoice of summary.recent_invoices.slice(0, 2); track invoice.id) {
+            @let stage = saleStageForInvoice(invoice);
+            <li>
+              <a class="overview-sale" [attr.href]="'/invoices/' + invoice.id" [attr.data-record-focus]="invoice.id" (click)="openRecent($event, invoice)">
+                <span class="overview-icon sale-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6zM14 3v5h5M9 12h7m-7 4h7" /></svg>
+                </span>
+                <span class="overview-customer">
+                  <strong>{{ invoice.customer?.name || 'Consumidor não identificado' }}</strong>
+                  @if (invoice.tracking?.destination_locality; as locality) { <small>{{ locality }}</small> }
+                </span>
+                <span class="overview-sale-detail">
+                  <strong>{{ invoice.total | currency: 'BRL' }}</strong>
+                  <small [attr.data-stage]="stage">{{ saleStageLabel(stage) }}</small>
+                </span>
+                <span class="overview-arrow" aria-hidden="true">›</span>
+              </a>
+            </li>
+          } @empty {
+            <li><p class="overview-empty">Nenhuma venda neste período.</p></li>
+          }
+        </ul>
+      </section>
     </div>
-    <ul class="overview-sales">
-      @for (invoice of summary.recent_invoices.slice(0, 2); track invoice.id) {
-        <li>
-          <a class="overview-sale" [attr.href]="'/invoices/' + invoice.id" [attr.data-record-focus]="invoice.id" (click)="openRecent($event, invoice)">
-            <span>
-              <strong>{{ invoice.customer?.name || 'Consumidor não identificado' }}</strong>
-              @if (invoice.tracking?.destination_locality; as locality) { <small>{{ locality }}</small> }
-            </span>
-            <span><strong>{{ invoice.total | currency: 'BRL' }}</strong><small>{{ saleStageLabel(saleStageForInvoice(invoice)) }}</small></span>
-            <span aria-hidden="true">›</span>
-          </a>
-        </li>
-      } @empty {
-        <li><p>Nenhuma venda neste período</p></li>
-      }
-    </ul>
-  </section>
+  </div>
   @if (financial(); as finance) {
     <div class="modal-backdrop" (click)="financial.set(null)">
       <section class="modal wide object-modal financial-modal" (click)="$event.stopPropagation()">

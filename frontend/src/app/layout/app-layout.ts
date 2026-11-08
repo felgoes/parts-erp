@@ -2,13 +2,13 @@ import { DatePipe } from '@angular/common';
 import { Component, DestroyRef, HostListener, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { RouterLink, RouterOutlet } from '@angular/router';
+import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { debounceTime } from 'rxjs';
 import { AppearanceService } from '../core/appearance.service';
 import { ErpBrandService } from '../core/erp-brand.service';
 import { AuthService } from '../core/auth.service';
 import { ApiService } from '../core/api.service';
-import { ROLE_LABELS } from '../core/user-access';
+import { ROLE_LABELS, canAccessPage } from '../core/user-access';
 import { PushNotificationsService } from '../core/push-notifications.service';
 import { LiveUpdatesService } from '../core/live-updates.service';
 import { PULL_TRIGGER_PX, pullBandHeight, pullOffset, shouldRefresh } from '../core/app-refresh';
@@ -19,12 +19,19 @@ import { AssistantChat } from '../shared/assistant-chat/assistant-chat';
 import { NavigationMenu } from './navigation-menu/navigation-menu';
 import { NotificationsMenu } from './notifications-menu/notifications-menu';
 
+const MOBILE_LINKS = [
+  { path: '/dashboard', label: 'Início', icon: 'm3 10 9-7 9 7M5 9v12h14V9M10 21v-7h4v7' },
+  { path: '/invoices', label: 'Vendas', icon: 'M6 3h9l4 4v14H6zM14 3v5h5M9 12h7m-7 4h7' },
+  { path: '/products', label: 'Estoque', icon: 'm3 7 9-4 9 4v10l-9 4-9-4zM3 7l9 4 9-4m-9 4v10' },
+];
+
 @Component({
   selector: 'app-layout',
   imports: [
     DatePipe,
     RouterOutlet,
     RouterLink,
+    RouterLinkActive,
     ReactiveFormsModule,
     AssistantChat,
     NavigationMenu,
@@ -40,6 +47,9 @@ export class AppLayout implements OnInit, OnDestroy {
   readonly live = inject(LiveUpdatesService);
   readonly menuOpen = signal(false);
   readonly mobileShell = signal(window.matchMedia('(width < 768px)').matches);
+  readonly mobileLinks = computed(() =>
+    MOBILE_LINKS.filter((item) => canAccessPage(this.auth.user()?.role, item.path))
+  );
   readonly menuCollapsed = signal(this.restoreMenuPreference());
   readonly profileOpen = signal(false);
   readonly avatarUrl = signal<string | null>(null);
@@ -145,7 +155,9 @@ export class AppLayout implements OnInit, OnDestroy {
       return;
     }
     if (event.key !== 'Tab') return;
-    const items = Array.from(document.querySelectorAll<HTMLElement>('.app-topbar a[href], .app-topbar button:not(:disabled), .sidebar a[href], .sidebar button:not(:disabled)')).filter((item) => item.getClientRects().length);
+    const items = Array.from(document.querySelectorAll<HTMLElement>(
+      '.sidebar :is(a[href], button:not(:disabled)), .mobile-navigation :is(a[href], button:not(:disabled))'
+    )).filter((item) => item.getClientRects().length);
     const first = items[0];
     const last = items[items.length - 1];
     if (event.shiftKey && document.activeElement === first) {

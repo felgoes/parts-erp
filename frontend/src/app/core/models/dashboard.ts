@@ -13,6 +13,7 @@ export interface DashboardSummary {
   products_count: number;
   low_stock_count: number;
   recent_invoices: Invoice[];
+  daily: DashboardDailyMetric[];
 }
 export interface DashboardBreakdown {
   label: string;

@@ -35,7 +35,7 @@ def test_invoice_and_dashboard_date_filters(db: Session) -> None:
     db.add(product)
     db.flush()
     _sale(db, product, datetime(2026, 7, 15, 15, tzinfo=UTC))
-    _sale(db, product, datetime(2026, 8, 15, 15, tzinfo=UTC))
+    _sale(db, product, datetime(2026, 8, 16, 2, 59, tzinfo=UTC))
 
     start, end = date(2026, 8, 1), date(2026, 8, 31)
     invoices = list_invoices(start, end, db, None)
@@ -49,6 +49,11 @@ def test_invoice_and_dashboard_date_filters(db: Session) -> None:
     assert finance.revenue == Decimal("100.00")
     assert finance.previous_revenue == Decimal("100.00")
     assert len(finance.daily) == 31
+    assert dashboard.daily == finance.daily
+    assert dashboard.daily[14].date == "2026-08-15"
+    assert dashboard.daily[14].amount == Decimal("100.00")
+    assert dashboard.daily[14].count == 1
+    assert dashboard.daily[15].count == 0
 
 
 def test_cancelled_marketplace_sale_stays_visible_but_is_not_revenue(db: Session) -> None:
@@ -99,6 +104,7 @@ def test_cancelled_marketplace_sale_stays_visible_but_is_not_revenue(db: Session
     assert invoices[0].after_sale.refund_amount == Decimal("125.00")
     assert dashboard.recent_invoices[0].status == "cancelled"
     assert dashboard.confirmed_sales == 0
+    assert all(day.count == 0 and day.amount == 0 for day in dashboard.daily)
     assert dashboard.cancelled_sales == 1
     assert dashboard.cancelled_amount == Decimal("125.00")
     assert dashboard.revenue_month == Decimal("0")

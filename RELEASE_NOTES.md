@@ -1,3 +1,7 @@
+## 8 de novembro de 2026 — destaque do menu no celular
+
+- Ao abrir o Menu, só ele fica destacado na faixa inferior. Ao fechar, o destaque volta para a tela atual. Implantado em 08/11/2026, com verificações do ERP e do site aprovadas. [Commit implantado · b06471e](https://github.com/felgoes/parts-erp/commit/b06471e10aebedd4c075567998ded0246a231dba)
+
 ## 8 de novembro de 2026 — Visão geral e navegação no celular
 
 - A Visão geral ganhou um gráfico diário interativo, cartões com entrada suave e atalhos para pendências e vendas recentes. No celular, Início, Vendas, Estoque e Menu ficam na faixa inferior. Implantado em 08/11/2026, com a API, o ERP e o site público verificados. [Commit implantado · 27fb0e4](https://github.com/felgoes/parts-erp/commit/27fb0e4fcb00fe1d8c703f1bcacde2d461204b74)

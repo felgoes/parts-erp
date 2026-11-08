@@ -8,6 +8,7 @@
 }
 
 .overview-heading { margin-bottom: 20px; }
+.overview-heading app-period-filter { margin-inline-start: auto; }
 .overview-heading h1 { margin: 0; font-size: clamp(27px, 3vw, 36px); line-height: 1.12; font-weight: 700; }
 .overview-summary {
   display: grid;
@@ -158,10 +159,10 @@
 }
 @media (width < 768px) {
   .overview-heading {
-    flex-direction: column;
-    align-items: flex-start;
-    margin-bottom: 14px;
+    gap: 6px 8px;
+    margin-bottom: 10px;
   }
+  .overview-heading h1 { font-size: 24px; }
   .overview-summary, .overview-main, .overview-side { gap: 10px; }
   :is(.overview-revenue, .overview-trend, .overview-tasks, .overview-recent) {
     padding-inline: 12px;

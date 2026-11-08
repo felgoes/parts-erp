@@ -1,4 +1,5 @@
-import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
+import { NgTemplateOutlet } from '@angular/common';
+import { Component, ElementRef, EventEmitter, inject, Input, OnInit, Output, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import {
   DateRange,
@@ -15,8 +16,13 @@ export interface PeriodFilterStatusOption {
 
 @Component({
   selector: 'app-period-filter',
-  imports: [FormsModule],
-  styles: [':host { display: block; }'],
+  imports: [FormsModule, NgTemplateOutlet],
+  styleUrl: './period-filter.scss',
+  host: {
+    '(document:pointerdown)': 'dismissOutside($event.target)',
+    '(focusout)': 'dismissOutside($event.relatedTarget)',
+    '(keydown.escape)': 'escapePicker($event)',
+  },
   templateUrl: './period-filter.html',
 })
 export class PeriodFilter implements OnInit {
@@ -35,6 +41,14 @@ export class PeriodFilter implements OnInit {
   @Output() rangeChange = new EventEmitter<DateRange>();
   @Output() statusChange = new EventEmitter<string>();
 
+  private static nextPickerId = 0;
+  private readonly hostElement = inject(ElementRef<HTMLElement>);
+  @ViewChild('pickerTrigger') private pickerTrigger?: ElementRef<HTMLButtonElement>;
+
+  readonly pickerId = `period-picker-${++PeriodFilter.nextPickerId}`;
+  pickerOpen = false;
+  customDraft: DateRange | null = null;
+
   readonly datePresets = QUICK_DATE_PRESETS;
   activePreset: QuickDatePreset = 'thisMonth';
   startDate = '';
@@ -50,6 +64,49 @@ export class PeriodFilter implements OnInit {
     this.endDate = this.initialEndDate || presetRange.endDate;
   }
 
+  get presetLabel() {
+    return this.datePresets.find(({ id }) => id === this.activePreset)?.label;
+  }
+
+  togglePicker() {
+    if (this.pickerOpen) this.closePicker();
+    else {
+      this.pickerOpen = true;
+      if (this.activePreset === 'custom') this.startCustomDraft();
+    }
+  }
+
+  choosePreset(preset: QuickDatePreset) {
+    if (preset === 'custom') {
+      this.startCustomDraft();
+      return;
+    }
+    this.selectPreset(preset);
+    this.closePicker(true);
+  }
+
+  private startCustomDraft() {
+    this.customDraft ??= { startDate: this.startDate, endDate: this.endDate };
+  }
+
+  dismissOutside(target: EventTarget | null) {
+    if (this.pickerOpen && target instanceof Node && !this.hostElement.nativeElement.contains(target))
+      this.closePicker();
+  }
+
+  escapePicker(event: Event) {
+    if (!this.pickerOpen || event.defaultPrevented) return;
+    event.preventDefault();
+    event.stopPropagation();
+    this.closePicker(true);
+  }
+
+  private closePicker(restoreFocus = false) {
+    this.pickerOpen = false;
+    this.customDraft = null;
+    if (restoreFocus) this.pickerTrigger?.nativeElement.focus();
+  }
+
   selectPreset(preset: QuickDatePreset) {
     this.activePreset = preset;
     if (preset === 'custom') return;
@@ -60,11 +117,19 @@ export class PeriodFilter implements OnInit {
   }
 
   changeStart(value: string) {
+    if (this.customDraft) {
+      this.customDraft.startDate = value;
+      return;
+    }
     this.startDate = value;
     this.activePreset = 'custom';
   }
 
   changeEnd(value: string) {
+    if (this.customDraft) {
+      this.customDraft.endDate = value;
+      return;
+    }
     this.endDate = value;
     this.activePreset = 'custom';
   }
@@ -75,11 +140,17 @@ export class PeriodFilter implements OnInit {
   }
 
   validRange() {
-    return !!this.startDate && !!this.endDate && this.startDate <= this.endDate;
+    const { startDate, endDate } = this.customDraft ?? this;
+    return !!startDate && !!endDate && startDate <= endDate;
   }
 
   applyRange() {
-    if (this.validRange() && !this.busy)
-      this.rangeChange.emit({ startDate: this.startDate, endDate: this.endDate });
+    if (!this.validRange() || this.busy) return;
+    if (this.customDraft) {
+      this.activePreset = 'custom';
+      ({ startDate: this.startDate, endDate: this.endDate } = this.customDraft);
+      this.closePicker(true);
+    }
+    this.rangeChange.emit({ startDate: this.startDate, endDate: this.endDate });
   }
 }

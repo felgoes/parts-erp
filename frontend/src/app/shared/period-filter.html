@@ -6,11 +6,45 @@
   [attr.aria-label]="ariaLabel"
 >
   @if (compact) {
-    <select aria-label="Período" [ngModel]="activePreset" (ngModelChange)="selectPreset($event)">
-      @for (preset of datePresets; track preset.id) {
-        <option [value]="preset.id">{{ preset.label }}</option>
+    <button
+      #pickerTrigger
+      type="button"
+      class="period-trigger"
+      [attr.aria-label]="'Período: ' + presetLabel"
+      [attr.aria-controls]="pickerId"
+      [attr.aria-expanded]="pickerOpen"
+      (click)="togglePicker()"
+    >
+      <svg class="period-calendar" viewBox="0 0 24 24" aria-hidden="true">
+        <rect x="4" y="6" width="16" height="15" rx="2" />
+        <path d="M8 3v5m8-5v5M4 11h16" />
+      </svg>
+      {{ presetLabel }}
+      <svg class="period-chevron" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="m7 10 5 5 5-5" />
+      </svg>
+    </button>
+    <div class="period-picker" [id]="pickerId" [hidden]="!pickerOpen">
+      <div class="period-options" role="group" aria-label="Opções de período">
+        @for (preset of datePresets; track preset.id) {
+          @let selected = (customDraft ? 'custom' : activePreset) === preset.id;
+          <button
+            type="button"
+            class="period-option"
+            [attr.aria-pressed]="selected"
+            (click)="choosePreset(preset.id)"
+          >
+            {{ preset.label }}
+            @if (selected) {
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4 10-10" /></svg>
+            }
+          </button>
+        }
+      </div>
+      @if (customDraft) {
+        <ng-container [ngTemplateOutlet]="rangeFields" />
       }
-    </select>
+    </div>
   } @else {
   <div class="date-filter-heading">
     <strong>{{ heading }}</strong>
@@ -66,13 +100,18 @@
 
   }
 
-  @if (activePreset === 'custom') {
+  @if (!compact && activePreset === 'custom') {
+    <ng-container [ngTemplateOutlet]="rangeFields" />
+  }
+</section>
+
+<ng-template #rangeFields>
     <div class="date-range-fields">
       <label
-        >De <input type="date" [ngModel]="startDate" (ngModelChange)="changeStart($event)"
+        >De <input type="date" [ngModel]="customDraft?.startDate ?? startDate" (ngModelChange)="changeStart($event)"
       /></label>
       <label
-        >Até <input type="date" [ngModel]="endDate" (ngModelChange)="changeEnd($event)"
+        >Até <input type="date" [ngModel]="customDraft?.endDate ?? endDate" (ngModelChange)="changeEnd($event)"
       /></label>
       <button
         class="secondary"
@@ -83,5 +122,4 @@
         {{ busy ? 'Atualizando…' : applyLabel }}
       </button>
     </div>
-  }
-</section>
+</ng-template>

@@ -4,7 +4,6 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { debounceTime } from 'rxjs';
-import { AppearanceService } from '../core/appearance.service';
 import { ErpBrandService } from '../core/erp-brand.service';
 import { AuthService } from '../core/auth.service';
 import { ApiService } from '../core/api.service';
@@ -43,7 +42,6 @@ const MOBILE_LINKS = [
 export class AppLayout implements OnInit, OnDestroy {
   readonly auth = inject(AuthService);
   readonly brand = inject(ErpBrandService);
-  readonly appearance = inject(AppearanceService);
   readonly live = inject(LiveUpdatesService);
   readonly menuOpen = signal(false);
   readonly mobileShell = signal(window.matchMedia('(width < 768px)').matches);

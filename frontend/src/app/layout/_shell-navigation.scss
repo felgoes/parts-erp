@@ -1,12 +1,21 @@
 .app-shell .sidebar {
-  background: var(--navigation);
-  color: var(--text-primary);
-  border-right: 1px solid var(--divider);
+  --sidebar-ink: #f3f8f2;
+  --sidebar-muted: #bdcfc3;
+  --sidebar-line: #ffffff24;
+  --sidebar-accent: var(--brand-accent);
+  background: var(--brand-primary);
+  color: var(--sidebar-ink);
+  border-color: var(--sidebar-line);
 }
 
-.app-shell .sidebar-foot { border-color: var(--divider); }
+.app-shell .sidebar-foot { border-color: var(--sidebar-line); }
 .sidebar-foot .profile-copy small, .sidebar-foot .profile-chevron, .sidebar-head .brand small {
-  color: var(--text-secondary);
+  color: var(--sidebar-muted);
+}
+.sidebar-foot .icon-button { color: inherit; }
+.sidebar :is(.brand, .profile-trigger, .icon-button):focus-visible {
+  outline: 2px solid var(--sidebar-accent);
+  outline-offset: 2px;
 }
 
 .app-shell .app-topbar {

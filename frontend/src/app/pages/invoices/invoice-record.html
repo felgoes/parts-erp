@@ -60,12 +60,13 @@
         </div>
         <ol class="progress-steps">
           @for (step of state.steps; track step.label; let i = $index) {
-            <li [class.done]="step.done" [class.followed]="state.steps[i + 1]?.done" [class.current]="state.currentStep === i"
+            <li [class.followed]="step.done && state.steps[i + 1]?.done" [style.--step-index]="i"
               [attr.aria-current]="state.currentStep === i ? 'step' : null">
               <span class="step-mark" aria-hidden="true">
+                {{ i + 1 }}
                 @if (step.done) {
-                  <svg viewBox="0 0 24 24"><path d="m5 12 4 4L19 6" /></svg>
-                } @else { {{ i + 1 }} }
+                  <span class="step-check"><svg viewBox="0 0 24 24"><path d="m5 12 4 4L19 6" /></svg></span>
+                }
               </span>
               <strong>{{ step.label }}</strong>
               @if (step.date; as timestamp) {

@@ -94,28 +94,59 @@ h1 {
 .progress-action:hover { background: #d1f7b6; }
 .progress-action:focus-visible { outline: 2px solid var(--record-highlight); outline-offset: 3px; }
 .progress-action:disabled { opacity: .65; }
-.progress-steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 14px 0 0; padding: 0; list-style: none; }
-.progress-steps li { position: relative; display: grid; align-content: start; justify-items: start; gap: 3px; min-width: 0; }
-.progress-steps li:not(:last-child)::before,
+.progress-steps {
+  --step-size: 28px;
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: 16px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.progress-steps li {
+  position: relative;
+  display: grid;
+  align-content: start;
+  justify-items: center;
+  gap: 3px;
+  min-width: 0;
+  padding-inline: 4px;
+  text-align: center;
+}
+.progress-steps::before,
 .progress-steps li.followed::after {
   content: '';
   position: absolute;
-  inset: 11px 0 auto 31px;
-  border-top: 1px solid #ffffff45;
+  top: calc((var(--step-size) - 2px) / 2);
+  height: 2px;
+  background: #ffffff45;
 }
-.progress-steps li.followed::after { border-color: var(--record-highlight); transform-origin: left; }
+.progress-steps::before { inset-inline: calc(100% / 6); }
+.progress-steps li.followed::after {
+  z-index: 1;
+  inset-inline-start: 50%;
+  width: 100%;
+  background: var(--record-highlight);
+  transform-origin: left;
+}
+.step-mark, .step-check { display: grid; place-items: center; border-radius: 50%; }
 .step-mark {
-  width: 24px;
-  height: 24px;
-  display: grid;
-  place-items: center;
+  position: relative;
+  z-index: 2;
+  width: var(--step-size);
+  height: var(--step-size);
   border: 1px solid #ffffff63;
-  border-radius: 50%;
+  background: var(--record-green);
   color: var(--record-muted-green);
   font-size: 12px;
 }
-.step-mark svg { width: 15px; height: 15px; stroke-width: 2; }
-.done .step-mark { border-color: var(--record-highlight); color: #182e22; background: var(--record-highlight); }
+.step-check {
+  position: absolute;
+  inset: -1px;
+  color: #182e22;
+  background: var(--record-highlight);
+}
+.step-check svg { width: 16px; height: 16px; stroke-width: 2; }
 .progress-steps strong { margin-top: 3px; color: var(--record-on-green); font-size: .85rem; }
 .progress-steps :is(time, small) { color: var(--record-muted-green); font-size: .75rem; }
 
@@ -201,11 +232,14 @@ h1 {
   .record-items { animation-delay: 100ms; }
   .record-rail, .after-sale-fold { animation-delay: 140ms; }
   .progress-status { animation: record-enter 220ms ease-out both; }
-  .progress-steps li.followed::after { animation: step-draw 330ms 175ms ease-out both; }
-  .progress-steps li.current .step-mark { animation: step-focus 420ms 250ms ease-out both; }
+  .progress-steps li { --step-delay: calc(180ms + var(--step-index) * 420ms); }
+  .step-check { animation: step-check 210ms var(--step-delay) ease-out both; }
+  .progress-steps li.followed::after {
+    animation: step-draw 270ms calc(var(--step-delay) + 150ms) ease-in-out both;
+  }
   .record-fold[open] > .fold-body { animation: record-enter 210ms ease-out both; }
   .fold-chevron { transition: transform 180ms ease; }
 }
 @keyframes record-enter { from { opacity: 0; transform: translateY(7px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes step-draw { from { transform: scaleX(0); } to { transform: scaleX(1); } }
-@keyframes step-focus { from { box-shadow: 0 0 0 0 #b9ed91aa; } to { box-shadow: 0 0 0 6px #b9ed9100; } }
+@keyframes step-check { from { opacity: 0; transform: scale(.65); } to { opacity: 1; transform: scale(1); } }

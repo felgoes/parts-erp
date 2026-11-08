@@ -224,24 +224,25 @@ nav { gap: 8px; }
 }
 
 .nav-item, .nav-icon, .nav-item.active .nav-icon, .nav-overview .nav-icon, .nav-chevron {
-  color: var(--text-primary);
+  color: var(--sidebar-ink);
 }
 
 .nav-section-label, .group-toggle {
-  color: var(--text-primary);
+  color: var(--sidebar-ink);
   font-size: 15px;
   font-weight: 700;
 }
 
 .nav-item:hover, .nav-item.active {
-  background: color-mix(in srgb, var(--text-primary) 6%, var(--navigation));
-  color: var(--text-primary);
+  background: color-mix(in srgb, var(--sidebar-ink) 6%, var(--brand-primary));
+  color: var(--sidebar-ink);
 }
 
-.nav-item.active { border-inline-start: 2px solid var(--focus-ring); }
-.nav-section { border-top: 1px solid var(--divider); padding-top: 4px; }
+.nav-chevron { color: var(--sidebar-muted); }
+.nav-item.active { border-inline-start: 2px solid var(--sidebar-accent); }
+.nav-section { border-top: 1px solid var(--sidebar-line); padding-top: 4px; }
 .admin-section { margin-top: 0; }
-.nav-children { border-color: var(--divider); }
+.nav-children { border-color: var(--sidebar-line); }
 
 button.nav-section-label {
   display: flex;
@@ -255,6 +256,12 @@ button.nav-section-label {
   cursor: pointer;
 }
 
+button.nav-section-label:hover { background: #ffffff0f; border-radius: 6px; }
+.nav-item:focus-visible, button.nav-section-label:focus-visible {
+  outline: 2px solid var(--sidebar-accent);
+  outline-offset: -2px;
+}
+
 @media (width < 768px) {
   button.nav-section-label { min-height: 44px; }
   .nav-item:not(.configuration-toggle) .nav-icon { display: none; }
@@ -262,11 +269,10 @@ button.nav-section-label {
 
 .nav-item.active {
   border-radius: 8px;
-  background: color-mix(in srgb, var(--focus-ring) 12%, var(--navigation));
+  background: color-mix(in srgb, var(--sidebar-accent) 12%, var(--brand-primary));
 }
 .nav-item.active .nav-icon {
-  color: var(--focus-ring);
-  filter: drop-shadow(0 0 5px color-mix(in srgb, var(--focus-ring) 45%, transparent));
+  color: var(--sidebar-accent);
 }
 @media (prefers-reduced-motion: no-preference) {
   .nav-item.active { animation: nav-highlight 220ms ease-out; }
@@ -276,7 +282,7 @@ button.nav-section-label {
   .nav-item, .nav-icon, .nav-chevron { transition: none; }
 }
 @keyframes nav-highlight {
-  from { background: color-mix(in srgb, var(--focus-ring) 25%, var(--navigation)); }
+  from { background: color-mix(in srgb, var(--sidebar-accent) 25%, var(--brand-primary)); }
 }
 @keyframes nav-expand {
   from { opacity: 0; transform: translateY(-4px); }

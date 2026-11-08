@@ -80,7 +80,7 @@
     max-height: calc(100dvh - var(--mobile-navigation-height) - var(--mobile-header-size));
     padding: 12px max(16px, env(safe-area-inset-right)) 10px max(16px, env(safe-area-inset-left));
     border: 0;
-    border-top: 1px solid var(--divider);
+    border-top: 1px solid var(--sidebar-line);
     border-radius: 20px 20px 0 0;
     opacity: 0;
     transform: translateY(12px);

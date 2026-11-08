@@ -16,22 +16,24 @@
   </header>
 
   @if (hasSales() && points()[selectedIndex()]; as selected) {
-    <div class="trend-plot">
-      <svg viewBox="0 0 1000 164" preserveAspectRatio="none" aria-hidden="true"
-        (pointermove)="selectPoint($event)" (pointerup)="selectPoint($event)">
-        <defs>
-          <linearGradient id="sales-trend-fill" x1="0" x2="0" y1="0" y2="1">
-            <stop offset="0%" stop-color="currentColor" stop-opacity=".32" />
-            <stop offset="100%" stop-color="currentColor" stop-opacity=".02" />
-          </linearGradient>
-        </defs>
+    <div #plot class="trend-plot" [class.is-visible]="revealed()"
+      (pointermove)="selectPoint($event)" (pointerup)="selectPoint($event)">
+      <svg viewBox="0 0 1000 164" preserveAspectRatio="none" aria-hidden="true">
         <path class="trend-grid" d="M 0 14 H 1000 M 0 48 H 1000 M 0 82 H 1000 M 0 116 H 1000 M 0 150 H 1000" />
-        <g class="trend-series">
-          <polygon class="trend-fill" [attr.points]="area()" fill="url(#sales-trend-fill)" />
-          <polyline class="trend-line" pathLength="1" [attr.points]="line()" />
-        </g>
         <line class="trend-guide" [attr.x1]="selected.x" [attr.x2]="selected.x" y1="14" y2="150" />
       </svg>
+      <div class="trend-series-clip" aria-hidden="true">
+        <svg viewBox="0 0 1000 164" preserveAspectRatio="none">
+          <defs>
+            <linearGradient id="sales-trend-fill" x1="0" x2="0" y1="0" y2="1">
+              <stop offset="0%" stop-color="currentColor" stop-opacity=".32" />
+              <stop offset="100%" stop-color="currentColor" stop-opacity=".02" />
+            </linearGradient>
+          </defs>
+          <polygon [attr.points]="area()" fill="url(#sales-trend-fill)" />
+          <polyline class="trend-line" [attr.points]="line()" />
+        </svg>
+      </div>
       <span class="trend-marker" aria-hidden="true" [style.left.%]="selected.x / 10"
         [style.top.%]="selected.y / 164 * 100"></span>
     </div>

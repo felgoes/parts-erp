@@ -48,7 +48,7 @@
         @if (brand.logo()) {
           <img class="brand-logo" [src]="brand.logo()" alt="" />
         } @else {
-          <img class="brand-logo" [src]="appearance.theme() === 'dark' ? '/brand/parts-mark-accent.svg' : '/brand/parts-mark-ink.svg'" alt="" />
+          <img class="brand-logo" src="/brand/parts-mark-accent.svg" alt="" />
         }
         <div class="brand-wordmark">
           <strong>{{ brand.shortName() }}</strong

@@ -1,5 +1,5 @@
 import { CurrencyPipe, DecimalPipe } from '@angular/common';
-import { Component, computed, input, signal } from '@angular/core';
+import { Component, computed, effect, ElementRef, input, signal, viewChild } from '@angular/core';
 import type { DashboardDailyMetric } from '../../core/models/dashboard';
 
 const LEFT = 12;
@@ -16,6 +16,8 @@ const BOTTOM = 150;
 export class SalesTrend {
   readonly daily = input.required<DashboardDailyMetric[]>();
   readonly countOnly = input.required<boolean>();
+  private readonly plot = viewChild<ElementRef<HTMLElement>>('plot');
+  readonly revealed = signal(false);
   private readonly chosenDate = signal<string | null>(null);
   readonly points = computed(() => {
     const days = this.daily();
@@ -48,6 +50,28 @@ export class SalesTrend {
     return 0;
   });
 
+  constructor() {
+    effect((onCleanup) => {
+      const plot = this.plot()?.nativeElement;
+      if (!plot) {
+        this.revealed.set(false);
+        return;
+      }
+      if (this.revealed()) return;
+
+      if (typeof IntersectionObserver === 'undefined') {
+        this.revealed.set(true);
+        return;
+      }
+      const threshold = .25;
+      const observer = new IntersectionObserver((entries) => {
+        if (entries.some((entry) => entry.intersectionRatio >= threshold)) this.revealed.set(true);
+      }, { threshold });
+      observer.observe(plot);
+      onCleanup(() => observer.disconnect());
+    });
+  }
+
   selectIndex(index: number) {
     const day = this.daily()[index];
     if (day) this.chosenDate.set(day.date);
@@ -55,7 +79,7 @@ export class SalesTrend {
 
   selectPoint(event: PointerEvent) {
     if (event.type === 'pointermove' && event.pointerType !== 'mouse') return;
-    const bounds = (event.currentTarget as SVGElement).getBoundingClientRect();
+    const bounds = (event.currentTarget as HTMLElement).getBoundingClientRect();
     if (!bounds.width) return;
     const fraction = ((event.clientX - bounds.left) / bounds.width * 1000 - LEFT) / (RIGHT - LEFT);
     const last = this.daily().length - 1;

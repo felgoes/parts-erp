@@ -1,3 +1,7 @@
+## 8 de novembro de 2026 — animações da Visão geral e da entrega
+
+- O gráfico revela a linha e o preenchimento ao entrar na Visão geral. Ao abrir uma venda, as etapas de entrega ficam centralizadas e as concluídas acendem na ordem. O menu lateral do desktop e o menu aberto no celular voltaram ao verde clássico. Implantado em 08/11/2026, com API, ERP e site verificados. [Commit implantado · 66d9f47](https://github.com/felgoes/parts-erp/commit/66d9f47587501e829d75a175ff42d41a9df955dc)
+
 ## 8 de novembro de 2026 — registro de venda e gráfico da Visão geral
 
 - O registro reúne itens, entrega, documentos e pós-venda numa página. Em pedidos online, a faixa de andamento entra em sequência com os detalhes; o mapa continua animado ao abrir o rastreio. A Visão geral ganhou um cartão de receita mais compacto e um gráfico separado, cujo traço se desenha a cada abertura. Implantado em 08/11/2026, com API, ERP e site verificados. [Commit implantado · bb7d633](https://github.com/felgoes/parts-erp/commit/bb7d633f01c84519b866ffbc8f31796569d26d60)

@@ -1,3 +1,7 @@
+## 8 de novembro de 2026 — seletor de período da Visão geral
+
+- Na Visão geral do celular, título e filtro de período ficam na mesma linha. O menu de períodos usa o verde do ERP para destacar a seleção e inclui os campos de datas personalizadas. Implantado em 08/11/2026, com API, ERP e site verificados. [Commit implantado · b26059f](https://github.com/felgoes/parts-erp/commit/b26059fe4eb46faa21599baa79c657b816aa9fd7)
+
 ## 8 de novembro de 2026 — cabeçalho da Visão geral
 
 - A Visão geral mostra só o título e o filtro de período no cabeçalho da página. No desktop, o filtro fica à direita; no celular, logo abaixo do título. Implantado em 08/11/2026, com API, ERP e site verificados. [Commit implantado · ac2543c](https://github.com/felgoes/parts-erp/commit/ac2543c0d702128ffbb89558ce00e3a6c189bb54)

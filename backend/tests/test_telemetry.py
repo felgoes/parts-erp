@@ -2,7 +2,7 @@ from datetime import UTC, date, datetime
 
 from starlette.requests import Request
 
-from app.api.routes.telemetry import collect_event, summary
+from app.api.routes.telemetry import _safe_properties, collect_event, summary
 from app.models import TelemetryEvent, User
 from app.schemas.common import TelemetryEventCreate
 
@@ -68,3 +68,44 @@ def test_summary_includes_daily_events_in_brasilia_timezone(db):
     assert {event.name: event.count for event in result.daily_events[1].events} == {
         "product_view": 1
     }
+
+
+
+def test_library_events_accept_ids_and_filter_unapproved_properties(db):
+    names = (
+        "library_vehicle_view",
+        "library_part_view",
+        "library_reference_copy",
+    )
+    for name in names:
+        result = collect_event(
+            payload=TelemetryEventCreate(
+                name=name,
+                anonymous_id="qa-library-visitor",
+                properties={
+                    "vehicle_id": "qa-vehicle-fixture",
+                    "part_id": "qa-part-fixture",
+                    "entry_source": "menu",
+                    "sku": "QA-SKU-0001",
+                    "vin": "must-not-be-stored",
+                },
+            ),
+            request=request_stub(),
+            db=db,
+        )
+        assert result == {"status": "accepted"}
+
+    events = db.query(TelemetryEvent).order_by(TelemetryEvent.id).all()
+    library_events = [event for event in events if event.name.startswith("library_")]
+    assert {event.name for event in library_events} == set(names)
+    assert all(
+        event.properties
+        == {
+            "vehicle_id": "qa-vehicle-fixture",
+            "part_id": "qa-part-fixture",
+            "entry_source": "menu",
+            "sku": "QA-SKU-0001",
+        }
+        for event in library_events
+    )
+    assert _safe_properties({"entry_source": "untrusted", "private_note": "no"}) == {}

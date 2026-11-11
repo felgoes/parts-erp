@@ -34,8 +34,11 @@ ALLOWED_EVENTS = {
     "mercado_livre_click",
     "whatsapp_click",
     "catalog_empty_result",
+    "library_vehicle_view",
+    "library_part_view",
+    "library_reference_copy",
 }
-ALLOWED_PROPERTIES = {"sku", "provider", "external_item_id", "listing_id", "placement", "brand", "model", "year", "source", "campaign"}
+ALLOWED_PROPERTIES = {"sku", "provider", "external_item_id", "listing_id", "placement", "brand", "model", "year", "source", "campaign", "vehicle_id", "part_id", "entry_source"}
 _rate_windows: dict[str, deque[float]] = defaultdict(deque)
 _rate_lock = Lock()
 
@@ -58,6 +61,8 @@ def _safe_properties(properties: dict[str, Any]) -> dict[str, Any]:
     clean: dict[str, Any] = {}
     for key, value in properties.items():
         if key not in ALLOWED_PROPERTIES:
+            continue
+        if key == "entry_source" and value not in {"menu", "direct", "internal"}:
             continue
         if isinstance(value, (str, int, float, bool)) and len(str(value)) <= 120:
             clean[key] = value

@@ -1,3 +1,7 @@
+## 11 de novembro de 2026 — eventos da Biblioteca no site
+
+- A API aceita eventos de visualização de veículo e peça e cópia de referência, com IDs editoriais e origem de navegação permitidos. Implantado em 11/11/2026 no commit `48014a9`; health check do ERP e smoke público do site e do ERP aprovados.
+
 ## 8 de novembro de 2026 — emplacamentos no catálogo público
 
 - O site pode mostrar os veículos mais emplacados por segmento com a competência e a fonte. O ERP atualiza a publicação em segundo plano. Implantado em 08/11/2026, com API, ERP e site verificados. [Commit implantado · d6e9562](https://github.com/felgoes/parts-erp/commit/d6e9562fb3ac80ffcb0d6173e35c51074a2f8879)

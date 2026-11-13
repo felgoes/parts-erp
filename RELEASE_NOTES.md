@@ -1,3 +1,7 @@
+## 13 de novembro de 2026 — estoque Mercado Livre Full
+
+- O ERP ganhou uma área para acompanhar envios, saldo do Full e movimentações. O saldo é conferido a cada 30 minutos e pode ser atualizado por notificações FBM Stock Operations quando o tópico estiver habilitado no Mercado Livre. O estoque local/Flex fica separado. [Commit implantado · 4b68286](https://github.com/felgoes/parts-erp/commit/4b68286417e2d307ea0344aeb13e24677b0604b6)
+
 ## 11 de novembro de 2026 — eventos da Biblioteca no site
 
 - A API aceita eventos de visualização de veículo e peça e cópia de referência, com IDs editoriais e origem de navegação permitidos. Implantado em 11/11/2026 no commit `48014a9`; health check do ERP e smoke público do site e do ERP aprovados.

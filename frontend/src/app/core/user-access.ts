@@ -34,6 +34,7 @@ const PAGE_ROLES: Record<string, UserRole[]> = {
   invoices: ['admin', 'manager', 'operator', 'stock', 'finance', 'viewer'],
   customers: ['admin', 'manager', 'operator', 'finance', 'viewer'],
   marketplace: ['admin', 'manager', 'operator', 'stock', 'finance', 'viewer'],
+  full: ['admin', 'manager', 'operator', 'stock', 'finance', 'viewer'],
   integrations: ['admin'],
   users: ['admin'],
   settings: ['admin'],

@@ -43,6 +43,11 @@ export const NAVIGATION_SECTIONS: NavigationSection[] = [
           'M20.6 13.6 13.6 20.6a2 2 0 0 1-2.8 0L3 12.8V3h9.8l7.8 7.8a2 2 0 0 1 0 2.8ZM7.5 7.5h.01',
       },
       {
+        path: '/marketplace/full',
+        label: 'Mercado Livre Full',
+        iconPath: 'M3 7h18v13H3zM3 7l2-4h14l2 4M8 12h8M8 16h5',
+      },
+      {
         path: '/purchases',
         label: 'Compras',
         iconPath:

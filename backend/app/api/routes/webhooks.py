@@ -3,7 +3,7 @@
 Módulo próprio porque aqui a regra de segurança é outra: a rota é anônima, então o payload é
 validado por forma, o tamanho é limitado, a frequência é limitada por IP e por provedor, e
 notificação repetida não entra duas vezes na fila. O worker nunca confia no payload: ele
-reconsulta o pedido no provedor com a credencial da conta.
+reconsulta o recurso no provedor com a credencial da conta.
 """
 
 import logging
@@ -34,7 +34,7 @@ WEBHOOK_PROVIDER_LIMIT_PER_MINUTE = 600
 WEBHOOK_DEDUP_SECONDS = 60
 WEBHOOK_BUSY = "Muitas notificações agora; tente novamente em instantes"
 
-ML_TOPICS = {"orders_v2", "shipments", "payments", "invoices", "claims", "returns"}
+ML_TOPICS = {"orders_v2", "shipments", "payments", "invoices", "claims", "returns", "fbm_stock_operations"}
 
 
 @router.post("/webhook", status_code=202)
@@ -115,6 +115,8 @@ def _validate_mercadolivre_notification(topic: str, resource: str, seller_id: st
         raise HTTPException(status_code=400, detail="Notificação inválida")
     if topic == "orders_v2":
         valid = bool(re.fullmatch(r"/orders/\d+", resource))
+    elif topic == "fbm_stock_operations":
+        valid = bool(re.fullmatch(r"/stock/fulfillment/operations/[0-9]{1,24}", resource))
     elif topic == "invoices":
         valid = resource.startswith(f"/users/{seller_id}/invoices/")
     else:

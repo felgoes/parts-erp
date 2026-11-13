@@ -100,6 +100,11 @@ export const routes: Routes = [
         loadComponent: () => import('./pages/customers/customers').then((m) => m.CustomersPage),
       },
       {
+        path: 'marketplace/full',
+        loadComponent: () =>
+          import('./pages/marketplace-full/marketplace-full').then((m) => m.MarketplaceFullPage),
+      },
+      {
         path: 'marketplace',
         loadComponent: () =>
           import('./pages/marketplace/marketplace').then((m) => m.MarketplacePage),

@@ -35,6 +35,11 @@ from app.workers.backups import (  # noqa: F401
 )
 from app.workers.marketplace_costs import reconcile_marketplace_costs
 from app.workers.vehicle_market import refresh_vehicle_market_fleet, vehicle_market_cron_jobs
+from app.workers.marketplace_full import (
+    marketplace_full_cron_jobs,
+    process_full_stock_notification,
+    sync_mercadolivre_full,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -184,7 +189,9 @@ def _process_mercadolivre_notification(topic: str, resource: str, seller_id: str
 async def process_mercadolivre_notification(
     ctx: dict[str, Any], topic: str, resource: str, seller_id: str
 ) -> None:
-    del ctx
+    if topic == "fbm_stock_operations":
+        await process_full_stock_notification(ctx, resource, seller_id)
+        return
     try:
         await asyncio.to_thread(_process_mercadolivre_notification, topic, resource, seller_id)
     except Exception:
@@ -342,6 +349,7 @@ class WorkerSettings:
         scheduled_google_drive_backup,
         refresh_vehicle_market_fleet,
         sync_mercadolivre_ad_metrics,
+        sync_mercadolivre_full,
     ]
     cron_jobs = [
         cron(
@@ -382,6 +390,7 @@ class WorkerSettings:
             minute=10,
             second=20,
         ),
+        *marketplace_full_cron_jobs,
         *vehicle_market_cron_jobs,
     ]
     redis_settings = RedisSettings.from_dsn(get_settings().redis_url)

@@ -17,6 +17,11 @@ Todas as operações usam IDs externos únicos e chaves de idempotência. Uma no
 
 Cadastre a URL pública `https://erp.goesautoparts.com.br/api/v1/integrations/mercadolivre/webhook` no painel de desenvolvedores do Mercado Livre e habilite `orders_v2`, `shipments` e `invoices`. O tópico `shipments` carrega as mudanças de despacho, entrega e devolução; sem ele, essas mudanças só aparecem quando outra sincronização do pedido acontece.
 
+Para estoque Full, habilite também **FBM Stock Operations** (`fbm_stock_operations`) na mesma
+aplicação. O evento identifica a movimentação; o ERP consulta o saldo atual do inventário no
+Mercado Livre e atualiza apenas o espelho do Full. A conferência automática a cada 30 minutos
+recupera eventos não recebidos. As notificações de vendas continuam em `orders_v2`.
+
 O host público `erp.goesautoparts.com.br` encaminha `/api/` para a API do ERP. A rota `/api/v1/integrations/mercadolivre/notifications` também é aceita para cadastros existentes.
 
 ## Decisões e limites

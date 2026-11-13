@@ -4,6 +4,7 @@ from app.models import (
     company,  # noqa: F401
     enums,  # noqa: F401
     integrations,  # noqa: F401
+    full,  # noqa: F401
     purchases,  # noqa: F401
     sales,  # noqa: F401
     users,  # noqa: F401

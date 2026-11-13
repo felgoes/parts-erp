@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from app.api.routes import integrations_mercadolivre, integrations_shopee
+from app.api.routes import integrations_mercadolivre, integrations_mercadolivre_full, integrations_shopee
 from app.api.routes.integrations_mercadolivre import (  # noqa: F401  (reexportado)
     automate_order,
     callback,
@@ -26,4 +26,5 @@ from app.api.routes.integrations_shopee import (  # noqa: F401  (reexportado)
 router = APIRouter()
 shopee_router = APIRouter()
 router.include_router(integrations_mercadolivre.router)
+router.include_router(integrations_mercadolivre_full.router)
 shopee_router.include_router(integrations_shopee.shopee_router)

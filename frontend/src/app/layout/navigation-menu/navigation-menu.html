@@ -32,6 +32,7 @@
           class="nav-item"
           [routerLink]="item.path"
           routerLinkActive="active"
+          [routerLinkActiveOptions]="{ exact: item.path === '/marketplace' }"
           ariaCurrentWhenActive="page"
           [attr.aria-label]="collapsed() ? item.label : null"
           [attr.title]="collapsed() ? item.label : null"

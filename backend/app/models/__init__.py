@@ -97,3 +97,5 @@ __all__ = [
     "VehicleMarketRecord",
     "VehicleMarketSnapshot",
 ]
+
+from app.models.full import FullInventory, FullOperation, FullShipment, FullShipmentEvent, FullShipmentItem  # noqa: E402, F401

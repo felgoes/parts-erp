@@ -1,0 +1,201 @@
+<app-page-header title="Mercado Livre Full">
+  @if (canEdit()) {
+    <button class="secondary" [disabled]="syncing() || connected() !== true" (click)="sync()">
+      {{ syncing() ? 'Solicitando…' : 'Sincronizar agora' }}
+    </button>
+  }
+</app-page-header>
+
+@if (feedback()) {
+  <div class="feedback" role="status">
+    {{ feedback() }} <button type="button" (click)="feedback.set('')" aria-label="Fechar aviso">×</button>
+  </div>
+}
+@if (connected() === false) {
+  <section class="connection">
+    <div><strong>Conta do Mercado Livre não conectada</strong><p>Conecte ou ajuste o acesso à conta para carregar os dados do Full.</p></div>
+    <a class="secondary" routerLink="/integrations">Configurar integração</a>
+  </section>
+} @else if (connected()) {
+  <section class="connection">
+    <div><strong>{{ nickname() || 'Conta Mercado Livre' }}</strong>
+      <small>Última sincronização: {{ lastSync() ? (lastSync() | date:'dd/MM/yyyy HH:mm':'America/Sao_Paulo':'pt-BR') : 'Aguardando primeira sincronização' }}</small>
+    </div>
+  </section>
+}
+
+<nav class="tabs" role="tablist" aria-label="Seções do Mercado Livre Full" (keydown)="keyTab($event)">
+  <button type="button" role="tab" [attr.aria-selected]="tab() === 'shipments'" [class.active]="tab() === 'shipments'" (click)="setTab('shipments')">Envios ao Full</button>
+  <button type="button" role="tab" [attr.aria-selected]="tab() === 'inventory'" [class.active]="tab() === 'inventory'" (click)="setTab('inventory')">Estoque Full</button>
+  <button type="button" role="tab" [attr.aria-selected]="tab() === 'operations'" [class.active]="tab() === 'operations'" (click)="setTab('operations')">Movimentações</button>
+</nav>
+
+@if (error()) { <div class="error" role="alert">{{ error() }}</div> }
+
+@if (tab() === 'shipments') {
+  <app-period-filter heading="Período dos envios" description="Filtra pela última atualização registrada." ariaLabel="Filtrar envios Full por período" initialPreset="last30" [initialStartDate]="startDate()" [initialEndDate]="endDate()" [busy]="loading()" (rangeChange)="applyPeriod($event)" />
+  <section class="card filters">
+    <label>Buscar envio, SKU ou produto
+      <input [ngModel]="q()" (ngModelChange)="q.set($event)" (keyup.enter)="load()" placeholder="Número, SKU ou nome">
+    </label>
+    <label>Status
+      <select [ngModel]="statusFilter()" (ngModelChange)="statusFilter.set($event); load()">
+        <option value="">Todos</option><option value="pending">Recebimento pendente</option>
+        <option value="received">Recebido no CD</option><option value="processing">Processamento em andamento</option>
+        <option value="completed">Finalizado</option><option value="cancelled">Cancelado</option>
+      </select>
+    </label>
+    <button class="secondary" (click)="load()">Buscar</button>
+    <label>Centro de distribuição<input [ngModel]="centerFilter()" (ngModelChange)="centerFilter.set($event)" (keyup.enter)="load()" placeholder="CD Cajamar"></label>
+    @if (canEdit()) { <button class="primary" (click)="showForm.set(!showForm())">Registrar envio</button> }
+  </section>
+
+  @if (showForm()) {
+    <section class="card form">
+      <h2>Registrar envio do painel</h2>
+      <p>As etapas inseridas aqui ficam identificadas como Informado no ERP e auditadas.</p>
+      <div class="form-grid">
+        <label>Número do envio<input [(ngModel)]="form.display_id"></label>
+        <label>inbound_id (se conhecido)<input [(ngModel)]="form.inbound_id"></label>
+        <label>Modalidade<select [(ngModel)]="form.delivery_mode"><option value="vehicle">Veículo próprio</option><option value="pickup">Coleta</option></select></label>
+        <label>Centro de distribuição<input [(ngModel)]="form.distribution_center"></label>
+        <label>Agendamento<input type="datetime-local" [(ngModel)]="form.scheduled_at"></label>
+        <label>Previsão de processamento<input type="datetime-local" [(ngModel)]="form.expected_processing_at"></label>
+        <label>Link oficial do detalhe<input [(ngModel)]="form.panel_url"></label>
+        <label class="wide">Nota operacional<textarea [(ngModel)]="form.notes"></textarea></label>
+      </div>
+      <h3>Produtos e quantidades do envio</h3>
+      @for (item of shipmentItems(); track $index) {
+        <div class="shipment-item-form">
+          <label>SKU<input [(ngModel)]="item.sku"></label>
+          <label>inventory_id<input [(ngModel)]="item.inventory_id"></label>
+          <label>item_id<input [(ngModel)]="item.item_id"></label>
+          <label>Variação<input [(ngModel)]="item.variation_id"></label>
+          <label>Produto<input [(ngModel)]="item.product_name"></label>
+          <label>Declaradas<input type="number" min="0" [(ngModel)]="item.declared_quantity"></label>
+          <label>Contagem física<input type="number" min="0" [(ngModel)]="item.physical_count"></label>
+          <label>Divergência<textarea [(ngModel)]="item.discrepancy_note"></textarea></label>
+          <button class="back" type="button" (click)="removeShipmentItem($index)" [disabled]="shipmentItems().length === 1">Remover SKU</button>
+        </div>
+      }
+      <button class="secondary" type="button" (click)="addShipmentItem()">Adicionar SKU / variação</button>
+      <button class="primary" (click)="saveShipment()">Salvar envio</button>
+    </section>
+  }
+
+  @if (loading()) { <p class="loading">Carregando envios…</p> }
+
+  @if (selected(); as shipment) {
+    <section class="card detail">
+      <button class="back" (click)="selected.set(null)">← Todos os envios</button>
+      <h2>Envio {{ shipment.display_id }}</h2>
+      <p>{{ shipment.delivery_mode === 'vehicle' ? 'Veículo próprio' : shipment.delivery_mode === 'pickup' ? 'Coleta' : 'Modalidade não informada' }} · {{ shipment.distribution_center || 'CD não informado' }}</p>
+      <div class="timeline">
+        @for (event of shipment.timeline; track event.id) {
+          <article><i></i><div><strong>{{ label(event.stage) }}</strong>
+            <small>{{ event.source === 'api' ? 'API do Mercado Livre' : 'Informado no ERP' }} · {{ event.operational_at ? (event.operational_at | date:'dd/MM/yyyy HH:mm':'America/Sao_Paulo':'pt-BR') : 'Horário não informado' }}</small>
+            @if (event.note) { <p>{{ event.note }}</p> }
+          </div></article>
+        }
+      </div>
+      @if (shipment.api_reception && !shipment.manual_stage_recorded) { <p class="warning">Recepção registrada pela API · conclusão a confirmar.</p> }
+      @if (shipment.needs_review) { <p class="warning">A recepção oficial ocorreu após a etapa pendente registrada. Revise o estado informado no painel.</p> }
+      <h3>Unidades por SKU / variação</h3>
+      <div class="record">
+        <div class="record-head"><span>SKU · Produto</span><span>Declaradas</span><span>Confirmadas</span><span>Liberadas</span><span>Indisponíveis</span></div>
+        @for (item of shipment.items; track item.id) {
+          <div class="record-row">
+            <strong>{{ item.sku || 'Sem SKU' }} · {{ item.product_name || item.inventory_id || 'Vínculo pendente' }}</strong>
+            <span>{{ item.declared_quantity ?? '—' }}</span><span>{{ item.confirmed_quantity ?? '—' }}</span>
+            <span>{{ item.available_received ?? '—' }}</span><span>{{ item.unavailable_received ?? '—' }}</span>
+            @if (item.physical_count !== null && item.physical_count !== undefined) { <small>Contagem física: {{ item.physical_count }} · diferença física: {{ item.physical_difference ?? "—" }}</small> } @else { <small>Contagem física não informada —</small> }
+            @if (item.completion_difference !== null && item.completion_difference !== undefined) { <small>Diferença após conclusão: {{ item.completion_difference }}</small> }
+            @if (item.discrepancy_note) { <small>{{ item.discrepancy_note }}</small> }
+          </div>
+        }
+      </div>
+      @if (canEdit()) {
+        <h3>Registrar etapa observada no painel</h3>
+        <div class="event-form">
+          <select [(ngModel)]="eventForm.stage"><option value="pending">Recebimento pendente</option><option value="received">Recebido no CD</option><option value="processing">Processamento em andamento</option><option value="completed">Processamento finalizado</option><option value="cancelled">Cancelado</option></select>
+          <input type="datetime-local" [(ngModel)]="eventForm.operational_at">
+          <input placeholder="Nota / correção" [(ngModel)]="eventForm.note">
+          <button class="secondary" (click)="addEvent()">Registrar</button>
+        </div>
+      }
+      <a class="external" [href]="panelLink(shipment.panel_url)" target="_blank" rel="noopener">Abrir no Mercado Livre ↗</a>
+    </section>
+  } @else {
+    @for (shipment of shipments(); track shipment.id) {
+      <button type="button" class="card shipment" (click)="openShipment(shipment)">
+        <strong>Envio {{ shipment.display_id }}</strong>
+        <span>{{ label(shipment.status) }} · {{ shipment.distribution_center || 'CD não informado' }}</span>
+        <small>{{ shipment.items.length }} SKU(s) · Atualizado {{ shipment.updated_at | date:'dd/MM HH:mm':'America/Sao_Paulo':'pt-BR' }}</small>
+        @if (shipment.api_reception) { <small class="api">Recepção confirmada pela API · conclusão a confirmar</small> }
+      </button>
+    } @empty { <p class="empty">Nenhum envio encontrado. Cadastre um envio do painel ou sincronize a conta.</p> }
+  }
+}
+
+@if (tab() === 'inventory') {
+  <section class="card filters">
+    <label>Buscar SKU, produto, MLB ou inventory_id<input [ngModel]="q()" (ngModelChange)="q.set($event)" (keyup.enter)="load()" placeholder="SKU, produto, MLB ou inventory_id"></label>
+    <label>Filtro<select [ngModel]="statusFilter()" (ngModelChange)="statusFilter.set($event); load()">
+      <option value="">Todos os saldos</option><option value="low">Saldo baixo (≤ 2)</option><option value="zero">Zero confirmado</option><option value="unavailable">Com indisponibilidade</option>
+    </select></label>
+  </section>
+  @if (replenishmentChecked()) {
+    <section class="card"><h2>Reposição sugerida</h2>
+      @if (replenishment()?.available) { <pre>{{ replenishment()?.data | json }}</pre> }
+      @else { <p>{{ replenishment()?.reason || 'Sem dados de reposição para esta conta.' }}</p> }
+    </section>
+  }
+  <div class="stock-summary">
+    <article class="card"><small>Inventários</small><strong>{{ inventory().length }}</strong></article>
+    <article class="card"><small>Disponíveis</small><strong>{{ availableTotal() }}</strong></article>
+    <article class="card"><small>Indisponíveis</small><strong>{{ unavailableTotal() }}</strong></article>
+    <article class="card"><small>Armazenadas</small><strong>{{ storedTotal() }}</strong></article>
+    <article class="card"><small>Armazenadas</small><strong>{{ storedTotal() }}</strong></article>
+  </div>
+    @if (stockSummary().partial) { <p class="warning">Resumo parcial: {{ stockSummary().missing }} inventário(s) sem quantidade válida. Último saldo confirmado preservado.</p> }
+  @if (loading()) { <p class="loading">Carregando estoque Full…</p> }
+  <div class="stock-list">
+    @for (row of inventory(); track row.inventory_id) {
+      <article class="card stock-row">
+        <div>
+          <strong>{{ row.links[0]?.title || 'Produto sem vínculo' }}</strong>
+          <small>SKU {{ row.links[0]?.sku || '—' }} · {{ row.links[0]?.item_id || 'Anúncio pendente' }} {{ row.links[0]?.variation_id ? '· Variação ' + row.links[0].variation_id : '' }}</small>
+          <small>inventory_id {{ row.inventory_id }} · {{ row.sync_status === 'ok' ? 'Leitura válida' : 'Atualização com pendência' }}{{ row.synced_at ? ' · ' + (row.synced_at | date:'dd/MM HH:mm':'America/Sao_Paulo':'pt-BR') : '' }}</small>
+          @if (row.links[0]?.user_product_id) { <button class="secondary compact" (click)="checkReplenishment(row.links[0].user_product_id)">Consultar reposição sugerida</button> }
+          <small>inventory_id {{ row.inventory_id }} · {{ row.sync_status === 'ok' ? 'Leitura válida' : 'Atualização com pendência' }}{{ row.synced_at ? ' · ' + (row.synced_at | date:'dd/MM HH:mm':'America/Sao_Paulo':'pt-BR') : '' }}</small>
+          <details><summary>Indisponibilidades ({{ row.not_available_quantity || 0 }})</summary>
+            @for (detail of row.not_available_detail; track $index) {
+              <p>{{ reason(detail) }} · {{ detail.quantity ?? detail.available_quantity ?? 'Quantidade não informada' }} @if (detail.condition) { · {{ detail.condition }} }</p>
+            }
+          </details>
+        </div>
+        <div class="stock-values">
+          @if (row.local_stock) { <span><small>Estoque local ERP (SKU {{ row.local_stock.sku }})</small><b>{{ row.local_stock.quantity }}</b></span> }
+          <span><small>Disponível Full</small><b>{{ row.available_quantity ?? 'Aguardando sincronização' }}</b></span>
+          <span><small>Indisponível</small><b>{{ row.not_available_quantity ?? '—' }}</b></span>
+          <span><small>Total</small><b>{{ row.total ?? '—' }}</b></span>
+        </div>
+      </article>
+    } @empty { <p class="empty">Aguardando primeira sincronização do estoque Full.</p> }
+  </div>
+}
+
+@if (tab() === 'operations') {
+  <app-period-filter heading="Período das movimentações" description="Histórico consultável em janelas de até 60 dias." ariaLabel="Filtrar movimentações Full por período" initialPreset="last30" [initialStartDate]="startDate()" [initialEndDate]="endDate()" [busy]="loading()" (rangeChange)="applyPeriod($event)" />
+  <section class="card filters"><label>SKU / inventory_id<input [ngModel]="q()" (ngModelChange)="q.set($event)" (keyup.enter)="load()"></label><button class="secondary" (click)="load()">Atualizar movimentos</button></section>
+  <section class="card filters"><label>SKU<input [ngModel]="q()" (ngModelChange)="q.set($event)" (keyup.enter)="load()"></label><label>Tipo<select [ngModel]="operationTypeFilter()" (ngModelChange)="operationTypeFilter.set($event)"><option value="">Todos</option><option value="INBOUND_RECEPTION">Recepção</option><option value="SALE_CONFIRMATION">Venda</option><option value="SALE_RETURN">Devolução</option><option value="WITHDRAWAL_DELIVERY">Retirada</option><option value="STOCK_AUDIT">Ajuste</option></select></label><label>Envio (inbound_id)<input [ngModel]="operationInboundFilter()" (ngModelChange)="operationInboundFilter.set($event)"></label><button class="secondary" (click)="operationOffset.set(0); load()">Atualizar movimentos</button><button class="secondary" [disabled]="loading()" (click)="requestBackfill()">Reprocessar período</button></section>
+  <div class="operation-list">
+    @for (operation of operations(); track operation.id) {
+      <article class="card operation">
+        <div><strong>{{ movementType(operation.type) }}</strong><small>{{ operation.date_created | date:'dd/MM/yyyy HH:mm':'America/Sao_Paulo':'pt-BR' }} · inventory {{ operation.inventory_id || '—' }}</small><small>{{ operation.inbound_id ? 'Envio ' + operation.inbound_id : 'Sem referência de envio' }}</small></div>
+        <div><b>{{ movementDeltas(operation.detail) }}</b><small>Saldo após movimento {{ movementDeltas(operation.result) }}</small></div>
+      </article>
+    } @empty { <p class="empty">Nenhuma movimentação no período sincronizado, ou o histórico ainda não está disponível.</p> }
+  </div>
+  @if (operationNextOffset() !== null) { <button class="secondary load-more" [disabled]="loading()" (click)="loadMoreOperations()">Carregar mais movimentações</button> }
+}

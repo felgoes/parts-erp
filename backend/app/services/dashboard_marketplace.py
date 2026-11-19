@@ -1,11 +1,11 @@
 from collections import defaultdict
 from datetime import UTC, date, datetime, time, timedelta
 from decimal import Decimal, InvalidOperation
-from zoneinfo import ZoneInfo
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core.periods import BRAZIL_TZ as TZ
 from app.integrations.mercadolivre.ml_support import is_cancelled, is_paid
 from app.models import (
     AdDailyMetric,
@@ -17,8 +17,6 @@ from app.models import (
     ProductMarketplaceListing,
     SalesInvoice,
 )
-
-TZ = ZoneInfo("America/Sao_Paulo")
 
 
 def _bounds(start: date, end: date):

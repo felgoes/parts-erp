@@ -1,16 +1,14 @@
 from datetime import UTC, date, datetime, time
 from urllib.parse import urlencode
-from zoneinfo import ZoneInfo
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core.periods import BRAZIL_TZ as TZ
 from app.integrations.mercadolivre.client import MercadoLivreClient
 from app.integrations.mercadolivre.ml_orders import sync_order
 from app.integrations.mercadolivre.ml_support import _resource_ids
 from app.models import MarketplaceAccount, MarketplaceDashboardSync
-
-TZ = ZoneInfo("America/Sao_Paulo")
 
 
 def sync_dashboard_orders_for_period(

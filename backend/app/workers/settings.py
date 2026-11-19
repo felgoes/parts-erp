@@ -22,24 +22,25 @@ from app.integrations.mercadolivre.sync import (
 from app.integrations.shopee.sync import sync_all as sync_shopee_all
 from app.integrations.shopee.sync import sync_order as sync_shopee_order
 from app.models import MarketplaceAccount, MarketplaceOrder, MarketplaceOrderEvent
-from app.services.ad_performance import sync_ad_metrics_for_account
 from app.services.after_sale import after_sale_notification, upsert_after_sale_case
 from app.services.push_notifications import (
     deliver_pending_notifications,
     enqueue_after_sale_attention,
     enqueue_sale_notification,
 )
+from app.workers.ad_metrics import sync_mercadolivre_ad_metrics
 from app.workers.backups import (  # noqa: F401
     _scheduled_backup_is_due,
     scheduled_google_drive_backup,
 )
+from app.workers.dashboard_marketplace import sync_dashboard_marketplace_orders
 from app.workers.marketplace_costs import reconcile_marketplace_costs
-from app.workers.vehicle_market import refresh_vehicle_market_fleet, vehicle_market_cron_jobs
 from app.workers.marketplace_full import (
     marketplace_full_cron_jobs,
     process_full_stock_notification,
     sync_mercadolivre_full,
 )
+from app.workers.vehicle_market import refresh_vehicle_market_fleet, vehicle_market_cron_jobs
 
 logger = logging.getLogger(__name__)
 
@@ -309,29 +310,6 @@ def _retry_pending_push_notifications() -> int:
         return deliver_pending_notifications(db)
 
 
-def _sync_ad_metrics(account_id: str | None = None) -> dict[str, int]:
-    updated = errors = 0
-    with SessionLocal() as db:
-        query = select(MarketplaceAccount).where(
-            MarketplaceAccount.active.is_(True), MarketplaceAccount.provider == "mercadolivre"
-        )
-        if account_id:
-            query = query.where(MarketplaceAccount.id == account_id)
-        accounts = list(db.scalars(query))
-        for account in accounts:
-            result = sync_ad_metrics_for_account(db, account.id)
-            updated += result["updated"]
-            errors += result["errors"]
-    return {"updated": updated, "errors": errors}
-
-
-async def sync_mercadolivre_ad_metrics(
-    ctx: dict[str, Any], account_id: str | None = None
-) -> dict[str, int]:
-    del ctx
-    return await asyncio.to_thread(_sync_ad_metrics, account_id)
-
-
 async def retry_pending_push_notifications(ctx: dict[str, Any]) -> int:
     del ctx
     return await asyncio.to_thread(_retry_pending_push_notifications)
@@ -341,6 +319,7 @@ class WorkerSettings:
     functions = [
         process_mercadolivre_notification,
         sync_mercadolivre_account,
+        sync_dashboard_marketplace_orders,
         sync_shopee_account,
         process_shopee_notification,
         retry_due_mercadolivre_orders,

@@ -13,13 +13,13 @@
 .overview-summary {
   display: grid;
   gap: 16px;
-  grid-template-columns: minmax(0, 1.45fr) minmax(300px, 1fr);
+  grid-template-columns: minmax(0, 1fr);
   align-items: start;
 }
-.overview-main, .overview-side { display: grid; gap: 16px; min-width: 0; }
+.overview-main, .overview-side { display: contents; }
 .overview-summary h2 { margin: 0; font-size: 17px; font-weight: 700; }
 
-.overview-revenue, .overview-trend, .overview-tasks, .overview-recent {
+.overview-revenue, .overview-trend, .overview-tasks, .overview-recent, .overview-marketplace {
   min-width: 0;
   padding: clamp(14px, 2vw, 24px);
   border: 1px solid var(--divider);
@@ -91,7 +91,7 @@
   background: var(--state-success-bg);
   color: var(--state-success-text);
 }
-.overview-task-list { display: grid; gap: 6px; margin-top: 10px; }
+.overview-task-list { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:6px; margin-top:10px; }
 .overview-task-list a, .overview-sale {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto auto;
@@ -113,7 +113,7 @@
 .overview-revenue button:focus-visible { outline-color: var(--brand-accent); }
 .overview-empty { display: flex; align-items: center; gap: 9px; margin: 0; padding-block: 9px; color: var(--text-secondary); }
 .overview-empty .overview-icon { flex: 0 0 36px; }
-.overview-sales { list-style: none; padding: 0; margin: 4px 0 0; }
+.overview-sales { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:4px 14px; list-style:none; padding:0; margin:4px 0 0; }
 .sales-pagination {
   display: flex;
   align-items: center;
@@ -163,8 +163,10 @@
     margin-bottom: 10px;
   }
   .overview-heading h1 { font-size: 24px; }
-  .overview-summary, .overview-main, .overview-side { gap: 10px; }
-  :is(.overview-revenue, .overview-trend, .overview-tasks, .overview-recent) {
+  .overview-summary { gap:10px; }
+  .overview-sales { grid-template-columns:minmax(0,1fr); }
+  .overview-task-list { grid-template-columns:minmax(0,1fr); }
+  :is(.overview-revenue, .overview-trend, .overview-tasks, .overview-recent, .overview-marketplace) {
     padding-inline: 12px;
     border-radius: 14px;
   }
@@ -178,7 +180,7 @@
   .overview-sale-detail { max-width: 122px; }
 }
 @media (prefers-reduced-motion: no-preference) {
-  .overview-revenue, .overview-trend, .overview-tasks, .overview-recent {
+  .overview-revenue, .overview-trend, .overview-tasks, .overview-recent, .overview-marketplace {
     animation: overview-enter 320ms cubic-bezier(.22, .65, .26, 1) both;
   }
   .overview-trend, .overview-tasks { animation-delay: 65ms; }

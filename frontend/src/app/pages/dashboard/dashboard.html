@@ -26,20 +26,22 @@
             </span>
             Receita líquida
           </h2>
+          @if (canReadFinancial()) {
           <button class="overview-link overview-privacy" type="button"
             [attr.aria-label]="financialSummaryHidden() ? 'Mostrar receita' : 'Ocultar receita'"
             (click)="setFinancialSummaryHidden(!financialSummaryHidden())">
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z" /><circle cx="12" cy="12" r="2.5" />
-              @if (financialSummaryHidden()) { <path d="M3 3l18 18" /> }
+              @if (financialSummaryHidden() || !canReadFinancial()) { <path d="M3 3l18 18" /> }
             </svg>
             <span>{{ financialSummaryHidden() ? 'Mostrar receita' : 'Ocultar receita' }}</span>
           </button>
+          }
         </div>
         <div class="overview-revenue-details">
           <div>
             <strong class="overview-value">
-              @if (financialSummaryHidden()) {
+              @if (financialSummaryHidden() || !canReadFinancial()) {
                 ••••••
               } @else {
                 <app-overview-count [value]="summary.revenue_month" [currency]="true" />
@@ -47,15 +49,17 @@
             </strong>
             <p><app-overview-count [value]="summary.confirmed_sales" [units]="confirmedSaleUnits" /></p>
           </div>
+          @if (canReadFinancial()) {
           <button class="overview-link overview-composition" type="button" (click)="openFinancial()">
             Ver composição <span aria-hidden="true">↗</span>
           </button>
+          }
         </div>
-        @if (summary.marketplace_costs_pending && !financialSummaryHidden()) {
+        @if (summary.marketplace_costs_pending && !financialSummaryHidden() && canReadFinancial()) {
           <p class="overview-warning">Receita parcial · {{ summary.marketplace_costs_pending }} venda(s) sem custo completo do ML</p>
         }
       </section>
-      <app-sales-trend class="overview-trend" [daily]="summary.daily" [countOnly]="financialSummaryHidden()" />
+      <app-sales-trend class="overview-trend" [daily]="summary.daily" [countOnly]="financialSummaryHidden() || !canReadFinancial()" />
     </div>
     <div class="overview-side">
       <section class="overview-tasks" aria-labelledby="overview-tasks-heading">
@@ -107,7 +111,7 @@
                   @if (invoice.tracking?.destination_locality; as locality) { <small>{{ locality }}</small> }
                 </span>
                 <span class="overview-sale-detail">
-                  <strong>{{ invoice.total | currency: 'BRL' }}</strong>
+                  <strong>{{ financialSummaryHidden() || !canReadFinancial() ? '••••••' : (invoice.total | currency: 'BRL') }}</strong>
                   <small [attr.data-stage]="stage">{{ saleStageLabel(stage) }}</small>
                 </span>
                 <span class="overview-arrow" aria-hidden="true">›</span>
@@ -129,6 +133,11 @@
         }
       </section>
     </div>
+    <app-dashboard-marketplace-performance
+      [startDate]="startDate" [endDate]="endDate" [reloadToken]="marketplaceReload()"
+      [financialHidden]="financialSummaryHidden()" [financialAllowed]="canReadFinancial()"
+      [canRefresh]="canRefreshMarketplace()"
+    />
   </div>
   @if (financial(); as finance) {
     <div class="modal-backdrop" (click)="financial.set(null)">

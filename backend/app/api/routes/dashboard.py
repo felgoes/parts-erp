@@ -5,13 +5,24 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
 from app.api.deps import require_permission
 from app.core.periods import BRAZIL_TZ as FIXED_BRAZIL_TZ
 from app.core.permissions import Permission
+from app.core.queue import get_queue_pool
 from app.db.session import get_db
-from app.models import InvoiceStatus, MarketplaceOrder, Product, SalesInvoice, User
+from app.models import (
+    AdDailyMetric,
+    InvoiceStatus,
+    MarketplaceAccount,
+    MarketplaceDashboardSync,
+    MarketplaceOrder,
+    Product,
+    SalesInvoice,
+    User,
+)
 from app.schemas.common import (
     DashboardBreakdown,
     DashboardDailyMetric,
@@ -21,6 +32,7 @@ from app.schemas.common import (
 )
 from app.schemas.dashboard import DashboardSalesPage
 from app.services.after_sale import after_sales_for_invoices
+from app.services.dashboard_marketplace import dashboard_marketplace_metrics
 from app.services.invoice_tracking import attach_invoice_tracking
 from app.services.marketplace_costs import InvoiceRevenue, revenue_by_invoice, revenue_totals
 from app.services.shipping_status import pending_dispatch_filters
@@ -76,7 +88,9 @@ def _daily_metrics(
 RECENT_SALES_PAGE_SIZE = 10
 
 
-def _recent_sales(db: Session, since: datetime, until: datetime, offset: int) -> DashboardSalesPage:
+def _recent_sales(
+    db: Session, since: datetime, until: datetime, offset: int, page_size: int = 10
+) -> DashboardSalesPage:
     invoice_date = func.coalesce(SalesInvoice.issued_at, SalesInvoice.created_at)
     recent = list(
         db.scalars(
@@ -89,11 +103,11 @@ def _recent_sales(db: Session, since: datetime, until: datetime, offset: int) ->
             .where(invoice_date >= since, invoice_date < until)
             .order_by(invoice_date.desc(), SalesInvoice.created_at.desc(), SalesInvoice.id.desc())
             .offset(offset)
-            .limit(RECENT_SALES_PAGE_SIZE + 1)
+            .limit(page_size + 1)
         )
     )
-    has_more = len(recent) > RECENT_SALES_PAGE_SIZE
-    recent = recent[:RECENT_SALES_PAGE_SIZE]
+    has_more = len(recent) > page_size
+    recent = recent[:page_size]
     after_sales = after_sales_for_invoices(db, recent)
     recent_outputs: list[InvoiceOut] = []
     for invoice in recent:
@@ -103,7 +117,7 @@ def _recent_sales(db: Session, since: datetime, until: datetime, offset: int) ->
     attach_invoice_tracking(db, recent_outputs)
     return DashboardSalesPage(
         items=recent_outputs,
-        next_offset=offset + RECENT_SALES_PAGE_SIZE if has_more else None,
+        next_offset=offset + page_size if has_more else None,
     )
 
 
@@ -114,9 +128,10 @@ def recent_sales(
     offset: int = Query(default=0, ge=0),
     db: Session = Depends(get_db),
     _: User = Depends(require_permission(Permission.DASHBOARD_READ)),
+    page_size: Annotated[int, Query(ge=1, le=10)] = RECENT_SALES_PAGE_SIZE,
 ) -> DashboardSalesPage:
     _, _, since, until = _period(start_date, end_date)
-    return _recent_sales(db, since, until, offset)
+    return _recent_sales(db, since, until, offset, page_size)
 
 
 @router.get("/summary", response_model=DashboardSummary)
@@ -126,6 +141,7 @@ def summary(
     db: Session = Depends(get_db),
     _: User = Depends(require_permission(Permission.DASHBOARD_READ)),
     recent_sales_offset: Annotated[int, Query(ge=0)] = 0,
+    recent_sales_page_size: Annotated[int, Query(ge=1, le=10)] = RECENT_SALES_PAGE_SIZE,
 ) -> DashboardSummary:
     start, end, since, until = _period(start_date, end_date)
     invoice_date = func.coalesce(SalesInvoice.issued_at, SalesInvoice.created_at)
@@ -167,7 +183,7 @@ def summary(
         )
         or 0
     )
-    recent = _recent_sales(db, since, until, recent_sales_offset)
+    recent = _recent_sales(db, since, until, recent_sales_offset, recent_sales_page_size)
     return DashboardSummary(
         revenue_month=Decimal(str(revenue or 0)),
         gross_revenue_month=revenue_summary.gross,
@@ -265,3 +281,111 @@ def financial_metrics(
         ],
         daily=_daily_metrics(start, end, current, revenues),
     )
+
+
+@router.get("/mercadolivre")
+def marketplace_dashboard(
+    start_date: date = Query(...),
+    end_date: date = Query(...),
+    db: Session = Depends(get_db),
+    _: User = Depends(require_permission(Permission.DASHBOARD_READ)),
+):
+    start, end, _, _ = _period(start_date, end_date)
+    return dashboard_marketplace_metrics(db, start, end)
+
+
+@router.post("/mercadolivre/refresh", status_code=202)
+async def refresh_marketplace_dashboard(
+    start_date: date = Query(...),
+    end_date: date = Query(...),
+    force: bool = Query(default=False),
+    db: Session = Depends(get_db),
+    _: User = Depends(require_permission(Permission.MARKETPLACE_PROCESS)),
+):
+    start, end, _, _ = _period(start_date, end_date)
+    accounts = list(
+        db.scalars(
+            select(MarketplaceAccount).where(
+                MarketplaceAccount.provider == "mercadolivre", MarketplaceAccount.active.is_(True)
+            )
+        )
+    )
+    if not accounts:
+        return {"accepted": False, "status": "disconnected"}
+    queue = await get_queue_pool()
+    queued = 0
+    for account in accounts:
+        state = db.scalar(
+            select(MarketplaceDashboardSync).where(
+                MarketplaceDashboardSync.account_id == account.id,
+                MarketplaceDashboardSync.period_start == start,
+                MarketplaceDashboardSync.period_end == end,
+            )
+        )
+        fresh = False
+        if (
+            state
+            and not force
+            and state.sync_status == "succeeded"
+            and not state.partial
+            and state.last_success_at
+        ):
+            last_success = state.last_success_at
+            if last_success.tzinfo is None:
+                last_success = last_success.replace(tzinfo=UTC)
+            fresh = datetime.now(UTC) - last_success < timedelta(minutes=5)
+        if not fresh:
+            if state is None:
+                state = MarketplaceDashboardSync(
+                    account_id=account.id,
+                    period_start=start,
+                    period_end=end,
+                    sync_status="pending",
+                    partial=False,
+                    last_attempt_at=datetime.now(UTC),
+                )
+                db.add(state)
+                try:
+                    db.commit()
+                except IntegrityError:
+                    db.rollback()
+                    state = db.scalar(
+                        select(MarketplaceDashboardSync).where(
+                            MarketplaceDashboardSync.account_id == account.id,
+                            MarketplaceDashboardSync.period_start == start,
+                            MarketplaceDashboardSync.period_end == end,
+                        )
+                    )
+                    if state is None:
+                        raise
+            else:
+                if state.sync_status not in {"pending", "running"}:
+                    state.sync_status, state.sync_error = "pending", None
+                    state.last_attempt_at = datetime.now(UTC)
+                db.commit()
+            job = await queue.enqueue_job(
+                "sync_dashboard_marketplace_orders",
+                account.id,
+                start.isoformat(),
+                end.isoformat(),
+                _job_id=f"dashboard-ml-orders:{account.id}:{start.isoformat()}:{end.isoformat()}",
+            )
+            if job:
+                queued += 1
+        latest_metric = db.scalar(
+            select(func.max(AdDailyMetric.synced_at)).where(
+                AdDailyMetric.account_id == account.id, AdDailyMetric.channel == "mercadolivre"
+            )
+        )
+        metric_at = (
+            latest_metric.replace(tzinfo=UTC)
+            if latest_metric and latest_metric.tzinfo is None
+            else latest_metric
+        )
+        if metric_at is None or datetime.now(UTC) - metric_at >= timedelta(hours=6) or force:
+            job = await queue.enqueue_job(
+                "sync_mercadolivre_ad_metrics", account.id, _job_id=f"ad-metrics:{account.id}"
+            )
+            if job:
+                queued += 1
+    return {"accepted": True, "status": "queued" if queued else "already_queued"}

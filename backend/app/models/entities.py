@@ -27,6 +27,7 @@ from app.models.integrations import (  # noqa: F401
     AfterSaleCaseEvent,
     AfterSaleCaseItem,
     MarketplaceAccount,
+    MarketplaceDashboardSync,
     MarketplaceConfig,
     MarketplaceOrder,
     MarketplaceOrderEvent,

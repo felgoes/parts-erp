@@ -30,14 +30,16 @@ def _chunks(values: list[str], size: int = 20):
 def _metric_date(raw: object) -> date | None:
     if not isinstance(raw, str) or not raw:
         return None
+    # The API returns daily buckets as ISO dates at 00:00Z. Preserve that
+    # calendar label instead of shifting it to the previous Sao Paulo date.
     try:
-        parsed = datetime.fromisoformat(raw.replace("Z", "+00:00"))
-        if parsed.tzinfo is None:
-            parsed = parsed.replace(tzinfo=LOCAL_ZONE)
-        return parsed.astimezone(LOCAL_ZONE).date()
+        return date.fromisoformat(raw[:10])
     except ValueError:
         try:
-            return date.fromisoformat(raw[:10])
+            parsed = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+            if parsed.tzinfo is None:
+                parsed = parsed.replace(tzinfo=LOCAL_ZONE)
+            return parsed.astimezone(LOCAL_ZONE).date()
         except ValueError:
             return None
 

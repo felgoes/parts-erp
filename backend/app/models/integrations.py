@@ -1,10 +1,11 @@
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 from typing import Any
 
 from sqlalchemy import (
     JSON,
     Boolean,
+    Date,
     DateTime,
     ForeignKey,
     Index,
@@ -128,6 +129,31 @@ class MarketplaceOrder(TimestampMixin, Base):
     automation_updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     invoice: Mapped[SalesInvoice | None] = relationship()
+
+
+class MarketplaceDashboardSync(TimestampMixin, Base):
+    __tablename__ = "marketplace_dashboard_syncs"
+    __table_args__ = (
+        Index(
+            "uq_marketplace_dashboard_sync_period",
+            "account_id",
+            "period_start",
+            "period_end",
+            unique=True,
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    account_id: Mapped[str] = mapped_column(
+        ForeignKey("marketplace_accounts.id", ondelete="CASCADE"), index=True
+    )
+    period_start: Mapped[date] = mapped_column(Date, nullable=False)
+    period_end: Mapped[date] = mapped_column(Date, nullable=False)
+    sync_status: Mapped[str] = mapped_column(String(20), default="pending", nullable=False)
+    sync_error: Mapped[str | None] = mapped_column(Text)
+    partial: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    last_attempt_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_success_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class MarketplaceOrderEvent(Base):

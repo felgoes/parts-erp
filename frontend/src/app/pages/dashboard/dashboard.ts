@@ -9,13 +9,14 @@ import { UsersApi } from '../../core/api/users-api';
 import { LiveUpdatesService } from '../../core/live-updates.service';
 import { AuthService } from '../../core/auth.service';
 import { DashboardFinancialMetrics, DashboardSummary, Invoice } from '../../core/models';
-import { canAccessPage } from '../../core/user-access';
+import { canAccessPage, canManageCatalog, canReadCosts } from '../../core/user-access';
 import { saleStageForInvoice, saleStageLabel } from '../../core/sale-stage';
 import { QuickDatePreset, matchingDatePreset } from '../../core/quick-date-ranges';
 import { RecordOrigin, recordOrigin, restoreRecordPosition } from '../../shared/record-origin';
 import { PeriodFilter } from '../../shared/period-filter';
 import { OverviewCount } from './overview-count';
 import { SalesTrend } from './sales-trend';
+import { MarketplacePerformance } from './marketplace-performance';
 
 @Component({
   selector: 'app-dashboard',
@@ -26,6 +27,7 @@ import { SalesTrend } from './sales-trend';
     PeriodFilter,
     OverviewCount,
     SalesTrend,
+    MarketplacePerformance,
   ],
   templateUrl: './dashboard.html',
   styleUrl: './dashboard.scss',
@@ -37,6 +39,8 @@ export class DashboardPage implements OnInit {
   private readonly live = inject(LiveUpdatesService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly auth = inject(AuthService);
+  canReadFinancial(): boolean { return canReadCosts(this.auth.user()?.role); }
+  canRefreshMarketplace(): boolean { return canManageCatalog(this.auth.user()?.role); }
   canOpen(path: string): boolean {
     return canAccessPage(this.auth.user()?.role, path);
   }
@@ -46,9 +50,11 @@ export class DashboardPage implements OnInit {
   readonly salesOffset = signal(0);
   readonly salesLoading = signal(false);
   readonly salesError = signal(false);
-  readonly pageSize = 10;
+  readonly pageSize = 6;
   readonly confirmedSaleUnits = ['venda confirmada', 'vendas confirmadas'] as const;
   private salesRevision = 0;
+  private loadRevision = 0;
+  readonly marketplaceReload = signal(0);
   readonly financial = signal<DashboardFinancialMetrics | null>(null);
   readonly financialSummaryHidden = computed(() => !!this.auth.user()?.financial_summary_hidden);
   startDate = this.monthStart();
@@ -68,16 +74,17 @@ export class DashboardPage implements OnInit {
     this.load();
     this.live.changes$
       .pipe(debounceTime(250), takeUntilDestroyed(this.destroyRef))
-      .subscribe(() => this.load());
+      .subscribe(() => { this.load(); this.marketplaceReload.update((value) => value + 1); });
   }
   load() {
     if (!this.validRange()) return;
+    const requestRevision = ++this.loadRevision;
     const { startDate, endDate } = this;
     const offset = this.salesOffset();
     const revision = this.salesRevision;
-    this.api.dashboard(startDate, endDate, offset).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+    this.dashboardApi.dashboard(startDate, endDate, offset, this.pageSize).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (summary) => {
-        if (startDate !== this.startDate || endDate !== this.endDate) return;
+        if (requestRevision !== this.loadRevision || startDate !== this.startDate || endDate !== this.endDate) return;
         this.loadError.set(false);
         if (revision !== this.salesRevision || offset !== this.salesOffset()) {
           const current = this.data();
@@ -98,7 +105,7 @@ export class DashboardPage implements OnInit {
         this.pendingReturn = undefined;
       },
       error: () => {
-        if (startDate === this.startDate && endDate === this.endDate) this.loadError.set(true);
+        if (requestRevision === this.loadRevision && startDate === this.startDate && endDate === this.endDate) this.loadError.set(true);
       },
     });
   }
@@ -107,7 +114,7 @@ export class DashboardPage implements OnInit {
     const revision = ++this.salesRevision;
     this.salesLoading.set(true);
     this.salesError.set(false);
-    this.dashboardApi.dashboardRecentSales(this.startDate, this.endDate, offset)
+    this.dashboardApi.dashboardRecentSales(this.startDate, this.endDate, offset, this.pageSize)
       .pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
         next: (page) => {
           if (revision !== this.salesRevision) return;
@@ -127,6 +134,7 @@ export class DashboardPage implements OnInit {
   applyDateFilter(range: { startDate: string; endDate: string }) {
     if (range.startDate === this.startDate && range.endDate === this.endDate) return;
     ++this.salesRevision;
+    ++this.loadRevision;
     this.salesOffset.set(0);
     this.salesLoading.set(false);
     this.salesError.set(false);

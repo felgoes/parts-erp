@@ -1,0 +1,68 @@
+<section class="overview-marketplace" aria-labelledby="marketplace-performance-heading">
+  <div class="marketplace-head">
+    <div>
+      <p class="marketplace-eyebrow">Mercado Livre · {{ formatPeriodDate(startDate) }} a {{ formatPeriodDate(endDate) }}</p>
+      <h2 id="marketplace-performance-heading">Desempenho no Mercado Livre</h2>
+      @if (data(); as summary) {
+        <p class="marketplace-sync" [attr.data-state]="summary.sync_state">
+          {{ syncLabel(summary.sync_state) }}
+          @if (summary.last_synced_at) {
+            · Última sincronização bem-sucedida {{ summary.last_synced_at | date:'dd/MM/yyyy HH:mm':'-0300':'pt-BR' }}
+          }
+        </p>
+      }
+    </div>
+    <div class="marketplace-actions">
+      @if (canRefresh) {
+        <button class="secondary" type="button" (click)="refresh()" [disabled]="refreshing()">
+          {{ refreshing() ? 'Atualizando…' : 'Atualizar' }}
+        </button>
+      }
+      @if (failed()) { <button class="secondary" type="button" (click)="retry()">Tentar novamente</button> }
+    </div>
+  </div>
+  @if (loading() && !data()) {
+    <div class="marketplace-loading" role="status">Carregando desempenho do Mercado Livre…</div>
+  } @else if (failed() && !data()) {
+    <p class="marketplace-message" role="alert">Não foi possível carregar os dados do Mercado Livre. <button type="button" class="secondary" (click)="retry()">Tentar novamente</button></p>
+  } @else if (data(); as summary) {
+    @if (!summary.connected) {
+      <p class="marketplace-message">Conta do Mercado Livre desconectada. @if (canReadIntegration()) { <a routerLink="/integrations">Abrir integrações</a> }</p>
+    } @else {
+      @if (failed() || summary.sync_state === 'failed') { <p class="marketplace-warning" role="status">Falha na atualização. Os dados válidos deste período foram mantidos. @if (canRefresh) { <button type="button" class="secondary" (click)="retry()">Tentar novamente</button> }</p> }
+      @if (summary.partial) { <p class="marketplace-warning">Cobertura parcial · consulte os indicadores marcados para identificar dados incompletos.</p> }
+      <div class="marketplace-content">
+        <dl class="marketplace-metrics">
+          @for (key of metricKeys; track key) {
+            @let metric = metricFor(summary, key);
+            <div class="marketplace-metric" [attr.data-state]="metric.state">
+              <dt>{{ metricLabel(key) }}</dt>
+              <dd>{{ metricValue(key, metric) }}</dd>
+              @if (metric.state === 'partial') { <small>Parcial@if(metric.note){ · {{ metric.note }}}</small> }
+              @else if (metric.state === 'unavailable') { <small>{{ metric.note || 'Dados indisponíveis para este recorte' }}</small> }
+            </div>
+          }
+        </dl>
+        <section class="marketplace-products" aria-labelledby="best-products-heading">
+          <h3 id="best-products-heading">Produtos mais vendidos</h3>
+          @if (summary.products_state === 'partial') { <p>Ranking parcial · pedidos incompletos ou linhas sem quantidade confiável.</p> }
+          @if (summary.products.length) {
+            <ol>
+              @for (product of summary.products; track product.key) {
+                <li>
+                  <span class="rank">{{ product.rank }}</span>
+                  <span class="product-name"><strong>{{ product.name }}</strong><small>{{ product.pending_link ? 'Vínculo pendente' : product.sku }}</small></span>
+                  <span class="product-units">{{ product.units }} un.</span>
+                </li>
+              }
+            </ol>
+          } @else if (summary.products_state === 'empty') {
+            <p>Nenhum produto vendido neste período.</p>
+          } @else {
+            <p>Ranking indisponível até concluir a cobertura dos pedidos.</p>
+          }
+        </section>
+      </div>
+    }
+  }
+</section>

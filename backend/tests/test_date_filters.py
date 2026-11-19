@@ -7,9 +7,9 @@ import pytest
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
-from app.api.routes.finance import overview as finance_overview
 from app.api.routes import dashboard
 from app.api.routes.dashboard import financial_metrics, recent_sales, summary
+from app.api.routes.finance import overview as finance_overview
 from app.api.routes.invoices import list_invoices
 from app.models import InvoiceSource, MarketplaceOrder, MarketplaceOrderEvent, Product, SalesInvoice
 from app.schemas.common import InvoiceCreate, InvoiceItemCreate
@@ -74,10 +74,12 @@ def test_invoice_and_dashboard_date_filters(db: Session) -> None:
 def test_dashboard_can_page_through_all_sales_in_selected_day(db: Session) -> None:
     day = date(2026, 8, 15)
     end = datetime(2026, 8, 16, 3, tzinfo=UTC)
-    db.add_all([
-        SalesInvoice(number=f"PAGE-{minute:02d}", created_at=end - timedelta(minutes=minute))
-        for minute in range(13)
-    ])
+    db.add_all(
+        [
+            SalesInvoice(number=f"PAGE-{minute:02d}", created_at=end - timedelta(minutes=minute))
+            for minute in range(13)
+        ]
+    )
     db.flush()
 
     dashboard = summary(day, day, db, None)
@@ -255,3 +257,26 @@ def test_invoice_filter_rejects_invalid_or_oversized_range(
     with pytest.raises(HTTPException) as exc:
         list_invoices(start, end, db, None)
     assert exc.value.status_code == 422
+
+
+def test_dashboard_can_request_six_sales_without_changing_default_page_size(db: Session) -> None:
+    day = date(2026, 8, 15)
+    end = datetime(2026, 8, 16, 3, tzinfo=UTC)
+    db.add_all(
+        [
+            SalesInvoice(number=f"PAGE6-{minute:02d}", created_at=end - timedelta(minutes=minute))
+            for minute in range(14)
+        ]
+    )
+    db.flush()
+
+    first = summary(day, day, db, None, recent_sales_page_size=6)
+    assert len(first.recent_invoices) == 6
+    assert first.recent_sales_next_offset == 6
+    second = recent_sales(day, day, 6, db, None, page_size=6)
+    assert len(second.items) == 6
+    assert second.next_offset == 12
+    final = recent_sales(day, day, 12, db, None, page_size=6)
+    assert len(final.items) == 1
+    assert final.next_offset is None
+    assert len(summary(day, day, db, None).recent_invoices) == 10

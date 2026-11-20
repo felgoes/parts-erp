@@ -134,7 +134,14 @@ async def refresh_marketplace_dashboard(
             if latest_metric and latest_metric.tzinfo is None
             else latest_metric
         )
-        if metric_at is None or now - metric_at >= timedelta(hours=6) or force:
+        visit_metrics = dashboard_marketplace_metrics(db, start, end)["metrics"]["visits"]
+        coverage_incomplete = visit_metrics["state"] == "partial"
+        if (
+            metric_at is None
+            or now - metric_at >= timedelta(hours=6)
+            or force
+            or coverage_incomplete
+        ):
             # ARQ retains completed job IDs. A short time bucket deduplicates concurrent
             # page loads while allowing a later retry after an earlier visit API failure.
             job = await queue.enqueue_job(

@@ -1,7 +1,9 @@
-from datetime import UTC, date, datetime
+import asyncio
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from urllib.parse import parse_qs, urlparse
 
+from app.api.routes import dashboard_marketplace_refresh as dashboard_route
 from app.models import (
     AdDailyMetric,
     MarketplaceAccount,
@@ -308,3 +310,71 @@ def test_today_filters_marketplace_orders_at_sao_paulo_midnight(db):
     db.flush()
     data = service.dashboard_marketplace_metrics(db, day, day)
     assert data["metrics"]["orders"]["value"] == 4
+
+
+def test_dashboard_refresh_requeues_stale_pending_job_once(db, monkeypatch):
+    now = datetime.now(UTC)
+    account = MarketplaceAccount(
+        provider="mercadolivre",
+        seller_id="qa-stale-queue",
+        active=True,
+        encrypted_access_token="fake-token",
+    )
+    db.add(account)
+    db.flush()
+    db.add(
+        MarketplaceDashboardSync(
+            account_id=account.id,
+            period_start=date(2026, 11, 1),
+            period_end=date(2026, 11, 18),
+            sync_status="pending",
+            partial=False,
+            last_attempt_at=now - timedelta(minutes=10),
+            last_success_at=now - timedelta(minutes=20),
+        )
+    )
+    db.commit()
+
+    class Queue:
+        def __init__(self):
+            self.jobs = {}
+
+        async def enqueue_job(self, name, *args, **kwargs):
+            job_id = kwargs["_job_id"]
+            if job_id in self.jobs:
+                return None
+            self.jobs[job_id] = (name, args)
+            return object()
+
+    queue = Queue()
+
+    async def get_queue():
+        return queue
+
+    monkeypatch.setattr(dashboard_route, "get_queue_pool", get_queue)
+
+    async def refresh():
+        return await dashboard_route.refresh_marketplace_dashboard(
+            start_date=date(2026, 11, 1),
+            end_date=date(2026, 11, 18),
+            force=False,
+            db=db,
+            _=None,
+        )
+
+    first = asyncio.run(refresh())
+    second = asyncio.run(refresh())
+    order_jobs = [
+        (job_id, values)
+        for job_id, values in queue.jobs.items()
+        if values[0] == "sync_dashboard_marketplace_orders"
+    ]
+    assert first["status"] == "queued"
+    assert second["status"] == "already_queued"
+    assert len(order_jobs) == 1
+    assert order_jobs[0][0].startswith(
+        f"dashboard-ml-orders:{account.id}:2026-11-01:2026-11-18:"
+    )
+    state = db.query(MarketplaceDashboardSync).filter_by(account_id=account.id).one()
+    assert state.sync_status == "pending"
+    assert state.last_attempt_at.replace(tzinfo=UTC) > now - timedelta(minutes=5)

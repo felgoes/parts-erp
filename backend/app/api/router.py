@@ -11,6 +11,7 @@ from app.api.routes import (
     company_settings,
     customers,
     dashboard,
+    dashboard_marketplace_refresh,
     finance,
     fleet,
     integrations,
@@ -40,6 +41,7 @@ api_router.include_router(push.router)
 api_router.include_router(settings.router)
 api_router.include_router(company_settings.router)
 api_router.include_router(dashboard.router)
+api_router.include_router(dashboard_marketplace_refresh.router)
 api_router.include_router(finance.router)
 api_router.include_router(fleet.router)
 api_router.include_router(products.router)

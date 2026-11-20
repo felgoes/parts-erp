@@ -89,7 +89,7 @@ def sync_ad_metrics_for_account(db: Session, account_id: str) -> dict[str, int]:
     synced_at = datetime.now(UTC)
     updated = errors = 0
     for lookback, item_ids in groups.items():
-        for batch in _chunks(item_ids):
+        for batch in _chunks(item_ids, size=1):
             ids = quote(",".join(batch), safe=",")
             try:
                 response = client.get(

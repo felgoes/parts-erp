@@ -1,3 +1,7 @@
+## 19 de novembro de 2026 — métricas do Mercado Livre e filtro Hoje
+
+- A Visão geral mantém Este mês como padrão e inclui Hoje no fuso de São Paulo. O gráfico é seguido por Para resolver; Últimas vendas ocupa a largura total com seis pedidos por página. O bloco Mercado Livre apresenta métricas e ranking para o período, com atualização automática e manual, estados de disponibilidade e valores sujeitos à ocultação financeira. Implantado em produção no commit cb61b5a45b000db97cea0bcdce53f8cf5e19fddc; migração, API, Nginx e smokes HTTPS do site e do ERP aprovados.
+
 ## 13 de novembro de 2026 — estoque Mercado Livre Full
 
 - O ERP ganhou uma área para acompanhar envios, saldo do Full e movimentações. O saldo é conferido a cada 30 minutos e pode ser atualizado por notificações FBM Stock Operations quando o tópico estiver habilitado no Mercado Livre. O estoque local/Flex fica separado. [Commit implantado · 4b68286](https://github.com/felgoes/parts-erp/commit/4b68286417e2d307ea0344aeb13e24677b0604b6)

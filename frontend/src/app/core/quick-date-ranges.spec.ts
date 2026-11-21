@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { matchingDatePreset, quickDateRange } from './quick-date-ranges';
 
 describe('quick date ranges', () => {
@@ -28,6 +28,12 @@ describe('quick date ranges', () => {
     expect(quickDateRange('today', new Date('2026-11-20T03:00:00Z'))).toEqual({
       startDate: '2026-11-20', endDate: '2026-11-20',
     });
-    expect(matchingDatePreset('2026-11-19', '2026-11-19')).toBe('today');
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(new Date('2026-11-20T02:59:59Z'));
+      expect(matchingDatePreset('2026-11-19', '2026-11-19')).toBe('today');
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

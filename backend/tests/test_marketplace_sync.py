@@ -363,7 +363,7 @@ def test_initial_sync_imports_products_and_orders(db, monkeypatch):
     product = db.scalar(select(Product).where(Product.sku == "FLT-1"))
     assert result == {"products": 1, "orders": 1, "costs": 0}
     assert product is not None
-    assert product.current_stock == Decimal("8")
+    assert product.current_stock == Decimal("0")
     assert [image["url"] for image in product.images] == [
         "https://images.example/part-1.jpg",
         "https://images.example/part-2.jpg",

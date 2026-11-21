@@ -26,6 +26,8 @@ O host público `erp.goesautoparts.com.br` encaminha `/api/` para a API do ERP. 
 
 ## Decisões e limites
 
+- A importação de catálogo atualiza a disponibilidade de cada anúncio, sem substituir o saldo do produto no ERP. O saldo operacional continua sendo escriturado pelos movimentos de estoque; unidades Full em transferência não desaparecem quando o disponível do anúncio muda. Novos produtos importados começam sem saldo até a entrada ou conciliação de estoque.
+
 - O ERP não calcula tributos nem emite NF-e.
 - A emissão continua no Faturador do Mercado Livre.
 - O download fiscal depende da conta estar habilitada no Faturador e de a nota estar autorizada.

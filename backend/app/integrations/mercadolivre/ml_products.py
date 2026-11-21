@@ -172,7 +172,7 @@ def sync_products(db: Session, account: MarketplaceAccount) -> int:
             product.name = str(detail.get("title") or product.name)[:200]
             product.description = detail.get("description") or product.description
             product.sale_price = Decimal(str(detail.get("price") or product.sale_price or 0))
-            product.current_stock = Decimal(str(detail.get("available_quantity") or 0))
+            # Catalog availability belongs to the listing; ERP stock follows its ledger.
             product.active = str(detail.get("status", "active")) == "active"
             picture_payloads = [
                 picture for picture in detail.get("pictures", []) if isinstance(picture, dict)

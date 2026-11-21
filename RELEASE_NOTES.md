@@ -1,3 +1,7 @@
+## 20 de novembro de 2026 — saldo preservado na importação de catálogo
+
+- A importação de produtos do Mercado Livre atualiza a disponibilidade dos anúncios sem substituir o saldo operacional do ERP. Unidades Full em transferência e movimentos já escriturados são preservados; novos produtos aguardam entrada ou conciliação de estoque. [Commit implantado · d84ce0b](https://github.com/felgoes/parts-erp/commit/d84ce0ba99c06036a744c8ce94374c6b07124772). Testes de regressão, validação local de QA, build e verificações de API, Nginx e HTTPS do site e do ERP aprovados.
+
 ## 19 de novembro de 2026 — métricas do Mercado Livre e filtro Hoje
 
 - A Visão geral mantém Este mês como padrão e inclui Hoje no fuso de São Paulo. O gráfico é seguido por Para resolver; Últimas vendas ocupa a largura total com seis pedidos por página. O bloco Mercado Livre apresenta métricas e ranking para o período, com atualização automática e manual, estados de disponibilidade e valores sujeitos à ocultação financeira. Implantado em produção no commit cb61b5a45b000db97cea0bcdce53f8cf5e19fddc; migração, API, Nginx e smokes HTTPS do site e do ERP aprovados.
